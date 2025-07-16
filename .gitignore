@@ -1,4 +1,4 @@
 vendor
 web/sites/default/files
 /.gitattributes
-settings.ddev.php
+web/sites/default/settings.ddev.php
