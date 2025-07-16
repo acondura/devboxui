@@ -1,0 +1,39 @@
+uuid: 2c13ea2b-22cc-4aa2-8437-bd463082d484
+langcode: en
+status: true
+dependencies:
+  module:
+    - eca_misc
+    - eca_user
+    - modeler_api
+third_party_settings:
+  modeler_api:
+    modeler_id: bpmn_io
+    data: 'hash:7551fff8378ea043d79520b396581ad4'
+    label: 'User must be logged int'
+id: process_o7fhgc5
+weight: 0
+events:
+  kernel__request_1a1aop9:
+    plugin: 'kernel:request'
+    label: 'Start dispatching request'
+    configuration: {  }
+    successors:
+      -
+        id: action_goto_action_0k4w6gl
+        condition: eca_current_user_role_1lsirod
+conditions:
+  eca_current_user_role_1lsirod:
+    plugin: eca_current_user_role
+    label: 'Role of current user'
+    configuration:
+      negate: false
+      role: anonymous
+gateways: {  }
+actions:
+  action_goto_action_0k4w6gl:
+    label: 'Redirect to URL'
+    plugin: action_goto_action
+    configuration:
+      url: /user/login
+    successors: {  }
