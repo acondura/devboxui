@@ -24,7 +24,19 @@ module:
   datetime: 0
   dblog: 0
   dynamic_page_cache: 0
+  eca: 0
+  eca_access: 0
+  eca_base: 0
+  eca_cache: 0
+  eca_config: 0
+  eca_content: 0
+  eca_log: 0
+  eca_misc: 0
+  eca_render: 0
+  eca_ui: 0
+  eca_user: 0
   editor: 0
+  entity_reference_revisions: 0
   field: 0
   field_ui: 0
   file: 0
@@ -56,7 +68,9 @@ module:
   user: 0
   views_ui: 0
   workflows: 0
+  eca_form: 1
   views: 10
+  paragraphs: 11
   minimal: 1000
 theme:
   olivero: 0

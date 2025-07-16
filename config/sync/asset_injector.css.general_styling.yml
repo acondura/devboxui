@@ -11,6 +11,10 @@ code: |-
   a:hover {
   	text-decoration: underline;
   }
+  a.is-active {
+  	color: initial !important;
+  	text-decoration: underline;
+  }
   .tabs.tabs--primary {
   	margin-top: 10px;
   }
