@@ -25,6 +25,7 @@
         "drupal/core-recommended": "11.2.2",
         "drupal/eca": "^3.0@beta",
         "drupal/gin": "^5.0",
+        "drupal/masquerade": "^2.0",
         "drupal/modeler_api": "^1.0@beta",
         "drush/drush": "^13.6"
     },
