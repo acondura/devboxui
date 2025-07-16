@@ -3,6 +3,7 @@ _core:
 module:
   admin_toolbar: 0
   admin_toolbar_tools: 0
+  asset_injector: 0
   automated_cron: 0
   big_pipe: 0
   block: 0
@@ -21,23 +22,6 @@ module:
   datetime: 0
   dblog: 0
   dynamic_page_cache: 0
-  eca: 0
-  eca_access: 0
-  eca_base: 0
-  eca_cache: 0
-  eca_config: 0
-  eca_content: 0
-  eca_file: 0
-  eca_language: 0
-  eca_log: 0
-  eca_menu: 0
-  eca_misc: 0
-  eca_queue: 0
-  eca_render: 0
-  eca_ui: 0
-  eca_user: 0
-  eca_views: 0
-  eca_workflow: 0
   editor: 0
   field: 0
   field_ui: 0
@@ -58,7 +42,6 @@ module:
   page_cache: 0
   path: 0
   path_alias: 0
-  require_login: 0
   search: 0
   shortcut: 0
   smtp: 0
@@ -70,7 +53,6 @@ module:
   user: 0
   views_ui: 0
   workflows: 0
-  eca_form: 1
   views: 10
   minimal: 1000
 theme:

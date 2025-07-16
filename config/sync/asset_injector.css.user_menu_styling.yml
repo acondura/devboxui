@@ -1,0 +1,20 @@
+uuid: 63fecaa9-97be-47db-9994-9df5dc781fab
+langcode: en
+status: true
+dependencies: {  }
+id: user_menu_styling
+label: 'User menu styling'
+code: |-
+  .menu--account ul {
+  	margin: 0;
+  }
+  .menu--account ul li {
+  	list-style: none;
+  	display: inline;
+  	margin-right: 20px;
+  }
+media: all
+preprocess: true
+conditions: {  }
+contexts: {  }
+conditions_require_all: true

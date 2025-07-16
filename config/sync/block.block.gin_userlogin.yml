@@ -1,0 +1,27 @@
+uuid: 61820790-7400-4a0f-85f6-14d359a060f2
+langcode: en
+status: true
+dependencies:
+  module:
+    - user
+  theme:
+    - gin
+id: gin_userlogin
+theme: gin
+region: header
+weight: -4
+provider: null
+plugin: user_login_block
+settings:
+  id: user_login_block
+  label: 'User login'
+  label_display: '0'
+  provider: user
+visibility:
+  user_role:
+    id: user_role
+    negate: false
+    context_mapping:
+      user: '@user.current_user_context:current_user'
+    roles:
+      anonymous: anonymous
