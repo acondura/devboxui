@@ -1,0 +1,13 @@
+name: 'ECA Language'
+type: module
+description: 'Advanced language handling within ECA.'
+core_version_requirement: ^11.2
+package: ECA
+dependencies:
+  - drupal:language
+  - eca:eca
+
+# Information added by Drupal.org packaging script on 2025-07-09
+version: '3.0.0-beta2'
+project: 'eca'
+datestamp: 1752071640
