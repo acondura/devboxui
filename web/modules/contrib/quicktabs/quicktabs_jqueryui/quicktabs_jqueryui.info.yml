@@ -1,0 +1,13 @@
+name: Quick Tabs jQuery UI
+description: "Render content with a jQuery UI tab style"
+type: module
+core_version_requirement: ^10.3 || ^11
+configure: quicktabs.admin
+dependencies:
+  - drupal:block
+  - jquery_ui_tabs:jquery_ui_tabs
+
+# Information added by Drupal.org packaging script on 2025-02-20
+version: '4.0.1'
+project: 'quicktabs'
+datestamp: 1740083815

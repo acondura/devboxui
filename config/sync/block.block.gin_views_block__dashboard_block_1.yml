@@ -1,4 +1,4 @@
-uuid: d988941d-53e9-45cf-bfdf-54d7f1b8057c
+uuid: b2773adb-a0be-446b-9541-f4e54ea01838
 langcode: en
 status: true
 dependencies:
@@ -13,7 +13,7 @@ dependencies:
 id: gin_views_block__dashboard_block_1
 theme: gin
 region: content
-weight: -2
+weight: 0
 provider: null
 plugin: 'views_block:dashboard-block_1'
 settings:
@@ -27,7 +27,7 @@ visibility:
   request_path:
     id: request_path
     negate: false
-    pages: "/dashboard\r\n/dashboard*"
+    pages: /dashboard
   user_role:
     id: user_role
     negate: false

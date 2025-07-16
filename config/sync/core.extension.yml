@@ -23,6 +23,7 @@ module:
   contextual: 0
   datetime: 0
   dblog: 0
+  devboxui: 0
   dynamic_page_cache: 0
   eca: 0
   eca_access: 0

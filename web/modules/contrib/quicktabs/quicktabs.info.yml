@@ -1,0 +1,13 @@
+name: Quick Tabs
+description: "Render content with tabs and other display styles"
+type: module
+core_version_requirement: ^10.3 || ^11
+configure: quicktabs.admin
+dependencies:
+  - drupal:block
+  - js_cookie:js_cookie
+
+# Information added by Drupal.org packaging script on 2025-02-20
+version: '4.0.1'
+project: 'quicktabs'
+datestamp: 1740083815

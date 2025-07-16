@@ -1,0 +1,173 @@
+quicktabs.quicktabs_instance.*:
+  type: config_entity
+  label: 'Quick Tabs settings'
+  constraints:
+    FullyValidatable: ~
+  mapping:
+    id:
+      type: machine_name
+      label: 'ID'
+    label:
+      type: required_label
+      label: 'Label'
+    uuid:
+      type: uuid
+      label: 'UUID'
+    status:
+      type: boolean
+      label: 'Status'
+    renderer:
+      type: machine_name
+      label: 'Renderer'
+    hide_empty_tabs:
+      type: boolean
+      label: 'Hide Empty Tabs'
+    default_tab:
+      type: integer
+      label: 'Default Tab'
+      constraints:
+        Range:
+          min: 0
+    dependencies:
+      type: sequence
+      label: 'Dependencies'
+    options:
+      type: sequence
+      label: 'Options'
+      sequence:
+        type: quicktabs.options.[%key]
+    configuration_data:
+      type: sequence
+      label: 'Configuration Data'
+      sequence:
+        type: mapping
+        label: 'Configuration Item'
+        mapping:
+          title:
+            type: text
+            label: 'Title'
+          weight:
+            type: weight
+            label: 'Weight'
+          type:
+            type: machine_name
+            label: 'Type'
+          content:
+            type: sequence
+            label: 'Content'
+            sequence:
+              type: quicktabs.configuration_data.[%key]
+
+# Accordion Tabs Renderer Plugin
+quicktabs.options.accordion_tabs:
+  type: mapping
+  label: 'Accordion Tabs Options'
+  mapping:
+    jquery_ui:
+      type: mapping
+      label: 'jQuery UI'
+      mapping:
+        collapsible:
+          type: boolean
+          label: Collapsible
+        heightStyle:
+          type: string
+          label: 'Height Style'
+          constraints:
+            Choice:
+              - auto
+              - fill
+              - content
+
+# Quick Tabs Renderer Plugin
+quicktabs.options.quick_tabs:
+  type: mapping
+  label: 'Quick Tabs Options'
+  mapping:
+    ajax:
+      type: boolean
+      label: 'Ajax'
+    class:
+      type: string
+      nullable: true
+      label: 'Classes'
+    style:
+      type: string
+      label: 'Style'
+      constraints:
+        Choice:
+          - pamela
+          - on-the-gray
+          - tabsbar
+          - material-tabs
+
+# Block Tab Type Plugin
+quicktabs.configuration_data.block_content:
+  type: mapping
+  label: 'Block Content'
+  mapping:
+    options:
+      type: mapping
+      label: 'Options'
+      mapping:
+        bid:
+          type: string
+          label: 'bid'
+        block_title:
+          type: text
+          label: 'Block Title'
+        display_title:
+          type: boolean
+          label: 'Display Title'
+
+# Node Tab Type Plugin
+quicktabs.configuration_data.node_content:
+  type: mapping
+  label: 'Node Content'
+  mapping:
+    options:
+      type: mapping
+      label: Options
+      mapping:
+        nid:
+          type: machine_name
+          label: 'nid'
+        view_mode:
+          type: machine_name
+          label: 'View Mode'
+        hide_title:
+          type: boolean
+          label: 'Hide Title'
+
+# Quick Tabs Type Plugin
+quicktabs.configuration_data.qtabs_content:
+  type: mapping
+  label: 'Quick Tabs Content'
+  mapping:
+    options:
+      type: mapping
+      label: 'Options'
+      mapping:
+        machine_name:
+          type: machine_name
+          label: 'Machine Name'
+
+# View Tab Type Plugin
+quicktabs.configuration_data.view_content:
+  type: mapping
+  label: 'View Content'
+  mapping:
+    options:
+      type: mapping
+      label: Options
+      mapping:
+        vid:
+          type: machine_name
+          label: 'vid'
+        display:
+          type: machine_name
+          label: 'Display'
+        args:
+          type: string
+          nullable: true
+          label: 'Arguments'
