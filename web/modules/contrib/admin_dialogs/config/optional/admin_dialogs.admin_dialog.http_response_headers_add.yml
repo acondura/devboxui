@@ -1,0 +1,13 @@
+langcode: en
+status: true
+dependencies: {  }
+id: http_response_headers_add
+label: 'HTTP Response Headers Add'
+type: actions
+dialog_group: contrib_modules
+dialog_type: modal
+dialog_width: '750'
+dialog_title_override: ''
+selection_criteria:
+  routes:
+    - entity.response_header.add_form

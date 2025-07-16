@@ -1,0 +1,20 @@
+uuid: 0b90dc52-296a-4839-8f28-2b661254665b
+langcode: en
+status: true
+dependencies: {  }
+_core:
+  default_config_hash: AQtzg58B1VG8HQKaagaT_NCDEDb50ZH1F55WVB86jjw
+id: contrib_add_links
+label: 'Add Links'
+type: actions
+dialog_group: contrib_modules
+dialog_type: modal
+dialog_width: '550'
+dialog_title_override: ''
+selection_criteria:
+  routes:
+    - entity.pathauto_pattern.add_form
+    - paragraphs.type_add
+    - redirect.add
+    - linkit_profile.add_form
+    - linkit.matcher.add

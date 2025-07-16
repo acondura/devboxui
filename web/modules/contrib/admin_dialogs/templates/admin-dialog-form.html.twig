@@ -1,0 +1,19 @@
+{{ form.label }}
+{{ form.id }}
+
+<div class="dialog-inline-elements">
+  <div class="dialog-inline-item">{{ form.type }}</div>
+  <div class="dialog-inline-item">{{ form.dialog_type }}</div>
+  <div class="dialog-inline-item">{{ form.dialog_width }}</div>
+</div>
+
+{{ form.entity_types }}
+{{ form.selection_container }}
+{{ form.routes }}
+{{ form.paths }}
+{{ form.selectors }}
+{{ form.dialog_title_override }}
+{{ form.status }}
+
+{{ form.actions }}
+{{ form|without('label', 'id', 'type', 'dialog_type', 'dialog_width', 'dialog_title_override', 'element_key', 'element_key_other', 'button_element_key', 'button_element_key_other', 'entity_types', 'selection_container', 'status', 'actions', 'routes', 'paths', 'selectors') }}

@@ -1,0 +1,12 @@
+status: true
+id: edit_date_format
+label: 'Edit Date Format'
+type: ops
+dialog_group: administrative
+dialog_type: modal
+dialog_width: '550'
+dialog_title_override: ''
+selection_criteria:
+  entity_type: date_format
+  bundles: {  }
+  key: edit

@@ -1,0 +1,11 @@
+name: 'Admin Dialogs'
+description: 'Provides UI to configure opening administrative page forms in an interactive modals and off-canvas.'
+package: Administration
+type: module
+configure: entity.admin_dialog_group.list
+core_version_requirement: ^10.3 || ^11
+
+# Information added by Drupal.org packaging script on 2025-05-19
+version: '1.0.30'
+project: 'admin_dialogs'
+datestamp: 1747653351

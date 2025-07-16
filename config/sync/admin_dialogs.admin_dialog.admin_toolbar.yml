@@ -1,0 +1,16 @@
+uuid: 5469da3c-3320-4aae-9d02-e6d9b51b58ca
+langcode: en
+status: true
+dependencies: {  }
+_core:
+  default_config_hash: _k1SG1flu4OTsyDYScnjJtxnk9Wy8PcEslNXaAig2k4
+id: admin_toolbar
+label: 'Admin Toolbar'
+type: paths
+dialog_group: contrib_modules
+dialog_type: modal
+dialog_width: '550'
+dialog_title_override: ''
+selection_criteria:
+  paths:
+    - '/admin/config/user-interface/admin-toolbar*'

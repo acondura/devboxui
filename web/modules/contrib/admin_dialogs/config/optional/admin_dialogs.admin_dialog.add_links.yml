@@ -1,0 +1,24 @@
+status: true
+id: add_links
+label: 'Add Links'
+type: actions
+dialog_group: administrative
+dialog_type: modal
+dialog_width: '550'
+dialog_title_override: ''
+selection_criteria:
+  routes:
+    - system.date_format_add
+    - entity.taxonomy_vocabulary.add_form
+    - update.report_install
+    - update.module_install
+    - update.theme_install
+    - user.role_add
+    - entity.menu.add_form
+    - comment_type_add
+    - image_style_add_action
+    - shortcut_set_add_local_action
+    - shortcut.link_add
+    - entity.path_alias.add_form
+    - entity.workflow.add_form
+    - block_content_type_add

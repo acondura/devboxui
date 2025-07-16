@@ -1,0 +1,16 @@
+uuid: eaec3ec7-51a9-499f-aacf-61adae24d14e
+langcode: en
+status: true
+dependencies: {  }
+_core:
+  default_config_hash: Rs9jcL6a4I-q1WlZVxCdzlWiFNEU0Ow0kMTeHV-Yx5M
+id: contrib_tasks
+label: Tasks
+type: tasks
+dialog_group: contrib_modules
+dialog_type: modal
+dialog_width: '550'
+dialog_title_override: ''
+selection_criteria:
+  routes:
+    - entity.smart_date_format.delete_form

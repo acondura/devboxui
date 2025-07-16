@@ -1,0 +1,17 @@
+uuid: 8144d786-ba02-4d38-b8bb-c43792c371c3
+langcode: en
+status: true
+dependencies: {  }
+_core:
+  default_config_hash: '-sd58DJGRAxo8_Ii4dAIK57O2RwqkAQbyiipKgKEmwc'
+id: edit_custom_block_type
+label: 'Edit Custom Block Type'
+type: ops
+dialog_group: administrative
+dialog_type: modal
+dialog_width: '550'
+dialog_title_override: ''
+selection_criteria:
+  entity_type: block_content_type
+  bundles: {  }
+  key: edit

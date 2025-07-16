@@ -1,0 +1,11 @@
+status: true
+id: add_menu_link
+label: 'Add Menu Link'
+type: actions
+dialog_group: administrative
+dialog_type: modal
+dialog_width: '650'
+dialog_title_override: ''
+selection_criteria:
+  routes:
+    - entity.menu.add_link_form

@@ -1,0 +1,13 @@
+langcode: en
+status: true
+dependencies: {  }
+id: add_redirect
+label: 'Add Redirect'
+type: paths
+dialog_group: contrib_modules
+dialog_type: modal
+dialog_width: '650'
+dialog_title_override: ''
+selection_criteria:
+  paths:
+    - '/admin/config/search/redirect/add*'

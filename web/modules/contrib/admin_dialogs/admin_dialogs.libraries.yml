@@ -1,0 +1,24 @@
+admin_dialogs.admin:
+  version: VERSION
+  css:
+    theme:
+      assets/admin.css: {}
+
+admin_dialogs.selector:
+  version: VERSION
+  js:
+    assets/selector.js: {}
+  dependencies:
+    - core/jquery
+    - core/drupal
+
+admin_dialogs.spinner:
+  version: VERSION
+  css:
+    theme:
+      assets/spinner.css: {}
+  js:
+    assets/spinner.js: {}
+  dependencies:
+    - core/jquery
+    - core/drupal

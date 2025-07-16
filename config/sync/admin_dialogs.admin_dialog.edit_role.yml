@@ -1,0 +1,17 @@
+uuid: ac6a5f01-d427-4fd3-8346-31748cd424d9
+langcode: en
+status: true
+dependencies: {  }
+_core:
+  default_config_hash: OxyG_YVaqrerbxnk8s19Rq7-T27nkxVI2ipexOhCJSw
+id: edit_role
+label: 'Edit Role'
+type: ops
+dialog_group: administrative
+dialog_type: modal
+dialog_width: '550'
+dialog_title_override: ''
+selection_criteria:
+  entity_type: user_role
+  bundles: {  }
+  key: edit

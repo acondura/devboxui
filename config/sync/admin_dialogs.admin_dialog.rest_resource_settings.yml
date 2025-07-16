@@ -1,0 +1,16 @@
+uuid: 8c666f4a-5ced-476a-8806-1fa85da192e3
+langcode: en
+status: true
+dependencies: {  }
+_core:
+  default_config_hash: FswlA5LF4FWaJBb5TDYxNNjnyYvXkllc1DI5XOdVpAM
+id: rest_resource_settings
+label: 'REST Resource Settings'
+type: paths
+dialog_group: administrative
+dialog_type: modal
+dialog_width: '550'
+dialog_title_override: ''
+selection_criteria:
+  paths:
+    - '/admin/config/services/rest/resource/*/edit'

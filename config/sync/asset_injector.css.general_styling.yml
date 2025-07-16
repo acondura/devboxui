@@ -11,6 +11,9 @@ code: |-
   a:hover {
   	text-decoration: underline;
   }
+  .tabs.tabs--primary {
+  	margin-top: 10px;
+  }
 media: all
 preprocess: true
 conditions: {  }

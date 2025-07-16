@@ -1,0 +1,19 @@
+{
+  "name": "drupal/admin_dialogs",
+  "description": "Provides UI to configure opening administrative page forms in an interactive modals and off-canvas.",
+  "type": "drupal-module",
+  "keywords": ["Drupal", "Dialogs", "UI"],
+  "homepage": "http://drupal.org/project/admin_dialogs",
+  "license": "GPL-2.0-or-later",
+  "authors": [
+    {
+      "name": "Minnur Yunusov (minnur)",
+      "homepage": "https://www.drupal.org/u/minnur",
+      "role": "Maintainer"
+    }
+  ],
+  "support": {
+    "issues": "https://www.drupal.org/project/issues/admin_dialogs",
+    "source": "https://git.drupalcode.org/project/admin_dialogs"
+  }
+}

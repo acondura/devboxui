@@ -1,0 +1,11 @@
+uuid: 2a0f79e3-936e-4518-897f-a2847f4de376
+langcode: en
+status: true
+dependencies:
+  config:
+    - node.type.devbox
+id: node.devbox
+target_entity_type_id: node
+target_bundle: devbox
+default_langcode: site_default
+language_alterable: false

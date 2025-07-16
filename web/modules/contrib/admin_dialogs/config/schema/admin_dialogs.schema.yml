@@ -1,0 +1,90 @@
+admin_dialogs.admin_dialog.*:
+  type: config_entity
+  label: 'Dialog configuration'
+  mapping:
+    id:
+      type: string
+      label: 'ID'
+    label:
+      type: label
+      label: 'Label'
+    type:
+      type: string
+      label: 'UI element type'
+    dialog_group:
+      type: string
+      label: 'Dialog group'
+    dialog_type:
+      type: string
+      label: 'Dialog width'
+    dialog_width:
+      type: string
+      label: 'Dialog type'
+    dialog_title_override:
+      type: string
+      label: 'Dialog title override'
+    selection_criteria:
+      type: mapping
+      label: 'Selection criteria'
+      mapping:
+        entity_type:
+          type: string
+          label: 'Entity type'
+        key:
+          type: string
+          label: 'Key'
+        bundles:
+          type: sequence
+          label: 'Entity bundles'
+          sequence:
+            type: string
+            label: 'Entity bundle'
+        paths:
+          type: sequence
+          label: 'URL paths'
+          sequence:
+            type: string
+            label: 'URL path'
+        routes:
+          type: sequence
+          label: 'Route names'
+          sequence:
+            type: string
+            label: 'Route name'
+        selectors:
+          type: sequence
+          label: 'CSS Selectors'
+          sequence:
+            type: string
+            label: 'CSS Selector'
+
+    status:
+      type: boolean
+      label: 'Status'
+
+admin_dialogs.admin_dialog_group.*:
+  type: config_entity
+  label: 'Dialog Group'
+  mapping:
+    id:
+      type: string
+      label: 'ID'
+    label:
+      type: label
+      label: 'Label'
+    description:
+      type: string
+      label: 'Description'
+
+admin_dialogs.settings:
+  type: config_object
+  label: 'Settings'
+  mapping:
+    delete_ops:
+      type: boolean
+    delete_buttons:
+      type: boolean
+    other_buttons:
+      type: boolean
+    submit_spinner:
+      type: boolean

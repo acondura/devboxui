@@ -1,0 +1,4 @@
+status: true
+id: contrib_modules
+label: 'Contrib modules'
+description: 'Configurations for some contributed modules'

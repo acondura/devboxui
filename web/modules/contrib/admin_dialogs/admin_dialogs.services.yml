@@ -1,0 +1,4 @@
+services:
+  admin_dialogs.module:
+    class: Drupal\admin_dialogs\AdminDialogsModule
+    arguments: ['@entity_type.manager', '@config.factory']

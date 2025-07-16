@@ -1,0 +1,15 @@
+.dialog-inline-elements {
+  display: inline-flex;
+  flex-direction: row;
+  gap: 21px;
+}
+
+.dialog-inline-elements .dialog-inline-item .form-item {
+  margin-top: 0px;
+  margin-bottom: 0px;
+}
+
+.ui-dialog .form-item {
+  margin-top: 10px;
+  margin-bottom: 15px;
+}

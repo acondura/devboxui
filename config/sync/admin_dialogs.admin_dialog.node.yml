@@ -1,0 +1,14 @@
+uuid: fcc69dd8-c6f8-46cf-832a-fe1313d2e041
+langcode: en
+status: true
+dependencies: {  }
+id: node
+label: Node
+type: paths
+dialog_group: administrative
+dialog_type: modal
+dialog_width: 100%
+dialog_title_override: ''
+selection_criteria:
+  paths:
+    - '/node*'

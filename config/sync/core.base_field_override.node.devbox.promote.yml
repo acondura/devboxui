@@ -1,0 +1,22 @@
+uuid: 8ead494a-a246-4c29-824d-68e0fbd3182f
+langcode: en
+status: true
+dependencies:
+  config:
+    - node.type.devbox
+id: node.devbox.promote
+field_name: promote
+entity_type: node
+bundle: devbox
+label: 'Promoted to front page'
+description: ''
+required: false
+translatable: true
+default_value:
+  -
+    value: 0
+default_value_callback: ''
+settings:
+  on_label: 'On'
+  off_label: 'Off'
+field_type: boolean

@@ -1,0 +1,18 @@
+status: true
+id: modal_paths
+label: 'Paths (Modal)'
+type: paths
+dialog_group: administrative
+dialog_type: modal
+dialog_width: '550'
+dialog_title_override: ''
+selection_criteria:
+  paths:
+    - '*/admin/config/services/rss-publishing*'
+    - '*/admin/config/development/maintenance*'
+    - '*/admin/modules/install*'
+    - '*/admin/theme/install*'
+    - '*/admin/config/development/logging*'
+    - '*/admin/config/regional/settings*'
+    - '*/admin/config/media/media-settings*'
+    - '*/admin/config/media/image-toolkit*'

@@ -1,0 +1,16 @@
+uuid: 17b83c8c-a286-4d3d-b457-abd03d13fd60
+langcode: en
+status: true
+dependencies: {  }
+_core:
+  default_config_hash: DJC3ToaBgB_oufBFHEoYWY7WkkGTkaT2z8r3GOImd2M
+id: edit_comment
+label: 'Edit Comment'
+type: paths
+dialog_group: administrative
+dialog_type: modal
+dialog_width: '550'
+dialog_title_override: ''
+selection_criteria:
+  paths:
+    - '/comment/*/edit*'

@@ -16,6 +16,7 @@
     ],
     "require": {
         "composer/installers": "^2.3",
+        "drupal/admin_dialogs": "^1.0",
         "drupal/admin_toolbar": "^3.6",
         "drupal/asset_injector": "^2.21",
         "drupal/bpmn_io": "^3.0@beta",

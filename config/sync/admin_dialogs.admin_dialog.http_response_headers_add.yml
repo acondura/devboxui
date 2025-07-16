@@ -1,0 +1,16 @@
+uuid: d6a60dc3-ed73-4946-a2b0-2a8f494c3e14
+langcode: en
+status: true
+dependencies: {  }
+_core:
+  default_config_hash: ekJCkKSuRaBKKVlGKVe7Upz18j0JBVfkz9cPgTgnnMU
+id: http_response_headers_add
+label: 'HTTP Response Headers Add'
+type: actions
+dialog_group: contrib_modules
+dialog_type: modal
+dialog_width: '750'
+dialog_title_override: ''
+selection_criteria:
+  routes:
+    - entity.response_header.add_form

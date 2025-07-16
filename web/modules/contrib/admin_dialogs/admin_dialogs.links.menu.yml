@@ -1,0 +1,5 @@
+entity.admin_dialog_group.list:
+  title: 'Admin Dialogs'
+  route_name: entity.admin_dialog_group.list
+  description: 'Configure administrative dialogs.'
+  parent: system.admin_config_ui

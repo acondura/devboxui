@@ -1,0 +1,17 @@
+uuid: cbca7da7-74ac-4268-96d3-6dc312de758d
+langcode: en
+status: true
+dependencies: {  }
+_core:
+  default_config_hash: oPWUIqObj9wBDEiACOaIL0rBUuZznf__Ww-flysmGH4
+id: http_response_headers_edit
+label: 'HTTP Response Headers Edit'
+type: ops
+dialog_group: contrib_modules
+dialog_type: modal
+dialog_width: '750'
+dialog_title_override: ''
+selection_criteria:
+  entity_type: response_header
+  bundles: {  }
+  key: edit

@@ -1,0 +1,16 @@
+uuid: 58d531f8-00f1-4734-b78a-8746c0055f56
+langcode: en
+status: true
+dependencies: {  }
+_core:
+  default_config_hash: 2DooCKpgOPNRYYaWH8c_tVMSSLjfCF9_fwvotprGFJw
+id: media_file_delete_settings
+label: 'Media File Delete settings'
+type: paths
+dialog_group: contrib_modules
+dialog_type: modal
+dialog_width: '550'
+dialog_title_override: ''
+selection_criteria:
+  paths:
+    - '/admin/config/media/media_file_delete/settings*'

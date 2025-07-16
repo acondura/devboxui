@@ -1,0 +1,14 @@
+langcode: en
+status: true
+dependencies: {  }
+id: http_response_headers_edit
+label: 'HTTP Response Headers Edit'
+type: ops
+dialog_group: contrib_modules
+dialog_type: modal
+dialog_width: '750'
+dialog_title_override: ''
+selection_criteria:
+  entity_type: response_header
+  bundles: {  }
+  key: edit

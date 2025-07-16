@@ -1,0 +1,17 @@
+uuid: 685560d3-1c8c-4b15-886f-18f64ac136e3
+langcode: en
+status: true
+dependencies: {  }
+_core:
+  default_config_hash: TLvcdEQ4IyRabP_jnorP7jV9nv07stQdmZ9kE-e9swI
+id: pathauto_edit
+label: 'Pathauto Edit'
+type: ops
+dialog_group: contrib_modules
+dialog_type: modal
+dialog_width: '550'
+dialog_title_override: ''
+selection_criteria:
+  entity_type: pathauto_pattern
+  bundles: {  }
+  key: edit

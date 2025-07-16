@@ -1,0 +1,16 @@
+uuid: 716358ac-cb27-4a20-8d60-780b35955c91
+langcode: en
+status: true
+dependencies: {  }
+_core:
+  default_config_hash: ar-LJYeNx7mzMw5_qSlMryD3OMQ45RRkwGm8Re7rePQ
+id: development_settings
+label: 'Development Settings'
+type: paths
+dialog_group: administrative
+dialog_type: modal
+dialog_width: '550'
+dialog_title_override: ''
+selection_criteria:
+  paths:
+    - '/admin/config/development/settings*'

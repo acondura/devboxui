@@ -1,0 +1,12 @@
+status: true
+id: paragraph_type_edit
+label: 'Paragraph Type Edit'
+type: ops
+dialog_group: contrib_modules
+dialog_type: modal
+dialog_width: '550'
+dialog_title_override: ''
+selection_criteria:
+  entity_type: paragraphs_type
+  bundles: {  }
+  key: edit

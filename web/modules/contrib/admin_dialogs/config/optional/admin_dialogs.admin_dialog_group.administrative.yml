@@ -1,0 +1,4 @@
+status: true
+id: administrative
+label: Administrative
+description: 'Drupal administrative dialogs'

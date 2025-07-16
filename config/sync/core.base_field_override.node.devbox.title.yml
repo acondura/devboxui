@@ -1,0 +1,18 @@
+uuid: 747ac68c-61a7-434e-a475-d91334110432
+langcode: en
+status: true
+dependencies:
+  config:
+    - node.type.devbox
+id: node.devbox.title
+field_name: title
+entity_type: node
+bundle: devbox
+label: Name
+description: ''
+required: true
+translatable: true
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string

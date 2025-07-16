@@ -4,11 +4,14 @@ status: true
 dependencies:
   config:
     - filter.format.basic_html
+    - node.type.app
+    - node.type.devbox
   module:
     - comment
     - contact
     - file
     - filter
+    - node
     - search
     - shortcut
     - system
@@ -23,7 +26,13 @@ permissions:
   - 'access content'
   - 'access shortcuts'
   - 'access site-wide contact form'
+  - 'create app content'
+  - 'create devbox content'
+  - 'delete own app content'
+  - 'delete own devbox content'
   - 'delete own files'
+  - 'edit own app content'
+  - 'edit own devbox content'
   - 'post comments'
   - 'search content'
   - 'skip comment approval'

@@ -1,0 +1,3 @@
+administer dialogs:
+  title: 'Administer dialogs'
+  description: 'Allow to access the administration form to configure dialogs.'

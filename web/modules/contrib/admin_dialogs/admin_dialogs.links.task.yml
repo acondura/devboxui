@@ -1,0 +1,9 @@
+entity.admin_dialog_group.list:
+  title: 'Dialogs'
+  route_name: entity.admin_dialog_group.list
+  base_route: entity.admin_dialog_group.list
+
+admin_dialogs.settings:
+  title: 'Settings'
+  route_name: admin_dialogs.settings
+  base_route: entity.admin_dialog_group.list

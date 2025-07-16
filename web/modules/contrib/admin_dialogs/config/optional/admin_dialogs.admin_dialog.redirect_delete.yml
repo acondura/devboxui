@@ -1,0 +1,12 @@
+status: true
+id: redirect_delete
+label: 'Redirect Delete'
+type: ops
+dialog_group: contrib_modules
+dialog_type: modal
+dialog_width: '750'
+dialog_title_override: ''
+selection_criteria:
+  entity_type: redirect
+  bundles: {  }
+  key: delete

@@ -1,0 +1,14 @@
+langcode: en
+status: true
+dependencies: {  }
+id: linkit_edit
+label: 'Linkit Edit'
+type: ops
+dialog_group: contrib_modules
+dialog_type: modal
+dialog_width: '550'
+dialog_title_override: ''
+selection_criteria:
+  entity_type: linkit_profile
+  key: edit
+  bundles: {  }

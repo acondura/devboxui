@@ -1,0 +1,16 @@
+uuid: 0f14b1f1-684e-4417-9568-bbd8fa2a5940
+langcode: en
+status: true
+dependencies: {  }
+_core:
+  default_config_hash: Pkm3B0Ns4I2g-vGkPQLtF5ITmey0ga3vN78L8j9XuIU
+id: media_library_settings
+label: 'Media Library Settings'
+type: paths
+dialog_group: administrative
+dialog_type: modal
+dialog_width: '550'
+dialog_title_override: ''
+selection_criteria:
+  paths:
+    - '/admin/config/media/media-library*'

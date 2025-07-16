@@ -1,0 +1,23 @@
+entity.admin_dialog_group.add_form:
+  route_name: 'entity.admin_dialog_group.add_form'
+  title: 'New Group'
+  appears_on:
+    - entity.admin_dialog_group.list
+  options:
+    attributes:
+      class:
+        - 'use-ajax'
+      data-dialog-type: 'modal'
+      data-dialog-options: '{"width":"550"}'
+
+entity.admin_dialog.add_form:
+  route_name: 'entity.admin_dialog.add_form'
+  title: 'New Dialog'
+  appears_on:
+    - entity.admin_dialog.list
+  options:
+    attributes:
+      class:
+        - 'use-ajax'
+      data-dialog-type: 'modal'
+      data-dialog-options: '{"width":"550"}'

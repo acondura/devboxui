@@ -1,0 +1,46 @@
+<?php
+
+/**
+ * @file
+ * Installation hooks for the Admin Dialogs module.
+ */
+
+use Drupal\Core\Config\FileStorage;
+
+/**
+ * Issue #3417175: Invalid config schema.
+ */
+function admin_dialogs_update_10000() {
+  $config = \Drupal::configFactory()->getEditable('admin_dialogs.settings');
+  $config
+    ->set('delete_ops', (bool) $config->get('delete_ops'))
+    ->set('delete_buttons', (bool) $config->get('delete_buttons'))
+    ->set('other_buttons', (bool) $config->get('other_buttons'))
+    ->set('submit_spinner', (bool) $config->get('submit_spinner'))
+    ->save();
+}
+
+/**
+ * Issue #3421305: For Drupal 10.2+, the 'Add Field Links' dialog needs to be wider to account for new UI/UX.
+ */
+function admin_dialogs_update_10001() {
+  /** @var \Drupal\admin_dialogs\Entity\AdminDialogEntityInterface $admin_dialog */
+  $admin_dialog = \Drupal::entityTypeManager()
+    ->getStorage('admin_dialog')
+    ->load('add_field_links');
+  if ($admin_dialog && $admin_dialog->get('dialog_width') === '750') {
+    $admin_dialog
+      ->set('dialog_width', '1200')
+      ->save();
+  }
+}
+
+/**
+ * Install new optional dialog configs.
+ */
+function admin_dialogs_update_10002() {
+  $path_to_module = \Drupal::service('extension.path.resolver')->getPath('module', 'admin_dialogs');
+  $config_path = $path_to_module . '/config/optional';
+  $config_source = new FileStorage($config_path);
+  \Drupal::service('config.installer')->installOptionalConfig($config_source);
+}

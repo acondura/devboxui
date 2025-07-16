@@ -1,0 +1,13 @@
+langcode: en
+status: true
+dependencies: {  }
+id: edit_aggregator_feed
+label: 'Edit Aggregator Feed'
+type: paths
+dialog_group: contrib_modules
+dialog_type: modal
+dialog_width: '550'
+dialog_title_override: ''
+selection_criteria:
+  paths:
+    - '/aggregator/sources/*/configure*'

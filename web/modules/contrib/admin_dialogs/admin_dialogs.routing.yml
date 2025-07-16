@@ -1,0 +1,83 @@
+entity.admin_dialog_group.list:
+  path: '/admin/config/user-interface/dialogs'
+  defaults:
+    _entity_list: 'admin_dialog_group'
+    _title: 'Dialog Groups'
+  requirements:
+    _permission: 'administer dialogs'
+
+entity.admin_dialog_group.add_form:
+  path: '/admin/config/user-interface/dialogs/add'
+  defaults:
+    _title: 'New Dialog Group'
+    _entity_form: admin_dialog_group.add
+  requirements:
+    _entity_create_access: admin_dialog_group
+
+entity.admin_dialog_group.edit_form:
+  path: '/admin/config/user-interface/dialogs/manage/{admin_dialog_group}'
+  defaults:
+    _title: 'Edit Dialog Group'
+    _entity_form: admin_dialog_group.edit
+  requirements:
+    _entity_access: admin_dialog_group.update
+
+entity.admin_dialog_group.delete_form:
+  path: '/admin/config/user-interface/dialogs/manage/{admin_dialog_group}/delete'
+  defaults:
+    _title: 'Delete Dialog Group'
+    _entity_form: admin_dialog_group.delete
+  requirements:
+    _entity_access: admin_dialog_group.delete
+
+entity.admin_dialog.list:
+  path: '/admin/config/user-interface/dialogs/manage/{admin_dialog_group}/dialogs'
+  defaults:
+    _entity_list: 'admin_dialog'
+    _title_callback: '\Drupal\admin_dialogs\Controller\AdminDialogMisc::getDialogsControllerTitle'
+  requirements:
+    _permission: 'administer dialogs'
+
+entity.admin_dialog.add_form:
+  path: '/admin/config/user-interface/dialogs/manage/{admin_dialog_group}/dialogs/add'
+  defaults:
+    _title: 'New Dialog'
+    _entity_form: admin_dialog.add
+  requirements:
+    _entity_create_access: admin_dialog
+  options:
+    parameters:
+      admin_dialog_group:
+        type: entity:admin_dialog_group
+
+entity.admin_dialog.edit_form:
+  path: '/admin/config/user-interface/dialogs/edit/{admin_dialog}'
+  defaults:
+    _title: 'Edit Dialog'
+    _entity_form: admin_dialog.edit
+  requirements:
+    _entity_access: admin_dialog.update
+  options:
+    parameters:
+      admin_dialog:
+        type: entity:admin_dialog
+
+entity.admin_dialog.delete_form:
+  path: '/admin/config/user-interface/dialogs/delete/{admin_dialog}'
+  defaults:
+    _title: 'Delete Dialog'
+    _entity_form: admin_dialog.delete
+  requirements:
+    _entity_access: admin_dialog.delete
+  options:
+    parameters:
+      admin_dialog:
+        type: entity:admin_dialog
+
+admin_dialogs.settings:
+  path: '/admin/config/user-interface/dialogs/settings'
+  defaults:
+    _form: '\Drupal\admin_dialogs\Form\AdminDialogSettingsForm'
+    _title: 'Dialog Settings'
+  requirements:
+    _permission: 'administer dialogs'

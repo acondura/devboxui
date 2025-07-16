@@ -1,0 +1,16 @@
+uuid: 6eec1baf-c0d7-4bc0-954e-3bdb35f6f583
+langcode: en
+status: true
+dependencies: {  }
+_core:
+  default_config_hash: SEKC5q88arYs8NcCV8JKAwPI-t16bELeuQO1Rc2iMmU
+id: switch_user_shortcuts
+label: 'Switch User Shortcuts'
+type: tasks
+dialog_group: administrative
+dialog_type: modal
+dialog_width: '550'
+dialog_title_override: ''
+selection_criteria:
+  routes:
+    - shortcut.set_switch

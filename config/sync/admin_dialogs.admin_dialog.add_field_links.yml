@@ -1,0 +1,16 @@
+uuid: a4769626-829d-4c9c-9a07-74fc389f693a
+langcode: en
+status: true
+dependencies: {  }
+_core:
+  default_config_hash: UUSJ_GQ8CDXTn-gr8CJmCU2cKnglO47rEfWMX8CtGyE
+id: add_field_links
+label: 'Add Field Links'
+type: actions
+dialog_group: administrative
+dialog_type: modal
+dialog_width: '1200'
+dialog_title_override: ''
+selection_criteria:
+  routes:
+    - 'field_ui.field_storage_config_add:field_storage_config_add_*'
