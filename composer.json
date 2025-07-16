@@ -28,6 +28,7 @@
         "drupal/gin": "^5.0",
         "drupal/masquerade": "^2.0",
         "drupal/modeler_api": "^1.0@beta",
+        "drupal/require_login": "^3.0",
         "drupal/smtp": "^1.4",
         "drush/drush": "^13.6"
     },

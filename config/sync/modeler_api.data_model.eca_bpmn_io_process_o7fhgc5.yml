@@ -6,7 +6,7 @@ id: eca_bpmn_io_process_o7fhgc5
 data: |
   <?xml version="1.0" encoding="UTF-8"?>
   <bpmn2:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bpmn2="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:qa="http://some-company/schema/bpmn/qa" id="sample-diagram" targetNamespace="http://bpmn.io/schema/bpmn" xsi:schemaLocation="http://www.omg.org/spec/BPMN/20100524/MODEL BPMN20.xsd">
-    <bpmn2:process id="Process_o7fhGc5" name="User must be logged int" isExecutable="true" camunda:versionTag="">
+    <bpmn2:process id="Process_o7fhGc5" name="" isExecutable="true" camunda:versionTag="">
       <bpmn2:documentation />
       <bpmn2:extensionElements>
         <camunda:properties>
@@ -14,14 +14,6 @@ data: |
           <camunda:property name="Changelog" value="" />
         </camunda:properties>
       </bpmn2:extensionElements>
-      <bpmn2:startEvent id="kernel__request_1a1aop9" name="Start dispatching request" camunda:modelerTemplate="org.drupal.event.kernel:request">
-        <bpmn2:extensionElements>
-          <camunda:properties>
-            <camunda:property name="pluginid" value="kernel:request" />
-          </camunda:properties>
-        </bpmn2:extensionElements>
-        <bpmn2:outgoing>eca_current_user_role_1lsirod</bpmn2:outgoing>
-      </bpmn2:startEvent>
       <bpmn2:task id="action_goto_action_0k4w6gl" name="Redirect to URL" camunda:modelerTemplate="org.drupal.action.action_goto_action">
         <bpmn2:extensionElements>
           <camunda:field name="url">
@@ -36,7 +28,7 @@ data: |
         </bpmn2:extensionElements>
         <bpmn2:incoming>eca_current_user_role_1lsirod</bpmn2:incoming>
       </bpmn2:task>
-      <bpmn2:sequenceFlow id="eca_current_user_role_1lsirod" name="Role of current user" camunda:modelerTemplate="org.drupal.condition.eca_current_user_role" sourceRef="kernel__request_1a1aop9" targetRef="action_goto_action_0k4w6gl">
+      <bpmn2:sequenceFlow id="eca_current_user_role_1lsirod" name="Role of current user" camunda:modelerTemplate="org.drupal.condition.eca_current_user_role" sourceRef="kernel__response_1a1aop9" targetRef="action_goto_action_0k4w6gl">
         <bpmn2:extensionElements>
           <camunda:field name="role">
             <camunda:string>anonymous</camunda:string>
@@ -49,18 +41,26 @@ data: |
           </camunda:properties>
         </bpmn2:extensionElements>
       </bpmn2:sequenceFlow>
+      <bpmn2:startEvent id="kernel__response_1a1aop9" name="User must login" camunda:modelerTemplate="org.drupal.event.kernel:response">
+        <bpmn2:extensionElements>
+          <camunda:properties>
+            <camunda:property name="pluginid" value="kernel:response" />
+          </camunda:properties>
+        </bpmn2:extensionElements>
+        <bpmn2:outgoing>eca_current_user_role_1lsirod</bpmn2:outgoing>
+      </bpmn2:startEvent>
     </bpmn2:process>
     <bpmndi:BPMNDiagram id="BPMNDiagram_Process_o7fhGc5">
       <bpmndi:BPMNPlane id="BPMNPlane_Process_o7fhGc5" bpmnElement="Process_o7fhGc5">
-        <bpmndi:BPMNShape id="Event_1a1aop9_di" bpmnElement="kernel__request_1a1aop9">
-          <dc:Bounds x="182" y="92" width="36" height="36" />
-          <bpmndi:BPMNLabel>
-            <dc:Bounds x="159" y="135" width="82" height="27" />
-          </bpmndi:BPMNLabel>
-        </bpmndi:BPMNShape>
         <bpmndi:BPMNShape id="Activity_0k4w6gl_di" bpmnElement="action_goto_action_0k4w6gl">
           <dc:Bounds x="430" y="70" width="100" height="80" />
           <bpmndi:BPMNLabel />
+        </bpmndi:BPMNShape>
+        <bpmndi:BPMNShape id="Event_1o5wp3e_di" bpmnElement="kernel__response_1a1aop9">
+          <dc:Bounds x="182" y="92" width="36" height="36" />
+          <bpmndi:BPMNLabel>
+            <dc:Bounds x="161" y="133" width="77" height="14" />
+          </bpmndi:BPMNLabel>
         </bpmndi:BPMNShape>
         <bpmndi:BPMNEdge id="Flow_1lsirod_di" bpmnElement="eca_current_user_role_1lsirod">
           <di:waypoint x="218" y="110" />
