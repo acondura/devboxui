@@ -1,0 +1,24 @@
+uuid: 52cb817b-2594-4301-8c64-0e7e54cca6d7
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.user.field_regenerate_keys
+  module:
+    - user
+id: user.user.field_regenerate_keys
+field_name: field_regenerate_keys
+entity_type: user
+bundle: user
+label: 'Regenerate keys'
+description: "Enable this to create new SSH keys and the hit Save.<br>\r\nDon't forget to upload them to your VPS servers after that."
+required: false
+translatable: false
+default_value:
+  -
+    value: 0
+default_value_callback: ''
+settings:
+  on_label: 'On'
+  off_label: 'Off'
+field_type: boolean

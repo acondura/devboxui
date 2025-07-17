@@ -1,0 +1,18 @@
+uuid: 133f5870-ee0b-4e16-a898-0062f80e8545
+langcode: en
+status: true
+dependencies:
+  module:
+    - user
+id: user.field_regenerate_keys
+field_name: field_regenerate_keys
+entity_type: user
+type: boolean
+settings: {  }
+module: core
+locked: false
+cardinality: 1
+translatable: true
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

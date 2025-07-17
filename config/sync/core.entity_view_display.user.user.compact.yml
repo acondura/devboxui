@@ -4,6 +4,7 @@ status: true
 dependencies:
   config:
     - core.entity_view_mode.user.compact
+    - field.field.user.user.field_regenerate_keys
     - field.field.user.user.field_ssh_private_key
     - field.field.user.user.field_ssh_public_key
     - field.field.user.user.user_picture
@@ -35,6 +36,7 @@ content:
     weight: 0
     region: content
 hidden:
+  field_regenerate_keys: true
   field_ssh_private_key: true
   field_ssh_public_key: true
   langcode: true

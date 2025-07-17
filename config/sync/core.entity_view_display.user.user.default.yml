@@ -3,6 +3,7 @@ langcode: en
 status: true
 dependencies:
   config:
+    - field.field.user.user.field_regenerate_keys
     - field.field.user.user.field_ssh_private_key
     - field.field.user.user.field_ssh_public_key
     - field.field.user.user.user_picture
@@ -17,6 +18,16 @@ targetEntityType: user
 bundle: user
 mode: default
 content:
+  field_regenerate_keys:
+    type: boolean
+    label: above
+    settings:
+      format: default
+      format_custom_false: ''
+      format_custom_true: ''
+    third_party_settings: {  }
+    weight: 53
+    region: content
   field_ssh_private_key:
     type: basic_string
     label: above

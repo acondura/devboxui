@@ -106,9 +106,9 @@ modeldata: |
             <camunda:string></camunda:string>
           </camunda:field>
         </bpmn2:extensionElements>
-        <bpmn2:outgoing>Flow_0dpt1zk</bpmn2:outgoing>
+        <bpmn2:outgoing>Flow_0vaofij</bpmn2:outgoing>
       </bpmn2:startEvent>
-      <bpmn2:task id="Activity_0sv4tg6" name="Create SSH keys" camunda:modelerTemplate="org.drupal.action.devboxui_save_user_ssh_keys">
+      <bpmn2:task id="Activity_0sv4tg6" name="Recreate SSH keys" camunda:modelerTemplate="org.drupal.action.devboxui_save_user_ssh_keys">
         <bpmn2:extensionElements>
           <camunda:properties>
             <camunda:property name="pluginid" value="devboxui_save_user_ssh_keys" />
@@ -117,16 +117,28 @@ modeldata: |
             <camunda:string>user</camunda:string>
           </camunda:field>
         </bpmn2:extensionElements>
-        <bpmn2:incoming>Flow_1frf4o0</bpmn2:incoming>
-        <bpmn2:incoming>Flow_1d3vk6z</bpmn2:incoming>
+        <bpmn2:incoming>Flow_0vaofij</bpmn2:incoming>
+        <bpmn2:outgoing>Flow_15u28fn</bpmn2:outgoing>
       </bpmn2:task>
-      <bpmn2:sequenceFlow id="Flow_0dpt1zk" name="Is SSH private key empty?" camunda:modelerTemplate="org.drupal.condition.eca_entity_field_value_empty" sourceRef="Event_1cf31fg" targetRef="Gateway_1vz0gzu">
+      <bpmn2:sequenceFlow id="Flow_0vaofij" name="Regenerate keys?" camunda:modelerTemplate="org.drupal.condition.eca_entity_field_value" sourceRef="Event_1cf31fg" targetRef="Activity_0sv4tg6">
         <bpmn2:extensionElements>
           <camunda:properties>
-            <camunda:property name="pluginid" value="eca_entity_field_value_empty" />
+            <camunda:property name="pluginid" value="eca_entity_field_value" />
           </camunda:properties>
           <camunda:field name="field_name">
-            <camunda:string>field_ssh_private_key</camunda:string>
+            <camunda:string>field_regenerate_keys</camunda:string>
+          </camunda:field>
+          <camunda:field name="operator">
+            <camunda:string>equal</camunda:string>
+          </camunda:field>
+          <camunda:field name="expected_value">
+            <camunda:string>1</camunda:string>
+          </camunda:field>
+          <camunda:field name="type">
+            <camunda:string>value</camunda:string>
+          </camunda:field>
+          <camunda:field name="case">
+            <camunda:string>no</camunda:string>
           </camunda:field>
           <camunda:field name="negate">
             <camunda:string>no</camunda:string>
@@ -136,29 +148,52 @@ modeldata: |
           </camunda:field>
         </bpmn2:extensionElements>
       </bpmn2:sequenceFlow>
-      <bpmn2:exclusiveGateway id="Gateway_1vz0gzu" name="Has private key but NO public key">
-        <bpmn2:extensionElements />
-        <bpmn2:incoming>Flow_0dpt1zk</bpmn2:incoming>
-        <bpmn2:outgoing>Flow_1d3vk6z</bpmn2:outgoing>
-        <bpmn2:outgoing>Flow_1frf4o0</bpmn2:outgoing>
-      </bpmn2:exclusiveGateway>
-      <bpmn2:sequenceFlow id="Flow_1d3vk6z" name="Private key is empty" sourceRef="Gateway_1vz0gzu" targetRef="Activity_0sv4tg6" />
-      <bpmn2:sequenceFlow id="Flow_1frf4o0" camunda:modelerTemplate="org.drupal.condition.eca_entity_field_value_empty" sourceRef="Gateway_1vz0gzu" targetRef="Activity_0sv4tg6">
+      <bpmn2:task id="Activity_1sqdc8f" name="Confirmation message" camunda:modelerTemplate="org.drupal.action.action_message_action">
         <bpmn2:extensionElements>
           <camunda:properties>
-            <camunda:property name="pluginid" value="eca_entity_field_value_empty" />
+            <camunda:property name="pluginid" value="action_message_action" />
           </camunda:properties>
-          <camunda:field name="field_name">
-            <camunda:string>field_ssh_public_key</camunda:string>
+          <camunda:field name="message">
+            <camunda:string>SSH keys regenerated successfully!</camunda:string>
           </camunda:field>
-          <camunda:field name="negate">
+          <camunda:field name="replace_tokens">
             <camunda:string>no</camunda:string>
           </camunda:field>
-          <camunda:field name="entity">
+        </bpmn2:extensionElements>
+        <bpmn2:incoming>Flow_082pizn</bpmn2:incoming>
+      </bpmn2:task>
+      <bpmn2:sequenceFlow id="Flow_15u28fn" sourceRef="Activity_0sv4tg6" targetRef="Activity_1qgojd4" />
+      <bpmn2:task id="Activity_1qgojd4" name="Set &#34;Regenerate keys&#34; to unchecked" camunda:modelerTemplate="org.drupal.action.eca_set_field_value">
+        <bpmn2:extensionElements>
+          <camunda:properties>
+            <camunda:property name="pluginid" value="eca_set_field_value" />
+          </camunda:properties>
+          <camunda:field name="method">
+            <camunda:string>set:clear</camunda:string>
+          </camunda:field>
+          <camunda:field name="strip_tags">
+            <camunda:string>no</camunda:string>
+          </camunda:field>
+          <camunda:field name="field_name">
+            <camunda:string>field_regenerate_keys</camunda:string>
+          </camunda:field>
+          <camunda:field name="trim">
+            <camunda:string>no</camunda:string>
+          </camunda:field>
+          <camunda:field name="field_value">
+            <camunda:string>0</camunda:string>
+          </camunda:field>
+          <camunda:field name="save_entity">
+            <camunda:string>yes</camunda:string>
+          </camunda:field>
+          <camunda:field name="object">
             <camunda:string>user</camunda:string>
           </camunda:field>
         </bpmn2:extensionElements>
-      </bpmn2:sequenceFlow>
+        <bpmn2:incoming>Flow_15u28fn</bpmn2:incoming>
+        <bpmn2:outgoing>Flow_082pizn</bpmn2:outgoing>
+      </bpmn2:task>
+      <bpmn2:sequenceFlow id="Flow_082pizn" sourceRef="Activity_1qgojd4" targetRef="Activity_1sqdc8f" />
     </bpmn2:process>
     <bpmndi:BPMNDiagram id="sid-12fb6dfc-ad6f-4796-9039-86612b17dbf8">
       <bpmndi:BPMNPlane id="sid-411adb46-6318-4154-8104-d8c524a060d1" bpmnElement="Process_hK9m4JK">
@@ -193,14 +228,16 @@ modeldata: |
           </bpmndi:BPMNLabel>
         </bpmndi:BPMNShape>
         <bpmndi:BPMNShape id="BPMNShape_0aynebb" bpmnElement="Activity_0sv4tg6">
-          <dc:Bounds x="630" y="390" width="100" height="80" />
+          <dc:Bounds x="370" y="320" width="100" height="80" />
           <bpmndi:BPMNLabel />
         </bpmndi:BPMNShape>
-        <bpmndi:BPMNShape id="Gateway_1vz0gzu_di" bpmnElement="Gateway_1vz0gzu" isMarkerVisible="true">
-          <dc:Bounds x="405" y="335" width="50" height="50" />
-          <bpmndi:BPMNLabel>
-            <dc:Bounds x="496" y="416" width="87" height="27" />
-          </bpmndi:BPMNLabel>
+        <bpmndi:BPMNShape id="Activity_1qgojd4_di" bpmnElement="Activity_1qgojd4">
+          <dc:Bounds x="520" y="320" width="100" height="80" />
+          <bpmndi:BPMNLabel />
+        </bpmndi:BPMNShape>
+        <bpmndi:BPMNShape id="Activity_1sqdc8f_di" bpmnElement="Activity_1sqdc8f">
+          <dc:Bounds x="670" y="320" width="100" height="80" />
+          <bpmndi:BPMNLabel />
         </bpmndi:BPMNShape>
         <bpmndi:BPMNEdge id="Flow_0x78fpz_di" bpmnElement="Flow_0x78fpz">
           <di:waypoint x="248" y="110" />
@@ -214,25 +251,20 @@ modeldata: |
           <di:waypoint x="400" y="230" />
           <di:waypoint x="460" y="230" />
         </bpmndi:BPMNEdge>
-        <bpmndi:BPMNEdge id="Flow_0dpt1zk_di" bpmnElement="Flow_0dpt1zk">
+        <bpmndi:BPMNEdge id="Flow_0vaofij_di" bpmnElement="Flow_0vaofij">
           <di:waypoint x="248" y="360" />
-          <di:waypoint x="405" y="360" />
+          <di:waypoint x="370" y="360" />
           <bpmndi:BPMNLabel>
-            <dc:Bounds x="298" y="326" width="71" height="27" />
+            <dc:Bounds x="265" y="342" width="90" height="14" />
           </bpmndi:BPMNLabel>
         </bpmndi:BPMNEdge>
-        <bpmndi:BPMNEdge id="Flow_1d3vk6z_di" bpmnElement="Flow_1d3vk6z">
-          <di:waypoint x="455" y="360" />
-          <di:waypoint x="680" y="360" />
-          <di:waypoint x="680" y="390" />
-          <bpmndi:BPMNLabel>
-            <dc:Bounds x="536" y="326" width="66" height="27" />
-          </bpmndi:BPMNLabel>
+        <bpmndi:BPMNEdge id="Flow_15u28fn_di" bpmnElement="Flow_15u28fn">
+          <di:waypoint x="470" y="360" />
+          <di:waypoint x="520" y="360" />
         </bpmndi:BPMNEdge>
-        <bpmndi:BPMNEdge id="Flow_1frf4o0_di" bpmnElement="Flow_1frf4o0">
-          <di:waypoint x="430" y="385" />
-          <di:waypoint x="430" y="450" />
-          <di:waypoint x="630" y="450" />
+        <bpmndi:BPMNEdge id="Flow_082pizn_di" bpmnElement="Flow_082pizn">
+          <di:waypoint x="620" y="360" />
+          <di:waypoint x="670" y="360" />
         </bpmndi:BPMNEdge>
       </bpmndi:BPMNPlane>
     </bpmndi:BPMNDiagram>

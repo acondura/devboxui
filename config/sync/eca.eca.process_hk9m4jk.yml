@@ -3,8 +3,10 @@ langcode: en
 status: true
 dependencies:
   config:
+    - field.field.user.user.field_regenerate_keys
     - field.field.user.user.field_ssh_private_key
     - field.field.user.user.field_ssh_public_key
+    - field.storage.user.field_regenerate_keys
     - field.storage.user.field_ssh_private_key
     - field.storage.user.field_ssh_public_key
   module:
@@ -48,31 +50,20 @@ events:
       operation: ''
     successors:
       -
-        id: Gateway_1vz0gzu
-        condition: Flow_0dpt1zk
+        id: Activity_0sv4tg6
+        condition: Flow_0vaofij
 conditions:
-  Flow_0dpt1zk:
-    plugin: eca_entity_field_value_empty
+  Flow_0vaofij:
+    plugin: eca_entity_field_value
     configuration:
       negate: false
-      field_name: field_ssh_private_key
+      case: false
+      expected_value: '1'
+      field_name: field_regenerate_keys
+      operator: equal
+      type: value
       entity: user
-  Flow_1frf4o0:
-    plugin: eca_entity_field_value_empty
-    configuration:
-      negate: false
-      field_name: field_ssh_public_key
-      entity: user
-gateways:
-  Gateway_1vz0gzu:
-    type: 0
-    successors:
-      -
-        id: Activity_0sv4tg6
-        condition: ''
-      -
-        id: Activity_0sv4tg6
-        condition: Flow_1frf4o0
+gateways: {  }
 actions:
   Activity_0xqm9kf:
     plugin: devboxui_save_user_ssh_keys
@@ -99,7 +90,32 @@ actions:
     successors: {  }
   Activity_0sv4tg6:
     plugin: devboxui_save_user_ssh_keys
-    label: 'Create SSH keys'
+    label: 'Recreate SSH keys'
     configuration:
       object: user
+    successors:
+      -
+        id: Activity_1qgojd4
+        condition: ''
+  Activity_1sqdc8f:
+    plugin: action_message_action
+    label: 'Confirmation message'
+    configuration:
+      replace_tokens: false
+      message: 'SSH keys regenerated successfully!'
     successors: {  }
+  Activity_1qgojd4:
+    plugin: eca_set_field_value
+    label: 'Set "Regenerate keys" to unchecked'
+    configuration:
+      field_name: field_regenerate_keys
+      field_value: '0'
+      method: 'set:clear'
+      strip_tags: false
+      trim: false
+      save_entity: true
+      object: user
+    successors:
+      -
+        id: Activity_1sqdc8f
+        condition: ''

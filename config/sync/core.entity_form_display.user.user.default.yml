@@ -3,6 +3,7 @@ langcode: en
 status: true
 dependencies:
   config:
+    - field.field.user.user.field_regenerate_keys
     - field.field.user.user.field_ssh_private_key
     - field.field.user.user.field_ssh_public_key
     - field.field.user.user.user_picture
@@ -53,6 +54,7 @@ third_party_settings:
       children:
         - field_ssh_private_key
         - field_ssh_public_key
+        - field_regenerate_keys
       label: 'SSH keys'
       region: content
       parent_name: group_tabs
@@ -82,6 +84,13 @@ content:
     weight: 4
     region: content
     settings: {  }
+    third_party_settings: {  }
+  field_regenerate_keys:
+    type: boolean_checkbox
+    weight: 7
+    region: content
+    settings:
+      display_label: true
     third_party_settings: {  }
   field_ssh_private_key:
     type: string_textarea
