@@ -3,14 +3,18 @@ langcode: en
 status: true
 dependencies:
   config:
+    - field.field.node.devbox.field_vps_provider
     - node.type.devbox
   module:
     - field_group
+    - paragraphs
+    - paragraphs_ee
+    - paragraphs_features
 third_party_settings:
   field_group:
     group_tabs:
       children:
-        - group_devboxes
+        - group_devbox
         - group_settings
       label: Tabs
       region: content
@@ -42,10 +46,11 @@ third_party_settings:
         formatter: closed
         description: ''
         required_fields: true
-    group_devboxes:
+    group_devbox:
       children:
         - title
-      label: DevBoxes
+        - field_vps_provider
+      label: DevBox
       region: content
       parent_name: group_tabs
       weight: 20
@@ -69,6 +74,38 @@ content:
     region: content
     settings: {  }
     third_party_settings: {  }
+  field_vps_provider:
+    type: paragraphs
+    weight: 22
+    region: content
+    settings:
+      title: Paragraph
+      title_plural: Paragraphs
+      edit_mode: closed
+      closed_mode: summary
+      autocollapse: none
+      closed_mode_threshold: 0
+      add_mode: button
+      form_display_mode: default
+      default_paragraph_type: _none
+      features:
+        add_above: add_above
+        collapse_edit_all: collapse_edit_all
+        convert: '0'
+        duplicate: duplicate
+    third_party_settings:
+      paragraphs_ee:
+        paragraphs_ee:
+          dialog_off_canvas: false
+          dialog_style: tiles
+          drag_drop: true
+          sidebar_disabled: false
+      paragraphs_features:
+        add_in_between: false
+        add_in_between_link_count: 3
+        delete_confirmation: true
+        show_drag_and_drop: true
+        show_collapse_all: true
   status:
     type: boolean_checkbox
     weight: 3

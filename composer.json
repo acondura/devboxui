@@ -32,6 +32,7 @@
         "drupal/gin": "^5.0",
         "drupal/masquerade": "^2.0",
         "drupal/paragraphs": "^1.19",
+        "drupal/paragraphs_ee": "^10.0",
         "drupal/quicktabs": "^4.0",
         "drupal/require_login": "^3.0",
         "drupal/smtp": "^1.4",
