@@ -1,0 +1,9 @@
+uuid: 0e9e46b8-0ed4-4d77-b854-59c34ff2d9d2
+langcode: en
+status: true
+dependencies: {  }
+id: internal
+label: Internal
+weight: 4
+is_admin: null
+permissions: {  }

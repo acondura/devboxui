@@ -13,7 +13,7 @@ filename: ''
 modeldata: |
   <?xml version="1.0" encoding="UTF-8"?>
   <bpmn2:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bpmn2="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:qa="http://some-company/schema/bpmn/qa" id="sample-diagram" targetNamespace="http://bpmn.io/schema/bpmn" xsi:schemaLocation="http://www.omg.org/spec/BPMN/20100524/MODEL BPMN20.xsd">
-    <bpmn2:process id="Process_hK9m4JK" name="On user creation, create SSH keys &#38; disable editing them" isExecutable="true">
+    <bpmn2:process id="Process_hK9m4JK" name="On user creation, create SSH keys &#38; disable editing them" isExecutable="true" camunda:versionTag="v1">
       <bpmn2:startEvent id="Event_0265sth" name="User created" camunda:modelerTemplate="org.drupal.event.content_entity:insert">
         <bpmn2:extensionElements>
           <camunda:properties>
@@ -117,15 +117,39 @@ modeldata: |
             <camunda:string>user</camunda:string>
           </camunda:field>
         </bpmn2:extensionElements>
-        <bpmn2:incoming>Flow_0dpt1zk</bpmn2:incoming>
+        <bpmn2:incoming>Flow_1frf4o0</bpmn2:incoming>
+        <bpmn2:incoming>Flow_1d3vk6z</bpmn2:incoming>
       </bpmn2:task>
-      <bpmn2:sequenceFlow id="Flow_0dpt1zk" name="SSH private key is empty" camunda:modelerTemplate="org.drupal.condition.eca_entity_field_value_empty" sourceRef="Event_1cf31fg" targetRef="Activity_0sv4tg6">
+      <bpmn2:sequenceFlow id="Flow_0dpt1zk" name="Is SSH private key empty?" camunda:modelerTemplate="org.drupal.condition.eca_entity_field_value_empty" sourceRef="Event_1cf31fg" targetRef="Gateway_1vz0gzu">
         <bpmn2:extensionElements>
           <camunda:properties>
             <camunda:property name="pluginid" value="eca_entity_field_value_empty" />
           </camunda:properties>
           <camunda:field name="field_name">
             <camunda:string>field_ssh_private_key</camunda:string>
+          </camunda:field>
+          <camunda:field name="negate">
+            <camunda:string>no</camunda:string>
+          </camunda:field>
+          <camunda:field name="entity">
+            <camunda:string>user</camunda:string>
+          </camunda:field>
+        </bpmn2:extensionElements>
+      </bpmn2:sequenceFlow>
+      <bpmn2:exclusiveGateway id="Gateway_1vz0gzu" name="Has private key but NO public key">
+        <bpmn2:extensionElements />
+        <bpmn2:incoming>Flow_0dpt1zk</bpmn2:incoming>
+        <bpmn2:outgoing>Flow_1d3vk6z</bpmn2:outgoing>
+        <bpmn2:outgoing>Flow_1frf4o0</bpmn2:outgoing>
+      </bpmn2:exclusiveGateway>
+      <bpmn2:sequenceFlow id="Flow_1d3vk6z" name="Private key is empty" sourceRef="Gateway_1vz0gzu" targetRef="Activity_0sv4tg6" />
+      <bpmn2:sequenceFlow id="Flow_1frf4o0" camunda:modelerTemplate="org.drupal.condition.eca_entity_field_value_empty" sourceRef="Gateway_1vz0gzu" targetRef="Activity_0sv4tg6">
+        <bpmn2:extensionElements>
+          <camunda:properties>
+            <camunda:property name="pluginid" value="eca_entity_field_value_empty" />
+          </camunda:properties>
+          <camunda:field name="field_name">
+            <camunda:string>field_ssh_public_key</camunda:string>
           </camunda:field>
           <camunda:field name="negate">
             <camunda:string>no</camunda:string>
@@ -169,8 +193,14 @@ modeldata: |
           </bpmndi:BPMNLabel>
         </bpmndi:BPMNShape>
         <bpmndi:BPMNShape id="BPMNShape_0aynebb" bpmnElement="Activity_0sv4tg6">
-          <dc:Bounds x="390" y="320" width="100" height="80" />
+          <dc:Bounds x="630" y="390" width="100" height="80" />
           <bpmndi:BPMNLabel />
+        </bpmndi:BPMNShape>
+        <bpmndi:BPMNShape id="Gateway_1vz0gzu_di" bpmnElement="Gateway_1vz0gzu" isMarkerVisible="true">
+          <dc:Bounds x="405" y="335" width="50" height="50" />
+          <bpmndi:BPMNLabel>
+            <dc:Bounds x="496" y="416" width="87" height="27" />
+          </bpmndi:BPMNLabel>
         </bpmndi:BPMNShape>
         <bpmndi:BPMNEdge id="Flow_0x78fpz_di" bpmnElement="Flow_0x78fpz">
           <di:waypoint x="248" y="110" />
@@ -186,10 +216,23 @@ modeldata: |
         </bpmndi:BPMNEdge>
         <bpmndi:BPMNEdge id="Flow_0dpt1zk_di" bpmnElement="Flow_0dpt1zk">
           <di:waypoint x="248" y="360" />
-          <di:waypoint x="390" y="360" />
+          <di:waypoint x="405" y="360" />
           <bpmndi:BPMNLabel>
-            <dc:Bounds x="284" y="326" width="79" height="27" />
+            <dc:Bounds x="298" y="326" width="71" height="27" />
           </bpmndi:BPMNLabel>
+        </bpmndi:BPMNEdge>
+        <bpmndi:BPMNEdge id="Flow_1d3vk6z_di" bpmnElement="Flow_1d3vk6z">
+          <di:waypoint x="455" y="360" />
+          <di:waypoint x="680" y="360" />
+          <di:waypoint x="680" y="390" />
+          <bpmndi:BPMNLabel>
+            <dc:Bounds x="536" y="326" width="66" height="27" />
+          </bpmndi:BPMNLabel>
+        </bpmndi:BPMNEdge>
+        <bpmndi:BPMNEdge id="Flow_1frf4o0_di" bpmnElement="Flow_1frf4o0">
+          <di:waypoint x="430" y="385" />
+          <di:waypoint x="430" y="450" />
+          <di:waypoint x="630" y="450" />
         </bpmndi:BPMNEdge>
       </bpmndi:BPMNPlane>
     </bpmndi:BPMNDiagram>

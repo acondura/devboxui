@@ -14,7 +14,7 @@ dependencies:
 id: process_hk9m4jk
 modeller: bpmn_io
 label: 'On user creation, create SSH keys & disable editing them'
-version: ''
+version: v1
 weight: 0
 events:
   Event_0265sth:
@@ -48,7 +48,7 @@ events:
       operation: ''
     successors:
       -
-        id: Activity_0sv4tg6
+        id: Gateway_1vz0gzu
         condition: Flow_0dpt1zk
 conditions:
   Flow_0dpt1zk:
@@ -57,7 +57,22 @@ conditions:
       negate: false
       field_name: field_ssh_private_key
       entity: user
-gateways: {  }
+  Flow_1frf4o0:
+    plugin: eca_entity_field_value_empty
+    configuration:
+      negate: false
+      field_name: field_ssh_public_key
+      entity: user
+gateways:
+  Gateway_1vz0gzu:
+    type: 0
+    successors:
+      -
+        id: Activity_0sv4tg6
+        condition: ''
+      -
+        id: Activity_0sv4tg6
+        condition: Flow_1frf4o0
 actions:
   Activity_0xqm9kf:
     plugin: devboxui_save_user_ssh_keys

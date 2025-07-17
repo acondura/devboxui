@@ -4,8 +4,6 @@ status: true
 dependencies:
   module:
     - user
-_core:
-  default_config_hash: FFLg74mnzRE10lgg5fspPCZWLnIEcvCnJMlNzj8OEtw
 id: user_admin_people
 label: People
 module: user
@@ -854,7 +852,6 @@ display:
           sticky: false
           summary: ''
           empty_table: true
-          class: ''
       row:
         type: fields
       query:
