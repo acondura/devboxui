@@ -88,7 +88,6 @@ class WorkflowTransitionTest extends KernelTestBase {
 
     $this->entityTypeManager = \Drupal::service('entity_type.manager');
     $this->actionManager = \Drupal::service('plugin.manager.action');
-    $this->container->get('plugin.manager.action')->clearCachedDefinitions();
   }
 
   /**

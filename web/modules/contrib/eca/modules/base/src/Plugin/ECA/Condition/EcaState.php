@@ -3,18 +3,17 @@
 namespace Drupal\eca_base\Plugin\ECA\Condition;
 
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaCondition;
 use Drupal\eca\Plugin\ECA\Condition\StringComparisonBase;
 
 /**
  * Plugin implementation of the ECA condition for key value store values.
+ *
+ * @EcaCondition(
+ *   id = "eca_state",
+ *   label = @Translation("Persistent state: compare"),
+ *   eca_version_introduced = "1.0.0"
+ * )
  */
-#[EcaCondition(
-  id: 'eca_state',
-  label: new TranslatableMarkup('Persistent state: compare'),
-  version_introduced: '1.0.0',
-)]
 class EcaState extends StringComparisonBase {
 
   /**

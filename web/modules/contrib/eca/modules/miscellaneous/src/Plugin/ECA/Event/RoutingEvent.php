@@ -5,18 +5,18 @@ namespace Drupal\eca_misc\Plugin\ECA\Event;
 use Drupal\Core\Routing\RouteBuildEvent;
 use Drupal\Core\Routing\RoutingEvents;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaEvent;
 use Drupal\eca\Plugin\ECA\Event\EventBase;
 use Symfony\Contracts\EventDispatcher\Event;
 
 /**
  * Plugin implementation of the ECA Events for routing.
+ *
+ * @EcaEvent(
+ *   id = "routing",
+ *   deriver = "Drupal\eca_misc\Plugin\ECA\Event\RoutingEventDeriver",
+ *   eca_version_introduced = "1.0.0"
+ * )
  */
-#[EcaEvent(
-  id: 'routing',
-  deriver: 'Drupal\eca_misc\Plugin\ECA\Event\RoutingEventDeriver',
-  version_introduced: '1.0.0',
-)]
 class RoutingEvent extends EventBase {
 
   /**

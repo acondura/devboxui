@@ -3,27 +3,23 @@
 namespace Drupal\eca_misc\Plugin\Action;
 
 use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Recipe\Recipe;
 use Drupal\Core\Recipe\RecipeRunner;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\eca_misc\Plugin\RecipePathTrait;
 
 /**
  * Loads a query argument from the request into the token environment.
+ *
+ * @Action(
+ *   id = "eca_apply_recipe",
+ *   label = @Translation("Recipe: apply"),
+ *   description = @Translation("Applies a given recipe."),
+ *   eca_version_introduced = "2.1.2"
+ * )
  */
-#[Action(
-  id: 'eca_apply_recipe',
-  label: new TranslatableMarkup('Recipe: apply'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Applies a given recipe.'),
-  version_introduced: '2.1.2',
-)]
 class ApplyRecipe extends ConfigurableActionBase {
 
   use RecipePathTrait;

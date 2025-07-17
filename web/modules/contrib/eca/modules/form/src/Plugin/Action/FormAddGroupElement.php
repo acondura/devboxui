@@ -2,28 +2,24 @@
 
 namespace Drupal\eca_form\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Render\Element\RenderElementBase;
 use Drupal\Core\Render\ElementInfoManager;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\DataType\DataTransferObject;
 use Drupal\eca\Plugin\FormFieldPluginTrait;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Add a grouping element to a form.
+ *
+ * @Action(
+ *   id = "eca_form_add_group_element",
+ *   label = @Translation("Form: add grouping element"),
+ *   description = @Translation("Add a collapsible details element (also known as fieldset) for grouping form fields."),
+ *   eca_version_introduced = "1.0.0",
+ *   type = "form"
+ * )
  */
-#[Action(
-  id: 'eca_form_add_group_element',
-  label: new TranslatableMarkup('Form: add grouping element'),
-  type: 'form',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Add a collapsible details element (also known as fieldset) for grouping form fields.'),
-  version_introduced: '1.0.0',
-)]
 class FormAddGroupElement extends FormActionBase {
 
   use FormFieldPluginTrait;

@@ -7,6 +7,7 @@ use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Logger\RfcLogLevel;
+use Drupal\eca_ui\Service\TokenBrowserService;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -22,6 +23,13 @@ class Settings extends ConfigFormBase {
   protected ?string $defaultDocumentationDomain;
 
   /**
+   * Token browser.
+   *
+   * @var \Drupal\eca_ui\Service\TokenBrowserService
+   */
+  protected TokenBrowserService $tokenBrowser;
+
+  /**
    * The entity type manager.
    *
    * @var \Drupal\Core\Entity\EntityTypeManagerInterface
@@ -35,6 +43,7 @@ class Settings extends ConfigFormBase {
     /** @var \Drupal\eca_ui\Form\Settings $instance */
     $instance = parent::create($container);
     $instance->defaultDocumentationDomain = $container->getParameter('eca.default_documentation_domain');
+    $instance->tokenBrowser = $container->get('eca_ui.service.token_browser');
     $instance->entityTypeManager = $container->get('entity_type.manager');
     return $instance;
   }
@@ -88,6 +97,8 @@ class Settings extends ConfigFormBase {
       '#default_value' => $config->get('service_user'),
       '#weight' => 5,
     ];
+    $form['token_browser'] = $this->tokenBrowser->getTokenBrowserMarkup();
+    $form['token_browser']['#weight'] = 10;
     $form['dependency_calculation'] = [
       '#type' => 'details',
       '#title' => $this->t('Dependency calculation'),

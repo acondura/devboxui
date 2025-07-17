@@ -9,17 +9,11 @@ dependencies:
     - eca_content
     - eca_user
     - eca_views
-    - modeler_api
     - user
-third_party_settings:
-  modeler_api:
-    modeler_id: fallback
-    changelog: ''
-    label: 'ECA Feature Demo - Fallback ECA Model'
-    documentation: ''
-    tags: {  }
-    version: v2
 id: eca_fallback
+modeller: fallback
+label: 'ECA Feature Demo - Fallback'
+version: v2
 weight: 0
 events:
   Event_0erz1e4:

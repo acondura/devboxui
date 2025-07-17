@@ -3,25 +3,21 @@
 namespace Drupal\eca_base\Plugin\Action;
 
 use Drupal\Component\Render\MarkupInterface;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Field\FieldItemInterface;
 use Drupal\Core\Field\FieldItemListInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\TypedData\TypedDataInterface;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\DataType\DataTransferObject;
 
 /**
  * Action to recursively replace tokens.
+ *
+ * @Action(
+ *   id = "eca_token_replace",
+ *   label = @Translation("Token: replace"),
+ *   description = @Translation("Replace all tokens, using a recursive strategy."),
+ *   eca_version_introduced = "2.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_token_replace',
-  label: new TranslatableMarkup('Token: replace'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Replace all tokens, using a recursive strategy.'),
-  version_introduced: '2.0.0',
-)]
 class TokenReplace extends TokenSetValue {
 
   /**

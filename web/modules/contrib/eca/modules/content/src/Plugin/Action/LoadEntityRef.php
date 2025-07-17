@@ -2,27 +2,23 @@
 
 namespace Drupal\eca_content\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\FieldableEntityInterface;
 use Drupal\Core\Field\EntityReferenceFieldItemListInterface;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\TypedData\PropertyPathTrait;
 
 /**
  * Load referenced entity into token environment.
+ *
+ * @Action(
+ *   id = "eca_token_load_entity_ref",
+ *   label = @Translation("Entity: load via reference"),
+ *   description = @Translation("Load a single entity that is referenced by an entity from the current scope or by certain properties, and store it as a token."),
+ *   eca_version_introduced = "1.0.0",
+ *   type = "entity"
+ * )
  */
-#[Action(
-  id: 'eca_token_load_entity_ref',
-  label: new TranslatableMarkup('Entity: load via reference'),
-  type: 'entity',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Load a single entity that is referenced by an entity from the current scope or by certain properties, and store it as a token.'),
-  version_introduced: '1.0.0',
-)]
 class LoadEntityRef extends LoadEntity {
 
   use PropertyPathTrait;
@@ -33,8 +29,11 @@ class LoadEntityRef extends LoadEntity {
   protected function doLoadEntity(?EntityInterface $entity = NULL): ?EntityInterface {
     $entity = parent::doLoadEntity($entity);
     $this->entity = NULL;
-    if (!($entity instanceof EntityInterface)) {
+    if (is_null($entity)) {
       return NULL;
+    }
+    if (!($entity instanceof EntityInterface)) {
+      throw new \InvalidArgumentException('No entity provided.');
     }
     $reference_field_name = trim((string) $this->tokenService->replace($this->configuration['field_name_entity_ref']));
     if (($entity instanceof FieldableEntityInterface) && $entity->hasField($reference_field_name)) {

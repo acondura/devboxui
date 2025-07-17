@@ -1,5 +1,2 @@
-bpmndi
-idplaceholder
-mtownsend
-pluginid
-sidplaceholder
+isnew
+Modeldata

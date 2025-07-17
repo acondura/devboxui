@@ -2,26 +2,22 @@
 
 namespace Drupal\eca_base\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Lock\LockBackendInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\eca\Plugin\CleanupInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Acquires a lock.
+ *
+ * @Action(
+ *   id = "eca_lock_acquire",
+ *   label = @Translation("Lock: acquire"),
+ *   description = @Translation("Acquires a lock."),
+ *   eca_version_introduced = "1.1.0"
+ * )
  */
-#[Action(
-  id: 'eca_lock_acquire',
-  label: new TranslatableMarkup('Lock: acquire'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Acquires a lock.'),
-  version_introduced: '1.1.0',
-)]
 class LockAcquire extends ConfigurableActionBase implements CleanupInterface {
 
   /**

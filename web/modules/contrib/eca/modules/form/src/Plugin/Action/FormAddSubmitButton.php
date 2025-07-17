@@ -3,26 +3,22 @@
 namespace Drupal\eca_form\Plugin\Action;
 
 use Drupal\Component\Utility\NestedArray;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\ECA\PluginFormTrait;
 use Drupal\eca\Plugin\FormFieldPluginTrait;
-use Drupal\eca_form\Hook\FormHooks;
+use Drupal\eca_form\HookHandler;
 
 /**
  * Add a submit button to a form.
+ *
+ * @Action(
+ *   id = "eca_form_add_submit_button",
+ *   label = @Translation("Form: add submit button"),
+ *   description = @Translation("Add a submit button with a type and a label to a form."),
+ *   eca_version_introduced = "1.0.0",
+ *   type = "form"
+ * )
  */
-#[Action(
-  id: 'eca_form_add_submit_button',
-  label: new TranslatableMarkup('Form: add submit button'),
-  type: 'form',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Add a submit button with a type and a label to a form.'),
-  version_introduced: '1.0.0',
-)]
 class FormAddSubmitButton extends FormActionBase {
 
   use FormFieldPluginTrait;
@@ -48,7 +44,7 @@ class FormAddSubmitButton extends FormActionBase {
       '#value' => $this->tokenService->replaceClear($this->configuration['value']),
       '#weight' => (int) $this->configuration['weight'],
       '#access' => TRUE,
-      '#submit' => [[FormHooks::class, 'submit']],
+      '#submit' => [[HookHandler::class, 'submit']],
     ];
     if (count($name) > 1) {
       $button_element['#parents'] = $name;

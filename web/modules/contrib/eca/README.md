@@ -98,12 +98,10 @@ and can be enabled individually:
 - **ECA Form:** Form API events, conditions and actions
 - **ECA Language:** Language and translation events and actions
 - **ECA Log:** Events and actions for Drupal log messages
-- **ECA Menu:** Integration with Drupal's menu system
 - **ECA Migrate:** Migrate events
 - **ECA Misc:** Miscellaneous events and conditions from Drupal core and the
   kernel
-- **ECA Project Browser:** Integration with Project Browser
-- **ECA Queue:** Events, conditions and actions for queued operations
+- **ECA Queue:** Events, conditions and actions for queued operations.
 - **ECA Render - since 1.1.0:** Events and actions to work with Drupal's render
   API for blocks, views and all around themes and Twig
 - **ECA User:** User events, conditions and actions
@@ -137,10 +135,8 @@ started and where you can follow its progress.
 
 - Modellers:
   - [BPMN.iO](https://www.drupal.org/project/bpmn_io)
-  - [Camunda (deprecated)](https://www.drupal.org/project/camunda)
+  - [Camunda](https://www.drupal.org/project/camunda)
   - [ECA Classic Modeller](https://www.drupal.org/project/eca_cm)
-- Helper Modules:
-  - [ECA Report](https://www.drupal.org/project/eca_report)
 - ECA integrations with other modules:
   - [ECA Commerce](https://www.drupal.org/project/eca_commerce)
   - [ECA Content Access](https://www.drupal.org/project/eca_content_access)
@@ -187,11 +183,8 @@ started and where you can follow its progress.
 
 ### Requirements
 
-- Drupal 10+
-  - ECA 2 requires Drupal 10.3 or 11
-  - ECA 3 requires Drupal 11.2 or later
+- Drupal 10+ (ECA 2 requires Drupal 10.3 or 11)
 - PHP 8.1+
-  - ECA 3 requires PHP 8.3+
 
 <div class="note-version">
 

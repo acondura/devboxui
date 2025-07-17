@@ -3,24 +3,20 @@
 namespace Drupal\eca_form\Plugin\Action;
 
 use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Action to show a validation error message.
+ *
+ * @Action(
+ *   id = "eca_form_field_set_error",
+ *   label = @Translation("Form field: set validation error"),
+ *   description = @Translation("Shows a validation error with a given message text."),
+ *   eca_version_introduced = "1.0.0",
+ *   type = "form"
+ * )
  */
-#[Action(
-  id: 'eca_form_field_set_error',
-  label: new TranslatableMarkup('Form field: set validation error'),
-  type: 'form',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Shows a validation error with a given message text.'),
-  version_introduced: '1.0.0',
-)]
 class FormFieldSetError extends FormFieldValidateActionBase {
 
   /**

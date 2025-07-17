@@ -2,12 +2,9 @@
 
 namespace Drupal\eca_language\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Language\LanguageDefault;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\StringTranslation\TranslationManager;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\CleanupInterface;
 use Drupal\eca\Plugin\ECA\PluginFormTrait;
 use Drupal\eca_language\Event\LanguageNegotiateEvent;
@@ -15,15 +12,14 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Set the currently used language code.
+ *
+ * @Action(
+ *   id = "eca_set_current_langcode",
+ *   label = @Translation("Language: set code"),
+ *   description = @Translation("Set the currently used or negotiated language code."),
+ *   eca_version_introduced = "2.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_set_current_langcode',
-  label: new TranslatableMarkup('Language: set code'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Set the currently used or negotiated language code.'),
-  version_introduced: '2.0.0',
-)]
 class SetCurrentLangcode extends LanguageActionBase implements CleanupInterface {
 
   use PluginFormTrait;

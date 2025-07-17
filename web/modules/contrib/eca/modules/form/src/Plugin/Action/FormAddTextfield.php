@@ -2,22 +2,17 @@
 
 namespace Drupal\eca_form\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
-
 /**
  * Add a text field to a form.
+ *
+ * @Action(
+ *   id = "eca_form_add_textfield",
+ *   label = @Translation("Form: add text field"),
+ *   description = @Translation("Add a plain text field, textarea or formatted text to the current form in scope."),
+ *   eca_version_introduced = "1.0.0",
+ *   type = "form"
+ * )
  */
-#[Action(
-  id: 'eca_form_add_textfield',
-  label: new TranslatableMarkup('Form: add text field'),
-  type: 'form',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Add a plain text field, textarea or formatted text to the current form in scope.'),
-  version_introduced: '1.0.0',
-)]
 class FormAddTextfield extends FormAddFieldActionBase {
 
   /**

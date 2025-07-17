@@ -9,9 +9,8 @@ use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Logger\RfcLogLevel;
 use Drupal\Core\TypedData\TypedDataInterface;
-use Drupal\eca\Attribute\EcaEvent;
 use Drupal\eca\Attribute\Token;
-use Drupal\eca\Entity\Objects\EcaEvent as EcaEventObject;
+use Drupal\eca\Entity\Objects\EcaEvent;
 use Drupal\eca\Plugin\DataType\DataTransferObject;
 use Drupal\eca\Plugin\ECA\Event\EventBase;
 use Drupal\eca_log\Event\LogMessageEvent;
@@ -20,12 +19,13 @@ use Symfony\Contracts\EventDispatcher\Event;
 
 /**
  * Plugin implementation of the ECA Events for log messages.
+ *
+ * @EcaEvent(
+ *   id = "log",
+ *   deriver = "Drupal\eca_log\Plugin\ECA\Event\LogEventDeriver",
+ *   eca_version_introduced = "1.0.0"
+ * )
  */
-#[EcaEvent(
-  id: 'log',
-  deriver: 'Drupal\eca_log\Plugin\ECA\Event\LogEventDeriver',
-  version_introduced: '1.0.0',
-)]
 class LogEvent extends EventBase {
 
   /**
@@ -55,7 +55,7 @@ class LogEvent extends EventBase {
     if ($this->eventClass() === LogMessageEvent::class) {
       $values = [
         'channel' => '',
-        'min_severity' => RfcLogLevel::ERROR,
+        'min_severity' => '',
       ];
     }
     else {
@@ -100,7 +100,7 @@ class LogEvent extends EventBase {
   /**
    * {@inheritdoc}
    */
-  public function generateWildcard(string $eca_config_id, EcaEventObject $ecaEvent): string {
+  public function generateWildcard(string $eca_config_id, EcaEvent $ecaEvent): string {
     $configuration = $ecaEvent->getConfiguration();
     $channel = isset($configuration['channel']) ? mb_strtolower(trim((string) $configuration['channel'])) : '';
     if ($channel === '') {

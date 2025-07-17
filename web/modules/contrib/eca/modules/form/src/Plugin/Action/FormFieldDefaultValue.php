@@ -3,29 +3,25 @@
 namespace Drupal\eca_form\Plugin\Action;
 
 use Drupal\Component\Render\MarkupInterface;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Datetime\DrupalDateTime;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Field\EntityReferenceFieldItemListInterface;
 use Drupal\Core\Field\Plugin\Field\FieldType\EntityReferenceItem;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\TypedData\TypedDataInterface;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\DataType\DataTransferObject;
 
 /**
  * Set default value of a form field.
+ *
+ * @Action(
+ *   id = "eca_form_field_default_value",
+ *   label = @Translation("Form field: set default value"),
+ *   description = @Translation("Prepopulates a default value in the form."),
+ *   eca_version_introduced = "1.0.0",
+ *   type = "form"
+ * )
  */
-#[Action(
-  id: 'eca_form_field_default_value',
-  label: new TranslatableMarkup('Form field: set default value'),
-  type: 'form',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Prepopulates a default value in the form.'),
-  version_introduced: '1.0.0',
-)]
 class FormFieldDefaultValue extends FormFieldActionBase {
 
   /**

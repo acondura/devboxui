@@ -125,20 +125,10 @@ abstract class CacheActionBase extends ConfigurableActionBase {
    */
   protected function getCacheTags(): array {
     $tags = [];
-    if (trim($this->tokenService->replaceClear($this->configuration['tags'])) !== '') {
+    if ($this->configuration['tags'] !== '') {
       $tags = array_values(DataTransferObject::buildArrayFromUserInput($this->configuration['tags']));
     }
     return $tags;
-  }
-
-  /**
-   * Get all valid cache backend ids.
-   *
-   * @return array
-   *   The cache backends.
-   */
-  public static function getAllValidCacheBackends(): array {
-    return array_keys(Cache::getBins());
   }
 
 }

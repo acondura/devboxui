@@ -2,26 +2,22 @@
 
 namespace Drupal\eca_content\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\Plugin\DataType\EntityAdapter;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ListRemoveBase;
 
 /**
  * Action to remove an entity from a list.
+ *
+ * @Action(
+ *   id = "eca_list_remove_entity",
+ *   label = @Translation("List: remove entity"),
+ *   description = @Translation("Remove an entity from a list and optionally store the removed entity as a token."),
+ *   eca_version_introduced = "1.1.0",
+ *   type = "entity"
+ * )
  */
-#[Action(
-  id: 'eca_list_remove_entity',
-  label: new TranslatableMarkup('List: remove entity'),
-  type: 'entity',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Remove an entity from a list and optionally store the removed entity as a token.'),
-  version_introduced: '1.1.0',
-)]
 class ListRemoveEntity extends ListRemoveBase {
 
   /**

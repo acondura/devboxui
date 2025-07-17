@@ -86,7 +86,7 @@ class TriggerContentEntityCustomEventTest extends KernelTestBase {
       'tokens' => '',
     ]);
     // Fake an origin by using the presave event.
-    $action->setEvent(new ContentEntityPreSave($this->node, \Drupal::service('eca.service.content_entity_types')));
+    $action->setEvent(new ContentEntityPreSave($this->node, _eca_content_entity_types()));
     $this->assertFalse($action->access(NULL), 'Access must be revoked when no entity is provided.');
     $this->assertTrue($action->access($this->node), 'Access must be granted when an entity is provided.');
 
@@ -113,7 +113,7 @@ class TriggerContentEntityCustomEventTest extends KernelTestBase {
       'tokens' => 'my_tokens_1, my_tokens_2',
     ]);
     // Fake an origin by using the presave event.
-    $action->setEvent(new ContentEntityPreSave($this->node, \Drupal::service('eca.service.content_entity_types')));
+    $action->setEvent(new ContentEntityPreSave($this->node, _eca_content_entity_types()));
     $this->assertFalse($action->access(NULL), 'Access must be revoked when no entity is provided.');
     $this->assertTrue($action->access($this->node), 'Access must be granted when an entity is provided.');
 

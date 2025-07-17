@@ -2,25 +2,21 @@
 
 namespace Drupal\eca_form\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\eca\Plugin\FormFieldPluginTrait;
 
 /**
  * Get the submitted input of a form field.
+ *
+ * @Action(
+ *   id = "eca_form_field_get_value",
+ *   label = @Translation("Form field: get submitted value"),
+ *   description = @Translation("Get the submitted input of a form field and store it as a token."),
+ *   eca_version_introduced = "1.0.0",
+ *   type = "form"
+ * )
  */
-#[Action(
-  id: 'eca_form_field_get_value',
-  label: new TranslatableMarkup('Form field: get submitted value'),
-  type: 'form',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Get the submitted input of a form field and store it as a token.'),
-  version_introduced: '1.0.0',
-)]
 class FormFieldGetValue extends ConfigurableActionBase {
 
   use FormFieldPluginTrait;

@@ -3,24 +3,20 @@
 namespace Drupal\eca_base\Plugin\Action;
 
 use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 
 /**
  * Action to read value from ECA's key value store and store it as token.
+ *
+ * @Action(
+ *   id = "eca_state_read",
+ *   label = @Translation("Persistent state: read"),
+ *   description = @Translation("Reads a value from the Drupal state by the given key. The result is stored in a token."),
+ *   eca_version_introduced = "1.1.0"
+ * )
  */
-#[Action(
-  id: 'eca_state_read',
-  label: new TranslatableMarkup('Persistent state: read'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Reads a value from the Drupal state by the given key. The result is stored in a token.'),
-  version_introduced: '1.1.0',
-)]
 class EcaStateRead extends ConfigurableActionBase {
 
   /**

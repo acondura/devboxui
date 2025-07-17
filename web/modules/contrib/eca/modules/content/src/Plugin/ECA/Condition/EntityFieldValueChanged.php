@@ -6,28 +6,23 @@ use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\Field\FieldConfigInterface;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\Plugin\Context\ContextDefinition;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaCondition;
 use Drupal\eca\EntityOriginalTrait;
 use Drupal\eca\Plugin\ECA\Condition\ConditionBase;
 use Drupal\eca\TypedData\PropertyPathTrait;
 
 /**
  * Plugin implementation of the ECA condition for changed entity field value.
+ *
+ * @EcaCondition(
+ *   id = "eca_entity_field_value_changed",
+ *   label = @Translation("Entity: field value changed"),
+ *   description = @Translation("Evaluates against the change of a value field of an entity."),
+ *   eca_version_introduced = "1.0.0",
+ *   context_definitions = {
+ *     "entity" = @ContextDefinition("entity", label = @Translation("Entity"))
+ *   }
+ * )
  */
-#[EcaCondition(
-  id: 'eca_entity_field_value_changed',
-  label: new TranslatableMarkup('Entity: field value changed'),
-  context_definitions: [
-    'entity' => new ContextDefinition(
-      data_type: 'entity',
-      label: new TranslatableMarkup('Entity'),
-    ),
-  ],
-  description: new TranslatableMarkup('Evaluates against the change of a value field of an entity.'),
-  version_introduced: '1.0.0',
-)]
 class EntityFieldValueChanged extends ConditionBase {
 
   use EntityOriginalTrait;
@@ -41,7 +36,7 @@ class EntityFieldValueChanged extends ConditionBase {
     $field_name = $this->tokenService->replaceClear($this->configuration['field_name']);
     $options = ['access' => FALSE, 'auto_item' => FALSE];
     $original = $this->getOriginal($entity);
-    if (($entity instanceof EntityInterface) && ($original instanceof EntityInterface) && ($property = $this->getTypedProperty($entity->getTypedData(), $field_name, $options)) && ($original_property = $this->getTypedProperty($original->getTypedData(), $field_name, $options))) {
+    if (($entity instanceof EntityInterface) && isset($original) && ($original instanceof EntityInterface) && ($property = $this->getTypedProperty($entity->getTypedData(), $field_name, $options)) && ($original_property = $this->getTypedProperty($original->getTypedData(), $field_name, $options))) {
       $value = $property->getValue();
       $original_value = $original_property->getValue();
       if (is_countable($value) && count($value) !== count($original_value)) {

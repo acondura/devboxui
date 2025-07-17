@@ -2,24 +2,20 @@
 
 namespace Drupal\eca_config\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Config\TypedConfigManagerInterface;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Action to read configuration.
+ *
+ * @Action(
+ *   id = "eca_config_read",
+ *   label = @Translation("Config: read"),
+ *   description = @Translation("Read configuration and store it as a token."),
+ *   eca_version_introduced = "1.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_config_read',
-  label: new TranslatableMarkup('Config: read'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Read configuration and store it as a token.'),
-  version_introduced: '1.0.0',
-)]
 class ConfigRead extends ConfigActionBase {
 
   /**

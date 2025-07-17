@@ -12,20 +12,20 @@ abstract class StringComparisonBase extends ConditionBase {
 
   use PluginFormTrait;
 
-  public const string COMPARE_EQUALS = 'equal';
-  public const string COMPARE_BEGINS_WITH = 'beginswith';
-  public const string COMPARE_ENDS_WITH = 'endswith';
-  public const string COMPARE_CONTAINS = 'contains';
-  public const string COMPARE_GREATERTHAN = 'greaterthan';
-  public const string COMPARE_LESSTHAN = 'lessthan';
-  public const string COMPARE_ATMOST = 'atmost';
-  public const string COMPARE_ATLEAST = 'atleast';
+  public const COMPARE_EQUALS = 'equal';
+  public const COMPARE_BEGINS_WITH = 'beginswith';
+  public const COMPARE_ENDS_WITH = 'endswith';
+  public const COMPARE_CONTAINS = 'contains';
+  public const COMPARE_GREATERTHAN = 'greaterthan';
+  public const COMPARE_LESSTHAN = 'lessthan';
+  public const COMPARE_ATMOST = 'atmost';
+  public const COMPARE_ATLEAST = 'atleast';
 
-  public const string COMPARE_TYPE_VALUE = 'value';
-  public const string COMPARE_TYPE_COUNT = 'count';
-  public const string COMPARE_TYPE_LEXICAL = 'lexical';
-  public const string COMPARE_TYPE_NATURAL = 'natural';
-  public const string COMPARE_TYPE_NUMERIC = 'numeric';
+  public const COMPARE_TYPE_VALUE = 'value';
+  public const COMPARE_TYPE_COUNT = 'count';
+  public const COMPARE_TYPE_LEXICAL = 'lexical';
+  public const COMPARE_TYPE_NATURAL = 'natural';
+  public const COMPARE_TYPE_NUMERIC = 'numeric';
 
   /**
    * This flag indicates whether Token replacement should be applied beforehand.
@@ -258,41 +258,6 @@ abstract class StringComparisonBase extends ConditionBase {
       ];
     }
     return NULL;
-  }
-
-  /**
-   * Returns all valid comparison operators.
-   *
-   * @return array
-   *   The array with all valid comparison operators.
-   */
-  public static function getAllValidOperators(): array {
-    return [
-      static::COMPARE_EQUALS,
-      static::COMPARE_BEGINS_WITH,
-      static::COMPARE_ENDS_WITH,
-      static::COMPARE_CONTAINS,
-      static::COMPARE_GREATERTHAN,
-      static::COMPARE_LESSTHAN,
-      static::COMPARE_ATMOST,
-      static::COMPARE_ATLEAST,
-    ];
-  }
-
-  /**
-   * Returns all valid comparison types.
-   *
-   * @return array
-   *   The array with all valid comparison types.
-   */
-  public static function getAllValidTypes(): array {
-    return [
-      static::COMPARE_TYPE_VALUE,
-      static::COMPARE_TYPE_NATURAL,
-      static::COMPARE_TYPE_NUMERIC,
-      static::COMPARE_TYPE_LEXICAL,
-      static::COMPARE_TYPE_COUNT,
-    ];
   }
 
 }

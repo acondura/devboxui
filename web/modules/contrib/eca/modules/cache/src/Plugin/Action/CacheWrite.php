@@ -2,7 +2,6 @@
 
 namespace Drupal\eca_cache\Plugin\Action;
 
-use Drupal\Core\Cache\CacheBackendInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\eca\Service\YamlParser;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -51,13 +50,7 @@ abstract class CacheWrite extends CacheActionBase {
       $value = $this->tokenService->getOrReplace($value);
     }
 
-    $expire = trim($this->tokenService->getOrReplace($this->configuration['expire']));
-    if ($expire === '') {
-      $expire = CacheBackendInterface::CACHE_PERMANENT;
-    }
-    else {
-      $expire = (int) $expire;
-    }
+    $expire = (int) ($this->configuration['expire'] ?? -1);
     $tags = $this->getCacheTags();
 
     $cache->set($key, $value, $expire, $tags);
@@ -96,12 +89,11 @@ abstract class CacheWrite extends CacheActionBase {
     ];
     $form['expire'] = [
       '#type' => 'number',
-      '#title' => $this->t('Expiration time'),
+      '#title' => $this->t('Lifetime until expiry'),
       '#description' => $this->t('The timestamp in seconds when the cached item expires. Set to -1 for unlimited lifetime.'),
       '#default_value' => $this->configuration['expire'],
       '#required' => TRUE,
       '#weight' => -20,
-      '#eca_token_replacement' => TRUE,
     ];
     $form['tags'] = [
       '#type' => 'textarea',
@@ -111,7 +103,6 @@ abstract class CacheWrite extends CacheActionBase {
       ]),
       '#default_value' => $this->configuration['tags'],
       '#weight' => -10,
-      '#eca_token_replacement' => TRUE,
     ];
     return parent::buildConfigurationForm($form, $form_state);
   }

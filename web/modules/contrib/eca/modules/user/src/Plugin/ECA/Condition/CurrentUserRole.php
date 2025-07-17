@@ -3,20 +3,19 @@
 namespace Drupal\eca_user\Plugin\ECA\Condition;
 
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaCondition;
 use Drupal\eca\Plugin\ECA\PluginFormTrait;
 use Drupal\user\Entity\Role;
 
 /**
  * Plugin implementation of the ECA condition of the current user's role.
+ *
+ * @EcaCondition(
+ *   id = "eca_current_user_role",
+ *   label = @Translation("Role of current user"),
+ *   description = @Translation("Checks, whether the current user has a given role."),
+ *   eca_version_introduced = "1.0.0"
+ * )
  */
-#[EcaCondition(
-  id: 'eca_current_user_role',
-  label: new TranslatableMarkup('Role of current user'),
-  description: new TranslatableMarkup('Checks, whether the current user has a given role.'),
-  version_introduced: '1.0.0',
-)]
 class CurrentUserRole extends BaseUser {
 
   use PluginFormTrait;
@@ -70,16 +69,6 @@ class CurrentUserRole extends BaseUser {
   public function submitConfigurationForm(array &$form, FormStateInterface $form_state): void {
     $this->configuration['role'] = $form_state->getValue('role');
     parent::submitConfigurationForm($form, $form_state);
-  }
-
-  /**
-   * Get all valid user roles.
-   *
-   * @return array
-   *   All valid user roles.
-   */
-  public static function getAllValidUserRoles() {
-    return array_keys(Role::loadMultiple());
   }
 
 }

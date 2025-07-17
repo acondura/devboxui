@@ -2,21 +2,17 @@
 
 namespace Drupal\eca_render\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Set the active theme.
+ *
+ * @Action(
+ *   id = "eca_set_active_theme",
+ *   label = @Translation("Set active theme"),
+ *   eca_version_introduced = "1.1.0"
+ * )
  */
-#[Action(
-  id: 'eca_set_active_theme',
-  label: new TranslatableMarkup('Set active theme'),
-)]
-#[EcaAction(
-  version_introduced: '1.1.0',
-)]
 class SetActiveTheme extends ActiveThemeActionBase {
 
   /**

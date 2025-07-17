@@ -3,24 +3,20 @@
 namespace Drupal\eca_form\Plugin\Action;
 
 use Drupal\Component\Render\MarkupInterface;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Add a field with options to a form.
+ *
+ * @Action(
+ *   id = "eca_form_add_optionsfield",
+ *   label = @Translation("Form: add options field"),
+ *   description = @Translation("Add a field with options as radios, checkboxes or select dropdown to the current form in scope."),
+ *   eca_version_introduced = "1.0.0",
+ *   type = "form"
+ * )
  */
-#[Action(
-  id: 'eca_form_add_optionsfield',
-  label: new TranslatableMarkup('Form: add options field'),
-  type: 'form',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Add a field with options as radios, checkboxes or select dropdown to the current form in scope.'),
-  version_introduced: '1.0.0',
-)]
 class FormAddOptionsField extends FormAddFieldActionBase {
 
   use FormFieldSetOptionsTrait {

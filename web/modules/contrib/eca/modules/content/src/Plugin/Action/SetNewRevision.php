@@ -4,28 +4,24 @@ namespace Drupal\eca_content\Plugin\Action;
 
 use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Access\AccessibleInterface;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Entity\RevisionLogInterface;
 use Drupal\Core\Entity\RevisionableInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\eca\Plugin\DataType\DataTransferObject;
 
 /**
  * Flag the entity for creating a new revision.
+ *
+ * @Action(
+ *   id = "eca_set_new_revision",
+ *   label = @Translation("Entity: set new revision"),
+ *   description = @Translation("Flags the entity so that a new revision will be created on the next save."),
+ *   eca_version_introduced = "1.0.0",
+ *   type = "entity"
+ * )
  */
-#[Action(
-  id: 'eca_set_new_revision',
-  label: new TranslatableMarkup('Entity: set new revision'),
-  type: 'entity',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Flags the entity so that a new revision will be created on the next save.'),
-  version_introduced: '1.0.0',
-)]
 class SetNewRevision extends ConfigurableActionBase {
 
   /**

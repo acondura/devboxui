@@ -2,23 +2,19 @@
 
 namespace Drupal\eca_user\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 
 /**
  * Load the currently logged in user into the token environment.
+ *
+ * @Action(
+ *   id = "eca_token_load_user_current",
+ *   label = @Translation("Current user: load"),
+ *   description = @Translation("Load the current user and store it as a token."),
+ *   eca_version_introduced = "1.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_token_load_user_current',
-  label: new TranslatableMarkup('Current user: load'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Load the current user and store it as a token.'),
-  version_introduced: '1.0.0',
-)]
 class LoadCurrentUser extends ConfigurableActionBase {
 
   /**

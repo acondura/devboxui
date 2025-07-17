@@ -3,14 +3,11 @@
 namespace Drupal\eca_workflow\Plugin\Action;
 
 use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\RevisionLogInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\content_moderation\ModerationInformationInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\eca\Plugin\DataType\DataTransferObject;
 use Drupal\eca\Plugin\ECA\PluginFormTrait;
@@ -19,16 +16,14 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Perform a workflow transition on an entity.
+ *
+ * @Action(
+ *   id = "eca_workflow_transition",
+ *   type = "entity",
+ *   deriver = "Drupal\eca_workflow\Plugin\Action\WorkflowTransitionDeriver",
+ *   eca_version_introduced = "1.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_workflow_transition',
-  label: new TranslatableMarkup('Workflow: transition'),
-  deriver: 'Drupal\eca_workflow\Plugin\Action\WorkflowTransitionDeriver',
-  type: 'entity',
-)]
-#[EcaAction(
-  version_introduced: '1.0.0',
-)]
 class WorkflowTransition extends ConfigurableActionBase {
 
   use PluginFormTrait;

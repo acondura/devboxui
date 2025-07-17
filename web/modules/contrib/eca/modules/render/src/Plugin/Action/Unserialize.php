@@ -2,24 +2,20 @@
 
 namespace Drupal\eca_render\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\ECA\PluginFormTrait;
 
 /**
  * Un-serializes / deserializes data.
+ *
+ * @Action(
+ *   id = "eca_render_unserialize",
+ *   label = @Translation("Render: unserialize"),
+ *   description = @Translation("Un-serializes / deserializes data."),
+ *   eca_version_introduced = "1.1.0",
+ *   deriver = "Drupal\eca_render\Plugin\Action\SerializeDeriver"
+ * )
  */
-#[Action(
-  id: 'eca_render_unserialize',
-  label: new TranslatableMarkup('Render: unserialize'),
-  deriver: 'Drupal\eca_render\Plugin\Action\SerializeDeriver',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Un-serializes / deserializes data.'),
-  version_introduced: '1.1.0',
-)]
 class Unserialize extends Serialize {
 
   use PluginFormTrait;

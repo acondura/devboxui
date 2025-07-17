@@ -2,23 +2,19 @@
 
 namespace Drupal\eca_endpoint\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Ajax\ChangedCommand;
 use Drupal\Core\Ajax\CommandInterface;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Add a changed command to the ajax response.
+ *
+ * @Action(
+ *   id = "eca_endpoint_set_ajax_response_changed",
+ *   label = @Translation("Ajax Response: set changed"),
+ *   eca_version_introduced = "2.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_endpoint_set_ajax_response_changed',
-  label: new TranslatableMarkup('Ajax Response: set changed'),
-)]
-#[EcaAction(
-  version_introduced: '2.0.0',
-)]
 class SetAjaxResponseChangedCommand extends ResponseAjaxCommandBase {
 
   /**

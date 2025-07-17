@@ -15,7 +15,7 @@ config_devel:
   - node.type.type_1
   - node.type.type_2
 
-# Information added by Drupal.org packaging script on 2025-07-09
-version: '3.0.0-beta2'
+# Information added by Drupal.org packaging script on 2025-07-03
+version: '2.1.10'
 project: 'eca'
-datestamp: 1752071640
+datestamp: 1751524999

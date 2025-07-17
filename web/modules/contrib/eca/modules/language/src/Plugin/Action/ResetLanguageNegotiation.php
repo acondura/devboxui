@@ -2,22 +2,18 @@
 
 namespace Drupal\eca_language\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca_language\Event\LanguageNegotiateEvent;
 
 /**
  * Resets language negotiation.
+ *
+ * @Action(
+ *   id = "eca_reset_language_negotiation",
+ *   label = @Translation("Language: reset negotiation"),
+ *   description = @Translation("This may be useful when switching between multiple users with different preferred languages."),
+ *   eca_version_introduced = "2.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_reset_language_negotiation',
-  label: new TranslatableMarkup('Language: reset negotiation'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('This may be useful when switching between multiple users with different preferred languages.'),
-  version_introduced: '2.0.0',
-)]
 class ResetLanguageNegotiation extends LanguageActionBase {
 
   /**

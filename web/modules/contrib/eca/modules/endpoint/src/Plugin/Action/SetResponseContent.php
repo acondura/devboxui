@@ -2,21 +2,17 @@
 
 namespace Drupal\eca_endpoint\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Set the response content.
+ *
+ * @Action(
+ *   id = "eca_endpoint_set_response_content",
+ *   label = @Translation("Response: set content"),
+ *   eca_version_introduced = "1.1.0"
+ * )
  */
-#[Action(
-  id: 'eca_endpoint_set_response_content',
-  label: new TranslatableMarkup('Response: set content'),
-)]
-#[EcaAction(
-  version_introduced: '1.1.0',
-)]
 class SetResponseContent extends ResponseActionBase {
 
   /**

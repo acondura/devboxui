@@ -3,12 +3,9 @@
 namespace Drupal\eca_queue\Plugin\Action;
 
 use Drupal\Component\Datetime\TimeInterface;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Queue\QueueFactory;
 use Drupal\Core\Queue\QueueWorkerManagerInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\eca\Plugin\DataType\DataTransferObject;
 use Drupal\eca_queue\Plugin\QueueWorker\TaskWorker;
@@ -17,14 +14,13 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Enqueue a Task.
+ *
+ * @Action(
+ *   id = "eca_enqueue_task",
+ *   label = @Translation("Enqueue a task"),
+ *   eca_version_introduced = "1.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_enqueue_task',
-  label: new TranslatableMarkup('Enqueue a task'),
-)]
-#[EcaAction(
-  version_introduced: '1.0.0',
-)]
 class EnqueueTask extends ConfigurableActionBase {
 
   /**

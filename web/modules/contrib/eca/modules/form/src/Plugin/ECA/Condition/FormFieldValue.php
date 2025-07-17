@@ -3,21 +3,20 @@
 namespace Drupal\eca_form\Plugin\ECA\Condition;
 
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaCondition;
 use Drupal\eca\Plugin\ECA\Condition\ConditionInterface;
 use Drupal\eca\Plugin\ECA\Condition\StringComparisonBase;
 use Drupal\eca\Plugin\FormFieldPluginTrait;
 
 /**
  * Compares a submitted form field value.
+ *
+ * @EcaCondition(
+ *   id = "eca_form_field_value",
+ *   label = @Translation("Form field: compare submitted value"),
+ *   description = @Translation("Compares a submitted form field value."),
+ *   eca_version_introduced = "1.0.0"
+ * )
  */
-#[EcaCondition(
-  id: 'eca_form_field_value',
-  label: new TranslatableMarkup('Form field: compare submitted value'),
-  description: new TranslatableMarkup('Compares a submitted form field value.'),
-  version_introduced: '1.0.0',
-)]
 class FormFieldValue extends StringComparisonBase {
 
   use FormFieldPluginTrait;

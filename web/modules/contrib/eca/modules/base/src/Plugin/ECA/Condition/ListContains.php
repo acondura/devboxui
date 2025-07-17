@@ -5,27 +5,25 @@ namespace Drupal\eca_base\Plugin\ECA\Condition;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Field\EntityReferenceFieldItemListInterface;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\TypedData\ComplexDataInterface;
 use Drupal\Core\TypedData\Exception\MissingDataException;
 use Drupal\Core\TypedData\ListInterface;
 use Drupal\Core\TypedData\TraversableTypedDataInterface;
 use Drupal\Core\TypedData\TypedDataInterface;
-use Drupal\eca\Attribute\EcaCondition;
 use Drupal\eca\Plugin\DataType\DataTransferObject;
 use Drupal\eca\Plugin\ECA\Condition\ConditionBase;
 use Drupal\eca\Plugin\ECA\PluginFormTrait;
 
 /**
  * ECA condition plugin for evaluating whether a certain item is in a list.
+ *
+ * @EcaCondition(
+ *   id = "eca_list_contains",
+ *   label = @Translation("List: contains item"),
+ *   description = @Translation("Evaluate whether a certain item is in a list."),
+ *   eca_version_introduced = "2.0.0"
+ * )
  */
-#[EcaCondition(
-  id: 'eca_list_contains',
-  label: new TranslatableMarkup('List: contains item'),
-  description: new TranslatableMarkup('Evaluate whether a certain item is in a list.'),
-  version_introduced: '2.0.0',
-)]
-
 class ListContains extends ConditionBase {
 
   use PluginFormTrait;

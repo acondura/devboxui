@@ -2,10 +2,7 @@
 
 namespace Drupal\eca_misc\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
@@ -22,15 +19,14 @@ use Symfony\Component\HttpKernel\Exception\UnsupportedMediaTypeHttpException;
 
 /**
  * Loads a query argument from the request into the token environment.
+ *
+ * @Action(
+ *   id = "eca_throw_exception",
+ *   label = @Translation("Throw exception"),
+ *   description = @Translation("Throws an exception that won't be caught by ECA."),
+ *   eca_version_introduced = "2.1.3"
+ * )
  */
-#[Action(
-  id: 'eca_throw_exception',
-  label: new TranslatableMarkup('Throw exception'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Throws an exception that are be caught by ECA.'),
-  version_introduced: '2.1.3',
-)]
 class ThrowException extends ConfigurableActionBase {
 
   /**
@@ -115,29 +111,6 @@ class ThrowException extends ConfigurableActionBase {
     $this->configuration['response_message'] = $form_state->getValue('response_message');
     $this->configuration['log_exception'] = $form_state->getValue('log_exception');
     parent::submitConfigurationForm($form, $form_state);
-  }
-
-  /**
-   * Get all valid exception types.
-   *
-   * @return array
-   *   All valid exception types.
-   */
-  public static function getAllValidExceptionTypes() {
-    return [
-      AccessDeniedHttpException::class,
-      BadRequestHttpException::class,
-      ConflictHttpException::class,
-      GoneHttpException::class,
-      LengthRequiredHttpException::class,
-      LockedHttpException::class,
-      NotAcceptableHttpException::class,
-      NotFoundHttpException::class,
-      PreconditionFailedHttpException::class,
-      PreconditionRequiredHttpException::class,
-      UnprocessableEntityHttpException::class,
-      UnsupportedMediaTypeHttpException::class,
-    ];
   }
 
 }

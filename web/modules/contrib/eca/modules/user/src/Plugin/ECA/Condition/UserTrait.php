@@ -43,12 +43,11 @@ trait UserTrait {
       }
     }
     if (is_numeric($account)) {
-      $id = $account;
+      /**
+       * @var \Drupal\user\UserInterface $account
+       */
       try {
-        /**
-         * @var \Drupal\user\UserInterface $account
-         */
-        $account = $this->entityTypeManager->getStorage('user')->load($id);
+        $account = $this->entityTypeManager->getStorage('user')->load($account);
       }
       catch (InvalidPluginDefinitionException | PluginNotFoundException $e) {
         $account = NULL;

@@ -4,9 +4,6 @@ namespace Drupal\eca_content\Plugin\ECA\Condition;
 
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\Plugin\Context\ContextDefinition;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaCondition;
 use Drupal\eca\Plugin\ECA\Condition\ConditionBase;
 use Drupal\eca\Plugin\ECA\PluginFormTrait;
 use Drupal\eca\Service\ContentEntityTypes;
@@ -14,19 +11,17 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Plugin implementation of the ECA condition for entity type and bundle.
+ *
+ * @EcaCondition(
+ *   id = "eca_entity_type_bundle",
+ *   label = "Entity type and bundle",
+ *   description = @Translation("Evaluates against the entity type and bundle."),
+ *   eca_version_introduced = "1.0.0",
+ *   context_definitions = {
+ *     "entity" = @ContextDefinition("entity", label = @Translation("Entity"))
+ *   }
+ * )
  */
-#[EcaCondition(
-  id: 'eca_entity_type_bundle',
-  label: new TranslatableMarkup('Entity type and bundle'),
-  context_definitions: [
-    'entity' => new ContextDefinition(
-      data_type: 'entity',
-      label: new TranslatableMarkup('Entity'),
-    ),
-  ],
-  description: new TranslatableMarkup('Evaluates against the entity type and bundle.'),
-  version_introduced: '1.0.0',
-)]
 class EntityTypeAndBundle extends ConditionBase {
 
   use PluginFormTrait;

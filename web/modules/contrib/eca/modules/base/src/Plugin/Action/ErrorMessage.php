@@ -2,22 +2,18 @@
 
 namespace Drupal\eca_base\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Action\Plugin\Action\MessageAction;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Sends a error message to the current user's screen.
+ *
+ * @Action(
+ *   id = "eca_error_message",
+ *   label = @Translation("Display an error message to the user"),
+ *   eca_version_introduced = "1.1.0",
+ *   type = "system"
+ * )
  */
-#[Action(
-  id: 'eca_error_message',
-  label: new TranslatableMarkup('Display an error message to the user'),
-  type: 'system',
-)]
-#[EcaAction(
-  version_introduced: '1.1.0',
-)]
 class ErrorMessage extends MessageAction {
 
   /**

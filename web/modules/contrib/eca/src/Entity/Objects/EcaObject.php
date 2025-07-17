@@ -187,7 +187,7 @@ abstract class EcaObject {
    *   The item label.
    */
   public function getLabel(): string {
-    return $this->label;
+    return $this->label ?? 'noname';
   }
 
   /**
@@ -324,7 +324,7 @@ abstract class EcaObject {
 
       // Ask predecessor(s) for having previously declared entities.
       $predecessor = $this->predecessor ?? NULL;
-      if ($predecessor instanceof ObjectWithPluginInterface && $objects = $this->filterEntities($predecessor->getObjects($predecessor->getPlugin()))) {
+      if ($predecessor instanceof ObjectWithPluginInterface && $predecessor instanceof self && $objects = $this->filterEntities($predecessor->getObjects($predecessor->getPlugin()))) {
         return $objects;
       }
 

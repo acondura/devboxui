@@ -2,18 +2,16 @@
 
 namespace Drupal\eca_form\Plugin\ECA\Condition;
 
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaCondition;
-
 /**
  * Checks whether the current form contains a specific form field.
+ *
+ * @EcaCondition(
+ *   id = "eca_form_field_exists",
+ *   label = @Translation("Form field: exists"),
+ *   description = @Translation("Looks up the current form structure whether a specified field exists."),
+ *   eca_version_introduced = "1.0.0"
+ * )
  */
-#[EcaCondition(
-  id: 'eca_form_field_exists',
-  label: new TranslatableMarkup('Form field: exists'),
-  description: new TranslatableMarkup('Looks up the current form structure whether a specified field exists.'),
-  version_introduced: '1.0.0',
-)]
 class FormFieldExists extends FormFieldConditionBase {
 
   /**

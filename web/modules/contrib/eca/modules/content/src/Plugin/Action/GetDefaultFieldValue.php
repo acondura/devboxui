@@ -2,25 +2,21 @@
 
 namespace Drupal\eca_content\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\FieldableEntityInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Get the value of an entity field.
+ *
+ * @Action(
+ *   id = "eca_get_default_field_value",
+ *   label = @Translation("Entity: get default field value"),
+ *   description = @Translation("Get the default value of any field in an entity and store it as a token."),
+ *   eca_version_introduced = "2.0.0",
+ *   type = "entity"
+ * )
  */
-#[Action(
-  id: 'eca_get_default_field_value',
-  label: new TranslatableMarkup('Entity: get default field value'),
-  type: 'entity',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Get the default value of any field in an entity and store it as a token.'),
-  version_introduced: '2.0.0',
-)]
 class GetDefaultFieldValue extends GetFieldValue {
 
   /**

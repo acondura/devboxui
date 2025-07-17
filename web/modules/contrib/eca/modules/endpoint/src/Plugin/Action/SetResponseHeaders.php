@@ -2,11 +2,8 @@
 
 namespace Drupal\eca_endpoint\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\TypedData\TypedDataInterface;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\DataType\DataTransferObject;
 use Drupal\eca\Service\YamlParser;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -14,14 +11,13 @@ use Symfony\Component\Yaml\Exception\ParseException;
 
 /**
  * Set the response headers.
+ *
+ * @Action(
+ *   id = "eca_endpoint_set_response_headers",
+ *   label = @Translation("Response: set headers"),
+ *   eca_version_introduced = "1.1.0"
+ * )
  */
-#[Action(
-  id: 'eca_endpoint_set_response_headers',
-  label: new TranslatableMarkup('Response: set headers'),
-)]
-#[EcaAction(
-  version_introduced: '1.1.0',
-)]
 class SetResponseHeaders extends ResponseActionBase {
 
   /**

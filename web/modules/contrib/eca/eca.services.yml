@@ -1,35 +1,28 @@
 services:
 
+  eca.memory_cache:
+    class: Drupal\Core\Cache\MemoryCache\MemoryCache
   eca.state:
     class: Drupal\eca\EcaState
     parent: state
-    arguments:
-      - '@datetime.time'
+    arguments: ['@datetime.time']
   eca.processor:
     class: Drupal\eca\Processor
-    arguments:
-      - '@entity_type.manager'
-      - '@logger.channel.eca'
-      - '@event_dispatcher'
-      - '@plugin.manager.eca.event'
-      - '@state'
-      - '%eca.max_recursion_level%'
+    arguments: ['@entity_type.manager', '@logger.channel.eca', '@event_dispatcher', '@plugin.manager.eca.event', '@state', '%eca.max_recursion_level%']
   logger.channel.eca:
     parent: logger.channel_base
-    arguments:
-      - 'eca'
+    arguments: ['eca']
   eca.configurable_logger_channel:
     class: Drupal\eca\ConfigurableLoggerChannel
     decorates: logger.channel.eca
-    arguments:
-      - 'eca'
-      - '@eca.configurable_logger_channel.inner'
-      - '@config.factory'
-      - '@module_handler'
+    arguments: ['eca', '@eca.configurable_logger_channel.inner', '@config.factory', '@module_handler']
 
   eca.dynamic_subscriber:
     class: Drupal\eca\EventSubscriber\DynamicSubscriber
 
+  plugin.manager.eca.modeller:
+    class: Drupal\eca\PluginManager\Modeller
+    parent: default_plugin_manager
   plugin.manager.eca.event:
     class: Drupal\eca\PluginManager\Event
     parent: default_plugin_manager
@@ -44,58 +37,32 @@ services:
       - [setDecoratedActionManager, ['@plugin.manager.eca.action.inner']]
       - [setEntityTypeManager, ['@entity_type.manager']]
 
+  eca.service.modeller:
+    class: Drupal\eca\Service\Modellers
+    arguments: ['@entity_type.manager', '@plugin.manager.eca.modeller', '@plugin.manager.eca.event',  '@eca.service.action',  '@eca.service.condition', '@logger.channel.eca', '@file_system', '@config.storage.export', '@config.factory']
   eca.service.action:
     class: Drupal\eca\Service\Actions
-    arguments:
-      - '@plugin.manager.eca.action'
-      - '@logger.channel.eca'
-      - '@entity_type.manager'
-      - '@eca.token_services'
-      - '@extension.list.module'
+    arguments: ['@plugin.manager.eca.action', '@logger.channel.eca', '@entity_type.manager', '@eca.token_services']
   eca.service.condition:
     class: Drupal\eca\Service\Conditions
-    arguments:
-      - '@plugin.manager.eca.condition'
-      - '@logger.channel.eca'
-      - '@entity_type.manager'
-      - '@language_manager'
-      - '@eca.service.token'
-      - '@extension.list.module'
-  eca.service.event:
-    class: Drupal\eca\Service\Events
-    arguments:
-      - '@plugin.manager.eca.event'
-      - '@logger.channel.eca'
-      - '@extension.list.module'
+    arguments: ['@plugin.manager.eca.condition', '@logger.channel.eca', '@entity_type.manager', '@language_manager', '@eca.service.token']
   eca.service.yaml_parser:
     class: Drupal\eca\Service\YamlParser
-    arguments:
-      - '@eca.token_services'
+    arguments: ['@eca.token_services']
   eca.service.content_entity_types:
     class: Drupal\eca\Service\ContentEntityTypes
-    arguments:
-      - '@entity_type.manager'
-      - '@entity_type.bundle.info'
+    arguments: ['@entity_type.manager', '@entity_type.bundle.info']
   eca.service.dependency_calculation:
     class: Drupal\eca\Service\DependencyCalculation
-    arguments:
-      - '@entity_type.manager'
-      - '@entity_type.bundle.info'
-      - '@entity_field.manager'
-      - '@eca.token_services'
-      - '@config.factory'
+    arguments: ['@entity_type.manager', '@entity_type.bundle.info', '@entity_field.manager', '@eca.token_services', '@config.factory']
 
   eca.trigger_event:
     class: Drupal\eca\Event\TriggerEvent
-    arguments:
-      - '@plugin.manager.eca.event'
-      - '@event_dispatcher'
+    arguments: ['@plugin.manager.eca.event', '@event_dispatcher']
 
   eca.token_services:
     class: Drupal\eca\Token\TokenServices
-    arguments:
-      - '@eca.service.token'
-      - '@token'
+    arguments: ['@eca.service.token', '@token']
   eca.service.token:
     decorates: token
     parent: token
@@ -107,9 +74,7 @@ services:
       - { name: service_collector, tag: eca.token_data_provider, call: addTokenDataProvider }
   eca.execution.subscriber_parent:
     class: Drupal\eca\EventSubscriber\EcaExecutionSubscriberBase
-    arguments:
-      - '@entity_type.manager'
-      - '@eca.service.token'
+    arguments: ['@entity_type.manager', '@eca.service.token']
     abstract: true
   eca.execution.token_subscriber:
     class: Drupal\eca\EventSubscriber\EcaExecutionTokenSubscriber
@@ -138,9 +103,7 @@ services:
 
   eca.token_data.current_user:
     class: Drupal\eca\Token\CurrentUserDataProvider
-    arguments:
-      - '@current_user'
-      - '@entity_type.manager'
+    arguments: ['@current_user', '@entity_type.manager']
     tags:
       - { name: eca.token_data_provider, priority: -100 }
   eca.token_data.context:
@@ -148,16 +111,20 @@ services:
     tags:
       - { name: eca.token_data_provider, priority: -50 }
 
-  # Fix autowiring for Hooks.
-  Drupal\Core\Logger\LoggerChannelInterface: '@logger.channel.eca'
-  Drupal\eca\Event\TriggerEvent: '@eca.trigger_event'
-  Drupal\eca\PluginManager\Action: '@plugin.manager.eca.action'
-  Drupal\eca\Service\Actions: '@eca.service.action'
-  Drupal\eca\Service\ContentEntityTypes: '@eca.service.content_entity_types'
-  Drupal\eca\Token\TokenServices: '@eca.token_services'
+  eca.update:
+    class: Drupal\eca\EcaUpdate
+    arguments: ['@entity_type.manager', '@eca.service.modeller', '@messenger', '@eca.service.modeller', '@eca.service.condition', '@eca.service.action']
+
+  eca.export.recipe:
+    class: Drupal\eca\Service\ExportRecipe
+    arguments:
+      - '@config.storage.export'
+      - '@file_system'
+      - '@extension.list.module'
+      - '@eca.service.modeller'
+      - '@messenger'
 
 parameters:
   eca.max_recursion_level: 1
   # Override following parameter as blank to disable documentation links at all.
   eca.default_documentation_domain: "https://ecaguide.org"
-  eca.skip_procedural_hook_scan: true

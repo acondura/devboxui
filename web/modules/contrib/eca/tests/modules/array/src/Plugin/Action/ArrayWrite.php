@@ -3,11 +3,8 @@
 namespace Drupal\eca_test_array\Plugin\Action;
 
 use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\eca_test_array\Event\ArrayEvents;
 use Drupal\eca_test_array\Event\ArrayWriteEvent;
@@ -16,15 +13,14 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 /**
  * An action that writes into a static array.
+ *
+ * @Action(
+ *   id = "eca_test_array_write",
+ *   label = @Translation("Static array: write"),
+ *   description = @Translation("This action writes into a static array."),
+ *   nodocs = true
+ * )
  */
-#[Action(
-  id: 'eca_test_array_write',
-  label: new TranslatableMarkup('Static array: write'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('This action writes into a static array.'),
-  no_docs: TRUE,
-)]
 class ArrayWrite extends ConfigurableActionBase {
 
   /**

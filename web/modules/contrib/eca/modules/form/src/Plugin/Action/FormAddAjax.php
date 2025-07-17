@@ -5,26 +5,22 @@ namespace Drupal\eca_form\Plugin\Action;
 use Drupal\Component\Utility\Html;
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\DataType\DataTransferObject;
-use Drupal\eca_form\Hook\FormHooks;
+use Drupal\eca_form\HookHandler;
 
 /**
  * Adds an Ajax handler to a form.
+ *
+ * @Action(
+ *   id = "eca_form_add_ajax",
+ *   label = @Translation("Form: add Ajax handler"),
+ *   description = @Translation("Enhances an existing form field element with an Ajax handler for refreshing parts of a form without refreshing the whole page."),
+ *   eca_version_introduced = "1.0.0",
+ *   type = "form"
+ * )
  */
-#[Action(
-  id: 'eca_form_add_ajax',
-  label: new TranslatableMarkup('Form: add Ajax handler'),
-  type: 'form',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Enhances an existing form field element with an Ajax handler for refreshing parts of a form without refreshing the whole page.'),
-  version_introduced: '1.0.0',
-)]
 class FormAddAjax extends FormFieldActionBase {
 
   /**
@@ -184,7 +180,7 @@ class FormAddAjax extends FormFieldActionBase {
       }
     }
 
-    $submit_handler = [FormHooks::class, 'submit'];
+    $submit_handler = [HookHandler::class, 'submit'];
     if (empty($element['#submit']) || !in_array($submit_handler, $element['#submit'], TRUE)) {
       $element['#submit'][] = $submit_handler;
     }

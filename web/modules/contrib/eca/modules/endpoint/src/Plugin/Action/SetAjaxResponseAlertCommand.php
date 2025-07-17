@@ -2,23 +2,19 @@
 
 namespace Drupal\eca_endpoint\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Ajax\AlertCommand;
 use Drupal\Core\Ajax\CommandInterface;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Add an alert message to the ajax response.
+ *
+ * @Action(
+ *   id = "eca_endpoint_set_ajax_response_alert",
+ *   label = @Translation("Ajax Response: set alert"),
+ *   eca_version_introduced = "2.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_endpoint_set_ajax_response_alert',
-  label: new TranslatableMarkup('Ajax Response: set alert'),
-)]
-#[EcaAction(
-  version_introduced: '2.0.0',
-)]
 class SetAjaxResponseAlertCommand extends ResponseAjaxCommandBase {
 
   /**

@@ -3,27 +3,23 @@
 namespace Drupal\eca_views\Plugin\Action;
 
 use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\File\FileSystemInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Render\RendererInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\views\Plugin\views\display\DisplayPluginBase;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Run views query and export result.
+ *
+ * @Action(
+ *   id = "eca_views_export",
+ *   label = @Translation("Views: Export query into file"),
+ *   description = @Translation("Use a view to execute a query and save the results to a file. You can also save the results in a token."),
+ *   eca_version_introduced = "1.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_views_export',
-  label: new TranslatableMarkup('Views: Export query into file'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Use a view to execute a query and save the results to a file. You can also save the results in a token.'),
-  version_introduced: '1.0.0',
-)]
 class ViewsExport extends ViewsQuery {
 
   /**

@@ -3,13 +3,10 @@
 namespace Drupal\eca_content\Plugin\Action;
 
 use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\eca\Plugin\ECA\PluginFormTrait;
 use Drupal\eca\Service\ContentEntityTypes;
@@ -17,15 +14,14 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Create a new content entity without saving it.
+ *
+ * @Action(
+ *   id = "eca_new_entity",
+ *   label = @Translation("Entity: create new"),
+ *   description = @Translation("Create a new content entity without saving it."),
+ *   eca_version_introduced = "1.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_new_entity',
-  label: new TranslatableMarkup('Entity: create new'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Create a new content entity without saving it.'),
-  version_introduced: '1.0.0',
-)]
 class NewEntity extends ConfigurableActionBase {
 
   use PluginFormTrait;
@@ -171,6 +167,7 @@ class NewEntity extends ConfigurableActionBase {
         $access_result = AccessResult::forbidden('Cannot determine access without a specified bundle.');
       }
       elseif (!$this->entityTypeManager->hasDefinition($entity_type_id)) {
+        // @todo This should be taken care of by a submit validation handler.
         $access_result = AccessResult::forbidden(sprintf('Cannot determine access when "%s" is not a valid entity type ID.', $entity_type_id));
       }
       elseif (!$this->entityTypeManager->hasHandler($entity_type_id, 'access')) {

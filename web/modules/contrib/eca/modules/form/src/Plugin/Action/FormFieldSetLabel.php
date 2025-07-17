@@ -2,23 +2,19 @@
 
 namespace Drupal\eca_form\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Set label on a field or form element.
+ *
+ * @Action(
+ *   id = "eca_form_field_set_label",
+ *   label = @Translation("Form field: set label"),
+ *   description = @Translation("Defines label on a form field or element."),
+ *   eca_version_introduced = "2.1.0",
+ *   type = "form"
+ * )
  */
-#[Action(
-  id: 'eca_form_field_set_label',
-  label: new TranslatableMarkup('Form field: set label'),
-  type: 'form',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Defines label on a form field or element.'),
-  version_introduced: '2.1.0',
-)]
 class FormFieldSetLabel extends FormFieldActionBase {
 
   /**

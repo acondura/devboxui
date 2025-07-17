@@ -2,22 +2,18 @@
 
 namespace Drupal\eca_base\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Action to write value to the expirable key value store.
+ *
+ * @Action(
+ *   id = "eca_keyvalueexpirablestore_write",
+ *   label = @Translation("Expirable key value store: write"),
+ *   description = @Translation("Writes a value to the Drupal expirable key value store by the given key."),
+ *   eca_version_introduced = "2.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_keyvalueexpirablestore_write',
-  label: new TranslatableMarkup('Expirable key value store: write'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Writes a value to the Drupal expirable key value store by the given key.'),
-  version_introduced: '2.0.0',
-)]
 class KeyValueExpirableStoreWrite extends KeyValueExpirableStoreRead {
 
   /**

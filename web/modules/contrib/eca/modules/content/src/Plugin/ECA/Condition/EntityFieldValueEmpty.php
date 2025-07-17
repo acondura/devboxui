@@ -6,27 +6,22 @@ use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Field\EntityReferenceFieldItemListInterface;
 use Drupal\Core\Field\Plugin\Field\FieldType\EntityReferenceItem;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\Plugin\Context\ContextDefinition;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaCondition;
 use Drupal\eca\Plugin\ECA\Condition\ConditionBase;
 use Drupal\eca\TypedData\PropertyPathTrait;
 
 /**
  * Plugin implementation of the ECA condition for empty entity field value.
+ *
+ * @EcaCondition(
+ *   id = "eca_entity_field_value_empty",
+ *   label = @Translation("Entity: field value is empty"),
+ *   description = @Translation("Evaluates if a value field of an entity is empty."),
+ *   eca_version_introduced = "1.0.0",
+ *   context_definitions = {
+ *     "entity" = @ContextDefinition("entity", label = @Translation("Entity"))
+ *   }
+ * )
  */
-#[EcaCondition(
-  id: 'eca_entity_field_value_empty',
-  label: new TranslatableMarkup('Entity: field value is empty'),
-  context_definitions: [
-    'entity' => new ContextDefinition(
-      data_type: 'entity',
-      label: new TranslatableMarkup('Entity'),
-    ),
-  ],
-  description: new TranslatableMarkup('Evaluates if a value field of an entity is empty.'),
-  version_introduced: '',
-)]
 class EntityFieldValueEmpty extends ConditionBase {
 
   use PropertyPathTrait;

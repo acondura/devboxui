@@ -68,7 +68,7 @@ class EcaLazy extends RenderElementBase {
    */
   public static function buildElement(string $name, string $argument = '') {
     $render = [];
-    \Drupal::service('eca.trigger_event')->dispatchFromPlugin('eca_render:lazy_element', $name, $argument, $render);
+    _eca_trigger_event()->dispatchFromPlugin('eca_render:lazy_element', $name, $argument, $render);
     return $render;
   }
 

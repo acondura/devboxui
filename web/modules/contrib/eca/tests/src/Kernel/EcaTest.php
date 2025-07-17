@@ -3,8 +3,7 @@
 namespace Drupal\Tests\eca\Kernel;
 
 use Drupal\KernelTests\KernelTestBase;
-use Drupal\modeler_api\Api;
-use Drupal\modeler_api\Component;
+use Drupal\eca\Entity\Eca;
 
 /**
  * Tests for ECA-extended Token replacement behavior.
@@ -24,8 +23,6 @@ class EcaTest extends KernelTestBase {
     'text',
     'eca',
     'eca_base',
-    'eca_ui',
-    'modeler_api',
   ];
 
   /**
@@ -43,19 +40,14 @@ class EcaTest extends KernelTestBase {
    * @throws \Drupal\Component\Plugin\Exception\PluginException
    */
   public function testInvalidTokenField(): void {
-    $owner = \Drupal::service('plugin.manager.modeler_api.model_owner')->createInstance('eca');
-    $component = new Component(
-      $owner,
-      'id',
-      Api::COMPONENT_TYPE_ELEMENT,
-      'eca_count',
-      'Count',
-      [
-        'list_token' => 'list',
-        'token_name' => '[test]',
-      ],
-    );
-    $this->assertEquals(['action "Count" (id): This field requires a token name, not a token; please remove the brackets.'], $component->validate());
+    $fields = [
+      'list_token' => 'list',
+      'token_name' => '[test]',
+    ];
+    /** @var \Drupal\eca\Entity\Eca $ecaConfig */
+    $ecaConfig = Eca::create();
+    $this->assertFalse($ecaConfig->addAction('12345', 'eca_count',
+      'Action', $fields, []));
   }
 
   /**
@@ -64,19 +56,14 @@ class EcaTest extends KernelTestBase {
    * @throws \Drupal\Component\Plugin\Exception\PluginException
    */
   public function testValidTokenField(): void {
-    $owner = \Drupal::service('plugin.manager.modeler_api.model_owner')->createInstance('eca');
-    $component = new Component(
-      $owner,
-      'id',
-      Api::COMPONENT_TYPE_ELEMENT,
-      'eca_count',
-      'Count',
-      [
-        'list_token' => 'list',
-        'token_name' => 'test',
-      ],
-    );
-    $this->assertEmpty($component->validate());
+    $fields = [
+      'list_token' => 'list',
+      'token_name' => 'test',
+    ];
+    /** @var \Drupal\eca\Entity\Eca $ecaConfig */
+    $ecaConfig = Eca::create();
+    $this->assertTrue($ecaConfig->addAction('12345', 'eca_count',
+      'Action', $fields, []));
   }
 
 }

@@ -145,14 +145,6 @@ class EntityLoader {
       '#description' => $this->t('The type of the entity to be loaded.'),
       '#weight' => -60,
       '#eca_token_select_option' => TRUE,
-      '#states' => [
-        'invisible' => [
-          ':input[name="from"]' => ['value' => 'current'],
-        ],
-        'optional' => [
-          ':input[name="from"]' => ['value' => 'current'],
-        ],
-      ],
     ];
     $form['entity_id'] = [
       '#type' => 'textfield',
@@ -160,14 +152,6 @@ class EntityLoader {
       '#default_value' => $plugin_configuration['entity_id'],
       '#description' => $this->t('The ID of the entity to be loaded.'),
       '#weight' => -50,
-      '#states' => [
-        'visible' => [
-          ':input[name="from"]' => [['value' => 'id'], ['value' => '_eca_token']],
-        ],
-        'required' => [
-          ':input[name="from"]' => ['value' => 'id'],
-        ],
-      ],
     ];
     $form['revision_id'] = [
       '#type' => 'textfield',
@@ -182,14 +166,6 @@ class EntityLoader {
       '#default_value' => $plugin_configuration['properties'],
       '#description' => $this->t('A key-value list of raw field values of the entity to load. This will only be used when loading by properties is selected above. Supports YAML format. Example:<em><br/>field_mynumber: 1</em>. When using tokens and YAML altogether, make sure that tokens are wrapped as a string. Example: <em>title: "[node:title]"</em>'),
       '#eca_token_replacement' => TRUE,
-      '#states' => [
-        'visible' => [
-          ':input[name="from"]' => [['value' => 'properties'], ['value' => '_eca_token']],
-        ],
-        'required' => [
-          ':input[name="from"]' => ['value' => 'properties'],
-        ],
-      ],
     ];
     $form['langcode'] = [
       '#type' => 'select',
@@ -345,7 +321,6 @@ class EntityLoader {
           if (is_array($properties) && !empty($properties)) {
             $storage = $this->entityTypeManager->getStorage($entity_type);
             $query = $storage->getQuery();
-            // @phpstan-ignore-next-line
             $query->accessCheck(FALSE);
             foreach ($properties as $name => $value) {
               // Cast scalars to array so we can consistently use an IN

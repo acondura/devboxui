@@ -15,11 +15,8 @@ use Drupal\eca\Plugin\ECA\Condition\ConditionInterface;
 use Drupal\eca\Plugin\ECA\Event\EventInterface;
 use Drupal\eca\Service\Actions;
 use Drupal\eca\Service\Conditions;
-use Drupal\eca\Service\Events;
-use Drupal\modeler_api\Api;
-use Drupal\modeler_api\ExportRecipe;
-use Drupal\modeler_api\Plugin\modeler_api_model_owner\ModelOwnerInterface;
-use Drupal\modeler_api\Plugin\ModelOwnerPluginManager;
+use Drupal\eca\Service\ExportRecipe;
+use Drupal\eca\Service\Modellers;
 use Drush\Attributes\Command;
 use Drush\Attributes\Usage;
 use Drush\Commands\DrushCommands;
@@ -71,11 +68,11 @@ final class DocsCommands extends DrushCommands {
   protected Conditions $conditionServices;
 
   /**
-   * The ECA events services.
+   * ECA Modeller service.
    *
-   * @var \Drupal\eca\Service\Events
+   * @var \Drupal\eca\Service\Modellers
    */
-  protected Events $eventsServices;
+  protected Modellers $modellerServices;
 
   /**
    * File system service.
@@ -120,25 +117,11 @@ final class DocsCommands extends DrushCommands {
   protected TwigEnvironment $twigEnvironment;
 
   /**
-   * The modeler API service.
+   * The export as recipe service.
    *
-   * @var \Drupal\modeler_api\Api
-   */
-  protected Api $modelerApi;
-
-  /**
-   * The export recipe service.
-   *
-   * @var \Drupal\modeler_api\ExportRecipe
+   * @var \Drupal\eca\Service\ExportRecipe
    */
   protected ExportRecipe $exportRecipe;
-
-  /**
-   * The model owner plugin manager.
-   *
-   * @var \Drupal\modeler_api\Plugin\modeler_api_model_owner\ModelOwnerInterface
-   */
-  private ModelOwnerInterface $owner;
 
   /**
    * DocsCommands constructor.
@@ -149,39 +132,30 @@ final class DocsCommands extends DrushCommands {
    *   The ECA action services.
    * @param \Drupal\eca\Service\Conditions $conditionServices
    *   The ECA condition services.
-   * @param \Drupal\eca\Service\Events $eventsServices
-   *   The ECA events services.
+   * @param \Drupal\eca\Service\Modellers $modellerServices
+   *   The ECA modeller services.
    * @param \Drupal\Core\File\FileSystemInterface $fileSystem
    *   The file system service.
    * @param \Drupal\Core\Extension\ModuleHandlerInterface $moduleHandler
    *   The module handler service.
    * @param \Drupal\Core\Extension\ModuleExtensionList $moduleExtensionList
    *   The module extension list service.
-   * @param \Drupal\modeler_api\Api $modelerApi
-   *   The modeler API service.
-   * @param \Drupal\modeler_api\ExportRecipe $exportRecipe
-   *   The export recipe service.
-   * @param \Drupal\modeler_api\Plugin\ModelOwnerPluginManager $modelOwnerPluginManager
-   *   The model owner plugin manager.
+   * @param \Drupal\eca\Service\ExportRecipe $exportRecipe
+   *   The export as recipe service.
    */
-  public function __construct(EntityTypeManagerInterface $entityTypeManager, Actions $actionServices, Conditions $conditionServices, Events $eventsServices, FileSystemInterface $fileSystem, ModuleHandlerInterface $moduleHandler, ModuleExtensionList $moduleExtensionList, Api $modelerApi, ExportRecipe $exportRecipe, ModelOwnerPluginManager $modelOwnerPluginManager) {
+  public function __construct(EntityTypeManagerInterface $entityTypeManager, Actions $actionServices, Conditions $conditionServices, Modellers $modellerServices, FileSystemInterface $fileSystem, ModuleHandlerInterface $moduleHandler, ModuleExtensionList $moduleExtensionList, ExportRecipe $exportRecipe) {
     parent::__construct();
     $this->entityTypeManager = $entityTypeManager;
     $this->actionServices = $actionServices;
     $this->conditionServices = $conditionServices;
-    $this->eventsServices = $eventsServices;
+    $this->modellerServices = $modellerServices;
     $this->fileSystem = $fileSystem;
     $this->moduleHandler = $moduleHandler;
     $this->twigLoader = new TwigLoader();
     $this->twigEnvironment = new TwigEnvironment($this->twigLoader);
     $this->moduleExtensionList = $moduleExtensionList;
     $this->moduleExtensions = $moduleExtensionList->getList();
-    $this->modelerApi = $modelerApi;
     $this->exportRecipe = $exportRecipe;
-    $owner = $modelOwnerPluginManager->createInstance('eca');
-    if ($owner instanceof ModelOwnerInterface) {
-      $this->owner = $owner;
-    }
   }
 
   /**
@@ -198,13 +172,11 @@ final class DocsCommands extends DrushCommands {
       $container->get('entity_type.manager'),
       $container->get('eca.service.action'),
       $container->get('eca.service.condition'),
-      $container->get('eca.service.event'),
+      $container->get('eca.service.modeller'),
       $container->get('file_system'),
       $container->get('module_handler'),
       $container->get('extension.list.module'),
-      $container->get('modeler_api.service'),
-      $container->get('modeler_api.export.recipe'),
-      $container->get('plugin.manager.modeler_api.model_owner'),
+      $container->get('eca.export.recipe'),
     );
   }
 
@@ -218,7 +190,7 @@ final class DocsCommands extends DrushCommands {
     @$this->fileSystem->mkdir('../mkdocs/include/plugins', NULL, TRUE);
     $this->toc['0-ECA']['0-placeholder'] = 'plugins/eca/index.md';
 
-    foreach ($this->eventsServices->events() as $event) {
+    foreach ($this->modellerServices->events() as $event) {
       $this->pluginDoc($event);
     }
     foreach ($this->conditionServices->conditions() as $condition) {
@@ -244,8 +216,7 @@ final class DocsCommands extends DrushCommands {
       ->getStorage('eca')
       ->loadMultiple() as $eca) {
       $this->modelDoc($eca);
-      $owner = $this->modelerApi->findOwner($eca);
-      $this->exportRecipe->doExport($owner, $eca, $this->exportRecipe->defaultName($eca), ExportRecipe::DEFAULT_NAMESPACE, '../recipes/' . $eca->id());
+      $this->exportRecipe->doExport($eca, $this->exportRecipe->defaultName($eca), ExportRecipe::DEFAULT_NAMESPACE, '../recipes/' . $eca->id());
     }
     $this->updateToc('library');
   }
@@ -462,11 +433,12 @@ final class DocsCommands extends DrushCommands {
    *   The ECA config entity for which documentation should be created.
    */
   private function modelDoc(Eca $eca): void {
-    $modeler = $this->modelerApi->findOwner($eca);
-    if ($modeler === NULL) {
+    $model = $eca->getModel();
+    $modeller = $eca->getModeller();
+    if ($modeller === NULL) {
       return;
     }
-    $tags = $modeler->getTags($eca);
+    $tags = $model->getTags();
     if (empty($tags) || (count($tags) === 1 && ($tags[0] === 'untagged' || $tags[0] === ''))) {
       // Do not export models without at least one tag.
       return;
@@ -477,14 +449,14 @@ final class DocsCommands extends DrushCommands {
       'id' => str_replace([':', ' '], '_', mb_strtolower($eca->label())),
       'label' => $eca->label(),
       'version' => $eca->get('version'),
-      'changelog' => $modeler->getChangelog($eca),
+      'changelog' => $modeller->getChangelog(),
       'main_tag' => $tags[0],
       'tags' => $tags,
-      'documentation' => $modeler->getDocumentation($eca),
+      'documentation' => $model->getDocumentation(),
       'events' => [],
       'conditions' => [],
       'actions' => [],
-      'model_filename' => $modeler->getPluginId() . '-' . $eca->id(),
+      'model_filename' => $modeller->getPluginId() . '-' . $eca->id(),
       'library_path' => 'library/' . $tags[0],
       'namespace' => ExportRecipe::DEFAULT_NAMESPACE,
     ];
@@ -527,10 +499,10 @@ final class DocsCommands extends DrushCommands {
     @$this->fileSystem->mkdir('../mkdocs/docs/' . $values['library_path'] . '/' . $values['id'], NULL, TRUE);
 
     $archiveFileName = '../mkdocs/docs/' . $values['library_path'] . '/' . $values['id'] . '/' . $values['model_filename'] . '.tar.gz';
-    $values['dependencies'] = $this->modelerApi->exportArchive($this->owner, $eca, $archiveFileName);
+    $values['dependencies'] = $this->modellerServices->exportArchive($eca, $archiveFileName);
 
     file_put_contents('../mkdocs/docs/' . $values['library_path'] . '/' . $values['id'] . '.md', $this->render(__DIR__ . '/../../../templates/docs/library.md.twig', $values));
-    file_put_contents('../mkdocs/docs/' . $values['library_path'] . '/' . $values['id'] . '/' . $values['model_filename'] . '.xml', $modeler->getModeldata($eca));
+    file_put_contents('../mkdocs/docs/' . $values['library_path'] . '/' . $values['id'] . '/' . $values['model_filename'] . '.xml', $model->getModeldata());
 
     $this->toc[$values['main_tag']][$values['label']] = $values['library_path'] . '/' . $values['id'] . '.md';
   }

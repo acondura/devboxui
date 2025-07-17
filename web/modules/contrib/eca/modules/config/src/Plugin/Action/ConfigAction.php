@@ -4,12 +4,9 @@ namespace Drupal\eca_config\Plugin\Action;
 
 use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Access\AccessResultInterface;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Config\Action\ConfigActionManager;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\eca\Service\YamlParser;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -17,15 +14,14 @@ use Symfony\Component\Yaml\Exception\ParseException;
 
 /**
  * Action to read configuration.
+ *
+ * @Action(
+ *   id = "eca_config_action",
+ *   label = @Translation("Config Action"),
+ *   description = @Translation("Execute a Drupal Core ConfigAction."),
+ *   eca_version_introduced = "3.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_config_action',
-  label: new TranslatableMarkup('Config Action'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Execute a Drupal Core ConfigAction.'),
-  version_introduced: '3.0.0',
-)]
 class ConfigAction extends ConfigurableActionBase {
 
   /**

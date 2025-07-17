@@ -2,23 +2,19 @@
 
 namespace Drupal\eca_endpoint\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Ajax\AnnounceCommand;
 use Drupal\Core\Ajax\CommandInterface;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Add an announcement to the ajax response.
+ *
+ * @Action(
+ *   id = "eca_endpoint_set_ajax_response_announce",
+ *   label = @Translation("Ajax Response: set announcement"),
+ *   eca_version_introduced = "2.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_endpoint_set_ajax_response_announce',
-  label: new TranslatableMarkup('Ajax Response: set announcement'),
-)]
-#[EcaAction(
-  version_introduced: '2.0.0',
-)]
 class SetAjaxResponseAnnounceCommand extends ResponseAjaxCommandBase {
 
   /**

@@ -2,25 +2,21 @@
 
 namespace Drupal\eca_render\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Cache\Cache;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Event\RenderEventInterface;
 use Drupal\eca\Plugin\ECA\PluginFormTrait;
 
 /**
  * Add cacheability metadata to a render array.
+ *
+ * @Action(
+ *   id = "eca_render_cacheability",
+ *   label = @Translation("Render: cacheability"),
+ *   description = @Translation("Add cacheability metadata to a render array. Only works when reacting upon a rendering event, such as ""Build form"" or ""Build ECA Block""."),
+ *   eca_version_introduced = "1.1.0"
+ * )
  */
-#[Action(
-  id: 'eca_render_cacheability',
-  label: new TranslatableMarkup('Render: cacheability'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Add cacheability metadata to a render array. Only works when reacting upon a rendering event, such as "Build form" or "Build ECA Block".'),
-  version_introduced: '1.1.0',
-)]
 class Cacheability extends RenderActionBase {
 
   use PluginFormTrait;

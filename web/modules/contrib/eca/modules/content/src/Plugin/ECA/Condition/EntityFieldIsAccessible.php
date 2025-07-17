@@ -4,27 +4,22 @@ namespace Drupal\eca_content\Plugin\ECA\Condition;
 
 use Drupal\Core\Entity\FieldableEntityInterface;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\Plugin\Context\ContextDefinition;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaCondition;
 use Drupal\eca\Plugin\ECA\Condition\ConditionBase;
 use Drupal\eca\Plugin\ECA\PluginFormTrait;
 
 /**
  * Plugin implementation of the ECA condition for entity field is accessible.
+ *
+ * @EcaCondition(
+ *   id = "eca_entity_field_is_accessible",
+ *   label = @Translation("Entity: field is accessible"),
+ *   description = @Translation("Evaluates whether the current user has operational access on an entity field."),
+ *   eca_version_introduced = "1.0.0",
+ *   context_definitions = {
+ *     "entity" = @ContextDefinition("entity", label = @Translation("Entity"))
+ *   }
+ * )
  */
-#[EcaCondition(
-  id: 'eca_entity_field_is_accessible',
-  label: new TranslatableMarkup('Entity: field is accessible'),
-  context_definitions: [
-    'entity' => new ContextDefinition(
-      data_type: 'entity',
-      label: new TranslatableMarkup('Entity'),
-    ),
-  ],
-  description: new TranslatableMarkup('Evaluates whether the current user has operational access on an entity field.'),
-  version_introduced: '1.0.0',
-)]
 class EntityFieldIsAccessible extends ConditionBase {
 
   use PluginFormTrait;

@@ -1,0 +1,196 @@
+uuid: cd15aaa7-da67-409e-88c9-8522dc0c7038
+langcode: en
+status: true
+dependencies:
+  config:
+    - eca.eca.process_hk9m4jk
+id: process_hk9m4jk
+label: 'On user creation, create SSH keys & disable editing them'
+tags:
+  - untagged
+documentation: ''
+filename: ''
+modeldata: |
+  <?xml version="1.0" encoding="UTF-8"?>
+  <bpmn2:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bpmn2="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:qa="http://some-company/schema/bpmn/qa" id="sample-diagram" targetNamespace="http://bpmn.io/schema/bpmn" xsi:schemaLocation="http://www.omg.org/spec/BPMN/20100524/MODEL BPMN20.xsd">
+    <bpmn2:process id="Process_hK9m4JK" name="On user creation, create SSH keys &#38; disable editing them" isExecutable="true">
+      <bpmn2:startEvent id="Event_0265sth" name="User created" camunda:modelerTemplate="org.drupal.event.content_entity:insert">
+        <bpmn2:extensionElements>
+          <camunda:properties>
+            <camunda:property name="pluginid" value="content_entity:insert" />
+          </camunda:properties>
+          <camunda:field name="type">
+            <camunda:string>user _all</camunda:string>
+          </camunda:field>
+        </bpmn2:extensionElements>
+        <bpmn2:outgoing>Flow_0x78fpz</bpmn2:outgoing>
+      </bpmn2:startEvent>
+      <bpmn2:task id="Activity_0xqm9kf" name="Create SSH keys" camunda:modelerTemplate="org.drupal.action.devboxui_save_user_ssh_keys">
+        <bpmn2:extensionElements>
+          <camunda:properties>
+            <camunda:property name="pluginid" value="devboxui_save_user_ssh_keys" />
+          </camunda:properties>
+          <camunda:field name="object">
+            <camunda:string>user</camunda:string>
+          </camunda:field>
+        </bpmn2:extensionElements>
+        <bpmn2:incoming>Flow_0x78fpz</bpmn2:incoming>
+      </bpmn2:task>
+      <bpmn2:sequenceFlow id="Flow_0x78fpz" sourceRef="Event_0265sth" targetRef="Activity_0xqm9kf" />
+      <bpmn2:startEvent id="Event_0xdzqub" name="Use edit form loaded" camunda:modelerTemplate="org.drupal.event.form:form_build">
+        <bpmn2:extensionElements>
+          <camunda:properties>
+            <camunda:property name="pluginid" value="form:form_build" />
+          </camunda:properties>
+          <camunda:field name="form_id">
+            <camunda:string></camunda:string>
+          </camunda:field>
+          <camunda:field name="entity_type_id">
+            <camunda:string>user</camunda:string>
+          </camunda:field>
+          <camunda:field name="bundle">
+            <camunda:string></camunda:string>
+          </camunda:field>
+          <camunda:field name="operation">
+            <camunda:string></camunda:string>
+          </camunda:field>
+        </bpmn2:extensionElements>
+        <bpmn2:outgoing>Flow_0b7j5hl</bpmn2:outgoing>
+      </bpmn2:startEvent>
+      <bpmn2:task id="Activity_0u6dkvn" name="Disable SSH private key field" camunda:modelerTemplate="org.drupal.action.eca_form_field_disable">
+        <bpmn2:extensionElements>
+          <camunda:properties>
+            <camunda:property name="pluginid" value="eca_form_field_disable" />
+          </camunda:properties>
+          <camunda:field name="field_name">
+            <camunda:string>field_ssh_private_key</camunda:string>
+          </camunda:field>
+          <camunda:field name="flag">
+            <camunda:string>yes</camunda:string>
+          </camunda:field>
+        </bpmn2:extensionElements>
+        <bpmn2:incoming>Flow_0b7j5hl</bpmn2:incoming>
+        <bpmn2:outgoing>Flow_1lkhoge</bpmn2:outgoing>
+      </bpmn2:task>
+      <bpmn2:sequenceFlow id="Flow_0b7j5hl" sourceRef="Event_0xdzqub" targetRef="Activity_0u6dkvn" />
+      <bpmn2:task id="Activity_0g0jzy1" name="Disable SSH public key field" camunda:modelerTemplate="org.drupal.action.eca_form_field_disable">
+        <bpmn2:extensionElements>
+          <camunda:properties>
+            <camunda:property name="pluginid" value="eca_form_field_disable" />
+          </camunda:properties>
+          <camunda:field name="field_name">
+            <camunda:string>field_ssh_public_key</camunda:string>
+          </camunda:field>
+          <camunda:field name="flag">
+            <camunda:string>yes</camunda:string>
+          </camunda:field>
+        </bpmn2:extensionElements>
+        <bpmn2:incoming>Flow_1lkhoge</bpmn2:incoming>
+      </bpmn2:task>
+      <bpmn2:sequenceFlow id="Flow_1lkhoge" sourceRef="Activity_0u6dkvn" targetRef="Activity_0g0jzy1" />
+      <bpmn2:startEvent id="Event_1cf31fg" name="User updated" camunda:modelerTemplate="org.drupal.event.form:form_submit">
+        <bpmn2:extensionElements>
+          <camunda:properties>
+            <camunda:property name="pluginid" value="form:form_submit" />
+          </camunda:properties>
+          <camunda:field name="form_id">
+            <camunda:string></camunda:string>
+          </camunda:field>
+          <camunda:field name="entity_type_id">
+            <camunda:string>user</camunda:string>
+          </camunda:field>
+          <camunda:field name="bundle">
+            <camunda:string></camunda:string>
+          </camunda:field>
+          <camunda:field name="operation">
+            <camunda:string></camunda:string>
+          </camunda:field>
+        </bpmn2:extensionElements>
+        <bpmn2:outgoing>Flow_0dpt1zk</bpmn2:outgoing>
+      </bpmn2:startEvent>
+      <bpmn2:task id="Activity_0sv4tg6" name="Create SSH keys" camunda:modelerTemplate="org.drupal.action.devboxui_save_user_ssh_keys">
+        <bpmn2:extensionElements>
+          <camunda:properties>
+            <camunda:property name="pluginid" value="devboxui_save_user_ssh_keys" />
+          </camunda:properties>
+          <camunda:field name="object">
+            <camunda:string>user</camunda:string>
+          </camunda:field>
+        </bpmn2:extensionElements>
+        <bpmn2:incoming>Flow_0dpt1zk</bpmn2:incoming>
+      </bpmn2:task>
+      <bpmn2:sequenceFlow id="Flow_0dpt1zk" name="SSH private key is empty" camunda:modelerTemplate="org.drupal.condition.eca_entity_field_value_empty" sourceRef="Event_1cf31fg" targetRef="Activity_0sv4tg6">
+        <bpmn2:extensionElements>
+          <camunda:properties>
+            <camunda:property name="pluginid" value="eca_entity_field_value_empty" />
+          </camunda:properties>
+          <camunda:field name="field_name">
+            <camunda:string>field_ssh_private_key</camunda:string>
+          </camunda:field>
+          <camunda:field name="negate">
+            <camunda:string>no</camunda:string>
+          </camunda:field>
+          <camunda:field name="entity">
+            <camunda:string>user</camunda:string>
+          </camunda:field>
+        </bpmn2:extensionElements>
+      </bpmn2:sequenceFlow>
+    </bpmn2:process>
+    <bpmndi:BPMNDiagram id="sid-12fb6dfc-ad6f-4796-9039-86612b17dbf8">
+      <bpmndi:BPMNPlane id="sid-411adb46-6318-4154-8104-d8c524a060d1" bpmnElement="Process_hK9m4JK">
+        <bpmndi:BPMNShape id="Event_0265sth_di" bpmnElement="Event_0265sth">
+          <dc:Bounds x="212" y="92" width="36" height="36" />
+          <bpmndi:BPMNLabel>
+            <dc:Bounds x="199" y="135" width="63" height="14" />
+          </bpmndi:BPMNLabel>
+        </bpmndi:BPMNShape>
+        <bpmndi:BPMNShape id="Activity_0xqm9kf_di" bpmnElement="Activity_0xqm9kf">
+          <dc:Bounds x="300" y="70" width="100" height="80" />
+          <bpmndi:BPMNLabel />
+        </bpmndi:BPMNShape>
+        <bpmndi:BPMNShape id="Event_0xdzqub_di" bpmnElement="Event_0xdzqub">
+          <dc:Bounds x="212" y="212" width="36" height="36" />
+          <bpmndi:BPMNLabel>
+            <dc:Bounds x="197" y="255" width="66" height="27" />
+          </bpmndi:BPMNLabel>
+        </bpmndi:BPMNShape>
+        <bpmndi:BPMNShape id="Activity_0u6dkvn_di" bpmnElement="Activity_0u6dkvn">
+          <dc:Bounds x="300" y="190" width="100" height="80" />
+          <bpmndi:BPMNLabel />
+        </bpmndi:BPMNShape>
+        <bpmndi:BPMNShape id="Activity_0g0jzy1_di" bpmnElement="Activity_0g0jzy1">
+          <dc:Bounds x="460" y="190" width="100" height="80" />
+          <bpmndi:BPMNLabel />
+        </bpmndi:BPMNShape>
+        <bpmndi:BPMNShape id="Event_1cf31fg_di" bpmnElement="Event_1cf31fg">
+          <dc:Bounds x="212" y="342" width="36" height="36" />
+          <bpmndi:BPMNLabel>
+            <dc:Bounds x="197" y="385" width="67" height="14" />
+          </bpmndi:BPMNLabel>
+        </bpmndi:BPMNShape>
+        <bpmndi:BPMNShape id="BPMNShape_0aynebb" bpmnElement="Activity_0sv4tg6">
+          <dc:Bounds x="390" y="320" width="100" height="80" />
+          <bpmndi:BPMNLabel />
+        </bpmndi:BPMNShape>
+        <bpmndi:BPMNEdge id="Flow_0x78fpz_di" bpmnElement="Flow_0x78fpz">
+          <di:waypoint x="248" y="110" />
+          <di:waypoint x="300" y="110" />
+        </bpmndi:BPMNEdge>
+        <bpmndi:BPMNEdge id="Flow_0b7j5hl_di" bpmnElement="Flow_0b7j5hl">
+          <di:waypoint x="248" y="230" />
+          <di:waypoint x="300" y="230" />
+        </bpmndi:BPMNEdge>
+        <bpmndi:BPMNEdge id="Flow_1lkhoge_di" bpmnElement="Flow_1lkhoge">
+          <di:waypoint x="400" y="230" />
+          <di:waypoint x="460" y="230" />
+        </bpmndi:BPMNEdge>
+        <bpmndi:BPMNEdge id="Flow_0dpt1zk_di" bpmnElement="Flow_0dpt1zk">
+          <di:waypoint x="248" y="360" />
+          <di:waypoint x="390" y="360" />
+          <bpmndi:BPMNLabel>
+            <dc:Bounds x="284" y="326" width="79" height="27" />
+          </bpmndi:BPMNLabel>
+        </bpmndi:BPMNEdge>
+      </bpmndi:BPMNPlane>
+    </bpmndi:BPMNDiagram>
+  </bpmn2:definitions>

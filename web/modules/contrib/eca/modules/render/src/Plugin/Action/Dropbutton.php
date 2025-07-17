@@ -2,13 +2,10 @@
 
 namespace Drupal\eca_render\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\TypedData\TypedDataInterface;
 use Drupal\Core\Url;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\DataType\DataTransferObject;
 use Drupal\eca\Service\YamlParser;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -16,15 +13,14 @@ use Symfony\Component\Yaml\Exception\ParseException;
 
 /**
  * Build a dropbutton element.
+ *
+ * @Action(
+ *   id = "eca_render_dropbutton",
+ *   label = @Translation("Render: dropbutton"),
+ *   description = @Translation("Build a HTML dropbutton element."),
+ *   eca_version_introduced = "1.1.0"
+ * )
  */
-#[Action(
-  id: 'eca_render_dropbutton',
-  label: new TranslatableMarkup('Render: dropbutton'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Build a HTML dropbutton element.'),
-  version_introduced: '1.1.0',
-)]
 class Dropbutton extends RenderElementActionBase {
 
   /**
@@ -71,36 +67,38 @@ class Dropbutton extends RenderElementActionBase {
     if (!is_array($links)) {
       $links = [$links];
     }
-    if (!isset($links[0])) {
-      $links = [$links];
-    }
-    foreach ($links as $i => &$link) {
-      if ($link instanceof EntityInterface) {
-        $link = [
-          'title' => $link->label(),
-          'url' => $link->hasLinkTemplate('canonical') ? $link->toUrl('canonical') : NULL,
-        ];
+    if (is_array($links)) {
+      if (!isset($links[0])) {
+        $links = [$links];
       }
-      if (isset($link['#type'], $link['#title'], $link['#url'])) {
-        $link = [
-          'title' => $link['#title'],
-          'url' => $link['#url'],
-        ];
-      }
-      if (isset($link['url']) && is_string($link['url'])) {
-        try {
-          $link['url'] = Url::fromUserInput($link['url']);
+      foreach ($links as $i => &$link) {
+        if ($link instanceof EntityInterface) {
+          $link = [
+            'title' => $link->label(),
+            'url' => $link->hasLinkTemplate('canonical') ? $link->toUrl('canonical') : NULL,
+          ];
         }
-        catch (\Exception $e) {
-          $link['url'] = Url::fromUri($link['url']);
+        if (isset($link['#type'], $link['#title'], $link['#url'])) {
+          $link = [
+            'title' => $link['#title'],
+            'url' => $link['#url'],
+          ];
         }
-      }
+        if (isset($link['url']) && is_string($link['url'])) {
+          try {
+            $link['url'] = Url::fromUserInput($link['url']);
+          }
+          catch (\Exception $e) {
+            $link['url'] = Url::fromUri($link['url']);
+          }
+        }
 
-      if (!isset($link['url']) || !($link['url'] instanceof Url)) {
-        unset($links[$i]);
+        if (!isset($link['url']) || !($link['url'] instanceof Url)) {
+          unset($links[$i]);
+        }
       }
+      unset($link);
     }
-    unset($link);
 
     $build = [
       '#type' => 'dropbutton',

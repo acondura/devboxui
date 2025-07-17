@@ -3,22 +3,18 @@
 namespace Drupal\eca_render\Plugin\Action;
 
 use Drupal\Component\Utility\Html;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\ECA\PluginFormTrait;
 
 /**
  * Render file contents.
+ *
+ * @Action(
+ *   id = "eca_render_file_contents",
+ *   label = @Translation("Render: file contents"),
+ *   eca_version_introduced = "1.1.0"
+ * )
  */
-#[Action(
-  id: 'eca_render_file_contents',
-  label: new TranslatableMarkup('Render: file contents'),
-)]
-#[EcaAction(
-  version_introduced: '1.1.0',
-)]
 class GetFileContents extends RenderElementActionBase {
 
   use PluginFormTrait;

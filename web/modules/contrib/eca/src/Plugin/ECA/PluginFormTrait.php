@@ -90,8 +90,7 @@ trait PluginFormTrait {
     if ($containsTokenReplacement) {
       $form['eca_token_info'] = [
         '#type' => 'markup',
-        '#markup' => $this->t('This component supports the usage of tokens. Please refer to the token chapter in the ECA Guide, and if you install and enable the token module, you will find a link to the token browser right below the property panel, which shows you all available tokens.'),
-        '#weight' => 9999,
+        '#markup' => $this->t('This template supports the usage of tokens. Please refer to the token chapter in the ECA Guide, and if you install and enable the token module, you will find a link to the token browser right below the property panel, which shows you all available tokens.'),
       ];
     }
     return $form;

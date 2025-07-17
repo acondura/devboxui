@@ -2,22 +2,18 @@
 
 namespace Drupal\eca_render\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Build a details element.
+ *
+ * @Action(
+ *   id = "eca_render_details",
+ *   label = @Translation("Render: HTML details"),
+ *   description = @Translation("Build a HTML details element."),
+ *   eca_version_introduced = "1.1.0"
+ * )
  */
-#[Action(
-  id: 'eca_render_details',
-  label: new TranslatableMarkup('Render: HTML details'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Build a HTML details element.'),
-  version_introduced: '1.1.0',
-)]
 class Details extends RenderElementActionBase {
 
   /**

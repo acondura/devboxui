@@ -4,7 +4,6 @@ namespace Drupal\eca_user\Plugin\ECA\Event;
 
 use Drupal\Core\Session\AccountEvents;
 use Drupal\Core\Session\AccountSetEvent;
-use Drupal\eca\Attribute\EcaEvent;
 use Drupal\eca\Attribute\Token;
 use Drupal\eca\Event\Tag;
 use Drupal\eca\Plugin\ECA\Event\EventBase;
@@ -18,12 +17,13 @@ use Drupal\user\Event\UserFloodEvent;
 
 /**
  * Plugin implementation of the ECA Events for users.
+ *
+ * @EcaEvent(
+ *   id = "user",
+ *   deriver = "Drupal\eca_user\Plugin\ECA\Event\UserEventDeriver",
+ *   eca_version_introduced = "1.0.0"
+ * )
  */
-#[EcaEvent(
-  id: 'user',
-  deriver: 'Drupal\eca_user\Plugin\ECA\Event\UserEventDeriver',
-  version_introduced: '1.0.0',
-)]
 class UserEvent extends EventBase {
 
   /**

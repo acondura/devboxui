@@ -18,14 +18,8 @@ class TestSiteInstallTestScript implements TestSetupInterface {
       'bpmn_io',
       'bpmn_io_test',
       'eca',
-      'eca_base',
-      'eca_content',
       'eca_ui',
-      'eca_user',
-      'eca_views',
       'navigation',
-      'user',
-      'views',
     ]);
 
     $theme_installer = \Drupal::service('theme_installer');

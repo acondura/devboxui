@@ -3,28 +3,23 @@
 namespace Drupal\eca_content\Plugin\ECA\Condition;
 
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\Plugin\Context\ContextDefinition;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaCondition;
 use Drupal\eca\Plugin\ECA\Condition\ConditionBase;
 use Drupal\eca_content\Service\EntityLoader;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Plugin implementation of the ECA condition for entity exists.
+ *
+ * @EcaCondition(
+ *   id = "eca_entity_exists",
+ *   label = @Translation("Entity: exists"),
+ *   description = @Translation("Performs a lookup whether an entity exists and is accessible."),
+ *   eca_version_introduced = "1.0.0",
+ *   context_definitions = {
+ *     "entity" = @ContextDefinition("entity", label = @Translation("Entity"))
+ *   }
+ * )
  */
-#[EcaCondition(
-  id: 'eca_entity_exists',
-  label: new TranslatableMarkup('Entity: exists'),
-  context_definitions: [
-    'entity' => new ContextDefinition(
-      data_type: 'entity',
-      label: new TranslatableMarkup('Entity'),
-    ),
-  ],
-  description: new TranslatableMarkup('Performs a lookup whether an entity exists and is accessible.'),
-  version_introduced: '1.0.0',
-)]
 class EntityExists extends ConditionBase {
 
   /**

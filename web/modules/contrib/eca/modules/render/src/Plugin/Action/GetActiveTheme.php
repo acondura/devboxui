@@ -2,22 +2,18 @@
 
 namespace Drupal\eca_render\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Get the active theme.
+ *
+ * @Action(
+ *   id = "eca_get_active_theme",
+ *   label = @Translation("Get active theme"),
+ *   description = @Translation("Get the currently active theme and store the value as a token."),
+ *   eca_version_introduced = "1.1.0"
+ * )
  */
-#[Action(
-  id: 'eca_get_active_theme',
-  label: new TranslatableMarkup('Get active theme'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Get the currently active theme and store the value as a token.'),
-  version_introduced: '1.1.0',
-)]
 class GetActiveTheme extends ActiveThemeActionBase {
 
   /**

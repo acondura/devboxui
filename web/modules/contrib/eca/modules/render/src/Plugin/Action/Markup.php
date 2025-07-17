@@ -2,27 +2,23 @@
 
 namespace Drupal\eca_render\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Render\BubbleableMetadata;
 use Drupal\Core\Render\Markup as RenderMarkup;
 use Drupal\Core\Render\RenderContext;
 use Drupal\Core\Render\RendererInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\Yaml\Exception\ParseException;
 
 /**
  * Renders markup using a specified render array.
+ *
+ * @Action(
+ *   id = "eca_render_markup",
+ *   label = @Translation("Render: markup"),
+ *   description = @Translation("Renders markup using a specified render array."),
+ *   eca_version_introduced = "1.1.0"
+ * )
  */
-#[Action(
-  id: 'eca_render_markup',
-  label: new TranslatableMarkup('Render: markup'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Renders markup using a specified render array.'),
-  version_introduced: '1.1.0',
-)]
 class Markup extends Build {
 
   /**

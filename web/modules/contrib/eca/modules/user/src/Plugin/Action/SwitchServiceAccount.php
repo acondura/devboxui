@@ -3,23 +3,19 @@
 namespace Drupal\eca_user\Plugin\Action;
 
 use Drupal\Component\Uuid\Uuid;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Switch current account to the service user.
+ *
+ * @Action(
+ *   id = "eca_switch_service_account",
+ *   label = @Translation("User: switch to service user"),
+ *   description = @Translation("Switch to the globally configured service account."),
+ *   eca_version_introduced = "2.1.3"
+ * )
  */
-#[Action(
-  id: 'eca_switch_service_account',
-  label: new TranslatableMarkup('User: switch to service user'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Switch to the globally configured service account.'),
-  version_introduced: '2.1.3',
-)]
 class SwitchServiceAccount extends SwitchAccount {
 
   /**

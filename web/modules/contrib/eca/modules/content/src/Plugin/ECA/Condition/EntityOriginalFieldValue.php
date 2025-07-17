@@ -3,29 +3,24 @@
 namespace Drupal\eca_content\Plugin\ECA\Condition;
 
 use Drupal\Core\Entity\EntityInterface;
-use Drupal\Core\Plugin\Context\ContextDefinition;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaCondition;
 use Drupal\eca\EntityOriginalTrait;
 
 /**
  * Class for the original field value.
  *
- * Plugin implementation of the ECA condition for an entity original
- * field value.
+ * <p>Plugin implementation of the ECA condition for an entity original
+ * field value.</p>
+ *
+ * @EcaCondition(
+ *   id = "eca_entity_original_field_value",
+ *   label = @Translation("Entity: original has field value"),
+ *   description = @Translation("Compares a field value of an entities <em>original</em>  by specific properties."),
+ *   eca_version_introduced = "1.0.0",
+ *   context_definitions = {
+ *     "entity" = @ContextDefinition("entity", label = @Translation("Entity"))
+ *   }
+ * )
  */
-#[EcaCondition(
-  id: 'eca_entity_original_field_value',
-  label: new TranslatableMarkup('Entity: original has field value'),
-  context_definitions: [
-    'entity' => new ContextDefinition(
-      data_type: 'entity',
-      label: new TranslatableMarkup('Entity'),
-    ),
-  ],
-  description: new TranslatableMarkup('Compares a field value of an entities <em>original</em>  by specific properties.'),
-  version_introduced: '1.0.0',
-)]
 class EntityOriginalFieldValue extends EntityFieldValue {
 
   use EntityOriginalTrait;

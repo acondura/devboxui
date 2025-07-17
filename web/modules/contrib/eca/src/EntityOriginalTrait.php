@@ -19,7 +19,11 @@ trait EntityOriginalTrait {
    *   The original unchanged entity or NULL, if that doesn't exist.
    */
   protected function getOriginal(EntityInterface $entity): ?EntityInterface {
-    return $entity->getOriginal();
+    if (method_exists($entity, 'getOriginal')) {
+      return $entity->getOriginal();
+    }
+    // @phpstan-ignore-next-line
+    return $entity->original;
   }
 
   /**
@@ -31,7 +35,13 @@ trait EntityOriginalTrait {
    *   The original.
    */
   protected function setOriginal(EntityInterface $entity, EntityInterface $original): void {
-    $entity->setOriginal($original);
+    if (method_exists($entity, 'setOriginal')) {
+      $entity->setOriginal($original);
+    }
+    else {
+      // @phpstan-ignore-next-line
+      $entity->original = $original;
+    }
   }
 
 }

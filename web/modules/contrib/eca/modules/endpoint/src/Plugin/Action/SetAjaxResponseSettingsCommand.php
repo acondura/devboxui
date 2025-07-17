@@ -2,26 +2,22 @@
 
 namespace Drupal\eca_endpoint\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Ajax\CommandInterface;
 use Drupal\Core\Ajax\SettingsCommand;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Service\YamlParser;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\Yaml\Exception\ParseException;
 
 /**
  * Add settings to the ajax response.
+ *
+ * @Action(
+ *   id = "eca_endpoint_set_ajax_response_settings",
+ *   label = @Translation("Ajax Response: settings"),
+ *   eca_version_introduced = "2.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_endpoint_set_ajax_response_settings',
-  label: new TranslatableMarkup('Ajax Response: settings'),
-)]
-#[EcaAction(
-  version_introduced: '2.0.0',
-)]
 class SetAjaxResponseSettingsCommand extends ResponseAjaxCommandBase {
 
   /**

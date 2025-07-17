@@ -4,11 +4,6 @@ namespace Drupal\eca\Event;
 
 /**
  * Base class for all HookHandlers of sub-modules.
- *
- * @deprecated in eca:3.0.0 and is removed from eca:3.1.0. Procedural hooks
- * should be converted into classes.
- *
- * @see https://www.drupal.org/project/eca/issues/3481999
  */
 abstract class BaseHookHandler {
 

@@ -2,24 +2,20 @@
 
 namespace Drupal\eca_endpoint\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Ajax\CommandInterface;
 use Drupal\Core\Ajax\OpenOffCanvasDialogCommand;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\ECA\PluginFormTrait;
 
 /**
  * Add open off-canvas dialog command to the ajax response.
+ *
+ * @Action(
+ *   id = "eca_endpoint_set_ajax_response_open_off_canvas_dialog",
+ *   label = @Translation("Ajax Response: open off-canvas dialog"),
+ *   eca_version_introduced = "2.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_endpoint_set_ajax_response_open_off_canvas_dialog',
-  label: new TranslatableMarkup('Ajax Response: open off-canvas dialog'),
-)]
-#[EcaAction(
-  version_introduced: '2.0.0',
-)]
 class SetAjaxResponseOpenOffCanvasDialogCommand extends SetAjaxResponseOpenModalDialogCommand {
 
   use PluginFormTrait;

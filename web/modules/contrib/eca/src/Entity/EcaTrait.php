@@ -10,7 +10,7 @@ use Drupal\Core\Messenger\MessengerInterface;
 use Drupal\eca\PluginManager\Action;
 use Drupal\eca\PluginManager\Condition;
 use Drupal\eca\PluginManager\Event;
-use Drupal\modeler_api\Plugin\ModelerPluginManager;
+use Drupal\eca\PluginManager\Modeller;
 use Drupal\eca\Service\Actions;
 use Drupal\eca\Service\Conditions;
 use Drupal\eca\Service\DependencyCalculation;
@@ -25,9 +25,9 @@ trait EcaTrait {
   /**
    * ECA modeller plugin manager.
    *
-   * @var \Drupal\modeler_api\Plugin\ModelerPluginManager|null
+   * @var \Drupal\eca\PluginManager\Modeller|null
    */
-  protected ?ModelerPluginManager $modellerPluginManager;
+  protected ?Modeller $modellerPluginManager;
 
   /**
    * ECA event plugin manager.
@@ -116,12 +116,12 @@ trait EcaTrait {
   /**
    * Initializes the modeller plugin manager.
    *
-   * @return \Drupal\modeler_api\Plugin\ModelerPluginManager
+   * @return \Drupal\eca\PluginManager\Modeller
    *   The modeller plugin manager.
    */
-  protected function modellerPluginManager(): ModelerPluginManager {
+  protected function modellerPluginManager(): Modeller {
     if (!isset($this->modellerPluginManager)) {
-      $this->modellerPluginManager = \Drupal::service('plugin.manager.modeler_api.modeler');
+      $this->modellerPluginManager = \Drupal::service('plugin.manager.eca.modeller');
     }
     return $this->modellerPluginManager;
   }
@@ -289,7 +289,6 @@ trait EcaTrait {
     // Need to manually load the action plugin manager, since it is an instance
     // provided by the decorator of that service, not by the service container.
     // @see https://www.drupal.org/project/eca/issues/3507815
-    // @phpstan-ignore-next-line
     if (property_exists($this, '_serviceIds') && isset($this->_serviceIds['actionPluginManager'])) {
       unset($this->_serviceIds['actionPluginManager']);
       $this->actionPluginManager();

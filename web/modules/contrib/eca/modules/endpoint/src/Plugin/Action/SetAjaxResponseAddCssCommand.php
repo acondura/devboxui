@@ -3,24 +3,20 @@
 namespace Drupal\eca_endpoint\Plugin\Action;
 
 use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Ajax\AddCssCommand;
 use Drupal\Core\Ajax\CommandInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Add CSS to the ajax response.
+ *
+ * @Action(
+ *   id = "eca_endpoint_set_ajax_response_add_css",
+ *   label = @Translation("Ajax Response: add css"),
+ *   eca_version_introduced = "2.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_endpoint_set_ajax_response_add_css',
-  label: new TranslatableMarkup('Ajax Response: add css'),
-)]
-#[EcaAction(
-  version_introduced: '2.0.0',
-)]
 class SetAjaxResponseAddCssCommand extends ResponseAjaxCommandBase {
 
   /**
@@ -28,7 +24,7 @@ class SetAjaxResponseAddCssCommand extends ResponseAjaxCommandBase {
    */
   public function access($object, ?AccountInterface $account = NULL, $return_as_object = FALSE) {
     $href = (string) $this->tokenService->replaceClear($this->configuration['href']);
-    if ($href === '') {
+    if (!is_string($href) || $href === '') {
       $result = AccessResult::forbidden();
     }
     else {

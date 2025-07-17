@@ -4,10 +4,10 @@ var path = require('path');
 
 module.exports = {
   mode: 'production',
-  entry: './src/bpmn-modeler.js',
+  entry: './src/bpmn-modeller.js',
   output: {
     path: path.resolve(__dirname, '../js'),
-    filename: 'bpmn-modeler.js'
+    filename: 'bpmn-modeller.js'
   },
   plugins: [
     new CopyPlugin({
@@ -16,8 +16,6 @@ module.exports = {
         { from: 'node_modules/@bpmn-io/properties-panel/dist/assets', to: '../css' },
         { from: 'node_modules/bpmn-js/dist/assets', to: '../css' },
         { from: 'node_modules/bpmn-js-element-templates/dist/assets', to: '../css' },
-        { from: 'node_modules/diagram-js-minimap/assets/diagram-js-minimap.css', to: '../css' },
-        { from: 'node_modules/bpmn-js-color-picker/colors/color-picker.css', to: '../css' },
       ]
     })
   ]

@@ -2,23 +2,19 @@
 
 namespace Drupal\eca_language\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca_language\Event\LanguageNegotiateEvent;
 
 /**
  * Get the currently used language code.
+ *
+ * @Action(
+ *   id = "eca_get_current_langcode",
+ *   label = @Translation("Language: get code"),
+ *   description = @Translation("Get the currently used or negotiated language code."),
+ *   eca_version_introduced = "2.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_get_current_langcode',
-  label: new TranslatableMarkup('Language: get code'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Get the currently used or negotiated language code.'),
-  version_introduced: '2.0.0',
-)]
 class GetCurrentLangcode extends LanguageActionBase {
 
   /**

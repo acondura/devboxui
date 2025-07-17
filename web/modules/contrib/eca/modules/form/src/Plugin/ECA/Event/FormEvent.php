@@ -5,9 +5,8 @@ namespace Drupal\eca_form\Plugin\ECA\Event;
 use Drupal\Core\Entity\EntityFormInterface;
 use Drupal\Core\Form\BaseFormIdInterface;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\eca\Attribute\EcaEvent;
 use Drupal\eca\Attribute\Token;
-use Drupal\eca\Entity\Objects\EcaEvent as EcaEventObject;
+use Drupal\eca\Entity\Objects\EcaEvent;
 use Drupal\eca\Event\Tag;
 use Drupal\eca\Plugin\ECA\Event\EventBase;
 use Drupal\eca\Token\TokenServices;
@@ -22,12 +21,13 @@ use Symfony\Contracts\EventDispatcher\Event;
 
 /**
  * Plugin implementation of the ECA Events for the form API.
+ *
+ * @EcaEvent(
+ *   id = "form",
+ *   deriver = "Drupal\eca_form\Plugin\ECA\Event\FormEventDeriver",
+ *   eca_version_introduced = "1.0.0"
+ * )
  */
-#[EcaEvent(
-  id: 'form',
-  deriver: 'Drupal\eca_form\Plugin\ECA\Event\FormEventDeriver',
-  version_introduced: '1.0.0',
-)]
 class FormEvent extends EventBase {
 
   /**
@@ -181,7 +181,7 @@ class FormEvent extends EventBase {
   /**
    * {@inheritdoc}
    */
-  public function generateWildcard(string $eca_config_id, EcaEventObject $ecaEvent): string {
+  public function generateWildcard(string $eca_config_id, EcaEvent $ecaEvent): string {
     $configuration = $ecaEvent->getConfiguration();
 
     $wildcard = '';

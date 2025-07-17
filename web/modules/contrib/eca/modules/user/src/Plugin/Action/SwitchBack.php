@@ -2,24 +2,20 @@
 
 namespace Drupal\eca_user\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ActionBase;
 use Drupal\eca_user\AccountSwitcher;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Switch back current account.
+ *
+ * @Action(
+ *   id = "eca_switch_back",
+ *   label = @Translation("User: switch back"),
+ *   description = @Translation("Switch to previous user account."),
+ *   eca_version_introduced = "2.1.4"
+ * )
  */
-#[Action(
-  id: 'eca_switch_back',
-  label: new TranslatableMarkup('User: switch back'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Switch to previous user account.'),
-  version_introduced: '2.1.4',
-)]
 class SwitchBack extends ActionBase {
 
   /**

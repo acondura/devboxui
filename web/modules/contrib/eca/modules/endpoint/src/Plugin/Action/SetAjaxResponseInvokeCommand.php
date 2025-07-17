@@ -2,26 +2,22 @@
 
 namespace Drupal\eca_endpoint\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Ajax\CommandInterface;
 use Drupal\Core\Ajax\InvokeCommand;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Service\YamlParser;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\Yaml\Exception\ParseException;
 
 /**
  * Add an invoke command to the ajax response.
+ *
+ * @Action(
+ *   id = "eca_endpoint_set_ajax_response_invoke",
+ *   label = @Translation("Ajax Response: invoke"),
+ *   eca_version_introduced = "2.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_endpoint_set_ajax_response_invoke',
-  label: new TranslatableMarkup('Ajax Response: invoke'),
-)]
-#[EcaAction(
-  version_introduced: '2.0.0',
-)]
 class SetAjaxResponseInvokeCommand extends ResponseAjaxCommandBase {
 
   /**

@@ -4,9 +4,8 @@ namespace Drupal\eca_access\Plugin\ECA\Event;
 
 use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\eca\Attribute\EcaEvent;
 use Drupal\eca\Attribute\Token;
-use Drupal\eca\Entity\Objects\EcaEvent as EcaEventObject;
+use Drupal\eca\Entity\Objects\EcaEvent;
 use Drupal\eca\Event\AccessEventInterface;
 use Drupal\eca\Event\Tag;
 use Drupal\eca\Plugin\ECA\Event\EventBase;
@@ -18,12 +17,13 @@ use Symfony\Contracts\EventDispatcher\Event;
 
 /**
  * Plugin implementation of ECA access events.
+ *
+ * @EcaEvent(
+ *   id = "access",
+ *   deriver = "Drupal\eca_access\Plugin\ECA\Event\AccessEventDeriver",
+ *   eca_version_introduced = "1.0.0"
+ * )
  */
-#[EcaEvent(
-  id: 'access',
-  deriver: 'Drupal\eca_access\Plugin\ECA\Event\AccessEventDeriver',
-  version_introduced: '1.0.0',
-)]
 class AccessEvent extends EventBase {
 
   /**
@@ -164,7 +164,7 @@ class AccessEvent extends EventBase {
   /**
    * {@inheritdoc}
    */
-  public function generateWildcard(string $eca_config_id, EcaEventObject $ecaEvent): string {
+  public function generateWildcard(string $eca_config_id, EcaEvent $ecaEvent): string {
     $configuration = $ecaEvent->getConfiguration();
     $is_create_event = $this->eventClass() === CreateAccess::class;
 
@@ -314,6 +314,7 @@ class AccessEvent extends EventBase {
     }
 
     // Initialize with a neutral result.
+    /** @var \Drupal\eca\Event\AccessEventInterface $event */
     $event->setAccessResult(AccessResult::neutral());
 
     return TRUE;

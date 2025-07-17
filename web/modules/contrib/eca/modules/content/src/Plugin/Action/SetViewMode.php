@@ -3,25 +3,21 @@
 namespace Drupal\eca_content\Plugin\Action;
 
 use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\eca_content\Event\ContentEntityViewModeAlter;
 
 /**
  * Flag the entity for creating a new revision.
+ *
+ * @Action(
+ *   id = "eca_set_view_mode",
+ *   label = @Translation("Entity: set view mode"),
+ *   description = @Translation("Changes the view mode of the entity. Only work after the event 'Alter entity view mode'."),
+ *   eca_version_introduced = "2.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_set_view_mode',
-  label: new TranslatableMarkup('Entity: set view mode'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Changes the view mode of the entity. Only work after the event "Alter entity view mode".'),
-  version_introduced: '2.0.0',
-)]
 class SetViewMode extends ConfigurableActionBase {
 
   /**

@@ -4,32 +4,27 @@ namespace Drupal\eca_content\Plugin\ECA\Condition;
 
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\Plugin\Context\ContextDefinition;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\TypedData\ComplexDataInterface;
 use Drupal\Core\TypedData\Plugin\DataType\BooleanData;
 use Drupal\Core\TypedData\PrimitiveInterface;
 use Drupal\Core\TypedData\TraversableTypedDataInterface;
-use Drupal\eca\Attribute\EcaCondition;
 use Drupal\eca\Plugin\ECA\Condition\ConditionInterface;
 use Drupal\eca\Plugin\ECA\Condition\StringComparisonBase;
 use Drupal\eca\TypedData\PropertyPathTrait;
 
 /**
  * Plugin implementation of the ECA condition for an entity field value.
+ *
+ * @EcaCondition(
+ *   id = "eca_entity_field_value",
+ *   label = @Translation("Entity: compare field value"),
+ *   description = @Translation("Compares a field value with an expected custom value."),
+ *   eca_version_introduced = "1.0.0",
+ *   context_definitions = {
+ *     "entity" = @ContextDefinition("entity", label = @Translation("Entity"))
+ *   }
+ * )
  */
-#[EcaCondition(
-  id: 'eca_entity_field_value',
-  label: new TranslatableMarkup('Entity: compare field value'),
-  context_definitions: [
-    'entity' => new ContextDefinition(
-      data_type: 'entity',
-      label: new TranslatableMarkup('Entity'),
-    ),
-  ],
-  description: new TranslatableMarkup('Compares a field value with an expected custom value.'),
-  version_introduced: '1.0.0',
-)]
 class EntityFieldValue extends StringComparisonBase {
 
   use PropertyPathTrait;

@@ -3,26 +3,22 @@
 namespace Drupal\eca_base\Plugin\Action;
 
 use Drupal\Component\Utility\Random;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Password\DefaultPasswordGenerator;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\eca\Plugin\ECA\PluginFormTrait;
 use Random\RandomException;
 
 /**
  * Action to set a random token value.
+ *
+ * @Action(
+ *   id = "eca_token_set_random_value",
+ *   label = @Translation("Token: set random value"),
+ *   description = @Translation("Create a random value and store it in a token."),
+ *   eca_version_introduced = "2.1.0"
+ * )
  */
-#[Action(
-  id: 'eca_token_set_random_value',
-  label: new TranslatableMarkup('Token: set random value'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Create a random value and store it in a token.'),
-  version_introduced: '2.1.0',
-)]
 class TokenSetRandomValue extends ConfigurableActionBase {
 
   use PluginFormTrait;
@@ -94,7 +90,7 @@ class TokenSetRandomValue extends ConfigurableActionBase {
         $parts = explode(',', $length);
         $min = PHP_INT_MIN;
         $max = PHP_INT_MAX;
-        if (intval($parts[0])) {
+        if (isset($parts[0]) && intval($parts[0])) {
           $min = (int) $parts[0];
         }
         if (isset($parts[1]) && intval($parts[1])) {

@@ -6,10 +6,9 @@ use Drupal\Core\Block\BlockManagerInterface;
 use Drupal\Core\Entity\EntityFieldManagerInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\eca\Attribute\EcaEvent;
 use Drupal\eca\Attribute\Token;
 use Drupal\eca\Entity\Eca;
-use Drupal\eca\Entity\Objects\EcaEvent as EcaEventObject;
+use Drupal\eca\Entity\Objects\EcaEvent;
 use Drupal\eca\Event\Tag;
 use Drupal\eca\Plugin\ECA\Event\EventBase;
 use Drupal\eca\Plugin\PluginUsageInterface;
@@ -27,12 +26,13 @@ use Symfony\Contracts\EventDispatcher\Event;
 
 /**
  * Plugin implementation of ECA render events.
+ *
+ * @EcaEvent(
+ *   id = "eca_render",
+ *   deriver = "Drupal\eca_render\Plugin\ECA\Event\RenderEventDeriver",
+ *   eca_version_introduced = "1.1.0"
+ * )
  */
-#[EcaEvent(
-  id: 'eca_render',
-  deriver: 'Drupal\eca_render\Plugin\ECA\Event\RenderEventDeriver',
-  version_introduced: '1.1.0',
-)]
 class RenderEvent extends EventBase implements PluginUsageInterface {
 
   /**
@@ -346,7 +346,7 @@ class RenderEvent extends EventBase implements PluginUsageInterface {
   /**
    * {@inheritdoc}
    */
-  public function generateWildcard(string $eca_config_id, EcaEventObject $ecaEvent): string {
+  public function generateWildcard(string $eca_config_id, EcaEvent $ecaEvent): string {
     $derivative_id = $this->getDerivativeId();
     $configuration = $ecaEvent->getConfiguration();
     switch ($derivative_id) {
@@ -505,7 +505,7 @@ class RenderEvent extends EventBase implements PluginUsageInterface {
       $this->entityFieldManager->clearCachedFieldDefinitions();
     }
     foreach ($this->cacheBackends as $cache) {
-      $cache->deleteAll();
+      $cache->invalidateAll();
     }
   }
 

@@ -2,11 +2,8 @@
 
 namespace Drupal\eca_base\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Logger\RfcLogLevel;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\ConfigurableLoggerChannel;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\eca\Plugin\CleanupInterface;
@@ -15,15 +12,14 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Action to add an item to a list.
+ *
+ * @Action(
+ *   id = "eca_set_eca_log_level",
+ *   label = @Translation("Set ECA log level"),
+ *   description = @Translation("The log level for ECA can be changed temporarily for the processing within the current event."),
+ *   eca_version_introduced = "2.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_set_eca_log_level',
-  label: new TranslatableMarkup('Set ECA log level'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('The log level for ECA can be changed temporarily for the processing within the current event.'),
-  version_introduced: '2.0.0',
-)]
 class SetEcaLogLevel extends ConfigurableActionBase implements CleanupInterface {
 
   use PluginFormTrait;

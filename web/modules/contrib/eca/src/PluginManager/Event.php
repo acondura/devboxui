@@ -6,8 +6,7 @@ use Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException;
 use Drupal\Core\Cache\CacheBackendInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Plugin\DefaultPluginManager;
-use Drupal\eca\Annotation\EcaEvent as EcaEventAnnotation;
-use Drupal\eca\Attribute\EcaEvent;
+use Drupal\eca\Annotation\EcaEvent;
 use Drupal\eca\Plugin\ECA\Event\EventInterface;
 
 /**
@@ -32,9 +31,7 @@ class Event extends DefaultPluginManager {
       $namespaces,
       $module_handler,
       EventInterface::class,
-      EcaEvent::class,
-      // @phpstan-ignore-next-line
-      EcaEventAnnotation::class,
+      EcaEvent::class
     );
     $this->alterInfo('eca_event_info');
     $this->setCacheBackend($cache_backend, 'eca_event_plugins', ['eca_event_plugins']);

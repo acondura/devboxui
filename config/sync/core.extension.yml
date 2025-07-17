@@ -33,12 +33,15 @@ module:
   eca_content: 0
   eca_log: 0
   eca_misc: 0
+  eca_modeller_bpmn: 0
   eca_render: 0
+  eca_tamper: 0
   eca_ui: 0
   eca_user: 0
   editor: 0
   entity_reference_revisions: 0
   field: 0
+  field_group: 0
   field_ui: 0
   file: 0
   filter: 0
@@ -50,7 +53,6 @@ module:
   masquerade: 0
   menu_link_content: 0
   menu_ui: 0
-  modeler_api: 0
   mysql: 0
   node: 0
   options: 0
@@ -62,6 +64,7 @@ module:
   shortcut: 0
   smtp: 0
   system: 0
+  tamper: 0
   taxonomy: 0
   text: 0
   toolbar: 0

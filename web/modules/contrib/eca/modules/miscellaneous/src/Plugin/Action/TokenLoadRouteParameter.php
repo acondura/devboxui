@@ -4,26 +4,22 @@ namespace Drupal\eca_misc\Plugin\Action;
 
 use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Access\AccessibleInterface;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\eca_misc\Plugin\RouteInterface;
 use Drupal\eca_misc\Plugin\RouteTrait;
 
 /**
  * Loads a route parameter into the token environment.
+ *
+ * @Action(
+ *   id = "eca_token_load_route_param",
+ *   label = @Translation("Token: load route parameter"),
+ *   description = @Translation("Loads a route parameter into the token environment."),
+ *   eca_version_introduced = "1.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_token_load_route_param',
-  label: new TranslatableMarkup('Token: load route parameter'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Loads a route parameter into the token environment.'),
-  version_introduced: '1.0.0',
-)]
 class TokenLoadRouteParameter extends ConfigurableActionBase {
 
   use RouteTrait;

@@ -4,20 +4,19 @@ namespace Drupal\eca_form\Plugin\ECA\Condition;
 
 use Drupal\Core\Entity\EntityFormInterface;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaCondition;
 use Drupal\eca\Plugin\ECA\Condition\StringComparisonBase;
 use Drupal\eca\Plugin\FormPluginTrait;
 
 /**
  * Evaluates against the machine name of the entity form operation.
+ *
+ * @EcaCondition(
+ *   id = "eca_form_operation",
+ *   label = @Translation("Entity form: compare operation"),
+ *   description = @Translation("Evaluates against the machine name of the entity form operation."),
+ *   eca_version_introduced = "1.0.0"
+ * )
  */
-#[EcaCondition(
-  id: 'eca_form_operation',
-  label: new TranslatableMarkup('Entity form: compare operation'),
-  description: new TranslatableMarkup('Evaluates against the machine name of the entity form operation.'),
-  version_introduced: '1.0.0',
-)]
 class FormOperation extends StringComparisonBase {
 
   use FormPluginTrait;

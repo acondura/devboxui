@@ -2,8 +2,8 @@
 
 namespace Drupal\eca\Service;
 
-use Drupal\Core\Extension\ModuleExtensionList;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
+use Drupal\eca\Plugin\ECA\EcaPluginBase;
 
 /**
  * Trait for ECA modeller, condition and action services.
@@ -17,15 +17,17 @@ trait ServiceTrait {
    *
    * @param \Drupal\Component\Plugin\PluginInspectionInterface[] $plugins
    *   The list of plugin to be sorted.
-   * @param \Drupal\Core\Extension\ModuleExtensionList $extensions
-   *   The module extension manager.
    */
-  public function sortPlugins(array &$plugins, ModuleExtensionList $extensions): void {
-    usort($plugins, static function ($p1, $p2) use ($extensions) {
-      $provider1 = $p1->getPluginDefinition()['provider'] ?? 'eca';
-      $provider2 = $p2->getPluginDefinition()['provider'] ?? 'eca';
-      $m1 = $provider1 === 'core' ? 'Drupal Core' : $extensions->getName($provider1);
-      $m2 = $provider2 === 'core' ? 'Drupal Core' : $extensions->getName($provider2);
+  public function sortPlugins(array &$plugins): void {
+    foreach ($plugins as $plugin) {
+      $provider = $plugin->getPluginDefinition()['provider'] ?? 'eca';
+      if (!isset(EcaPluginBase::$modules[$provider])) {
+        EcaPluginBase::$modules[$provider] = \Drupal::service('extension.list.module')->getName($provider);
+      }
+    }
+    usort($plugins, static function ($p1, $p2) {
+      $m1 = EcaPluginBase::$modules[$p1->getPluginDefinition()['provider'] ?? 'eca'];
+      $m2 = EcaPluginBase::$modules[$p2->getPluginDefinition()['provider'] ?? 'eca'];
       if ($m1 < $m2) {
         return -1;
       }

@@ -4,20 +4,19 @@ namespace Drupal\eca_misc\Plugin\ECA\Condition;
 
 use Drupal\Component\Serialization\Yaml;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaCondition;
 use Drupal\eca\Plugin\ECA\Condition\ConditionBase;
 use Drupal\eca_misc\Plugin\RecipePathTrait;
 
 /**
  * Plugin implementation for checking config actions in recipes.
+ *
+ * @EcaCondition(
+ *   id = "eca_recipe_uses_config_action",
+ *   label = @Translation("Recipe uses config action"),
+ *   description = @Translation("Checks if a recipe uses a specific config action."),
+ *   eca_version_introduced = "2.1.3"
+ * )
  */
-#[EcaCondition(
-  id: 'eca_recipe_uses_config_action',
-  label: new TranslatableMarkup('Recipe uses config action'),
-  description: new TranslatableMarkup('Checks if a recipe uses a specific config action.'),
-  version_introduced: '2.1.3',
-)]
 class RecipeUsesConfigAction extends ConditionBase {
 
   use RecipePathTrait;

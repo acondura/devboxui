@@ -3,27 +3,23 @@
 namespace Drupal\eca_content\Plugin\Action;
 
 use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\eca_content\Event\ContentEntityValidate;
 
 /**
  * Validates a content entity.
+ *
+ * @Action(
+ *   id = "eca_content_validation_error",
+ *   label = @Translation("Entity: Set validation error"),
+ *   description = @Translation("Only works when reacting upon <em>Validate content entity</em> events."),
+ *   eca_version_introduced = "2.1.x",
+ *   type = "entity"
+ * )
  */
-#[Action(
-  id: 'eca_content_validation_error',
-  label: new TranslatableMarkup('Entity: Set validation error'),
-  type: 'entity',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Only works when reacting upon <em>Validate content entity</em> events.'),
-  version_introduced: '2.1.0',
-)]
 class SetValidationError extends ConfigurableActionBase {
 
   /**

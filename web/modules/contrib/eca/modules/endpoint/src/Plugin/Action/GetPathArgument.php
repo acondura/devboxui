@@ -2,21 +2,17 @@
 
 namespace Drupal\eca_endpoint\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Get a path argument.
+ *
+ * @Action(
+ *   id = "eca_endpoint_get_path_argument",
+ *   label = @Translation("Request: Get path argument"),
+ *   eca_version_introduced = "1.1.0"
+ * )
  */
-#[Action(
-  id: 'eca_endpoint_get_path_argument',
-  label: new TranslatableMarkup('Request: Get path argument'),
-)]
-#[EcaAction(
-  version_introduced: '1.1.0',
-)]
 class GetPathArgument extends RequestActionBase {
 
   /**

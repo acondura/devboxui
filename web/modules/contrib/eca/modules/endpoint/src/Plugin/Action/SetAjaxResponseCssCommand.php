@@ -2,26 +2,22 @@
 
 namespace Drupal\eca_endpoint\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Ajax\CommandInterface;
 use Drupal\Core\Ajax\CssCommand;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Service\YamlParser;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\Yaml\Exception\ParseException;
 
 /**
  * Add a css command to the ajax response.
+ *
+ * @Action(
+ *   id = "eca_endpoint_set_ajax_response_css",
+ *   label = @Translation("Ajax Response: css"),
+ *   eca_version_introduced = "2.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_endpoint_set_ajax_response_css',
-  label: new TranslatableMarkup('Ajax Response: css'),
-)]
-#[EcaAction(
-  version_introduced: '2.0.0',
-)]
 class SetAjaxResponseCssCommand extends ResponseAjaxCommandBase {
 
   /**

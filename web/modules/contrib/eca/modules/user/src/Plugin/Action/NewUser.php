@@ -2,27 +2,23 @@
 
 namespace Drupal\eca_user\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\user\Entity\User;
 use Drupal\user\UserInterface;
 
 /**
  * Create a new user without saving it.
+ *
+ * @Action(
+ *   id = "eca_new_user",
+ *   label = @Translation("User: create new"),
+ *   description = @Translation("Create a new user without saving it."),
+ *   eca_version_introduced = "2.0.0",
+ *   type = "user"
+ * )
  */
-#[Action(
-  id: 'eca_new_user',
-  label: new TranslatableMarkup('User: create new'),
-  type: 'user',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Create a new user without saving it.'),
-  version_introduced: '2.0.0',
-)]
 class NewUser extends ConfigurableActionBase {
 
   /**

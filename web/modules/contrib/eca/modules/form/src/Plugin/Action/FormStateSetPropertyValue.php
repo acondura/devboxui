@@ -2,26 +2,22 @@
 
 namespace Drupal\eca_form\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Service\YamlParser;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\Yaml\Exception\ParseException;
 
 /**
  * Set a property value on the form state.
+ *
+ * @Action(
+ *   id = "eca_form_state_set_property_value",
+ *   label = @Translation("Form state: set property value"),
+ *   description = @Translation("Sets a property value on the current form state in scope, which can be used on validation and submission."),
+ *   eca_version_introduced = "1.0.0",
+ *   type = "form"
+ * )
  */
-#[Action(
-  id: 'eca_form_state_set_property_value',
-  label: new TranslatableMarkup('Form state: set property value'),
-  type: 'form',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Sets a property value on the current form state in scope, which can be used on validation and submission.'),
-  version_introduced: '1.0.0',
-)]
 class FormStateSetPropertyValue extends FormStatePropertyActionBase {
 
   /**

@@ -3,29 +3,25 @@
 namespace Drupal\eca_render\Plugin\Action;
 
 use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\FieldableEntityInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Service\YamlParser;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\Yaml\Exception\ParseException;
 
 /**
  * View a field of a specified entity.
+ *
+ * @Action(
+ *   id = "eca_render_entity_view_field",
+ *   label = @Translation("Render: view field"),
+ *   description = @Translation("View a field of a specified entity."),
+ *   eca_version_introduced = "1.1.0",
+ *   type = "entity"
+ * )
  */
-#[Action(
-  id: 'eca_render_entity_view_field',
-  label: new TranslatableMarkup('Render: view field'),
-  type: 'entity',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('View a field of a specified entity.'),
-  version_introduced: '1.1.0',
-)]
 class EntityViewField extends RenderElementActionBase {
 
   /**

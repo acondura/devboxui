@@ -1,0 +1,90 @@
+uuid: a9e9d183-2edb-405d-a3ab-fd38640a7d7d
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.field.user.user.field_ssh_private_key
+    - field.field.user.user.field_ssh_public_key
+    - field.storage.user.field_ssh_private_key
+    - field.storage.user.field_ssh_public_key
+  module:
+    - devboxui
+    - eca_content
+    - eca_form
+id: process_hk9m4jk
+modeller: bpmn_io
+label: 'On user creation, create SSH keys & disable editing them'
+version: ''
+weight: 0
+events:
+  Event_0265sth:
+    plugin: 'content_entity:insert'
+    label: 'User created'
+    configuration:
+      type: 'user _all'
+    successors:
+      -
+        id: Activity_0xqm9kf
+        condition: ''
+  Event_0xdzqub:
+    plugin: 'form:form_build'
+    label: 'Use edit form loaded'
+    configuration:
+      form_id: ''
+      entity_type_id: user
+      bundle: ''
+      operation: ''
+    successors:
+      -
+        id: Activity_0u6dkvn
+        condition: ''
+  Event_1cf31fg:
+    plugin: 'form:form_submit'
+    label: 'User updated'
+    configuration:
+      form_id: ''
+      entity_type_id: user
+      bundle: ''
+      operation: ''
+    successors:
+      -
+        id: Activity_0sv4tg6
+        condition: Flow_0dpt1zk
+conditions:
+  Flow_0dpt1zk:
+    plugin: eca_entity_field_value_empty
+    configuration:
+      negate: false
+      field_name: field_ssh_private_key
+      entity: user
+gateways: {  }
+actions:
+  Activity_0xqm9kf:
+    plugin: devboxui_save_user_ssh_keys
+    label: 'Create SSH keys'
+    configuration:
+      object: user
+    successors: {  }
+  Activity_0u6dkvn:
+    plugin: eca_form_field_disable
+    label: 'Disable SSH private key field'
+    configuration:
+      flag: true
+      field_name: field_ssh_private_key
+    successors:
+      -
+        id: Activity_0g0jzy1
+        condition: ''
+  Activity_0g0jzy1:
+    plugin: eca_form_field_disable
+    label: 'Disable SSH public key field'
+    configuration:
+      flag: true
+      field_name: field_ssh_public_key
+    successors: {  }
+  Activity_0sv4tg6:
+    plugin: devboxui_save_user_ssh_keys
+    label: 'Create SSH keys'
+    configuration:
+      object: user
+    successors: {  }

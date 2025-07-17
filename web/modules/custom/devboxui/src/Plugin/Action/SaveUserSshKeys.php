@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Drupal\dreval\Plugin\Action;
+namespace Drupal\devboxui\Plugin\Action;
 
 use Drupal\Core\Access\AccessResultInterface;
 use Drupal\Core\Action\ActionBase;
@@ -17,10 +17,10 @@ use phpseclib3\Crypt\PublicKeyLoader;
  * Provides a DrupalEvaluator action.
  *
  * @Action(
- *   id = "dreval_save_user_ssh_keys",
+ *   id = "devboxui_save_user_ssh_keys",
  *   label = @Translation("Save user SSH keys"),
  *   type = "user",
- *   category = @Translation("DrupalEvaluator"),
+ *   category = @Translation("DevBoxUI"),
  *   context = {
  *     "entity" = @ContextDefinition("entity:user", label = @Translation("User")),
  *   }

@@ -5,8 +5,7 @@ namespace Drupal\eca\PluginManager;
 use Drupal\Core\Cache\CacheBackendInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Plugin\DefaultPluginManager;
-use Drupal\eca\Annotation\EcaCondition as EcaConditionAnnotation;
-use Drupal\eca\Attribute\EcaCondition;
+use Drupal\eca\Annotation\EcaCondition;
 use Drupal\eca\Plugin\ECA\Condition\ConditionInterface;
 
 /**
@@ -31,9 +30,7 @@ class Condition extends DefaultPluginManager {
       $namespaces,
       $module_handler,
       ConditionInterface::class,
-      EcaCondition::class,
-      // @phpstan-ignore-next-line
-      EcaConditionAnnotation::class,
+      EcaCondition::class
     );
     $this->alterInfo('eca_condition_info');
     $this->setCacheBackend($cache_backend, 'eca_condition_plugins', ['eca_condition_plugins']);

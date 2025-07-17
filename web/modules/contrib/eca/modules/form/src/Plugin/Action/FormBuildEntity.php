@@ -3,30 +3,26 @@
 namespace Drupal\eca_form\Plugin\Action;
 
 use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Entity\EntityFormInterface;
 use Drupal\Core\Form\FormBuilderInterface;
 use Drupal\Core\Form\FormState;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\eca\Plugin\FormPluginTrait;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Build an entity from submitted form input.
+ *
+ * @Action(
+ *   id = "eca_form_build_entity",
+ *   label = @Translation("Entity form: build entity"),
+ *   description = @Translation("Build an entity from submitted form input and store the result as a token."),
+ *   eca_version_introduced = "1.0.0",
+ *   type = "form"
+ * )
  */
-#[Action(
-  id: 'eca_form_build_entity',
-  label: new TranslatableMarkup('Entity form: build entity'),
-  type: 'form',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Build an entity from submitted form input and store the result as a token.'),
-  version_introduced: '1.0.0',
-)]
 class FormBuildEntity extends ConfigurableActionBase {
 
   use FormPluginTrait;

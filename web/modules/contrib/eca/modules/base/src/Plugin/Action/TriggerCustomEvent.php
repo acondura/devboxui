@@ -2,10 +2,7 @@
 
 namespace Drupal\eca_base\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\eca_base\BaseEvents;
 use Drupal\eca_base\Event\CustomEvent;
@@ -14,14 +11,13 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Trigger a custom event.
+ *
+ * @Action(
+ *   id = "eca_trigger_custom_event",
+ *   label = @Translation("Trigger a custom event"),
+ *   eca_version_introduced = "1.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_trigger_custom_event',
-  label: new TranslatableMarkup('Trigger a custom event'),
-)]
-#[EcaAction(
-  version_introduced: '1.0.0',
-)]
 class TriggerCustomEvent extends ConfigurableActionBase {
 
   /**

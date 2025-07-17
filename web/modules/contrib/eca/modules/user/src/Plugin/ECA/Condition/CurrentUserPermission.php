@@ -3,21 +3,20 @@
 namespace Drupal\eca_user\Plugin\ECA\Condition;
 
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaCondition;
 use Drupal\eca\Plugin\ECA\PluginFormTrait;
 use Drupal\user\PermissionHandler;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Plugin implementation of the ECA condition of the current user's permissions.
+ *
+ * @EcaCondition(
+ *   id = "eca_current_user_permission",
+ *   label = @Translation("Current user has permission"),
+ *   description = @Translation("Checks, whether the current user has a given permission."),
+ *   eca_version_introduced = "1.0.0"
+ * )
  */
-#[EcaCondition(
-  id: 'eca_current_user_permission',
-  label: new TranslatableMarkup('Current user has permission'),
-  description: new TranslatableMarkup('Checks, whether the current user has a given permission.'),
-  version_introduced: '1.0.0',
-)]
 class CurrentUserPermission extends BaseUser {
 
   use PluginFormTrait;

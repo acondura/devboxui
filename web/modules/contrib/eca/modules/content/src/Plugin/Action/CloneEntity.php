@@ -3,29 +3,25 @@
 namespace Drupal\eca_content\Plugin\Action;
 
 use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\eca\Plugin\ECA\PluginFormTrait;
 use Drupal\eca_content\Event\ContentEntityPrepareForm;
 
 /**
  * Clone an existing content entity without saving it.
+ *
+ * @Action(
+ *   id = "eca_clone_entity",
+ *   label = @Translation("Entity: clone existing"),
+ *   description = @Translation("Clone an existing content entity without saving it."),
+ *   eca_version_introduced = "2.1.0",
+ *   type = "entity"
+ * )
  */
-#[Action(
-  id: 'eca_clone_entity',
-  label: new TranslatableMarkup('Entity: clone existing'),
-  type: 'entity',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Clone an existing content entity without saving it.'),
-  version_introduced: '2.1.0',
-)]
 class CloneEntity extends ConfigurableActionBase {
 
   use PluginFormTrait;

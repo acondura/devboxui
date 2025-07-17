@@ -3,20 +3,19 @@
 namespace Drupal\eca_form\Plugin\ECA\Condition;
 
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaCondition;
 use Drupal\eca\Plugin\ECA\Condition\StringComparisonBase;
 use Drupal\eca\Plugin\FormPluginTrait;
 
 /**
  * Evaluates against the trigger name of the submission.
+ *
+ * @EcaCondition(
+ *   id = "eca_form_triggered",
+ *   label = @Translation("Form: compare triggered submission"),
+ *   description = @Translation("Evaluates against the trigger name of the submission."),
+ *   eca_version_introduced = "1.0.0"
+ * )
  */
-#[EcaCondition(
-  id: 'eca_form_triggered',
-  label: new TranslatableMarkup('Form: compare triggered submission'),
-  description: new TranslatableMarkup('Evaluates against the trigger name of the submission.'),
-  version_introduced: '1.0.0',
-)]
 class FormTriggered extends StringComparisonBase {
 
   use FormPluginTrait;

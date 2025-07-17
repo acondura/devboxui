@@ -2,7 +2,6 @@
 
 namespace Drupal\eca_language\Plugin\ECA\Event;
 
-use Drupal\eca\Attribute\EcaEvent;
 use Drupal\eca\Event\Tag;
 use Drupal\eca\Plugin\ECA\Event\EventBase;
 use Drupal\eca_language\Event\LanguageNegotiateEvent;
@@ -10,12 +9,13 @@ use Drupal\eca_language\LanguageEvents;
 
 /**
  * Plugin implementation of ECA language events.
+ *
+ * @EcaEvent(
+ *   id = "eca_language",
+ *   deriver = "Drupal\eca_language\Plugin\ECA\Event\LanguageEventDeriver",
+ *   eca_version_introduced = "2.0.0"
+ * )
  */
-#[EcaEvent(
-  id: 'eca_language',
-  deriver: 'Drupal\eca_language\Plugin\ECA\Event\LanguageEventDeriver',
-  version_introduced: '2.0.0',
-)]
 class LanguageEvent extends EventBase {
 
   /**

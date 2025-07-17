@@ -3,24 +3,20 @@
 namespace Drupal\eca_endpoint\Plugin\Action;
 
 use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Ajax\AddJsCommand;
 use Drupal\Core\Ajax\CommandInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Add JS to the ajax response.
+ *
+ * @Action(
+ *   id = "eca_endpoint_set_ajax_response_add_js",
+ *   label = @Translation("Ajax Response: add js"),
+ *   eca_version_introduced = "2.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_endpoint_set_ajax_response_add_js',
-  label: new TranslatableMarkup('Ajax Response: add js'),
-)]
-#[EcaAction(
-  version_introduced: '2.0.0',
-)]
 class SetAjaxResponseAddJsCommand extends ResponseAjaxCommandBase {
 
   /**
@@ -28,7 +24,7 @@ class SetAjaxResponseAddJsCommand extends ResponseAjaxCommandBase {
    */
   public function access($object, ?AccountInterface $account = NULL, $return_as_object = FALSE) {
     $url = (string) $this->tokenService->replaceClear($this->configuration['url']);
-    if ($url === '') {
+    if (!is_string($url) || $url === '') {
       $result = AccessResult::forbidden();
     }
     else {

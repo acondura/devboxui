@@ -10,9 +10,8 @@ use Drupal\Core\Config\ConfigImporterEvent;
 use Drupal\Core\Config\ConfigRenameEvent;
 use Drupal\Core\Config\Importer\MissingContentEvent;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\eca\Attribute\EcaEvent;
 use Drupal\eca\Attribute\Token;
-use Drupal\eca\Entity\Objects\EcaEvent as EcaEventObject;
+use Drupal\eca\Entity\Objects\EcaEvent;
 use Drupal\eca\Event\Tag;
 use Drupal\eca\Plugin\DataType\DataTransferObject;
 use Drupal\eca\Plugin\ECA\Event\EventBase;
@@ -20,12 +19,13 @@ use Symfony\Contracts\EventDispatcher\Event;
 
 /**
  * Plugin implementation of the ECA Events for config.
+ *
+ * @EcaEvent(
+ *   id = "config",
+ *   deriver = "Drupal\eca_config\Plugin\ECA\Event\ConfigEventDeriver",
+ *   eca_version_introduced = "1.0.0"
+ * )
  */
-#[EcaEvent(
-  id: 'config',
-  deriver: 'Drupal\eca_config\Plugin\ECA\Event\ConfigEventDeriver',
-  version_introduced: '1.0.0',
-)]
 class ConfigEvent extends EventBase {
 
   /**
@@ -137,10 +137,10 @@ class ConfigEvent extends EventBase {
    */
   public function submitConfigurationForm(array &$form, FormStateInterface $form_state): void {
     if ($this->eventClass() === ConfigCrudEvent::class) {
-      $this->configuration['config_name'] = trim($form_state->getValue('config_name', ''));
-      $this->configuration['sync_mode'] = trim($form_state->getValue('sync_mode', ''));
+      $this->configuration['config_name'] = trim($form_state->getValue('config_name'));
+      $this->configuration['sync_mode'] = trim($form_state->getValue('sync_mode'));
       if ($this->eventName() === ConfigEvents::SAVE) {
-        $this->configuration['write_mode'] = trim($form_state->getValue('write_mode', ''));
+        $this->configuration['write_mode'] = trim($form_state->getValue('write_mode'));
       }
     }
     parent::submitConfigurationForm($form, $form_state);
@@ -149,7 +149,7 @@ class ConfigEvent extends EventBase {
   /**
    * {@inheritdoc}
    */
-  public function generateWildcard(string $eca_config_id, EcaEventObject $ecaEvent): string {
+  public function generateWildcard(string $eca_config_id, EcaEvent $ecaEvent): string {
     if ($this->eventClass() === ConfigCrudEvent::class) {
       $parts = [];
       $configuration = $ecaEvent->getConfiguration();

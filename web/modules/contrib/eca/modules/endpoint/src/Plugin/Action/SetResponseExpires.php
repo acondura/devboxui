@@ -2,22 +2,18 @@
 
 namespace Drupal\eca_endpoint\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Datetime\DrupalDateTime;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Set the response expires.
+ *
+ * @Action(
+ *   id = "eca_endpoint_set_response_expires",
+ *   label = @Translation("Response: set expires"),
+ *   eca_version_introduced = "1.1.0"
+ * )
  */
-#[Action(
-  id: 'eca_endpoint_set_response_expires',
-  label: new TranslatableMarkup('Response: set expires'),
-)]
-#[EcaAction(
-  version_introduced: '1.1.0',
-)]
 class SetResponseExpires extends ResponseActionBase {
 
   /**

@@ -3,14 +3,11 @@
 namespace Drupal\eca_views\Plugin\Action;
 
 use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Entity\TranslatableInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\TypedData\ListDataDefinition;
 use Drupal\Core\TypedData\Plugin\DataType\ItemList;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\eca\Plugin\ECA\PluginFormTrait;
 use Drupal\views\Entity\View;
@@ -20,15 +17,14 @@ use Drupal\views\ViewExecutable;
 
 /**
  * Run views query.
+ *
+ * @Action(
+ *   id = "eca_views_query",
+ *   label = @Translation("Views: Execute query"),
+ *   description = @Translation("Use a View to execute a query and store the results in a token that contains an indexed list of the results. Despite the type of view that you use, always get the complete entities obtained by the view. You can access the entity properties using the token style."),
+ *   eca_version_introduced = "1.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_views_query',
-  label: new TranslatableMarkup('Views: Execute query'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Use a View to execute a query and store the results in a token that contains an indexed list of the results. Despite the type of view that you use, always get the complete entities obtained by the view. You can access the entity properties using the token style.'),
-  version_introduced: '1.0.0',
-)]
 class ViewsQuery extends ConfigurableActionBase {
 
   use PluginFormTrait;
@@ -282,20 +278,6 @@ class ViewsQuery extends ConfigurableActionBase {
     }
 
     return $entities;
-  }
-
-  /**
-   * Get all valid views.
-   *
-   * @todo Combine this with the same in eca_render.
-   *
-   * @see \Drupal\eca_render\Plugin\Action\Views::getAllValidViews()
-   *
-   * @return array
-   *   An array of view IDs.
-   */
-  public static function getAllValidViews(): array {
-    return array_map(fn($view) => $view->id(), array_filter(View::loadMultiple(), fn($view) => $view->status()));
   }
 
 }

@@ -1,16 +1,7 @@
 services:
-  bpmn_io.parser:
-    class: Drupal\bpmn_io\Service\Parser
+  bpmn_io.services.converter:
+    class: Drupal\bpmn_io\Services\Converter\Converter
     arguments:
-      - '@bpmn_io.prepare_components'
-  bpmn_io.prepare_components:
-    class: Drupal\bpmn_io\Service\PrepareComponents
-    arguments:
-      - '@modeler_api.service'
-      - '@logger.channel.bpmn_io'
-      - '@extension.list.module'
-
-  logger.channel.bpmn_io:
-    parent: logger.channel_base
-    arguments:
-      - 'bpmn_io'
+      - '@eca.service.modeller'
+      - '@messenger'
+      - '@current_user'

@@ -3,20 +3,19 @@
 namespace Drupal\eca_config\Plugin\ECA\Condition;
 
 use Drupal\Core\Config\ConfigInstallerInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaCondition;
 use Drupal\eca\Plugin\ECA\Condition\ConditionBase;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * ECA condition plugin to determine config installer sync mode.
+ *
+ * @EcaCondition(
+ *   id = "eca_config_installer_sync_mode",
+ *   label = @Translation("Config installer sync mode"),
+ *   description = @Translation("Determine if config installer is in sync mode."),
+ *   eca_version_introduced = "2.1.3",
+ * )
  */
-#[EcaCondition(
-  id: 'eca_config_installer_sync_mode',
-  label: new TranslatableMarkup('Config installer sync mode'),
-  description: new TranslatableMarkup('Determine if config installer is in sync mode.'),
-  version_introduced: '2.1.3',
-)]
 class ConfigInstallerSyncMode extends ConditionBase {
 
   /**

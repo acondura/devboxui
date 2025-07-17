@@ -2,23 +2,19 @@
 
 namespace Drupal\eca_render\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Build an image HTML element (responsive).
+ *
+ * @Action(
+ *   id = "eca_render_responsive_image",
+ *   label = @Translation("Render: responsive image"),
+ *   description = @Translation("Build an image HTML element (responsive)."),
+ *   eca_version_introduced = "1.1.0",
+ *   deriver = "Drupal\eca_render\Plugin\Action\ResponsiveImageDeriver"
+ * )
  */
-#[Action(
-  id: 'eca_render_responsive_image',
-  label: new TranslatableMarkup('Render: responsive image'),
-  deriver: 'Drupal\eca_render\Plugin\Action\ResponsiveImageDeriver',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Build an image HTML element (responsive).'),
-  version_introduced: '1.1.0',
-)]
 class ResponsiveImage extends Image {
 
   /**

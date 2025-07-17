@@ -2,21 +2,17 @@
 
 namespace Drupal\eca_endpoint\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Get a query parameter.
+ *
+ * @Action(
+ *   id = "eca_endpoint_get_query_parameter",
+ *   label = @Translation("Request: Get URL query parameter"),
+ *   eca_version_introduced = "1.1.0"
+ * )
  */
-#[Action(
-  id: 'eca_endpoint_get_query_parameter',
-  label: new TranslatableMarkup('Request: Get URL query parameter'),
-)]
-#[EcaAction(
-  version_introduced: '1.1.0',
-)]
 class GetQueryParameter extends RequestActionBase {
 
   /**

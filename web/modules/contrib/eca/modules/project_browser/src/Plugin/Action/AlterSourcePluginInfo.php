@@ -4,11 +4,8 @@ namespace Drupal\eca_project_browser\Plugin\Action;
 
 use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Access\AccessResultInterface;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\eca_project_browser\Event\ProjectBrowserSourceInfoAlterEvent;
 use Drupal\project_browser\Plugin\ProjectBrowserSourceManager;
@@ -16,15 +13,14 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Describes the eca_project_browser_source_plugin_info_alter action.
+ *
+ * @Action(
+ *   id = "eca_project_browser_source_plugin_info_alter",
+ *   label = @Translation("Project Browser: Alter source plugin info"),
+ *   description = @Translation("Allows to change certain properties of source plugins."),
+ *   eca_version_introduced = "2.1.2"
+ * )
  */
-#[Action(
-  id: 'eca_project_browser_source_plugin_info_alter',
-  label: new TranslatableMarkup('Project Browser: Alter source plugin info'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Allows to change certain properties of source plugins.'),
-  version_introduced: '2.1.2',
-)]
 class AlterSourcePluginInfo extends ConfigurableActionBase {
 
   /**
@@ -70,7 +66,7 @@ class AlterSourcePluginInfo extends ConfigurableActionBase {
       'weight' => TRUE,
     ] as $key => $localTask) {
       $configKey = $localTask ? 'local_task_' . $key : $key;
-      if ($this->configuration[$configKey] !== '' && $this->configuration[$configKey] !== NULL) {
+      if ($this->configuration[$configKey] !== '') {
         $event->setProperty($this->configuration['plugin_id'], $key, $this->configuration[$configKey], $localTask);
       }
     }

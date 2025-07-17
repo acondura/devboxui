@@ -2,24 +2,20 @@
 
 namespace Drupal\eca_render\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\ECA\PluginFormTrait;
 
 /**
  * Build formatted text.
+ *
+ * @Action(
+ *   id = "eca_render_text",
+ *   label = @Translation("Render: text"),
+ *   description = @Translation("Build a renderable text element."),
+ *   eca_version_introduced = "1.1.0",
+ *   deriver = "Drupal\eca_render\Plugin\Action\TextDeriver"
+ * )
  */
-#[Action(
-  id: 'eca_render_text',
-  label: new TranslatableMarkup('Render: text'),
-  deriver: 'Drupal\eca_render\Plugin\Action\TextDeriver',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Build a renderable text element.'),
-  version_introduced: '1.1.0',
-)]
 class Text extends RenderElementActionBase {
 
   use PluginFormTrait;

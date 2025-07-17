@@ -2,25 +2,21 @@
 
 namespace Drupal\eca_render\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormBuilderInterface;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca_render\Form\EcaCustomForm;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Build a custom form.
+ *
+ * @Action(
+ *   id = "eca_render_custom_form",
+ *   label = @Translation("Render: custom form"),
+ *   description = @Translation("Build a custom form using ""ECA Form"" events."),
+ *   eca_version_introduced = "1.1.0"
+ * )
  */
-#[Action(
-  id: 'eca_render_custom_form',
-  label: new TranslatableMarkup('Render: custom form'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Build a custom form using "ECA Form" events.'),
-  version_introduced: '1.1.0',
-)]
 class CustomForm extends RenderElementActionBase {
 
   /**

@@ -3,24 +3,20 @@
 namespace Drupal\eca_views\Plugin\Action;
 
 use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\eca_views\Event\QuerySubstitutions;
 
 /**
  * Substitute a string in a views query.
+ *
+ * @Action(
+ *   id = "eca_views_query_substitution",
+ *   label = @Translation("Views: Query Substitution"),
+ *   eca_version_introduced = "2.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_views_query_substitution',
-  label: new TranslatableMarkup('Views: Query Substitution'),
-)]
-#[EcaAction(
-  version_introduced: '2.0.0',
-)]
 class ViewsQuerySubstitution extends ConfigurableActionBase {
 
   /**

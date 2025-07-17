@@ -3,21 +3,20 @@
 namespace Drupal\eca_misc\Plugin\ECA\Condition;
 
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaCondition;
 use Drupal\eca\Plugin\ECA\Condition\StringComparisonBase;
 use Drupal\eca_misc\Plugin\RouteInterface;
 use Drupal\eca_misc\Plugin\RouteTrait;
 
 /**
  * Condition plugin for matching the name of the route.
+ *
+ * @EcaCondition(
+ *   id = "eca_route_match",
+ *   label = "Route match",
+ *   description = @Translation("Gets and compares the name of the route."),
+ *   eca_version_introduced = "1.0.0"
+ * )
  */
-#[EcaCondition(
-  id: 'eca_route_match',
-  label: new TranslatableMarkup('Route match'),
-  description: new TranslatableMarkup('Gets and compares the name of the route.'),
-  version_introduced: '1.0.0',
-)]
 class RouteMatch extends StringComparisonBase {
 
   use RouteTrait;

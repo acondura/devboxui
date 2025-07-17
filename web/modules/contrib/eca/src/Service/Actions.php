@@ -6,7 +6,6 @@ use Drupal\Component\Plugin\ConfigurableInterface;
 use Drupal\Core\Action\ActionInterface as CoreActionInterface;
 use Drupal\Core\Action\ActionManager;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
-use Drupal\Core\Extension\ModuleExtensionList;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Logger\LoggerChannelInterface;
 use Drupal\Core\Plugin\PluginFormInterface;
@@ -61,13 +60,6 @@ class Actions {
   protected string $pluginId;
 
   /**
-   * The module extension manager.
-   *
-   * @var \Drupal\Core\Extension\ModuleExtensionList
-   */
-  protected ModuleExtensionList $extensionManager;
-
-  /**
    * Actions constructor.
    *
    * @param \Drupal\eca\PluginManager\Action $action_manager
@@ -78,15 +70,12 @@ class Actions {
    *   The entity type manager service.
    * @param \Drupal\eca\Token\TokenInterface $token_service
    *   The Token services.
-   * @param \Drupal\Core\Extension\ModuleExtensionList $extension_manager
-   *   The module extension manager.
    */
-  public function __construct(Action $action_manager, LoggerChannelInterface $logger, EntityTypeManagerInterface $entity_type_manager, TokenInterface $token_service, ModuleExtensionList $extension_manager) {
+  public function __construct(Action $action_manager, LoggerChannelInterface $logger, EntityTypeManagerInterface $entity_type_manager, TokenInterface $token_service) {
     $this->actionManager = $action_manager->getDecoratedActionManager();
     $this->logger = $logger;
     $this->entityTypeManager = $entity_type_manager;
     $this->tokenService = $token_service;
-    $this->extensionManager = $extension_manager;
   }
 
   /**
@@ -115,7 +104,7 @@ class Actions {
         }
       }
       $this->resetExtendedErrorHandling();
-      $this->sortPlugins($actions, $this->extensionManager);
+      $this->sortPlugins($actions);
     }
     return $actions;
   }
@@ -138,7 +127,6 @@ class Actions {
        */
       $action = $this->actionManager->createInstance($plugin_id, $configuration);
     }
-    // @phpstan-ignore catch.neverThrown
     catch (\Exception | \Throwable $e) {
       $action = NULL;
       $this->logger->error('The action plugin %pluginid can not be initialized. ECA is ignoring this action. The issue with this action: %msg', [
@@ -167,8 +155,7 @@ class Actions {
       try {
         $form = $action->buildConfigurationForm([], $form_state);
       }
-      // @phpstan-ignore catch.neverThrown
-      catch (\Throwable | \AssertionError $e) {
+      catch (\Throwable | \AssertionError | \Exception $e) {
         $this->logger->error('The configuration form of %label action plugin can not be loaded. Plugin ignored. %message', [
           '%label' => $action->getPluginId(),
           '%message' => $e->getMessage(),
@@ -214,8 +201,7 @@ class Actions {
         ];
       }
     }
-    // @phpstan-ignore catch.neverThrown
-    catch (\Throwable | \AssertionError) {
+    catch (\Throwable | \AssertionError | \Exception $e) {
       $this->logger->error('There is an issue with the %label action plugin. Plugin ignored.', [
         '%label' => $action->getPluginId(),
       ]);

@@ -2,10 +2,7 @@
 
 namespace Drupal\eca_content\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\eca\Plugin\ECA\PluginFormTrait;
 use Drupal\eca\Service\ContentEntityTypes;
@@ -13,15 +10,14 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Get a list of bundles.
+ *
+ * @Action(
+ *   id = "eca_get_bundle_list",
+ *   label = @Translation("Entity: get list of bundles"),
+ *   description = @Translation("Gets the list of bundles for a given entity type."),
+ *   eca_version_introduced = "2.1.0"
+ * )
  */
-#[Action(
-  id: 'eca_get_bundle_list',
-  label: new TranslatableMarkup('Entity: get list of bundles'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Gets the list of bundles for a given entity type.'),
-  version_introduced: '2.1.0',
-)]
 class GetBundleList extends ConfigurableActionBase {
 
   use PluginFormTrait;

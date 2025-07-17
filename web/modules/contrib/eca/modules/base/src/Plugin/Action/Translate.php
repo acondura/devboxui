@@ -2,12 +2,10 @@
 
 namespace Drupal\eca_base\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\TypedData\TranslatableInterface;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\eca\Plugin\DataType\DataTransferObject;
 use Drupal\eca\Plugin\ECA\PluginFormTrait;
@@ -17,15 +15,14 @@ use Symfony\Component\Yaml\Exception\ParseException;
 
 /**
  * Action to translate a value.
+ *
+ * @Action(
+ *   id = "eca_translate",
+ *   label = @Translation("Translate"),
+ *   description = @Translation("Translate a given value, and store the translated value as a token."),
+ *   eca_version_introduced = "1.1.0"
+ * )
  */
-#[Action(
-  id: 'eca_translate',
-  label: new TranslatableMarkup('Translate'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Translate a given value, and store the translated value as a token.'),
-  version_introduced: '1.1.0',
-)]
 class Translate extends ConfigurableActionBase {
 
   use PluginFormTrait;

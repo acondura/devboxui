@@ -3,25 +3,21 @@
 namespace Drupal\eca_render\Plugin\Action;
 
 use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * View a specified entity.
+ *
+ * @Action(
+ *   id = "eca_render_entity_view",
+ *   label = @Translation("Render: view entity"),
+ *   description = @Translation("View a specified entity."),
+ *   eca_version_introduced = "1.1.0",
+ *   type = "entity"
+ * )
  */
-#[Action(
-  id: 'eca_render_entity_view',
-  label: new TranslatableMarkup('Render: view entity'),
-  type: 'entity',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('View a specified entity.'),
-  version_introduced: '1.1.0',
-)]
 class EntityView extends RenderElementActionBase {
 
   /**

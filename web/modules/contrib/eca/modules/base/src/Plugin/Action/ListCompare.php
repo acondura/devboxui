@@ -2,23 +2,19 @@
 
 namespace Drupal\eca_base\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\TypedData\TypedDataInterface;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ListOperationBase;
 
 /**
  * Action to compare items in two lists.
+ *
+ * @Action(
+ *   id = "eca_list_compare",
+ *   label = @Translation("List: compare items"),
+ *   description = @Translation("Compares the items in two simple lists (contained in tokens), returning the array of results."),
+ * )
  */
-#[Action(
-  id: 'eca_list_compare',
-  label: new TranslatableMarkup('List: compare items'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Compares the items in two simple lists (contained in tokens), returning the array of results.'),
-)]
 class ListCompare extends ListOperationBase {
 
   /**

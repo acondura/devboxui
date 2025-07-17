@@ -3,13 +3,10 @@
 namespace Drupal\eca_file\Plugin\Action;
 
 use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\File\FileExists;
 use Drupal\Core\File\FileSystemInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\eca\Plugin\ECA\PluginFormTrait;
 use Drupal\file\FileInterface;
@@ -17,16 +14,14 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Rename a physical file.
+ *
+ * @Action(
+ *   id = "eca_file_rename",
+ *   label = @Translation("File: rename"),
+ *   description = @Translation("Rename the physical file of a file entity."),
+ *   type = "entity"
+ * )
  */
-#[Action(
-  id: 'eca_file_rename',
-  label: new TranslatableMarkup('File: rename'),
-  type: 'entity',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Rename the physical file of a file entity.'),
-  version_introduced: '2.1.0',
-)]
 class FileRename extends ConfigurableActionBase {
 
   use PluginFormTrait;
@@ -133,20 +128,6 @@ class FileRename extends ConfigurableActionBase {
       ->set('filename', $new_filename)
       ->set('uri', $filepath_new)
       ->save();
-  }
-
-  /**
-   * Get all valid file behaviors.
-   *
-   * @return string[]
-   *   All valid file behaviors.
-   */
-  public static function getAllValidFileBehaviors(): array {
-    return [
-      FileExists::Rename->name,
-      FileExists::Replace->name,
-      FileExists::Error->name,
-    ];
   }
 
 }

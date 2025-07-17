@@ -2,11 +2,8 @@
 
 namespace Drupal\eca_render\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Entity\Plugin\DataType\EntityAdapter;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\DataType\DataTransferObject;
 use Drupal\eca\Plugin\ECA\PluginFormTrait;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -15,16 +12,15 @@ use Symfony\Component\Yaml\Exception\ParseException;
 
 /**
  * Serializes arbitrary data.
+ *
+ * @Action(
+ *   id = "eca_render_serialize",
+ *   label = @Translation("Render: serialize"),
+ *   description = @Translation("Serializes data."),
+ *   eca_version_introduced = "1.1.0",
+ *   deriver = "Drupal\eca_render\Plugin\Action\SerializeDeriver"
+ * )
  */
-#[Action(
-  id: 'eca_render_serialize',
-  label: new TranslatableMarkup('Render: serialize'),
-  deriver: 'Drupal\eca_render\Plugin\Action\SerializeDeriver',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Serializes data.'),
-  version_introduced: '1.1.0',
-)]
 class Serialize extends Build {
 
   use PluginFormTrait;

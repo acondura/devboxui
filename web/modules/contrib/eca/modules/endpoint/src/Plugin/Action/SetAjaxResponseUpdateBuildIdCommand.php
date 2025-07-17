@@ -2,23 +2,19 @@
 
 namespace Drupal\eca_endpoint\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Ajax\CommandInterface;
 use Drupal\Core\Ajax\UpdateBuildIdCommand;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Add an update build id command to the ajax response.
+ *
+ * @Action(
+ *   id = "eca_endpoint_set_ajax_response_update_build_id",
+ *   label = @Translation("Ajax Response: update build id"),
+ *   eca_version_introduced = "2.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_endpoint_set_ajax_response_update_build_id',
-  label: new TranslatableMarkup('Ajax Response: update build id'),
-)]
-#[EcaAction(
-  version_introduced: '2.0.0',
-)]
 class SetAjaxResponseUpdateBuildIdCommand extends ResponseAjaxCommandBase {
 
   /**

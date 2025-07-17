@@ -3,31 +3,27 @@
 namespace Drupal\eca_render\Plugin\Action;
 
 use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Render\BubbleableMetadata;
 use Drupal\Core\Render\Markup as RenderMarkup;
 use Drupal\Core\Render\RenderContext;
 use Drupal\Core\Render\RendererInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\ECA\PluginFormTrait;
 use Drupal\views\Entity\View;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Render the contents of a configured view.
+ *
+ * @Action(
+ *   id = "eca_render_views",
+ *   label = @Translation("Render: Views"),
+ *   description = @Translation("Render the contents of a configured view."),
+ *   eca_version_introduced = "1.1.0",
+ *   deriver = "Drupal\eca_render\Plugin\Action\ViewsDeriver"
+ * )
  */
-#[Action(
-  id: 'eca_render_views',
-  label: new TranslatableMarkup('Render: Views'),
-  deriver: 'Drupal\eca_render\Plugin\Action\ViewsDeriver',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Render the contents of a configured view.'),
-  version_introduced: '1.1.0',
-)]
 class Views extends RenderElementActionBase {
 
   use PluginFormTrait;
@@ -145,7 +141,7 @@ class Views extends RenderElementActionBase {
       }
     }
 
-    $build = views_embed_view(...$args) ?? [];
+    $build = views_embed_view(...$args);
 
     $markup = $this->renderer->executeInRenderContext(new RenderContext(), function () use (&$build) {
       return $this->renderer->render($build);
@@ -199,16 +195,6 @@ class Views extends RenderElementActionBase {
    */
   protected function getArguments(): string {
     return trim((string) $this->tokenService->replaceClear($this->configuration['arguments']));
-  }
-
-  /**
-   * Get all valid views.
-   *
-   * @return array
-   *   All valid views.
-   */
-  public static function getAllValidViews() {
-    return array_keys(array_filter(View::loadMultiple(), fn($view) => $view->status()));
   }
 
 }

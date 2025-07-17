@@ -2,14 +2,11 @@
 
 namespace Drupal\eca_base\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Field\EntityReferenceFieldItemListInterface;
 use Drupal\Core\Field\FieldItemListInterface;
 use Drupal\Core\Field\Plugin\Field\FieldType\EntityReferenceItem;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\TypedData\TypedDataInterface;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\eca\Plugin\DataType\DataTransferObject;
 use Drupal\eca\Service\YamlParser;
@@ -18,15 +15,14 @@ use Symfony\Component\Yaml\Exception\ParseException;
 
 /**
  * Action to set an arbitrary token value.
+ *
+ * @Action(
+ *   id = "eca_token_set_value",
+ *   label = @Translation("Token: set value"),
+ *   description = @Translation("Define a locally available token by a specific name and value."),
+ *   eca_version_introduced = "1.1.0"
+ * )
  */
-#[Action(
-  id: 'eca_token_set_value',
-  label: new TranslatableMarkup('Token: set value'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Define a locally available token by a specific name and value.'),
-  version_introduced: '1.1.0',
-)]
 class TokenSetValue extends ConfigurableActionBase {
 
   /**

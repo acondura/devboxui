@@ -2,23 +2,19 @@
 
 namespace Drupal\eca_endpoint\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Ajax\CommandInterface;
 use Drupal\Core\Ajax\ScrollTopCommand;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Add a scroll to top command to the ajax response.
+ *
+ * @Action(
+ *   id = "eca_endpoint_set_ajax_response_scroll_top",
+ *   label = @Translation("Ajax Response: scroll to top"),
+ *   eca_version_introduced = "2.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_endpoint_set_ajax_response_scroll_top',
-  label: new TranslatableMarkup('Ajax Response: scroll to top'),
-)]
-#[EcaAction(
-  version_introduced: '2.0.0',
-)]
 class SetAjaxResponseScrollTopCommand extends ResponseAjaxCommandBase {
 
   /**

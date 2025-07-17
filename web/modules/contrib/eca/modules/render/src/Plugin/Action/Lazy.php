@@ -2,22 +2,18 @@
 
 namespace Drupal\eca_render\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Build a lazy element.
+ *
+ * @Action(
+ *   id = "eca_render_lazy",
+ *   label = @Translation("Render: lazy element"),
+ *   description = @Translation("Build a lazy render element, optionally with arguments."),
+ *   eca_version_introduced = "1.1.0"
+ * )
  */
-#[Action(
-  id: 'eca_render_lazy',
-  label: new TranslatableMarkup('Render: lazy element'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Build a lazy render element, optionally with arguments.'),
-  version_introduced: '1.1.0',
-)]
 class Lazy extends RenderElementActionBase {
 
   /**

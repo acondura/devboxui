@@ -3,27 +3,23 @@
 namespace Drupal\eca_render\Plugin\Action;
 
 use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Entity\EntityFormBuilderInterface;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Build an entity form.
+ *
+ * @Action(
+ *   id = "eca_render_entity_form",
+ *   label = @Translation("Render: entity form"),
+ *   description = @Translation("Build an entity form using a specified entity."),
+ *   eca_version_introduced = "1.1.0",
+ *   type = "entity"
+ * )
  */
-#[Action(
-  id: 'eca_render_entity_form',
-  label: new TranslatableMarkup('Render: entity form'),
-  type: 'entity',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Build an entity form using a specified entity.'),
-  version_introduced: '1.1.0',
-)]
 class EntityForm extends RenderElementActionBase {
 
   /**

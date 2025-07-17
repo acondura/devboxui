@@ -3,9 +3,8 @@
 namespace Drupal\eca_workflow\Plugin\ECA\Event;
 
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\eca\Attribute\EcaEvent;
 use Drupal\eca\Attribute\Token;
-use Drupal\eca\Entity\Objects\EcaEvent as EcaEventObject;
+use Drupal\eca\Entity\Objects\EcaEvent;
 use Drupal\eca\Event\Tag;
 use Drupal\eca\Plugin\ECA\Event\EventBase;
 use Drupal\eca\Service\ContentEntityTypes;
@@ -16,12 +15,13 @@ use Symfony\Contracts\EventDispatcher\Event;
 
 /**
  * Plugin implementation of the ECA workflow events.
+ *
+ * @EcaEvent(
+ *   id = "workflow",
+ *   deriver = "Drupal\eca_workflow\Plugin\ECA\Event\WorkflowEventDeriver",
+ *   eca_version_introduced = "1.0.0"
+ * )
  */
-#[EcaEvent(
-  id: 'workflow',
-  deriver: 'Drupal\eca_workflow\Plugin\ECA\Event\WorkflowEventDeriver',
-  version_introduced: '1.0.0',
-)]
 class WorkflowEvent extends EventBase {
 
   /**
@@ -116,7 +116,7 @@ class WorkflowEvent extends EventBase {
   /**
    * {@inheritdoc}
    */
-  public function generateWildcard(string $eca_config_id, EcaEventObject $ecaEvent): string {
+  public function generateWildcard(string $eca_config_id, EcaEvent $ecaEvent): string {
     switch ($this->getDerivativeId()) {
 
       case 'transition':

@@ -3,12 +3,9 @@
 namespace Drupal\eca_content\Plugin\Action;
 
 use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\eca\Service\ContentEntityTypes;
 use Drupal\eca_content\Event\ContentEntityCustomEvent;
@@ -18,16 +15,15 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Trigger a content entity custom event.
+ *
+ * @Action(
+ *   id = "eca_trigger_content_entity_custom_event",
+ *   label = @Translation("Trigger a custom event (entity-aware)"),
+ *   description = @Translation("Triggers a custom event which is entity aware."),
+ *   eca_version_introduced = "1.0.0",
+ *   type = "entity"
+ * )
  */
-#[Action(
-  id: 'eca_trigger_content_entity_custom_event',
-  label: new TranslatableMarkup('Trigger a custom event (entity-aware)'),
-  type: 'entity',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Triggers a custom event which is entity aware.'),
-  version_introduced: '1.0.0',
-)]
 class TriggerContentEntityCustomEvent extends ConfigurableActionBase {
 
   /**

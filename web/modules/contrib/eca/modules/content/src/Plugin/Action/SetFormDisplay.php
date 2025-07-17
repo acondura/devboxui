@@ -3,30 +3,26 @@
 namespace Drupal\eca_content\Plugin\Action;
 
 use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Entity\ContentEntityFormInterface;
 use Drupal\Core\Entity\Display\EntityFormDisplayInterface;
 use Drupal\Core\Entity\Entity\EntityFormDisplay;
 use Drupal\Core\Entity\FieldableEntityInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\eca\Plugin\FormPluginTrait;
 
 /**
  * Set a specific form display.
+ *
+ * @Action(
+ *   id = "eca_content_set_form_display",
+ *   label = @Translation("Entity: set form display"),
+ *   description = @Translation("Change to a specific form display mode. Only works when reacting upon the event <em>Prepare content entity form</em>."),
+ *   eca_version_introduced = "1.0.0",
+ *   type = "form"
+ * )
  */
-#[Action(
-  id: 'eca_content_set_form_display',
-  label: new TranslatableMarkup('Entity: set form display'),
-  type: 'form',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Change to a specific form display mode. Only works when reacting upon the event <em>Prepare content entity form</em>.'),
-  version_introduced: '1.0.0',
-)]
 class SetFormDisplay extends ConfigurableActionBase {
 
   use FormPluginTrait;

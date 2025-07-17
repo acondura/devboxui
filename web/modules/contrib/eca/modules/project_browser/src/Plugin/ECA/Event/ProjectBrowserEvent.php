@@ -3,19 +3,19 @@
 namespace Drupal\eca_project_browser\Plugin\ECA\Event;
 
 use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaEvent;
 use Drupal\eca\Plugin\ECA\Event\EventBase;
 use Drupal\eca_project_browser\Event\ProjectBrowserEvents;
 use Drupal\eca_project_browser\Event\ProjectBrowserSourceInfoAlterEvent;
 
 /**
  * Plugin implementation of the ECA Events for project browser.
+ *
+ * @EcaEvent(
+ *   id = "project_browser",
+ *   deriver = "Drupal\eca_project_browser\Plugin\ECA\Event\ProjectBrowserEventDeriver",
+ *   eca_version_introduced = "2.1.2"
+ * )
  */
-#[EcaEvent(
-  id: 'project_browser',
-  deriver: 'Drupal\eca_project_browser\Plugin\ECA\Event\ProjectBrowserEventDeriver',
-  version_introduced: '2.1.2',
-)]
 class ProjectBrowserEvent extends EventBase {
 
   /**

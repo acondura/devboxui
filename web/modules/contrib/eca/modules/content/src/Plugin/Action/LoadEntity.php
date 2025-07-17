@@ -4,28 +4,24 @@ namespace Drupal\eca_content\Plugin\Action;
 
 use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Access\AccessResultReasonInterface;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\eca_content\Service\EntityLoader;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Load an entity into the token environment.
+ *
+ * @Action(
+ *   id = "eca_token_load_entity",
+ *   label = @Translation("Entity: load"),
+ *   description = @Translation("Load a single entity from current scope or by certain properties, and store it as a token."),
+ *   eca_version_introduced = "1.0.0",
+ *   type = "entity"
+ * )
  */
-#[Action(
-  id: 'eca_token_load_entity',
-  label: new TranslatableMarkup('Entity: load'),
-  type: 'entity',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Load a single entity from current scope or by certain properties, and store it as a token.'),
-  version_introduced: '1.0.0',
-)]
 class LoadEntity extends ConfigurableActionBase {
 
   /**

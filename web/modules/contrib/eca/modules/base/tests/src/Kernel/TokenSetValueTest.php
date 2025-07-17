@@ -46,11 +46,7 @@ class TokenSetValueTest extends KernelTestBase {
     /** @var \Drupal\eca\Token\TokenInterface $token_services */
     $token_services = \Drupal::service('eca.token_services');
 
-    // Make sure we don't get a token contained in the random string. This is
-    // preventing a test failure we've just had where the random string
-    // contained 'K[g]>&No' and the assertion got 'K>&No' as it cleared the
-    // non-existing token '[g]'.
-    $random_string = str_replace('[', '_', $this->randomString());
+    $random_string = $this->randomString();
     /** @var \Drupal\eca_base\Plugin\Action\TokenSetValue $action */
     $action = $action_manager->createInstance('eca_token_set_value', [
       'token_name' => 'my_custom_token:value1',

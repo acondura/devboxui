@@ -3,24 +3,20 @@
 namespace Drupal\eca_form\Plugin\Action;
 
 use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Set available options on a field.
+ *
+ * @Action(
+ *   id = "eca_form_field_set_options",
+ *   label = @Translation("Form field: set options"),
+ *   description = @Translation("Defines available options on an existing multi-value selection, radio or checkbox field."),
+ *   eca_version_introduced = "1.0.0",
+ *   type = "form"
+ * )
  */
-#[Action(
-  id: 'eca_form_field_set_options',
-  label: new TranslatableMarkup('Form field: set options'),
-  type: 'form',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Defines available options on an existing multi-value selection, radio or checkbox field.'),
-  version_introduced: '1.0.0',
-)]
 class FormFieldSetOptions extends FormFieldActionBase {
 
   use FormFieldSetOptionsTrait {

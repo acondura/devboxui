@@ -2,28 +2,23 @@
 
 namespace Drupal\eca_file\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\File\FileExists;
 use Drupal\Core\File\FileSystemInterface;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\file\FileInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Write data to a physical file.
+ *
+ * @Action(
+ *   id = "eca_file_write",
+ *   label = @Translation("File: write"),
+ *   description = @Translation("Write data to a physical file of a file entity."),
+ *   type = "entity"
+ * )
  */
-#[Action(
-  id: 'eca_file_write',
-  label: new TranslatableMarkup('File: write'),
-  type: 'entity',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Write data to a physical file of a file entity.'),
-  version_introduced: '2.1.0',
-)]
 class FileWrite extends ConfigurableActionBase {
 
   /**

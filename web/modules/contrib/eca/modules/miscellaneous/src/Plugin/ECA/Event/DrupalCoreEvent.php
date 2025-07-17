@@ -10,8 +10,7 @@ use Drupal\Core\Render\RenderEvents;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\block_content\BlockContentEvents;
 use Drupal\block_content\Event\BlockContentGetDependencyEvent;
-use Drupal\eca\Attribute\EcaEvent;
-use Drupal\eca\Entity\Objects\EcaEvent as EcaEventObject;
+use Drupal\eca\Entity\Objects\EcaEvent;
 use Drupal\eca\Plugin\ECA\Event\EventBase;
 use Drupal\jsonapi\ResourceType\ResourceTypeBuildEvent;
 use Drupal\jsonapi\ResourceType\ResourceTypeBuildEvents;
@@ -24,12 +23,13 @@ use Symfony\Contracts\EventDispatcher\Event;
 
 /**
  * Plugin implementation of the ECA Events for Drupal core.
+ *
+ * @EcaEvent(
+ *   id = "drupal",
+ *   deriver = "Drupal\eca_misc\Plugin\ECA\Event\DrupalCoreEventDeriver",
+ *   eca_version_introduced = "1.0.0"
+ * )
  */
-#[EcaEvent(
-  id: 'drupal',
-  deriver: 'Drupal\eca_misc\Plugin\ECA\Event\DrupalCoreEventDeriver',
-  version_introduced: '1.0.0',
-)]
 class DrupalCoreEvent extends EventBase {
 
   /**
@@ -103,7 +103,7 @@ class DrupalCoreEvent extends EventBase {
   /**
    * {@inheritdoc}
    */
-  public function generateWildcard(string $eca_config_id, EcaEventObject $ecaEvent): string {
+  public function generateWildcard(string $eca_config_id, EcaEvent $ecaEvent): string {
     $configuration = $ecaEvent->getConfiguration();
     if ($this->getDerivativeId() === 'recipe_applied') {
       return empty($configuration['recipe_base_path']) ? '*' : $configuration['recipe_base_path'];
@@ -128,29 +128,21 @@ class DrupalCoreEvent extends EventBase {
    * {@inheritdoc}
    */
   public function defaultConfiguration(): array {
-    if ($this->eventClass() === RecipeAppliedEvent::class) {
-      $values = [
-        'recipe_base_path' => '',
-      ];
-    }
-    else {
-      $values = [];
-    }
-    return $values + parent::defaultConfiguration();
+    return [
+      'recipe_base_path' => '',
+    ] + parent::defaultConfiguration();
   }
 
   /**
    * {@inheritdoc}
    */
   public function buildConfigurationForm(array $form, FormStateInterface $form_state): array {
-    if ($this->eventClass() === RecipeAppliedEvent::class) {
-      $form['recipe_base_path'] = [
-        '#type' => 'textfield',
-        '#title' => $this->t('Base path of recipe'),
-        '#default_value' => $this->configuration['recipe_base_path'],
-        '#description' => $this->t('The base path of the recipe that got applied; e.g. if the recipe is stored in "/var/www/recipe/my_recipe" then the base path is "my_recipe". Leave empty to respond to all recipes.'),
-      ];
-    }
+    $form['recipe_base_path'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Base path of recipe'),
+      '#default_value' => $this->configuration['recipe_base_path'],
+      '#description' => $this->t('The base path of the recipe that got applied; e.g. if the recipe is stored in "/var/www/recipe/my_recipe" then the base path is "my_recipe". Leave empty to respond to all recipes.'),
+    ];
     return parent::buildConfigurationForm($form, $form_state);
   }
 
@@ -158,9 +150,7 @@ class DrupalCoreEvent extends EventBase {
    * {@inheritdoc}
    */
   public function submitConfigurationForm(array &$form, FormStateInterface $form_state): void {
-    if ($this->eventClass() === RecipeAppliedEvent::class) {
-      parent::submitConfigurationForm($form, $form_state);
-    }
+    parent::submitConfigurationForm($form, $form_state);
     $this->configuration['recipe_base_path'] = $form_state->getValue('recipe_base_path');
   }
 

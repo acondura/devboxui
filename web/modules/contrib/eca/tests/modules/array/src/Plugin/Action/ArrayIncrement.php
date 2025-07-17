@@ -2,25 +2,21 @@
 
 namespace Drupal\eca_test_array\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 /**
  * An action that increments a number in an array.
+ *
+ * @Action(
+ *   id = "eca_test_array_increment",
+ *   label = @Translation("Static array: increment"),
+ *   description = @Translation("This action increments a number in a static array."),
+ *   nodocs = true
+ * )
  */
-#[Action(
-  id: 'eca_test_array_increment',
-  label: new TranslatableMarkup('Static array: increment'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('This action increments a number in a static array.'),
-  no_docs: TRUE,
-)]
 class ArrayIncrement extends ConfigurableActionBase {
 
   /**

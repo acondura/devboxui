@@ -2,29 +2,25 @@
 
 namespace Drupal\eca_render\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Render\BubbleableMetadata;
 use Drupal\Core\Render\Markup as RenderMarkup;
 use Drupal\Core\Render\RenderContext;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\Template\TwigEnvironment;
-use Drupal\eca\Attribute\EcaAction;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\Yaml\Exception\ParseException;
 
 /**
- * Render an inline template using the Twig engine.
+ * Render an inline template using the Twig engine..
+ *
+ * @Action(
+ *   id = "eca_render_twig",
+ *   label = @Translation("Render: Twig"),
+ *   description = @Translation("Render an inline template using the Twig engine."),
+ *   eca_version_introduced = "1.1.0"
+ * )
  */
-#[Action(
-  id: 'eca_render_twig',
-  label: new TranslatableMarkup('Render: Twig'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Render an inline template using the Twig engine.'),
-  version_introduced: '1.1.0',
-)]
 class Twig extends Markup {
 
   /**

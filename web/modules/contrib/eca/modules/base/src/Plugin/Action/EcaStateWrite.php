@@ -3,11 +3,8 @@
 namespace Drupal\eca_base\Plugin\Action;
 
 use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\eca\Service\YamlParser;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -15,15 +12,14 @@ use Symfony\Component\Yaml\Exception\ParseException;
 
 /**
  * Action to store arbitrary value to ECA's key value store.
+ *
+ * @Action(
+ *   id = "eca_state_write",
+ *   label = @Translation("Persistent state: write"),
+ *   description = @Translation("Writes a value into the Drupal state system by the given key."),
+ *   eca_version_introduced = "1.1.0"
+ * )
  */
-#[Action(
-  id: 'eca_state_write',
-  label: new TranslatableMarkup('Persistent state: write'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Writes a value into the Drupal state system by the given key.'),
-  version_introduced: '1.1.0',
-)]
 class EcaStateWrite extends ConfigurableActionBase {
 
   /**

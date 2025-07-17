@@ -3,9 +3,8 @@
 namespace Drupal\eca_views\Plugin\ECA\Event;
 
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\eca\Attribute\EcaEvent;
 use Drupal\eca\Attribute\Token;
-use Drupal\eca\Entity\Objects\EcaEvent as EcaEventObject;
+use Drupal\eca\Entity\Objects\EcaEvent;
 use Drupal\eca\Plugin\ECA\Event\EventBase;
 use Drupal\eca_views\Event\Access;
 use Drupal\eca_views\Event\PostBuild;
@@ -24,12 +23,13 @@ use Symfony\Contracts\EventDispatcher\Event;
 
 /**
  * Plugin implementation of the ECA Events for content entities.
+ *
+ * @EcaEvent(
+ *   id = "eca_views",
+ *   deriver = "Drupal\eca_views\Plugin\ECA\Event\ViewsEventDeriver",
+ *   eca_version_introduced = "2.0.0"
+ * )
  */
-#[EcaEvent(
-  id: 'eca_views',
-  deriver: 'Drupal\eca_views\Plugin\ECA\Event\ViewsEventDeriver',
-  version_introduced: '2.0.0',
-)]
 class ViewsEvent extends EventBase {
 
   /**
@@ -93,7 +93,7 @@ class ViewsEvent extends EventBase {
   /**
    * {@inheritdoc}
    */
-  public function generateWildcard(string $eca_config_id, EcaEventObject $ecaEvent): string {
+  public function generateWildcard(string $eca_config_id, EcaEvent $ecaEvent): string {
     $display_id = $ecaEvent->getConfiguration()['display_id'] ?? '';
     if ($display_id === '') {
       $display_id = '*';

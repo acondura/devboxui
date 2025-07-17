@@ -2,21 +2,17 @@
 
 namespace Drupal\eca_endpoint\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Get a request header.
+ *
+ * @Action(
+ *   id = "eca_endpoint_get_request_header",
+ *   label = @Translation("Request: Get header"),
+ *   eca_version_introduced = "1.1.0"
+ * )
  */
-#[Action(
-  id: 'eca_endpoint_get_request_header',
-  label: new TranslatableMarkup('Request: Get header'),
-)]
-#[EcaAction(
-  version_introduced: '1.1.0',
-)]
 class GetRequestHeader extends RequestActionBase {
 
   /**

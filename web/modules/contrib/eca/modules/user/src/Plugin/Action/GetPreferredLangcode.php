@@ -3,25 +3,21 @@
 namespace Drupal\eca_user\Plugin\Action;
 
 use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 
 /**
  * Load the currently logged in user into the token environment.
+ *
+ * @Action(
+ *   id = "eca_get_preferred_langcode",
+ *   label = @Translation("User: get preferred language code"),
+ *   description = @Translation("Get the preferred language code and store it as a token."),
+ *   eca_version_introduced = "2.0.0",
+ *   type = "user"
+ * )
  */
-#[Action(
-  id: 'eca_get_preferred_langcode',
-  label: new TranslatableMarkup('User: get preferred language code'),
-  type: 'user',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Get the preferred language code and store it as a token.'),
-  version_introduced: '2.0.0',
-)]
 class GetPreferredLangcode extends ConfigurableActionBase {
 
   /**

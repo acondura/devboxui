@@ -1,0 +1,20 @@
+uuid: 3b38a1a0-16a4-4f2c-ab8b-6b5d3114ff7d
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.user.field_ssh_private_key
+  module:
+    - user
+id: user.user.field_ssh_private_key
+field_name: field_ssh_private_key
+entity_type: user
+bundle: user
+label: 'SSH private key'
+description: ''
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string_long

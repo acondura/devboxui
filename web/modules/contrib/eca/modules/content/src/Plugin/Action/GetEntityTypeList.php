@@ -2,25 +2,21 @@
 
 namespace Drupal\eca_content\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\eca\Service\ContentEntityTypes;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Get a list of entity types.
+ *
+ * @Action(
+ *   id = "eca_get_entity_type_list",
+ *   label = @Translation("Entity: get list of entity types"),
+ *   description = @Translation("Gets the list of entity types."),
+ *   eca_version_introduced = "2.1.0"
+ * )
  */
-#[Action(
-  id: 'eca_get_entity_type_list',
-  label: new TranslatableMarkup('Entity: get list of entity types'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Gets the list of entity types.'),
-  version_introduced: '2.1.0',
-)]
 class GetEntityTypeList extends ConfigurableActionBase {
 
   /**

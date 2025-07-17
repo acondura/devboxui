@@ -2,23 +2,19 @@
 
 namespace Drupal\eca_form\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Set weight on a field or form element.
+ *
+ * @Action(
+ *   id = "eca_form_field_set_weight",
+ *   label = @Translation("Form field: set weight"),
+ *   description = @Translation("Defines weight on a form field or element."),
+ *   eca_version_introduced = "2.1.0",
+ *   type = "form"
+ * )
  */
-#[Action(
-  id: 'eca_form_field_set_weight',
-  label: new TranslatableMarkup('Form field: set weight'),
-  type: 'form',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Defines weight on a form field or element.'),
-  version_introduced: '2.1.0',
-)]
 class FormFieldSetWeight extends FormFieldActionBase {
 
   /**

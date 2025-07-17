@@ -2,28 +2,24 @@
 
 namespace Drupal\eca_log\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\Core\Logger\RfcLogLevel;
 use Drupal\Core\Render\BubbleableMetadata;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\eca\Plugin\ECA\PluginFormTrait;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Write a log message.
+ *
+ * @Action(
+ *   id = "eca_write_log_message",
+ *   label = @Translation("Log Message"),
+ *   description = @Translation("Writes a log message into the given type with the given severity."),
+ *   eca_version_introduced = "1.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_write_log_message',
-  label: new TranslatableMarkup('Log Message'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Writes a log message into the given type with the given severity.'),
-  version_introduced: '1.0.0',
-)]
 class LogMessage extends ConfigurableActionBase {
 
   use PluginFormTrait;
@@ -76,7 +72,7 @@ class LogMessage extends ConfigurableActionBase {
   public function defaultConfiguration(): array {
     return [
       'channel' => '',
-      'severity' => RfcLogLevel::ERROR,
+      'severity' => '',
       'message' => '',
     ] + parent::defaultConfiguration();
   }

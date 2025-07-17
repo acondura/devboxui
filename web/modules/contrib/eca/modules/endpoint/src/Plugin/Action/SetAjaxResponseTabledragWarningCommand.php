@@ -2,23 +2,19 @@
 
 namespace Drupal\eca_endpoint\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Ajax\CommandInterface;
 use Drupal\Core\Ajax\TabledragWarningCommand;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Add a table drag warning to the ajax response.
+ *
+ * @Action(
+ *   id = "eca_endpoint_set_ajax_response_tabledrag_warning",
+ *   label = @Translation("Ajax Response: tabledrag warning"),
+ *   eca_version_introduced = "2.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_endpoint_set_ajax_response_tabledrag_warning',
-  label: new TranslatableMarkup('Ajax Response: tabledrag warning'),
-)]
-#[EcaAction(
-  version_introduced: '2.0.0',
-)]
 class SetAjaxResponseTabledragWarningCommand extends ResponseAjaxCommandBase {
 
   /**

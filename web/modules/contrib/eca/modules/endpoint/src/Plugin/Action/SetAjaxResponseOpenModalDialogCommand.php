@@ -2,22 +2,18 @@
 
 namespace Drupal\eca_endpoint\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Ajax\CommandInterface;
 use Drupal\Core\Ajax\OpenModalDialogCommand;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Add open modal dialog command to the ajax response.
+ *
+ * @Action(
+ *   id = "eca_endpoint_set_ajax_response_open_modal_dialog",
+ *   label = @Translation("Ajax Response: open modal dialog"),
+ *   eca_version_introduced = "2.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_endpoint_set_ajax_response_open_modal_dialog',
-  label: new TranslatableMarkup('Ajax Response: open modal dialog'),
-)]
-#[EcaAction(
-  version_introduced: '2.0.0',
-)]
 class SetAjaxResponseOpenModalDialogCommand extends SetAjaxResponseOpenDialogCommand {
 
   /**

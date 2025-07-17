@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "6d82e123e720dc3a66e3be9b1ad1f505",
+    "content-hash": "e0d25f08754e80191a566f8d04097d51",
     "packages": [
         {
             "name": "asm89/stack-cors",
@@ -1344,36 +1344,32 @@
         },
         {
             "name": "drupal/bpmn_io",
-            "version": "3.0.0-beta3",
+            "version": "2.0.10",
             "source": {
                 "type": "git",
                 "url": "https://git.drupalcode.org/project/bpmn_io.git",
-                "reference": "3.0.0-beta3"
+                "reference": "2.0.10"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://ftp.drupal.org/files/projects/bpmn_io-3.0.0-beta3.zip",
-                "reference": "3.0.0-beta3",
-                "shasum": "a4192e32ea899681aaaaf5e3ce7d44366d230f8e"
+                "url": "https://ftp.drupal.org/files/projects/bpmn_io-2.0.10.zip",
+                "reference": "2.0.10",
+                "shasum": "3068bbb5ea4df08279390d5749d62b3b1bcda654"
             },
             "require": {
-                "drupal/core": "^11.2",
-                "drupal/modeler_api": "^1.0",
-                "ext-dom": "*",
-                "mtownsend/xml-to-array": "^2.0",
-                "php": ">=8.3"
-            },
-            "require-dev": {
-                "drupal/eca": "^3.0"
+                "drupal/core": "^10.3 || ^11",
+                "drupal/eca": "^2.0",
+                "drupal/eca_modeller_bpmn": "^2",
+                "php": ">=8.1"
             },
             "type": "drupal-module",
             "extra": {
                 "drupal": {
-                    "version": "3.0.0-beta3",
-                    "datestamp": "1752577653",
+                    "version": "2.0.10",
+                    "datestamp": "1751531607",
                     "security-coverage": {
-                        "status": "not-covered",
-                        "message": "Beta releases are not covered by Drupal security advisories."
+                        "status": "covered",
+                        "message": "Covered by Drupal's security advisory policy"
                     }
                 }
             },
@@ -1391,7 +1387,7 @@
                     "homepage": "https://www.drupal.org/user/168924"
                 }
             ],
-            "description": "BPMN modeler, integrated into Drupal's admin UI.",
+            "description": "BPMN modeller for ECA, integrated into Drupal's admin UI.",
             "homepage": "https://www.drupal.org/project/bpmn_io",
             "support": {
                 "source": "https://drupal.org/project/bpmn_io",
@@ -2025,43 +2021,43 @@
         },
         {
             "name": "drupal/eca",
-            "version": "3.0.0-beta2",
+            "version": "2.1.10",
             "source": {
                 "type": "git",
                 "url": "https://git.drupalcode.org/project/eca.git",
-                "reference": "3.0.0-beta2"
+                "reference": "2.1.10"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://ftp.drupal.org/files/projects/eca-3.0.0-beta2.zip",
-                "reference": "3.0.0-beta2",
-                "shasum": "b83c13d45524dca1a7ab421fd7a5158641cf9e86"
+                "url": "https://ftp.drupal.org/files/projects/eca-2.1.10.zip",
+                "reference": "2.1.10",
+                "shasum": "eaae440d51c17178340cebc21af62f5792b7026b"
             },
             "require": {
                 "dragonmantank/cron-expression": "^3.1",
-                "drupal/core": "^11.2",
-                "drupal/modeler_api": "^1.0",
+                "drupal/core": "^10.3||^11",
+                "ext-dom": "*",
                 "ext-json": "*",
-                "php": ">=8.3"
+                "mtownsend/xml-to-array": "^2.0",
+                "php": ">=8.1"
             },
             "require-dev": {
-                "drupal/ai": "^1.2",
+                "drupal/eca_ui": "*",
                 "drupal/entity_reference_revisions": "^1.12",
                 "drupal/inline_entity_form": "^3.0",
-                "drupal/modeler_api": "*",
                 "drupal/paragraphs": "^1.18",
                 "drupal/project_browser": "^2.0",
                 "drupal/token": "^1.15",
-                "drupal/webform": "^6.3"
+                "drupal/webform": "dev-3465838-drupal-11-compatibility"
             },
             "type": "drupal-module",
             "extra": {
                 "drupal": {
-                    "version": "3.0.0-beta2",
-                    "datestamp": "1752071636",
+                    "version": "2.1.10",
+                    "datestamp": "1751524996",
                     "security-coverage": {
-                        "status": "not-covered",
-                        "message": "Beta releases are not covered by Drupal security advisories."
+                        "status": "covered",
+                        "message": "Covered by Drupal's security advisory policy"
                     }
                 }
             },
@@ -2088,6 +2084,143 @@
             "support": {
                 "source": "https://drupal.org/project/eca",
                 "issues": "https://drupal.org/project/issues/eca"
+            }
+        },
+        {
+            "name": "drupal/eca_modeller_bpmn",
+            "version": "2.1.10",
+            "require": {
+                "drupal/core": "^10.3 || ^11",
+                "drupal/eca": "^2",
+                "drupal/eca_ui": "*"
+            },
+            "type": "metapackage",
+            "extra": {
+                "drupal": {
+                    "version": "2.1.10",
+                    "datestamp": "1751524996",
+                    "security-coverage": {
+                        "status": "covered",
+                        "message": "Covered by Drupal's security advisory policy"
+                    }
+                }
+            },
+            "notification-url": "https://packages.drupal.org/8/downloads",
+            "license": [
+                "GPL-2.0-or-later"
+            ],
+            "authors": [
+                {
+                    "name": "boromino",
+                    "homepage": "https://www.drupal.org/user/859722"
+                },
+                {
+                    "name": "danielspeicher",
+                    "homepage": "https://www.drupal.org/user/3621778"
+                },
+                {
+                    "name": "jurgenhaas",
+                    "homepage": "https://www.drupal.org/user/168924"
+                }
+            ],
+            "description": "Common functionality for all BPMN based modeller implementations.",
+            "homepage": "https://www.drupal.org/project/eca",
+            "support": {
+                "source": "https://git.drupalcode.org/project/eca"
+            }
+        },
+        {
+            "name": "drupal/eca_tamper",
+            "version": "2.0.2",
+            "source": {
+                "type": "git",
+                "url": "https://git.drupalcode.org/project/eca_tamper.git",
+                "reference": "2.0.2"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://ftp.drupal.org/files/projects/eca_tamper-2.0.2.zip",
+                "reference": "2.0.2",
+                "shasum": "ef3a7a093a8cf403282b3f9d5534f7c7069ea2e0"
+            },
+            "require": {
+                "drupal/core": "^10.3 || ^11",
+                "drupal/eca": "^2.0",
+                "drupal/tamper": "^1.0",
+                "php": ">=8.1"
+            },
+            "type": "drupal-module",
+            "extra": {
+                "drupal": {
+                    "version": "2.0.2",
+                    "datestamp": "1731415293",
+                    "security-coverage": {
+                        "status": "covered",
+                        "message": "Covered by Drupal's security advisory policy"
+                    }
+                }
+            },
+            "notification-url": "https://packages.drupal.org/8/downloads",
+            "license": [
+                "GPL-2.0-or-later"
+            ],
+            "authors": [
+                {
+                    "name": "danielspeicher",
+                    "homepage": "https://www.drupal.org/user/3621778"
+                },
+                {
+                    "name": "jurgenhaas",
+                    "homepage": "https://www.drupal.org/user/168924"
+                }
+            ],
+            "description": "Integrate ECA with the tamper module and its plugins available as actions.",
+            "homepage": "https://www.drupal.org/project/eca_tamper",
+            "support": {
+                "source": "https://drupal.org/project/eca_tamper",
+                "issues": "https://drupal.org/project/issues/eca_tamper"
+            }
+        },
+        {
+            "name": "drupal/eca_ui",
+            "version": "2.1.10",
+            "require": {
+                "drupal/core": "^10.3 || ^11",
+                "drupal/eca": "*"
+            },
+            "type": "metapackage",
+            "extra": {
+                "drupal": {
+                    "version": "2.1.10",
+                    "datestamp": "1751524996",
+                    "security-coverage": {
+                        "status": "covered",
+                        "message": "Covered by Drupal's security advisory policy"
+                    }
+                }
+            },
+            "notification-url": "https://packages.drupal.org/8/downloads",
+            "license": [
+                "GPL-2.0-or-later"
+            ],
+            "authors": [
+                {
+                    "name": "boromino",
+                    "homepage": "https://www.drupal.org/user/859722"
+                },
+                {
+                    "name": "danielspeicher",
+                    "homepage": "https://www.drupal.org/user/3621778"
+                },
+                {
+                    "name": "jurgenhaas",
+                    "homepage": "https://www.drupal.org/user/168924"
+                }
+            ],
+            "description": "Provides a user interface for managing ECA models.",
+            "homepage": "https://www.drupal.org/project/eca",
+            "support": {
+                "source": "https://git.drupalcode.org/project/eca"
             }
         },
         {
@@ -2152,6 +2285,82 @@
             "homepage": "https://www.drupal.org/project/entity_reference_revisions",
             "support": {
                 "source": "https://git.drupalcode.org/project/entity_reference_revisions"
+            }
+        },
+        {
+            "name": "drupal/field_group",
+            "version": "4.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://git.drupalcode.org/project/field_group.git",
+                "reference": "4.0.0"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://ftp.drupal.org/files/projects/field_group-4.0.0.zip",
+                "reference": "4.0.0",
+                "shasum": "d3ff81d8a64b6ac392989b668cfa417be5101642"
+            },
+            "require": {
+                "drupal/core": "^10.3 || ^11"
+            },
+            "require-dev": {
+                "drupal/jquery_ui_accordion": "*"
+            },
+            "type": "drupal-module",
+            "extra": {
+                "drupal": {
+                    "version": "4.0.0",
+                    "datestamp": "1745478894",
+                    "security-coverage": {
+                        "status": "covered",
+                        "message": "Covered by Drupal's security advisory policy"
+                    }
+                }
+            },
+            "notification-url": "https://packages.drupal.org/8/downloads",
+            "license": [
+                "GPL-2.0-or-later"
+            ],
+            "authors": [
+                {
+                    "name": "anybody",
+                    "homepage": "https://www.drupal.org/user/291091"
+                },
+                {
+                    "name": "grevil",
+                    "homepage": "https://www.drupal.org/user/3668491"
+                },
+                {
+                    "name": "hydra",
+                    "homepage": "https://www.drupal.org/user/647364"
+                },
+                {
+                    "name": "joevagyok",
+                    "homepage": "https://www.drupal.org/user/2876343"
+                },
+                {
+                    "name": "jyve",
+                    "homepage": "https://www.drupal.org/user/591438"
+                },
+                {
+                    "name": "nils.destoop",
+                    "homepage": "https://www.drupal.org/user/361625"
+                },
+                {
+                    "name": "Stalski",
+                    "homepage": "https://www.drupal.org/user/322618"
+                },
+                {
+                    "name": "swentel",
+                    "homepage": "https://www.drupal.org/user/107403"
+                }
+            ],
+            "description": "Provides the field_group module.",
+            "homepage": "https://www.drupal.org/project/field_group",
+            "support": {
+                "source": "https://git.drupalcode.org/project/field_group",
+                "issues": "https://www.drupal.org/project/issues/field_group"
             }
         },
         {
@@ -2601,59 +2810,6 @@
             }
         },
         {
-            "name": "drupal/modeler_api",
-            "version": "1.0.0-beta3",
-            "source": {
-                "type": "git",
-                "url": "https://git.drupalcode.org/project/modeler_api.git",
-                "reference": "1.0.0-beta3"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://ftp.drupal.org/files/projects/modeler_api-1.0.0-beta3.zip",
-                "reference": "1.0.0-beta3",
-                "shasum": "38377f5700a28186a2947545af1b1ab05e5d58dc"
-            },
-            "require": {
-                "drupal/core": "^10.4 || ^11"
-            },
-            "type": "drupal-module",
-            "extra": {
-                "drupal": {
-                    "version": "1.0.0-beta3",
-                    "datestamp": "1752576569",
-                    "security-coverage": {
-                        "status": "not-covered",
-                        "message": "Beta releases are not covered by Drupal security advisories."
-                    }
-                }
-            },
-            "notification-url": "https://packages.drupal.org/8/downloads",
-            "license": [
-                "GPL-2.0-or-later"
-            ],
-            "authors": [
-                {
-                    "name": "benjifisher",
-                    "homepage": "https://www.drupal.org/user/683300"
-                },
-                {
-                    "name": "cosmicdreams",
-                    "homepage": "https://www.drupal.org/user/42579"
-                },
-                {
-                    "name": "jurgenhaas",
-                    "homepage": "https://www.drupal.org/user/168924"
-                }
-            ],
-            "description": "Provides an API for modules to use modelers like BPMN.iO",
-            "homepage": "https://www.drupal.org/project/modeler_api",
-            "support": {
-                "source": "https://drupal.org/project/modeler_api",
-                "issues": "https://drupal.org/project/issues/modeler_api"
-            }
-        },
-        {
             "name": "drupal/paragraphs",
             "version": "1.19.0",
             "source": {
@@ -2946,6 +3102,67 @@
             "support": {
                 "source": "https://git.drupalcode.org/project/smtp",
                 "issues": "https://www.drupal.org/project/issues/smtp"
+            }
+        },
+        {
+            "name": "drupal/tamper",
+            "version": "1.0.0-beta1",
+            "source": {
+                "type": "git",
+                "url": "https://git.drupalcode.org/project/tamper.git",
+                "reference": "8.x-1.0-beta1"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://ftp.drupal.org/files/projects/tamper-8.x-1.0-beta1.zip",
+                "reference": "8.x-1.0-beta1",
+                "shasum": "57cdf8e00396ea3716c74e3c6b92615b0ac64c62"
+            },
+            "require": {
+                "drupal/core": "^8.8 || ^9 || ^10 || ^11"
+            },
+            "type": "drupal-module",
+            "extra": {
+                "drupal": {
+                    "version": "8.x-1.0-beta1",
+                    "datestamp": "1740654928",
+                    "security-coverage": {
+                        "status": "not-covered",
+                        "message": "Beta releases are not covered by Drupal security advisories."
+                    }
+                }
+            },
+            "notification-url": "https://packages.drupal.org/8/downloads",
+            "license": [
+                "GPL-2.0+"
+            ],
+            "authors": [
+                {
+                    "name": "ericgsmith",
+                    "homepage": "https://www.drupal.org/user/1649952"
+                },
+                {
+                    "name": "jamesdixon",
+                    "homepage": "https://www.drupal.org/user/762570"
+                },
+                {
+                    "name": "megachriz",
+                    "homepage": "https://www.drupal.org/user/654114"
+                },
+                {
+                    "name": "twistor",
+                    "homepage": "https://www.drupal.org/user/473738"
+                }
+            ],
+            "description": "Generic plugin to modify data.",
+            "homepage": "https://www.drupal.org/project/tamper",
+            "keywords": [
+                "Drupal",
+                "tamper"
+            ],
+            "support": {
+                "source": "http://cgit.drupalcode.org/tamper",
+                "issues": "http://drupal.org/project/issues/tamper"
             }
         },
         {
@@ -8069,9 +8286,7 @@
     "aliases": [],
     "minimum-stability": "stable",
     "stability-flags": {
-        "drupal/bpmn_io": 10,
-        "drupal/eca": 10,
-        "drupal/modeler_api": 10
+        "drupal/tamper": 10
     },
     "prefer-stable": true,
     "prefer-lowest": false,

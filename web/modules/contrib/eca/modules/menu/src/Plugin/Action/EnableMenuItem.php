@@ -2,26 +2,22 @@
 
 namespace Drupal\eca_menu\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Menu\MenuLinkManagerInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Enables a specified menu item.
+ *
+ * @Action(
+ *   id = "eca_menu_enable_menu_item",
+ *   label = @Translation("Menu Item: Enable or Disable"),
+ *   description = @Translation("Enable or disable a menu link (can be module provided)."),
+ *   eca_version_introduced = "2.1.x",
+ *   type = "entity"
+ * )
  */
-#[Action(
-  id: 'eca_menu_enable_menu_item',
-  label: new TranslatableMarkup('Menu Item: Enable or Disable'),
-  type: 'entity',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Enable or disable a menu link (can be module provided).'),
-  version_introduced: '2.1.6',
-)]
 class EnableMenuItem extends ConfigurableActionBase {
 
   /**

@@ -2,23 +2,19 @@
 
 namespace Drupal\eca_form\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Get a property value of the form state.
+ *
+ * @Action(
+ *   id = "eca_form_state_get_property_value",
+ *   label = @Translation("Form state: get property value"),
+ *   description = @Translation("Get a property value of the current form state in scope and set it as a token."),
+ *   eca_version_introduced = "1.0.0",
+ *   type = "form"
+ * )
  */
-#[Action(
-  id: 'eca_form_state_get_property_value',
-  label: new TranslatableMarkup('Form state: get property value'),
-  type: 'form',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Get a property value of the current form state in scope and set it as a token.'),
-  version_introduced: '1.0.0',
-)]
 class FormStateGetPropertyValue extends FormStatePropertyActionBase {
 
   /**

@@ -2,24 +2,20 @@
 
 namespace Drupal\eca_base\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ListOperationBase;
 use Drupal\eca_base\Plugin\ListCountTrait;
 
 /**
  * Action to count items in a list and store resulting number as token.
+ *
+ * @Action(
+ *   id = "eca_count",
+ *   label = @Translation("List: count items"),
+ *   description = @Translation("Counts the items in a list based on several properties."),
+ *   eca_version_introduced = "1.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_count',
-  label: new TranslatableMarkup('List: count items'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Counts the items in a list based on several properties.'),
-  version_introduced: '1.0.0',
-)]
 class ListCount extends ListOperationBase {
 
   use ListCountTrait;

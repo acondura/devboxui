@@ -3,10 +3,7 @@
 namespace Drupal\eca_form\Plugin\Action;
 
 use Drupal\Component\Utility\NestedArray;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\eca\Plugin\FormFieldPluginTrait;
 use Drupal\eca\Service\YamlParser;
@@ -15,16 +12,15 @@ use Symfony\Component\Yaml\Exception\ParseException;
 
 /**
  * Set submitted input of a form field.
+ *
+ * @Action(
+ *   id = "eca_form_field_set_value",
+ *   label = @Translation("Form field: set value"),
+ *   description = @Translation("Set or overwrite the submitted input value of a form field. This also works to set form field value when a form gets rebuilt, e.g. during an ajax request."),
+ *   eca_version_introduced = "1.0.0",
+ *   type = "form"
+ * )
  */
-#[Action(
-  id: 'eca_form_field_set_value',
-  label: new TranslatableMarkup('Form field: set value'),
-  type: 'form',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Set or overwrite the submitted input value of a form field. This also works to set form field value when a form gets rebuilt, e.g. during an ajax request.'),
-  version_introduced: '1.0.0',
-)]
 class FormFieldSetValue extends ConfigurableActionBase {
 
   use FormFieldPluginTrait;

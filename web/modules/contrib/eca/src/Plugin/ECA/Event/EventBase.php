@@ -185,7 +185,10 @@ abstract class EventBase extends EcaPluginBase implements EventInterface {
       }
       do {
         foreach ($reflection->getAttributes() as $attribute) {
-          if ($attribute->getName() === 'Drupal\eca\Attribute\Token') {
+          if (
+            $attribute->getName() === 'Drupal\eca\Attribute\Token' ||
+            $attribute->getName() === 'Drupal\eca\Attributes\Token'
+          ) {
             /** @var \Drupal\eca\Attribute\Token $token */
             $token = $attribute->newInstance();
             if ($this->getSupportedProperties($eventClass, $token)) {
@@ -267,7 +270,7 @@ abstract class EventBase extends EcaPluginBase implements EventInterface {
   private function renderToken(Token $token, string $prefix = ''): array {
     $tokens = [];
     $name = $prefix . $token->name;
-    $tokens[] = '<p><strong>[' . $name . ']:</strong> ' . $token->description . ($token->aliases ? '<br/>(Alias: ' . implode(', ', $token->aliases) . ')' : '') . '</p>';
+    $tokens[] = '[' . $name . ']: ' . $token->description . ($token->aliases ? ' (Alias: ' . implode(', ', $token->aliases) . ')' : '');
     foreach ($token->properties as $property) {
       $tokens += $this->renderToken($property, $name);
     }
@@ -279,19 +282,12 @@ abstract class EventBase extends EcaPluginBase implements EventInterface {
    */
   public function buildConfigurationForm(array $form, FormStateInterface $form_state): array {
     $i = 0;
-    $tokens = $this->getTokens();
-    if ($tokens) {
-      $form['eca_token_header'] = [
-        '#markup' => '<h3>' . $this->t('Provided Tokens') . '</h3>',
-      ];
-      foreach ($tokens as $token) {
-        foreach ($this->renderToken($token) as $item) {
-          $i++;
-          $form['eca_token_' . $i] = [
-            '#markup' => $item,
-            '#weight' => 900 + $i,
-          ];
-        }
+    foreach ($this->getTokens() as $token) {
+      foreach ($this->renderToken($token) as $item) {
+        $i++;
+        $form['eca_token_' . $i] = [
+          '#markup' => $item,
+        ];
       }
     }
     return $this->updateConfigurationForm($form);

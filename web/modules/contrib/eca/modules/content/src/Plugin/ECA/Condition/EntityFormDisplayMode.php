@@ -4,20 +4,19 @@ namespace Drupal\eca_content\Plugin\ECA\Condition;
 
 use Drupal\Core\Entity\ContentEntityFormInterface;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaCondition;
 use Drupal\eca\Plugin\ECA\Condition\StringComparisonBase;
 use Drupal\eca\Plugin\FormPluginTrait;
 
 /**
  * Evaluates against the machine name of the entity form display mode.
+ *
+ * @EcaCondition(
+ *   id = "eca_content_form_display_mode",
+ *   label = @Translation("Entity form: compare display mode"),
+ *   description = @Translation("Evaluates against the machine name of the entity form display mode."),
+ *   eca_version_introduced = "1.0.0"
+ * )
  */
-#[EcaCondition(
-  id: 'eca_content_form_display_mode',
-  label: new TranslatableMarkup('Entity form: compare display mode'),
-  description: new TranslatableMarkup('Evaluates against the machine name of the entity form display mode.'),
-  version_introduced: '1.0.0',
-)]
 class EntityFormDisplayMode extends StringComparisonBase {
 
   use FormPluginTrait;

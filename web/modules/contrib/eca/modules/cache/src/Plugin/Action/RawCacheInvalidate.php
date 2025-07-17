@@ -3,24 +3,20 @@
 namespace Drupal\eca_cache\Plugin\Action;
 
 use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Cache\Cache;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Action to invalidate raw cache.
+ *
+ * @Action(
+ *   id = "eca_raw_cache_invalidate",
+ *   label = @Translation("Cache Raw: invalidate"),
+ *   description = @Translation("Invalidates a part or the whole raw cache."),
+ *   eca_version_introduced = "2.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_raw_cache_invalidate',
-  label: new TranslatableMarkup('Cache Raw: invalidate'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Invalidates a part or the whole raw cache.'),
-  version_introduced: '2.0.0',
-)]
 class RawCacheInvalidate extends CacheInvalidate {
 
   /**
@@ -39,7 +35,7 @@ class RawCacheInvalidate extends CacheInvalidate {
 
     if (empty($tags)) {
       foreach (Cache::getBins() as $bin) {
-        $bin->deleteAll();
+        $bin->invalidateAll();
       }
     }
     else {

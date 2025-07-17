@@ -2,22 +2,18 @@
 
 namespace Drupal\eca_base\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Action\Plugin\Action\MessageAction;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Sends a warning message to the current user's screen.
+ *
+ * @Action(
+ *   id = "eca_warning_message",
+ *   label = @Translation("Display a warning message to the user"),
+ *   eca_version_introduced = "1.1.0",
+ *   type = "system"
+ * )
  */
-#[Action(
-  id: 'eca_warning_message',
-  label: new TranslatableMarkup('Display a warning message to the user'),
-  type: 'system',
-)]
-#[EcaAction(
-  version_introduced: '1.1.0',
-)]
 class WarningMessage extends MessageAction {
 
   /**

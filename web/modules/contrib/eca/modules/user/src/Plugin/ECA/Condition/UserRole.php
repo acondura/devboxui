@@ -2,18 +2,16 @@
 
 namespace Drupal\eca_user\Plugin\ECA\Condition;
 
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaCondition;
-
 /**
  * Plugin implementation of the ECA condition of a user's role.
+ *
+ * @EcaCondition(
+ *   id = "eca_user_role",
+ *   label = @Translation("Role of user"),
+ *   description = @Translation("Checks, whether a given user account has a given role."),
+ *   eca_version_introduced = "1.0.0"
+ * )
  */
-#[EcaCondition(
-  id: 'eca_user_role',
-  label: new TranslatableMarkup('Role of user'),
-  description: new TranslatableMarkup('Checks, whether a given user account has a given role.'),
-  version_introduced: '1.0.0',
-)]
 class UserRole extends CurrentUserRole {
 
   use UserTrait;

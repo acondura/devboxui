@@ -2,23 +2,19 @@
 
 namespace Drupal\eca_form\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Get the default value of a form field.
+ *
+ * @Action(
+ *   id = "eca_form_field_get_default_value",
+ *   label = @Translation("Form field: get default value"),
+ *   description = @Translation("Get the default value of a form field and store it as a token."),
+ *   eca_version_introduced = "2.0.0",
+ *   type = "form"
+ * )
  */
-#[Action(
-  id: 'eca_form_field_get_default_value',
-  label: new TranslatableMarkup('Form field: get default value'),
-  type: 'form',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Get the default value of a form field and store it as a token.'),
-  version_introduced: '2.0.0',
-)]
 class FormFieldGetDefaultValue extends FormFieldActionBase {
 
   /**

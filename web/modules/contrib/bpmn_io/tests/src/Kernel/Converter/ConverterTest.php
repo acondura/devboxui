@@ -4,8 +4,7 @@ namespace Drupal\Tests\bpmn_io\Kernel\Converter;
 
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\KernelTests\KernelTestBase;
-use Drupal\modeler_api\Api;
-use Drupal\modeler_api\Plugin\ModelerPluginManager;
+use Drupal\bpmn_io\Services\Converter\ConverterInterface;
 
 /**
  * Tests converting different types of ECA-entities.
@@ -22,18 +21,11 @@ class ConverterTest extends KernelTestBase {
   protected ?EntityTypeManagerInterface $entityTypeManager;
 
   /**
-   * The modeler API.
+   * The converter.
    *
-   * @var \Drupal\modeler_api\Api|null
+   * @var \Drupal\bpmn_io\Services\Converter\ConverterInterface|null
    */
-  protected ?Api $modelerApi;
-
-  /**
-   * The modeler plugin manager.
-   *
-   * @var \Drupal\modeler_api\Plugin\ModelerPluginManager|null
-   */
-  protected ?ModelerPluginManager $modelerPluginManager;
+  protected ?ConverterInterface $converter;
 
   /**
    * {@inheritdoc}
@@ -44,11 +36,11 @@ class ConverterTest extends KernelTestBase {
     'eca',
     'eca_base',
     'eca_content',
+    'eca_modeller_bpmn',
     'eca_ui',
     'eca_user',
     'eca_views',
     'field',
-    'modeler_api',
     'user',
     'views',
     'system',
@@ -65,8 +57,7 @@ class ConverterTest extends KernelTestBase {
     $this->installConfig(static::$modules);
 
     $this->entityTypeManager = \Drupal::service('entity_type.manager');
-    $this->modelerApi = \Drupal::service('modeler_api.service');
-    $this->modelerPluginManager = \Drupal::service('plugin.manager.modeler_api.modeler');
+    $this->converter = \Drupal::service('bpmn_io.services.converter');
   }
 
   /**
@@ -85,19 +76,16 @@ class ConverterTest extends KernelTestBase {
 
     /** @var \Drupal\eca\Entity\Eca $eca */
     $eca = $storage->load('eca_fallback');
-    $owner = $this->modelerApi->findOwner($eca);
-    $modeler = $owner->getModeler($eca);
-    $this->assertEquals('fallback', $modeler->getPluginId());
+    $this->assertEquals('fallback', $eca->getModeller(FALSE)->getPluginId());
 
-    // Convert to bpmn_io.
-    $modeler = $this->modelerPluginManager->createInstance('bpmn_io');
-    $build = $modeler->convert($owner, $eca);
+    // Convert.
+    $build = $this->converter->convert($eca);
 
     // Assert result.
     /** @var \Drupal\eca\Entity\Eca[] $ecaCollection */
     $ecaCollection = $storage->loadMultiple();
     $this->assertCount(2, $ecaCollection);
-    $this->assertEquals('bpmn_io', $modeler->getPluginId());
+    $this->assertEquals('bpmn_io', $eca->getModeller(FALSE)->getPluginId());
     $this->assertCount(34, $build['#attached']['drupalSettings']['bpmn_io_convert']['elements']);
     $this->assertEquals('StartEvent', $build['#attached']['drupalSettings']['bpmn_io_convert']['bpmn_mapping']['Event_0erz1e4']);
     $this->assertEquals('ExclusiveGateway', $build['#attached']['drupalSettings']['bpmn_io_convert']['bpmn_mapping']['Gateway_1rthid4']);
@@ -124,20 +112,22 @@ class ConverterTest extends KernelTestBase {
 
     /** @var \Drupal\eca\Entity\Eca $eca */
     $eca = $storage->load('eca_bpmn_io');
-    $owner = $this->modelerApi->findOwner($eca);
-    $modeler = $owner->getModeler($eca);
-    $this->assertEquals('bpmn_io', $modeler->getPluginId());
+    $this->assertEquals('bpmn_io', $eca->getModeller()->getPluginId());
 
     // Convert.
-    $build = $modeler->convert($owner, $eca);
+    $build = $this->converter->convert($eca);
 
     // Assert the original entity.
-    $this->assertEquals('bpmn_io', $modeler->getPluginId());
+    $this->assertEquals('bpmn_io', $eca->getModeller()->getPluginId());
     /** @var \Drupal\eca\Entity\Eca[] $ecaCollection */
     $ecaCollection = $storage->loadMultiple();
     $this->assertCount(2, $ecaCollection);
 
-    $this->assertStringNotContainsString('(clone)', $build['#attached']['drupalSettings']['bpmn_io_convert']['metadata']['label']);
+    $this->assertStringNotContainsString('(clone)', $build['#attached']['drupalSettings']['bpmn_io_convert']['metadata']['name']);
+    /** @var \Drupal\eca\Entity\Eca[] $result */
+    $result = $storage->loadByProperties(['label' => $build['#attached']['drupalSettings']['bpmn_io_convert']['metadata']['name']]);
+    $this->assertEquals($eca->id(), reset($result)->id());
+    $this->assertStringContainsString(reset($result)->id(), $build['#attached']['drupalSettings']['bpmn_io_convert']['metadata']['redirect_url']);
 
     // Assert build.
     $this->assertCount(34, $build['#attached']['drupalSettings']['bpmn_io_convert']['elements']);

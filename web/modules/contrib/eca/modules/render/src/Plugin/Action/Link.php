@@ -5,25 +5,21 @@ namespace Drupal\eca_render\Plugin\Action;
 use Drupal\Component\Serialization\Json;
 use Drupal\Component\Utility\Html;
 use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\Url;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\ECA\PluginFormTrait;
 
 /**
  * Build a link element.
+ *
+ * @Action(
+ *   id = "eca_render_link",
+ *   label = @Translation("Render: link"),
+ *   description = @Translation("Build a link element, optionally displaying its content as a modal or dialog."),
+ *   eca_version_introduced = "1.1.0"
+ * )
  */
-#[Action(
-  id: 'eca_render_link',
-  label: new TranslatableMarkup('Render: link'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Build a link element, optionally displaying its content as a modal or dialog.'),
-  version_introduced: '1.1.0',
-)]
 class Link extends RenderElementActionBase {
 
   use PluginFormTrait;

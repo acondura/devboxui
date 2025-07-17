@@ -2,22 +2,18 @@
 
 namespace Drupal\eca_endpoint\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Datetime\DrupalDateTime;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Set the response headers.
+ *
+ * @Action(
+ *   id = "eca_endpoint_set_response_max_age",
+ *   label = @Translation("Response: set max age"),
+ *   eca_version_introduced = "1.1.0"
+ * )
  */
-#[Action(
-  id: 'eca_endpoint_set_response_max_age',
-  label: new TranslatableMarkup('Response: set max age'),
-)]
-#[EcaAction(
-  version_introduced: '1.1.0',
-)]
 class SetResponseMaxAge extends ResponseActionBase {
 
   /**

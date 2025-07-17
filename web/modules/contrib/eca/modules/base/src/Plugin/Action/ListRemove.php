@@ -2,23 +2,19 @@
 
 namespace Drupal\eca_base\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ListRemoveBase;
 
 /**
  * Action to remove an item from a list.
+ *
+ * @Action(
+ *   id = "eca_list_remove",
+ *   label = @Translation("List: remove item"),
+ *   description = @Translation("Remove an item from a list and optionally store the item as a token."),
+ *   eca_version_introduced = "1.1.0"
+ * )
  */
-#[Action(
-  id: 'eca_list_remove',
-  label: new TranslatableMarkup('List: remove item'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Remove an item from a list and optionally store the item as a token.'),
-  version_introduced: '1.1.0',
-)]
 class ListRemove extends ListRemoveBase {
 
   /**

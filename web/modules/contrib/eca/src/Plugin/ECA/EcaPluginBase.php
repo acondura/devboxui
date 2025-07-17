@@ -24,6 +24,16 @@ abstract class EcaPluginBase extends DrupalPluginBase implements ContainerFactor
   use DependencySerializationTrait;
 
   /**
+   * List of modules that provide ECA plugins.
+   *
+   * @var array|string[]
+   */
+  public static array $modules = [
+    'core' => 'Drupal Core',
+    'eca' => 'ECA',
+  ];
+
+  /**
    * Messenger service.
    *
    * @var \Drupal\Core\Messenger\MessengerInterface

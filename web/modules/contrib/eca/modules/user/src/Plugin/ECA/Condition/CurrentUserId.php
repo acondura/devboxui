@@ -3,18 +3,17 @@
 namespace Drupal\eca_user\Plugin\ECA\Condition;
 
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaCondition;
 
 /**
  * Plugin implementation of the ECA condition of the current user's id.
+ *
+ * @EcaCondition(
+ *   id = "eca_current_user_id",
+ *   label = @Translation("Current user ID"),
+ *   description = @Translation("Compares a user ID with the current user ID."),
+ *   eca_version_introduced = "1.0.0"
+ * )
  */
-#[EcaCondition(
-  id: 'eca_current_user_id',
-  label: new TranslatableMarkup('Current user ID'),
-  description: new TranslatableMarkup('Compares a user ID with the current user ID.'),
-  version_introduced: '1.0.0',
-)]
 class CurrentUserId extends BaseUser {
 
   /**

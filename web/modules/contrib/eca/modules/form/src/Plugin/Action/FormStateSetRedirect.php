@@ -2,24 +2,20 @@
 
 namespace Drupal\eca_form\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\Url;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Set the form state for a redirect.
+ *
+ * @Action(
+ *   id = "eca_form_state_set_redirect",
+ *   label = @Translation("Form state: set redirect"),
+ *   description = @Translation("Set the redirect destination on the form state."),
+ *   eca_version_introduced = "1.1.0",
+ *   type = "form"
+ * )
  */
-#[Action(
-  id: 'eca_form_state_set_redirect',
-  label: new TranslatableMarkup('Form state: set redirect'),
-  type: 'form',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Set the redirect destination on the form state.'),
-  version_introduced: '1.1.0',
-)]
 class FormStateSetRedirect extends FormActionBase {
 
   /**

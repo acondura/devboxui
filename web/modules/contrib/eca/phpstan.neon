@@ -6,15 +6,14 @@ parameters:
     - identifier: missingType.iterableValue
     - identifier: missingType.generics
   excludePaths:
-    - 'modules/modeller_bpmn/*'
     - '*/tests/*.php'
   stubFiles:
     - './tests/phpstan/stubs/CacheableDependencyInterface.stub'
+    - './tests/phpstan/stubs/CacheBackendInterface.stub'
     - './tests/phpstan/stubs/CachedDiscoveryInterface.stub'
     - './tests/phpstan/stubs/DefaultPluginManager.stub'
     - './tests/phpstan/stubs/FormStateInterface.stub'
-    - './tests/phpstan/stubs/LanguageNegotiationMethodInterface.stub'
     - './tests/phpstan/stubs/LoggerInterface.stub'
-    - './tests/phpstan/stubs/Request.stub'
+    - './tests/phpstan/stubs/Map.stub'
     - './tests/phpstan/stubs/TokenInterface.stub'
     - './tests/phpstan/stubs/ViewsPluginInterface.stub'

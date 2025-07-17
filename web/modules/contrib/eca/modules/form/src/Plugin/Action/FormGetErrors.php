@@ -2,23 +2,19 @@
 
 namespace Drupal\eca_form\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Get currently existing errors of a form.
+ *
+ * @Action(
+ *   id = "eca_form_get_errors",
+ *   label = @Translation("Form: get errors"),
+ *   description = @Translation("Makes form errors available as token."),
+ *   eca_version_introduced = "1.0.0",
+ *   type = "form"
+ * )
  */
-#[Action(
-  id: 'eca_form_get_errors',
-  label: new TranslatableMarkup('Form: get errors'),
-  type: 'form',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Makes form errors available as token.'),
-  version_introduced: '1.0.0',
-)]
 class FormGetErrors extends FormActionBase {
 
   /**

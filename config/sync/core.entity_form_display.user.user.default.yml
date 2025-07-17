@@ -3,11 +3,69 @@ langcode: en
 status: true
 dependencies:
   config:
+    - field.field.user.user.field_ssh_private_key
+    - field.field.user.user.field_ssh_public_key
     - field.field.user.user.user_picture
     - image.style.thumbnail
   module:
+    - field_group
     - image
     - user
+third_party_settings:
+  field_group:
+    group_tabs:
+      children:
+        - group_account_settings
+        - group_ssh_keys
+      label: Tabs
+      region: content
+      parent_name: ''
+      weight: 7
+      format_type: tabs
+      format_settings:
+        classes: ''
+        show_empty_fields: false
+        id: ''
+        label_as_html: false
+        direction: horizontal
+        width_breakpoint: 640
+    group_account_settings:
+      children:
+        - account
+        - user_picture
+        - timezone
+        - language
+        - contact
+      label: 'Account settings'
+      region: content
+      parent_name: group_tabs
+      weight: 20
+      format_type: tab
+      format_settings:
+        classes: ''
+        show_empty_fields: false
+        id: ''
+        label_as_html: false
+        formatter: open
+        description: ''
+        required_fields: true
+    group_ssh_keys:
+      children:
+        - field_ssh_private_key
+        - field_ssh_public_key
+      label: 'SSH keys'
+      region: content
+      parent_name: group_tabs
+      weight: 21
+      format_type: tab
+      format_settings:
+        classes: ''
+        show_empty_fields: false
+        id: ''
+        label_as_html: false
+        formatter: closed
+        description: ''
+        required_fields: true
 _core:
   default_config_hash: FaQ9Ptcpxpg30AtiqRDtl_8zbJArHP1LPfug_s59TOA
 id: user.user.default
@@ -16,20 +74,44 @@ bundle: user
 mode: default
 content:
   account:
-    weight: -10
-    region: content
-  contact:
-    weight: 5
-    region: content
-  language:
     weight: 0
     region: content
-  timezone:
+    settings: {  }
+    third_party_settings: {  }
+  contact:
+    weight: 4
+    region: content
+    settings: {  }
+    third_party_settings: {  }
+  field_ssh_private_key:
+    type: string_textarea
+    weight: 5
+    region: content
+    settings:
+      rows: 5
+      placeholder: ''
+    third_party_settings: {  }
+  field_ssh_public_key:
+    type: string_textarea
     weight: 6
     region: content
+    settings:
+      rows: 5
+      placeholder: ''
+    third_party_settings: {  }
+  language:
+    weight: 3
+    region: content
+    settings: {  }
+    third_party_settings: {  }
+  timezone:
+    weight: 2
+    region: content
+    settings: {  }
+    third_party_settings: {  }
   user_picture:
     type: image_image
-    weight: -1
+    weight: 1
     region: content
     settings:
       progress_indicator: throbber

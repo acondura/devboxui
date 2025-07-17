@@ -2,23 +2,19 @@
 
 namespace Drupal\eca_render\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Event\RenderEventInterface;
 
 /**
  * Set the weight of an existing render array element.
+ *
+ * @Action(
+ *   id = "eca_render_set_weight",
+ *   label = @Translation("Render: set weight"),
+ *   description = @Translation("Set the weight of an existing render array element. Only works when reacting upon a rendering event, such as <em>Build form</em> or <em>Build ECA Block</em>."),
+ *   eca_version_introduced = "1.1.0"
+ * )
  */
-#[Action(
-  id: 'eca_render_set_weight',
-  label: new TranslatableMarkup('Render: set weight'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Set the weight of an existing render array element. Only works when reacting upon a rendering event, such as <em>Build form</em> or <em>Build ECA Block</em>.'),
-  version_introduced: '1.1.0',
-)]
 class SetWeight extends RenderActionBase {
 
   /**

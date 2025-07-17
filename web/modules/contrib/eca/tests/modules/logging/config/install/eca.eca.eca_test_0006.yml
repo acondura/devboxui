@@ -27,6 +27,6 @@ actions:
     label: Log
     configuration:
       channel: eca
-      severity: 6
+      severity: '6'
       message: 'Node [entity:title] is about to be saved'
     successors: {  }

@@ -3,25 +3,21 @@
 namespace Drupal\eca_content\Plugin\Action;
 
 use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 
 /**
  * Deletes a content entity.
+ *
+ * @Action(
+ *   id = "eca_delete_entity",
+ *   label = @Translation("Entity: delete"),
+ *   description = @Translation("Deletes an existing content entity."),
+ *   eca_version_introduced = "1.0.0",
+ *   type = "entity"
+ * )
  */
-#[Action(
-  id: 'eca_delete_entity',
-  label: new TranslatableMarkup('Entity: delete'),
-  type: 'entity',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Deletes an existing content entity.'),
-  version_introduced: '1.0.0',
-)]
 class DeleteEntity extends ConfigurableActionBase {
 
   /**

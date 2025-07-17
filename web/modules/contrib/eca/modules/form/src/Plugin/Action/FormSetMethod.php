@@ -2,24 +2,20 @@
 
 namespace Drupal\eca_form\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\ECA\PluginFormTrait;
 
 /**
  * Set the HTTP method to use when submitting the form.
+ *
+ * @Action(
+ *   id = "eca_form_set_method",
+ *   label = @Translation("Form: set method"),
+ *   description = @Translation("Set the HTTP method to use when submitting the form."),
+ *   eca_version_introduced = "1.1.0",
+ *   type = "form"
+ * )
  */
-#[Action(
-  id: 'eca_form_set_method',
-  label: new TranslatableMarkup('Form: set method'),
-  type: 'form',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Set the HTTP method to use when submitting the form.'),
-  version_introduced: '1.1.0',
-)]
 class FormSetMethod extends FormActionBase {
 
   use PluginFormTrait;

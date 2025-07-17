@@ -3,23 +3,19 @@
 namespace Drupal\eca_render\Plugin\Action;
 
 use Drupal\Component\Utility\Html;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Build an image HTML element (not responsive).
+ *
+ * @Action(
+ *   id = "eca_render_image",
+ *   label = @Translation("Render: image"),
+ *   description = @Translation("Build an image HTML element (not responsive)."),
+ *   eca_version_introduced = "1.1.0",
+ *   deriver = "Drupal\eca_render\Plugin\Action\ImageDeriver"
+ * )
  */
-#[Action(
-  id: 'eca_render_image',
-  label: new TranslatableMarkup('Render: image'),
-  deriver: 'Drupal\eca_render\Plugin\Action\ImageDeriver',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Build an image HTML element (not responsive).'),
-  version_introduced: '1.1.0',
-)]
 class Image extends RenderElementActionBase {
 
   /**

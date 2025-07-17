@@ -2,21 +2,17 @@
 
 namespace Drupal\eca_endpoint\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Set the response content type header.
+ *
+ * @Action(
+ *   id = "eca_endpoint_set_response_content_type",
+ *   label = @Translation("Response: set content type"),
+ *   eca_version_introduced = "1.1.0"
+ * )
  */
-#[Action(
-  id: 'eca_endpoint_set_response_content_type',
-  label: new TranslatableMarkup('Response: set content type'),
-)]
-#[EcaAction(
-  version_introduced: '1.1.0',
-)]
 class SetResponseContentType extends ResponseActionBase {
 
   /**

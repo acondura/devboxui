@@ -2,23 +2,19 @@
 
 namespace Drupal\eca_endpoint\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Ajax\CommandInterface;
 use Drupal\Core\Ajax\FocusFirstCommand;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Add a focus command to the ajax response.
+ *
+ * @Action(
+ *   id = "eca_endpoint_set_ajax_response_focus_first",
+ *   label = @Translation("Ajax Response: set focus"),
+ *   eca_version_introduced = "2.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_endpoint_set_ajax_response_focus_first',
-  label: new TranslatableMarkup('Ajax Response: set focus'),
-)]
-#[EcaAction(
-  version_introduced: '2.0.0',
-)]
 class SetAjaxResponseFocusFirstCommand extends ResponseAjaxCommandBase {
 
   /**

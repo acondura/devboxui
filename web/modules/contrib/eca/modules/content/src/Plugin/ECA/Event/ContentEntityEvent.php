@@ -6,9 +6,8 @@ use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\TypedData\TypedDataInterface;
-use Drupal\eca\Attribute\EcaEvent;
 use Drupal\eca\Attribute\Token;
-use Drupal\eca\Entity\Objects\EcaEvent as EcaEventObject;
+use Drupal\eca\Entity\Objects\EcaEvent;
 use Drupal\eca\Event\Tag;
 use Drupal\eca\Plugin\CleanupInterface;
 use Drupal\eca\Plugin\ECA\Event\EventBase;
@@ -47,12 +46,13 @@ use Symfony\Contracts\EventDispatcher\Event;
 
 /**
  * Plugin implementation of the ECA Events for content entities.
+ *
+ * @EcaEvent(
+ *   id = "content_entity",
+ *   deriver = "Drupal\eca_content\Plugin\ECA\Event\ContentEntityEventDeriver",
+ *   eca_version_introduced = "1.0.0"
+ * )
  */
-#[EcaEvent(
-  id: 'content_entity',
-  deriver: 'Drupal\eca_content\Plugin\ECA\Event\ContentEntityEventDeriver',
-  version_introduced: '1.0.0',
-)]
 class ContentEntityEvent extends EventBase implements CleanupInterface {
 
   /**
@@ -339,7 +339,7 @@ class ContentEntityEvent extends EventBase implements CleanupInterface {
   /**
    * {@inheritdoc}
    */
-  public function generateWildcard(string $eca_config_id, EcaEventObject $ecaEvent): string {
+  public function generateWildcard(string $eca_config_id, EcaEvent $ecaEvent): string {
     /** @var \Drupal\eca\Plugin\ECA\Event\EventBase $plugin */
     $plugin = $ecaEvent->getPlugin();
     switch ($plugin->getDerivativeId()) {

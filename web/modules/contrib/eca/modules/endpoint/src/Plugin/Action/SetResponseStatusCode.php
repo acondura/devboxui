@@ -2,21 +2,17 @@
 
 namespace Drupal\eca_endpoint\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Set the response status code.
+ *
+ * @Action(
+ *   id = "eca_endpoint_set_response_status_code",
+ *   label = @Translation("Response: set status code"),
+ *   eca_version_introduced = "1.1.0"
+ * )
  */
-#[Action(
-  id: 'eca_endpoint_set_response_status_code',
-  label: new TranslatableMarkup('Response: set status code'),
-)]
-#[EcaAction(
-  version_introduced: '1.1.0',
-)]
 class SetResponseStatusCode extends ResponseActionBase {
 
   /**

@@ -2,24 +2,20 @@
 
 namespace Drupal\eca_endpoint\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Ajax\CommandInterface;
 use Drupal\Core\Ajax\MessageCommand;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\ECA\PluginFormTrait;
 
 /**
  * Add a message to the ajax response.
+ *
+ * @Action(
+ *   id = "eca_endpoint_set_ajax_response_message",
+ *   label = @Translation("Ajax Response: set message"),
+ *   eca_version_introduced = "2.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_endpoint_set_ajax_response_message',
-  label: new TranslatableMarkup('Ajax Response: set message'),
-)]
-#[EcaAction(
-  version_introduced: '2.0.0',
-)]
 class SetAjaxResponseMessageCommand extends ResponseAjaxCommandBase {
 
   use PluginFormTrait;

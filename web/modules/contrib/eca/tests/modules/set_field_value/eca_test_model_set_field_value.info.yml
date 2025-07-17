@@ -21,7 +21,7 @@ config_devel:
   - field.storage.node.field_text_lines
   - node.type.type_set_field_value
 
-# Information added by Drupal.org packaging script on 2025-07-09
-version: '3.0.0-beta2'
+# Information added by Drupal.org packaging script on 2025-07-03
+version: '2.1.10'
 project: 'eca'
-datestamp: 1752071640
+datestamp: 1751524999

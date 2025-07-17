@@ -3,28 +3,24 @@
 namespace Drupal\eca_content\Plugin\Action;
 
 use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\eca_content\Plugin\EntitySaveTrait;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Saves a content entity.
+ *
+ * @Action(
+ *   id = "eca_save_entity",
+ *   label = @Translation("Entity: save"),
+ *   description = @Translation("Saves a new or updates an existing content entity."),
+ *   eca_version_introduced = "1.0.0",
+ *   type = "entity"
+ * )
  */
-#[Action(
-  id: 'eca_save_entity',
-  label: new TranslatableMarkup('Entity: save'),
-  type: 'entity',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Saves a new or updates an existing content entity.'),
-  version_introduced: '1.0.0',
-)]
 class SaveEntity extends ConfigurableActionBase {
 
   use EntitySaveTrait;

@@ -3,27 +3,22 @@
 namespace Drupal\eca_content\Plugin\ECA\Condition;
 
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\Plugin\Context\ContextDefinition;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaCondition;
 use Drupal\eca\Plugin\ECA\Condition\ConditionBase;
 use Drupal\eca_content\Plugin\EntityDiffTrait;
 
 /**
  * Plugin implementation of the ECA condition to compare two entities.
+ *
+ * @EcaCondition(
+ *   id = "eca_entity_diff",
+ *   label = @Translation("Entity: compare"),
+ *   description = @Translation("Compares two entities."),
+ *   eca_version_introduced = "2.0.0",
+ *   context_definitions = {
+ *     "entity" = @ContextDefinition("entity", label = @Translation("Entity"))
+ *   }
+ * )
  */
-#[EcaCondition(
-  id: 'eca_entity_diff',
-  label: new TranslatableMarkup('Entity: compare'),
-  context_definitions: [
-    'entity' => new ContextDefinition(
-      data_type: 'entity',
-      label: new TranslatableMarkup('Entity'),
-    ),
-  ],
-  description: new TranslatableMarkup('Compares two entities.'),
-  version_introduced: '2.0.0',
-)]
 class EntityDiff extends ConditionBase {
 
   use EntityDiffTrait;

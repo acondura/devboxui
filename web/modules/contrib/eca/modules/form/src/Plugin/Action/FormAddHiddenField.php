@@ -2,23 +2,19 @@
 
 namespace Drupal\eca_form\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Add a hidden field to a form.
+ *
+ * @Action(
+ *   id = "eca_form_add_hiddenfield",
+ *   label = @Translation("Form: add hidden field"),
+ *   description = @Translation("Add a hidden input field to the current form in scope."),
+ *   eca_version_introduced = "1.0.0",
+ *   type = "form"
+ * )
  */
-#[Action(
-  id: 'eca_form_add_hiddenfield',
-  label: new TranslatableMarkup('Form: add hidden field'),
-  type: 'form',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Add a hidden input field to the current form in scope.'),
-  version_introduced: '1.0.0',
-)]
 class FormAddHiddenField extends FormAddFieldActionBase {
 
   /**

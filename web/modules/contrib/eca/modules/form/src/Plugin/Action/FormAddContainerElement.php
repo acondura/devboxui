@@ -3,24 +3,20 @@
 namespace Drupal\eca_form\Plugin\Action;
 
 use Drupal\Component\Utility\Html;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\FormFieldPluginTrait;
 
 /**
  * Adds a container element to a form.
+ *
+ * @Action(
+ *   id = "eca_form_add_container_element",
+ *   label = @Translation("Form: add container element"),
+ *   description = @Translation("Adds a div block element to the form for surrounding child elements."),
+ *   eca_version_introduced = "1.0.0",
+ *   type = "form"
+ * )
  */
-#[Action(
-  id: 'eca_form_add_container_element',
-  label: new TranslatableMarkup('Form: add container element'),
-  type: 'form',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Adds a div block element to the form for surrounding child elements.'),
-  version_introduced: '1.0.0',
-)]
 class FormAddContainerElement extends FormActionBase {
 
   use FormFieldPluginTrait;

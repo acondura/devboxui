@@ -2,7 +2,6 @@
 
 namespace Drupal\eca_migrate\Plugin\ECA\Event;
 
-use Drupal\eca\Attribute\EcaEvent;
 use Drupal\eca\Attribute\Token;
 use Drupal\eca\Plugin\ECA\Event\EventBase;
 use Drupal\migrate\Event\MigrateEvents;
@@ -17,12 +16,13 @@ use Drupal\migrate\Event\MigrateRowDeleteEvent;
 
 /**
  * Plugin implementation of the ECA Events for migrate.
+ *
+ * @EcaEvent(
+ *   id = "migrate",
+ *   deriver = "Drupal\eca_migrate\Plugin\ECA\Event\MigrateEventDeriver",
+ *   eca_version_introduced = "1.0.0"
+ * )
  */
-#[EcaEvent(
-  id: 'migrate',
-  deriver: 'Drupal\eca_migrate\Plugin\ECA\Event\MigrateEventDeriver',
-  version_introduced: '1.0.0',
-)]
 class MigrateEvent extends EventBase {
 
   /**

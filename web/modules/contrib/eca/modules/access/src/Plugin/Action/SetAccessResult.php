@@ -3,26 +3,22 @@
 namespace Drupal\eca_access\Plugin\Action;
 
 use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Event\AccessEventInterface;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\eca\Plugin\ECA\PluginFormTrait;
 
 /**
  * Action to set an access result.
+ *
+ * @Action(
+ *   id = "eca_access_set_result",
+ *   label = @Translation("Set access result"),
+ *   description = @Translation("Only works when reacting upon <em>ECA Access</em> events."),
+ *   eca_version_introduced = "1.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_access_set_result',
-  label: new TranslatableMarkup('Set access result'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Only works when reacting upon <em>ECA Access</em> events.'),
-  version_introduced: '1.0.0',
-)]
 class SetAccessResult extends ConfigurableActionBase {
 
   use PluginFormTrait;

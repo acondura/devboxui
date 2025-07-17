@@ -4,21 +4,20 @@ namespace Drupal\eca_base\Plugin\ECA\Condition;
 
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\TypedData\ComplexDataInterface;
 use Drupal\Core\TypedData\ListInterface;
-use Drupal\eca\Attribute\EcaCondition;
 use Drupal\eca\Plugin\DataType\DataTransferObject;
 use Drupal\eca\Plugin\ECA\Condition\ConditionBase;
 
 /**
  * ECA condition plugin for evaluating whether a token exists.
+ *
+ * @EcaCondition(
+ *   id = "eca_token_exists",
+ *   label = @Translation("Token: exists"),
+ *   eca_version_introduced = "1.1.0"
+ * )
  */
-#[EcaCondition(
-  id: 'eca_token_exists',
-  label: new TranslatableMarkup('Token: exists'),
-  version_introduced: '1.1.0',
-)]
 class TokenExists extends ConditionBase {
 
   /**

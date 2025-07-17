@@ -2,25 +2,21 @@
 
 namespace Drupal\eca_content\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\eca_content\Plugin\EntityDiffTrait;
 
 /**
  * Compare 2 entities and return a list of field names that changed.
+ *
+ * @Action(
+ *   id = "eca_diff_entity",
+ *   label = @Translation("Entity: compare"),
+ *   description = @Translation("Compare 2 entities and return a list of fields that differ"),
+ *   eca_version_introduced = "2.0.0",
+ *   type = "entity"
+ * )
  */
-#[Action(
-  id: 'eca_diff_entity',
-  label: new TranslatableMarkup('Entity: compare'),
-  type: 'entity',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Compare 2 entities and return a list of fields that differ'),
-  version_introduced: '2.0.0',
-)]
 class EntityDiff extends ConfigurableActionBase {
 
   use EntityDiffTrait;

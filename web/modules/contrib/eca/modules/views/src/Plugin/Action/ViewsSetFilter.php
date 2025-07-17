@@ -3,11 +3,8 @@
 namespace Drupal\eca_views\Plugin\Action;
 
 use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\eca\Plugin\DataType\DataTransferObject;
 use Drupal\eca\Service\YamlParser;
@@ -17,14 +14,13 @@ use Symfony\Component\Yaml\Exception\ParseException;
 
 /**
  * Set a views filter value.
+ *
+ * @Action(
+ *   id = "eca_views_set_filter_value",
+ *   label = @Translation("Views: Set filter value"),
+ *   eca_version_introduced = "2.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_views_set_filter_value',
-  label: new TranslatableMarkup('Views: Set filter value'),
-)]
-#[EcaAction(
-  version_introduced: '2.0.0',
-)]
 class ViewsSetFilter extends ConfigurableActionBase {
 
   /**

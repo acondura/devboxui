@@ -2,7 +2,6 @@
 
 namespace Drupal\Tests\eca\Kernel\Model;
 
-use Drupal\eca_base\Hook\BaseHooks;
 use Drupal\user\Entity\User;
 
 /**
@@ -38,11 +37,7 @@ class EntityLoopTest extends Base {
       'status' => TRUE,
     ])->save();
 
-    foreach (\Drupal::service('event_dispatcher')->getListeners('drupal_hook.cron') as $listener) {
-      if ($listener[0] instanceof BaseHooks) {
-        call_user_func($listener);
-      }
-    }
+    \Drupal::service('eca_base.hook_handler')->cron();
     $this->assertStatusMessages([
       'User ' . self::USER_1_NAME,
       "User $name",

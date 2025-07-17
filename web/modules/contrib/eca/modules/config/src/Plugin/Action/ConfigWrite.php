@@ -2,13 +2,10 @@
 
 namespace Drupal\eca_config\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\TypedData\ComplexDataInterface;
 use Drupal\Core\TypedData\TypedDataInterface;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\DataType\DataTransferObject;
 use Drupal\eca\Service\YamlParser;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -16,15 +13,14 @@ use Symfony\Component\Yaml\Exception\ParseException;
 
 /**
  * Action to write configuration.
+ *
+ * @Action(
+ *   id = "eca_config_write",
+ *   label = @Translation("Config: write"),
+ *   description = @Translation("Writes into configuration from a token."),
+ *   eca_version_introduced = "1.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_config_write',
-  label: new TranslatableMarkup('Config: write'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Writes into configuration from a token.'),
-  version_introduced: '1.0.0',
-)]
 class ConfigWrite extends ConfigActionBase {
 
   /**

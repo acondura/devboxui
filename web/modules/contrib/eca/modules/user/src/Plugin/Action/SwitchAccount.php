@@ -2,10 +2,7 @@
 
 namespace Drupal\eca_user\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\eca\Plugin\CleanupInterface;
 use Drupal\eca_user\AccountSwitcher;
@@ -13,15 +10,14 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Switch current account.
+ *
+ * @Action(
+ *   id = "eca_switch_account",
+ *   label = @Translation("User: switch current account"),
+ *   description = @Translation("Switch to given user account."),
+ *   eca_version_introduced = "1.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_switch_account',
-  label: new TranslatableMarkup('User: switch current account'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Switch to given user account.'),
-  version_introduced: '1.0.0',
-)]
 class SwitchAccount extends ConfigurableActionBase implements CleanupInterface {
 
   /**

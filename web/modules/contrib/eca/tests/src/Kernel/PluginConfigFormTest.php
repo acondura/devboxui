@@ -81,8 +81,8 @@ class PluginConfigFormTest extends KernelTestBase {
    * Tests configuration forms of plugins.
    */
   public function testPluginConfigForms(): void {
-    /** @var \Drupal\eca\Service\Events $eventManager */
-    $eventManager = \Drupal::service('eca.service.event');
+    /** @var \Drupal\eca\Service\Modellers $eventManager */
+    $eventManager = \Drupal::service('eca.service.modeller');
     foreach ($eventManager->events() as $event) {
       $this->doExecute('event', $event->getPluginId(), $event);
     }

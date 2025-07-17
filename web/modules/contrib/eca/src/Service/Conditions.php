@@ -5,7 +5,6 @@ namespace Drupal\eca\Service;
 use Drupal\Component\Plugin\Exception\ContextException;
 use Drupal\Component\Plugin\Exception\PluginException;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
-use Drupal\Core\Extension\ModuleExtensionList;
 use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\Core\Logger\LoggerChannelInterface;
 use Drupal\eca\ErrorHandlerTrait;
@@ -15,12 +14,18 @@ use Drupal\eca\Token\TokenInterface;
 use Symfony\Contracts\EventDispatcher\Event;
 
 /**
- * Service class for condition plugins in ECA.
+ * Service class for Drupal core conditions in ECA.
  */
 class Conditions {
 
   use ErrorHandlerTrait;
   use ServiceTrait;
+
+  public const GATEWAY_TYPE_EXCLUSIVE = 0;
+  public const GATEWAY_TYPE_PARALLEL = 1;
+  public const GATEWAY_TYPE_INCLUSIVE = 2;
+  public const GATEWAY_TYPE_COMPLEX = 3;
+  public const GATEWAY_TYPE_EVENTBASED = 4;
 
   /**
    * ECA condition plugin manager.
@@ -58,13 +63,6 @@ class Conditions {
   protected TokenInterface $token;
 
   /**
-   * The module extension manager.
-   *
-   * @var \Drupal\Core\Extension\ModuleExtensionList
-   */
-  protected ModuleExtensionList $extensionManager;
-
-  /**
    * Conditions constructor.
    *
    * @param \Drupal\eca\PluginManager\Condition $condition_manager
@@ -77,16 +75,16 @@ class Conditions {
    *   The language manager service.
    * @param \Drupal\eca\Token\TokenInterface $token
    *   The ECA token service.
-   * @param \Drupal\Core\Extension\ModuleExtensionList $extension_manager
-   *   The module extension manager.
+   *
+   * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
+   * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
    */
-  public function __construct(Condition $condition_manager, LoggerChannelInterface $logger, EntityTypeManagerInterface $entity_type_manager, LanguageManagerInterface $language_manager, TokenInterface $token, ModuleExtensionList $extension_manager) {
+  public function __construct(Condition $condition_manager, LoggerChannelInterface $logger, EntityTypeManagerInterface $entity_type_manager, LanguageManagerInterface $language_manager, TokenInterface $token) {
     $this->conditionManager = $condition_manager;
     $this->logger = $logger;
     $this->entityTypeManager = $entity_type_manager;
     $this->languageManager = $language_manager;
     $this->token = $token;
-    $this->extensionManager = $extension_manager;
   }
 
   /**
@@ -106,7 +104,7 @@ class Conditions {
         }
       }
       $this->resetExtendedErrorHandling();
-      $this->sortPlugins($conditions, $this->extensionManager);
+      $this->sortPlugins($conditions);
     }
     return $conditions;
   }
@@ -129,7 +127,6 @@ class Conditions {
        */
       $condition = $this->conditionManager->createInstance($plugin_id, $configuration);
     }
-    // @phpstan-ignore catch.neverThrown
     catch (\Exception | \Throwable $e) {
       $condition = NULL;
       $this->logger->error('The condition plugin %pluginid can not be initialized. ECA is ignoring this condition. The issue with this condition: %msg', [
@@ -188,8 +185,13 @@ class Conditions {
         }
       }
       $plugin->setConfiguration($pluginConfig);
-      $plugin->setEvent($event);
-      /** @var \Drupal\Core\Plugin\Context\ContextDefinition $definition */
+
+      if ($plugin instanceof ConditionInterface) {
+        $plugin->setEvent($event);
+      }
+      /**
+       * @var \Drupal\Core\Plugin\Context\ContextDefinition $definition
+       */
       foreach ($plugin->getPluginDefinition()['context_definitions'] ?? [] as $key => $definition) {
         // If the field for this context is filled by the model, then use that.
         // Otherwise fall back to the entity of the original event of the

@@ -3,15 +3,12 @@
 namespace Drupal\eca_render\Plugin\Action;
 
 use Drupal\Component\Utility\Html;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\Plugin\DataType\EntityAdapter;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Render\Element;
 use Drupal\Core\Render\Markup;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\TypedData\TypedDataInterface;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\DataType\DataTransferObject;
 use Drupal\eca\Service\YamlParser;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -19,15 +16,14 @@ use Symfony\Component\Yaml\Exception\ParseException;
 
 /**
  * Build a custom defined render array.
+ *
+ * @Action(
+ *   id = "eca_render_build",
+ *   label = @Translation("Render: build"),
+ *   description = @Translation("Build a custom defined render array."),
+ *   eca_version_introduced = "1.1.0"
+ * )
  */
-#[Action(
-  id: 'eca_render_build',
-  label: new TranslatableMarkup('Render: build'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Build a custom defined render array.'),
-  version_introduced: '1.1.0',
-)]
 class Build extends RenderElementActionBase {
 
   /**

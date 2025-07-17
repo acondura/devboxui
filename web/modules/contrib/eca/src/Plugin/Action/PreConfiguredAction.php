@@ -3,22 +3,17 @@
 namespace Drupal\eca\Plugin\Action;
 
 use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Wrapper action for all pre-configured actions.
+ *
+ * @Action(
+ *   id = "eca_preconfigured_action",
+ *   deriver = "\Drupal\eca\Plugin\Action\PreConfiguredActionDeriver",
+ *   nodocs = true
+ * )
  */
-#[Action(
-  id: 'eca_preconfigured_action',
-  label: new TranslatableMarkup('Preconfigured action'),
-  deriver: '\Drupal\eca\Plugin\Action\PreConfiguredActionDeriver',
-)]
-#[EcaAction(
-  no_docs: TRUE,
-)]
 class PreConfiguredAction extends ConfigurableActionBase {
 
   /**

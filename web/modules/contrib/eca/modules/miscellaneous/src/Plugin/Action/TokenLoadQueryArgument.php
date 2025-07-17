@@ -3,26 +3,22 @@
 namespace Drupal\eca_misc\Plugin\Action;
 
 use Drupal\Core\Access\AccessResult;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
  * Loads a query argument from the request into the token environment.
+ *
+ * @Action(
+ *   id = "eca_token_load_query_arg",
+ *   label = @Translation("Token: load query argument"),
+ *   description = @Translation("Loads a query argument from the request into the token environment."),
+ *   eca_version_introduced = "2.1.0"
+ * )
  */
-#[Action(
-  id: 'eca_token_load_query_arg',
-  label: new TranslatableMarkup('Token: load query argument'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Loads a query argument from the request into the token environment.'),
-  version_introduced: '2.1.ß',
-)]
 class TokenLoadQueryArgument extends ConfigurableActionBase {
 
   /**

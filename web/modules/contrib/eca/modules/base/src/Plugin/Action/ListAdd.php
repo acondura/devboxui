@@ -2,23 +2,19 @@
 
 namespace Drupal\eca_base\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ListAddBase;
 
 /**
  * Action to add an item to a list.
+ *
+ * @Action(
+ *   id = "eca_list_add",
+ *   label = @Translation("List: add item"),
+ *   description = @Translation("Add an item to a list using a specified token."),
+ *   eca_version_introduced = "1.1.0"
+ * )
  */
-#[Action(
-  id: 'eca_list_add',
-  label: new TranslatableMarkup('List: add item'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Add an item to a list using a specified token.'),
-  version_introduced: '1.1.0',
-)]
 class ListAdd extends ListAddBase {
 
   /**

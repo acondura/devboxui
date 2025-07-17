@@ -2,23 +2,19 @@
 
 namespace Drupal\eca_endpoint\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Ajax\CommandInterface;
 use Drupal\Core\Ajax\SetDialogTitleCommand;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Add a set dialog title command to the ajax response.
+ *
+ * @Action(
+ *   id = "eca_endpoint_set_ajax_response_set_dialog_title",
+ *   label = @Translation("Ajax Response: set dialog title"),
+ *   eca_version_introduced = "2.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_endpoint_set_ajax_response_set_dialog_title',
-  label: new TranslatableMarkup('Ajax Response: set dialog title'),
-)]
-#[EcaAction(
-  version_introduced: '2.0.0',
-)]
 class SetAjaxResponseSetDialogTitleCommand extends ResponseAjaxCommandBase {
 
   /**

@@ -2,23 +2,19 @@
 
 namespace Drupal\eca_render\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Event\RenderEventInterface;
 
 /**
  * Add a class to the attributes of an existing render array element.
+ *
+ * @Action(
+ *   id = "eca_render_add_class",
+ *   label = @Translation("Render: add class"),
+ *   description = @Translation("Add a class to the attributes of an existing render array element. Only works when reacting upon a rendering event, such as <em>Build form</em> or <em>Build ECA Block</em>."),
+ *   eca_version_introduced = "2.0.0"
+ * )
  */
-#[Action(
-  id: 'eca_render_add_class',
-  label: new TranslatableMarkup('Render: add class'),
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Add a class to the attributes of an existing render array element. Only works when reacting upon a rendering event, such as <em>Build form</em> or <em>Build ECA Block</em>.'),
-  version_introduced: '2.0.0',
-)]
 class AddClass extends RenderActionBase {
 
   /**

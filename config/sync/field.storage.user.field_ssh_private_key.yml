@@ -1,0 +1,19 @@
+uuid: 6a334a0a-075b-4a09-81c4-77e98077a61c
+langcode: en
+status: true
+dependencies:
+  module:
+    - user
+id: user.field_ssh_private_key
+field_name: field_ssh_private_key
+entity_type: user
+type: string_long
+settings:
+  case_sensitive: false
+module: core
+locked: false
+cardinality: 1
+translatable: true
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

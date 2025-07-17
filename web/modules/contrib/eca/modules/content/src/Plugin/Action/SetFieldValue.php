@@ -2,24 +2,20 @@
 
 namespace Drupal\eca_content\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\TypedData\TypedDataInterface;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Set the value of an entity field.
+ *
+ * @Action(
+ *   id = "eca_set_field_value",
+ *   label = @Translation("Entity: set field value"),
+ *   description = @Translation("Allows to set, unset or change the value(s) of any field in an entity."),
+ *   eca_version_introduced = "1.0.0",
+ *   type = "entity"
+ * )
  */
-#[Action(
-  id: 'eca_set_field_value',
-  label: new TranslatableMarkup('Entity: set field value'),
-  type: 'entity',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Allows to set, unset or change the value(s) of any field in an entity.'),
-  version_introduced: '1.0.0',
-)]
 class SetFieldValue extends FieldUpdateActionBase implements EcaFieldUpdateActionInterface {
 
   /**

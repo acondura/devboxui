@@ -434,7 +434,7 @@ trait TokenDecoratorTrait {
     if (!in_array(get_class($this->token), [
       'Drupal\Core\Utility\Token',
       'Drupal\token\Token',
-    ], TRUE)) {
+    ], TRUE) && method_exists($this->token, 'replacePlain')) {
       $plain = $this->token->replacePlain($plain, $data, $options, $bubbleable_metadata);
     }
     return $plain;
@@ -523,7 +523,7 @@ trait TokenDecoratorTrait {
    *   The normalized key.
    */
   protected function normalizeKey(string $key): string {
-    $key = trim($key);
+    $key = mb_strtolower(trim($key));
 
     if (!empty($key)) {
       if ((mb_substr($key, 0, 1) === '[') && (mb_substr($key, -1, 1) === ']')) {

@@ -3,9 +3,8 @@
 namespace Drupal\eca_endpoint\Plugin\ECA\Event;
 
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\eca\Attribute\EcaEvent;
 use Drupal\eca\Attribute\Token;
-use Drupal\eca\Entity\Objects\EcaEvent as EcaEventObject;
+use Drupal\eca\Entity\Objects\EcaEvent;
 use Drupal\eca\Event\Tag;
 use Drupal\eca\Plugin\ECA\Event\EventBase;
 use Drupal\eca_endpoint\EndpointEvents;
@@ -17,12 +16,13 @@ use Symfony\Contracts\EventDispatcher\Event;
 
 /**
  * Plugin implementation of ECA endpoint events.
+ *
+ * @EcaEvent(
+ *   id = "eca_endpoint",
+ *   deriver = "Drupal\eca_endpoint\Plugin\ECA\Event\EndpointEventDeriver",
+ *   eca_version_introduced = "1.1.0"
+ * )
  */
-#[EcaEvent(
-  id: 'eca_endpoint',
-  deriver: 'Drupal\eca_endpoint\Plugin\ECA\Event\EndpointEventDeriver',
-  version_introduced: '1.1.0',
-)]
 class EndpointEvent extends EventBase {
 
   /**
@@ -106,7 +106,7 @@ class EndpointEvent extends EventBase {
   /**
    * {@inheritdoc}
    */
-  public function generateWildcard(string $eca_config_id, EcaEventObject $ecaEvent): string {
+  public function generateWildcard(string $eca_config_id, EcaEvent $ecaEvent): string {
     switch ($this->getDerivativeId()) {
 
       case 'response':

@@ -4,7 +4,6 @@ namespace Drupal\eca_misc\Plugin\ECA\Event;
 
 use Drupal\Core\DrupalKernelInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaEvent;
 use Drupal\eca\Attribute\Token;
 use Drupal\eca\Plugin\DataType\DataTransferObject;
 use Drupal\eca\Plugin\ECA\Event\EventBase;
@@ -22,12 +21,13 @@ use Symfony\Contracts\EventDispatcher\Event;
 
 /**
  * Plugin implementation of the ECA Events for the kernel.
+ *
+ * @EcaEvent(
+ *   id = "kernel",
+ *   deriver = "Drupal\eca_misc\Plugin\ECA\Event\KernelEventDeriver",
+ *   eca_version_introduced = "1.0.0"
+ * )
  */
-#[EcaEvent(
-  id: 'kernel',
-  deriver: 'Drupal\eca_misc\Plugin\ECA\Event\KernelEventDeriver',
-  version_introduced: '1.0.0',
-)]
 class KernelEvent extends EventBase {
 
   /**

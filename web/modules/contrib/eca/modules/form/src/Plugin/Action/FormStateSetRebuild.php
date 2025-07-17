@@ -2,23 +2,19 @@
 
 namespace Drupal\eca_form\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 
 /**
  * Flag the form state to rebuild the form again after submission.
+ *
+ * @Action(
+ *   id = "eca_form_state_set_rebuild",
+ *   label = @Translation("Form state: set rebuild"),
+ *   description = @Translation("Flag the form state to rebuild the form again after submission."),
+ *   eca_version_introduced = "1.1.0",
+ *   type = "form"
+ * )
  */
-#[Action(
-  id: 'eca_form_state_set_rebuild',
-  label: new TranslatableMarkup('Form state: set rebuild'),
-  type: 'form',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Flag the form state to rebuild the form again after submission.'),
-  version_introduced: '1.1.0',
-)]
 class FormStateSetRebuild extends FormActionBase {
 
   /**

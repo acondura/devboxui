@@ -8,11 +8,6 @@ use Drupal\Component\Annotation\Plugin;
  * Defines ECA event annotation object.
  *
  * @Annotation
- *
- * @deprecated in eca:3.0.0 and is removed from eca:4.0.0. Use attributes
- * instead.
- *
- * @see https://www.drupal.org/project/eca/issues/3456789
  */
 class EcaEvent extends Plugin {
 

@@ -2,24 +2,20 @@
 
 namespace Drupal\eca_form\Plugin\Action;
 
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\ECA\PluginFormTrait;
 
 /**
  * Add a JavaScript state to a field or form element.
+ *
+ * @Action(
+ *   id = "eca_form_field_add_state",
+ *   label = @Translation("Form field: add state"),
+ *   description = @Translation("Add JavaScript state to a form field or element."),
+ *   eca_version_introduced = "2.1.0",
+ *   type = "form"
+ * )
  */
-#[Action(
-  id: 'eca_form_field_add_state',
-  label: new TranslatableMarkup('Form field: add state'),
-  type: 'form',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Add JavaScript state to a form field or element.'),
-  version_introduced: '2.1.0',
-)]
 class FormFieldAddState extends FormFieldActionBase {
 
   use PluginFormTrait;

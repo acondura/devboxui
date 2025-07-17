@@ -4,7 +4,6 @@ namespace Drupal\eca_content\Plugin\Action;
 
 use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Access\AccessibleInterface;
-use Drupal\Core\Action\Attribute\Action;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\FieldableEntityInterface;
 use Drupal\Core\Field\EntityReferenceFieldItemListInterface;
@@ -12,24 +11,21 @@ use Drupal\Core\Field\FieldItemListInterface;
 use Drupal\Core\Field\Plugin\Field\FieldType\EntityReferenceItem;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
-use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\TypedData\ComplexDataDefinitionInterface;
-use Drupal\eca\Attribute\EcaAction;
 use Drupal\eca\Plugin\Action\ConfigurableActionBase;
 use Drupal\eca\TypedData\PropertyPathTrait;
 
 /**
  * Get the value of an entity field.
+ *
+ * @Action(
+ *   id = "eca_get_field_value",
+ *   label = @Translation("Entity: get field value"),
+ *   description = @Translation("Get the value of any field in an entity and store it as a token."),
+ *   eca_version_introduced = "1.0.0",
+ *   type = "entity"
+ * )
  */
-#[Action(
-  id: 'eca_get_field_value',
-  label: new TranslatableMarkup('Entity: get field value'),
-  type: 'entity',
-)]
-#[EcaAction(
-  description: new TranslatableMarkup('Get the value of any field in an entity and store it as a token.'),
-  version_introduced: '1.0.0',
-)]
 class GetFieldValue extends ConfigurableActionBase {
 
   use PropertyPathTrait;
