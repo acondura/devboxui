@@ -18,6 +18,9 @@ code: |-
   .tabs.tabs--primary {
   	margin-top: 10px;
   }
+  .horizontal-tabs {
+  	border: 0 !important;
+  }
 media: all
 preprocess: true
 conditions: {  }

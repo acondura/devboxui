@@ -1,0 +1,16 @@
+uuid: b03caeb0-537b-4397-b51f-c1cf9bfed368
+langcode: en
+status: true
+dependencies: {  }
+id: devbox_styling
+label: 'DevBox styling'
+code: |-
+  .node-devbox-form .entity-meta,
+  .node-devbox-edit-form .entity-meta {
+  	display: none;
+  }
+media: all
+preprocess: true
+conditions: {  }
+contexts: {  }
+conditions_require_all: true

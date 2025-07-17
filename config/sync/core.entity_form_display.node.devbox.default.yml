@@ -1,0 +1,101 @@
+uuid: bcd0a501-b496-4266-b096-9d17e7985685
+langcode: en
+status: true
+dependencies:
+  config:
+    - node.type.devbox
+  module:
+    - field_group
+third_party_settings:
+  field_group:
+    group_tabs:
+      children:
+        - group_devboxes
+        - group_settings
+      label: Tabs
+      region: content
+      parent_name: ''
+      weight: 0
+      format_type: tabs
+      format_settings:
+        classes: ''
+        show_empty_fields: false
+        id: ''
+        label_as_html: false
+        direction: horizontal
+        width_breakpoint: 640
+    group_settings:
+      children:
+        - status
+        - uid
+        - created
+      label: Settings
+      region: content
+      parent_name: group_tabs
+      weight: 22
+      format_type: tab
+      format_settings:
+        classes: ''
+        show_empty_fields: false
+        id: ''
+        label_as_html: false
+        formatter: closed
+        description: ''
+        required_fields: true
+    group_devboxes:
+      children:
+        - title
+      label: DevBoxes
+      region: content
+      parent_name: group_tabs
+      weight: 20
+      format_type: tab
+      format_settings:
+        classes: ''
+        show_empty_fields: false
+        id: ''
+        label_as_html: false
+        formatter: open
+        description: ''
+        required_fields: true
+id: node.devbox.default
+targetEntityType: node
+bundle: devbox
+mode: default
+content:
+  created:
+    type: datetime_timestamp
+    weight: 5
+    region: content
+    settings: {  }
+    third_party_settings: {  }
+  status:
+    type: boolean_checkbox
+    weight: 3
+    region: content
+    settings:
+      display_label: true
+    third_party_settings: {  }
+  title:
+    type: string_textfield
+    weight: 21
+    region: content
+    settings:
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+  uid:
+    type: entity_reference_autocomplete
+    weight: 4
+    region: content
+    settings:
+      match_operator: CONTAINS
+      match_limit: 10
+      size: 60
+      placeholder: ''
+    third_party_settings: {  }
+hidden:
+  langcode: true
+  path: true
+  promote: true
+  sticky: true
