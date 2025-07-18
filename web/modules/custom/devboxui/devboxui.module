@@ -52,14 +52,31 @@ function devboxuiGetUserFieldDescription($field_name) {
  */
 function devboxui_server_type(FieldStorageConfig $definition, ContentEntityInterface $entity = NULL, $cacheable) {
   $options = [];
-  // Add a custom alignment option for Article nodes.
   $entity_type = $entity->getEntityTypeId();
-  $bundle = $entity->bundle();
-  if ($entity_type == 'paragraph' && $bundle == 'hetzner') {
-    $options[] = 'Center';
+  if ($entity_type == 'paragraph') {
+    $bundle = $entity->bundle();
+    $allowed_bundles = devboxui_get_providers_list();
+
+    if (in_array($bundle, $allowed_bundles)) {
+      $options[] = 'Center';
+    }
   }
 
   return $options;
+}
+
+function devboxui_get_providers_list() {
+  // Get all field definitions for the user entity.
+  $field_definitions = \Drupal::service('entity_field.manager')->getFieldDefinitions('user', 'user');
+  $vps_fields = [];
+
+  foreach ($field_definitions as $field_name => $definition) {
+    if (str_starts_with($field_name, 'field_vps')) {
+      $vps_fields[] = str_replace('field_vps_', '', $field_name);
+    }
+  }
+
+  return $vps_fields;
 }
 
 /**

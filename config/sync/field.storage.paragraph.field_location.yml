@@ -1,17 +1,20 @@
-uuid: 786b6885-350d-4df0-af56-b2c59b0394f3
+uuid: 5a821a36-dd44-4743-a357-c91d5ee269a6
 langcode: en
 status: true
 dependencies:
   module:
     - options
     - paragraphs
-id: paragraph.field_server_type
-field_name: field_server_type
+id: paragraph.field_location
+field_name: field_location
 entity_type: paragraph
 type: list_string
 settings:
-  allowed_values: {  }
-  allowed_values_function: devboxui_server_type
+  allowed_values:
+    -
+      value: default
+      label: default
+  allowed_values_function: ''
 module: options
 locked: false
 cardinality: 1

@@ -4,6 +4,7 @@ status: true
 dependencies:
   config:
     - field.field.paragraph.hetzner.field_image
+    - field.field.paragraph.hetzner.field_location
     - field.field.paragraph.hetzner.field_name
     - field.field.paragraph.hetzner.field_server_type
     - paragraphs.paragraphs_type.hetzner
@@ -20,6 +21,13 @@ content:
     settings: {  }
     third_party_settings: {  }
     weight: 2
+    region: content
+  field_location:
+    type: list_default
+    label: above
+    settings: {  }
+    third_party_settings: {  }
+    weight: 3
     region: content
   field_name:
     type: string
