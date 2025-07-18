@@ -1,0 +1,19 @@
+uuid: e6493a32-4c2e-45c1-a800-ecee6151c727
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_name
+    - paragraphs.paragraphs_type.hetzner
+id: paragraph.hetzner.field_name
+field_name: field_name
+entity_type: paragraph
+bundle: hetzner
+label: Name
+description: 'Name of the Server to create (must be unique per Project and a valid hostname as per RFC 1123).'
+required: true
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string

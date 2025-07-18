@@ -5,6 +5,10 @@
  * Contains \Drupal\devboxui\DevboxUiModule.
  */
 
+use Drupal\Core\Entity\ContentEntityInterface;
+use Drupal\field\Entity\FieldStorageConfig;
+use Drupal\Core\Field\FieldDefinitionInterface;
+
 /**
  * Implements hook_form_alter().
  */
@@ -29,4 +33,56 @@ function devboxui_form_alter(&$form, &$form_state, $form_id) {
  */
 function devboxuiGetUserFieldDescription($field_name) {
   return '';
+}
+
+/**
+ * Set dynamic allowed values for the alignment field.
+ *
+ * @param \Drupal\field\Entity\FieldStorageConfig $definition
+ *   The field definition.
+ * @param \Drupal\Core\Entity\ContentEntityInterface|null $entity
+ *   The entity being created if applicable.
+ * @param bool $cacheable
+ *   Boolean indicating if the results are cacheable.
+ *
+ * @return array
+ *   An array of possible key and value options.
+ *
+ * @see options_allowed_values()
+ */
+function devboxui_server_type(FieldStorageConfig $definition, ContentEntityInterface $entity = NULL, $cacheable) {
+  $options = [];
+  // Add a custom alignment option for Article nodes.
+  $entity_type = $entity->getEntityTypeId();
+  $bundle = $entity->bundle();
+  if ($entity_type == 'paragraph' && $bundle == 'hetzner') {
+    $options[] = 'Center';
+  }
+
+  return $options;
+}
+
+/**
+ * Sets the default value for the alignment field.
+ *
+ * @param \Drupal\Core\Entity\ContentEntityInterface $entity
+ *   The entity being created.
+ * @param \Drupal\Core\Field\FieldDefinitionInterface $definition
+ *   The field definition.
+ *
+ * @return array
+ *   An array of default value keys with each entry keyed with the “value” key.
+ *
+ * @see \Drupal\Core\Field\FieldConfigBase::getDefaultValue()
+ */
+function devboxui_server_type_default(ContentEntityInterface $entity, FieldDefinitionInterface $definition) {
+  $default = 'right';
+  // Article nodes should default to center alignment.
+  if ($entity->bundle() == 'devbox') {
+    $default = 'center';
+  }
+
+  return [
+    ['value' => $default],
+  ];
 }

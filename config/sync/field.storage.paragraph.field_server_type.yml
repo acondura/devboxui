@@ -1,0 +1,21 @@
+uuid: 786b6885-350d-4df0-af56-b2c59b0394f3
+langcode: en
+status: true
+dependencies:
+  module:
+    - options
+    - paragraphs
+id: paragraph.field_server_type
+field_name: field_server_type
+entity_type: paragraph
+type: list_string
+settings:
+  allowed_values: { }
+  allowed_values_function: 'devboxui_server_type'
+module: options
+locked: false
+cardinality: 1
+translatable: true
+indexes: {  }
+persist_with_no_fields: false
+custom_storage: false

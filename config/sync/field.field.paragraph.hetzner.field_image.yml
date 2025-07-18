@@ -1,0 +1,21 @@
+uuid: dc295e49-3601-494a-8804-704ca1cafced
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_image
+    - paragraphs.paragraphs_type.hetzner
+  module:
+    - options
+id: paragraph.hetzner.field_image
+field_name: field_image
+entity_type: paragraph
+bundle: hetzner
+label: Image
+description: 'ID or name of the Image the Server is created from.'
+required: true
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: list_string

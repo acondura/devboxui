@@ -1,0 +1,39 @@
+uuid: 295d3888-7652-439e-8593-410a77866fcf
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.field.paragraph.hetzner.field_image
+    - field.field.paragraph.hetzner.field_name
+    - field.field.paragraph.hetzner.field_server_type
+    - paragraphs.paragraphs_type.hetzner
+  module:
+    - options
+id: paragraph.hetzner.default
+targetEntityType: paragraph
+bundle: hetzner
+mode: default
+content:
+  field_image:
+    type: list_default
+    label: above
+    settings: {  }
+    third_party_settings: {  }
+    weight: 2
+    region: content
+  field_name:
+    type: string
+    label: above
+    settings:
+      link_to_entity: false
+    third_party_settings: {  }
+    weight: 0
+    region: content
+  field_server_type:
+    type: list_default
+    label: above
+    settings: {  }
+    third_party_settings: {  }
+    weight: 1
+    region: content
+hidden: {  }
