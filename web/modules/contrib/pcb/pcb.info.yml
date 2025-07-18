@@ -1,0 +1,13 @@
+name: Permanent Cache Bin
+type: module
+description: 'Permanent Cache Bin module adds support for cache bins which are not cleared during drush cr.'
+package: 'Cache'
+core_version_requirement: ^10.3 || ^11 || ^12
+test_dependencies:
+  - memcache:memcache (>=8.x-2.0)
+  - redis:redis (>=8.x-1.0-rc2)
+
+# Information added by Drupal.org packaging script on 2024-09-25
+version: '4.0.0'
+project: 'pcb'
+datestamp: 1727251135
