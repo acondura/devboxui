@@ -8,7 +8,6 @@ dependencies:
     - node.type.devbox
   module:
     - comment
-    - contact
     - file
     - filter
     - node
@@ -25,7 +24,6 @@ permissions:
   - 'access comments'
   - 'access content'
   - 'access shortcuts'
-  - 'access site-wide contact form'
   - 'create app content'
   - 'create devbox content'
   - 'delete own app content'

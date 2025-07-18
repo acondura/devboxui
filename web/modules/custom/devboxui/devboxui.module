@@ -1,0 +1,32 @@
+<?php
+
+/**
+ * @file
+ * Contains \Drupal\devboxui\DevboxUiModule.
+ */
+
+/**
+ * Implements hook_form_alter().
+ */
+function devboxui_form_alter(&$form, &$form_state, $form_id) {
+  if ($form_id == 'user_form') {
+    foreach ($form as $field_name => $field) {
+      if (preg_match('/^field_vps_/', $field_name)) {
+        // Remove the "VPS" prefix from the field title.
+        $field_title = $field['widget'][0]['value']['#title'];
+        $field_title = explode(' ', $field_title);
+        array_shift($field_title);
+        $form[$field_name]['widget'][0]['value']['#title'] = implode(' ', $field_title);
+        // Add a description to the field.
+        $form[$field_name]['widget'][0]['value']['#description'] = devboxuiGetUserFieldDescription($field_name);
+      }
+    }
+  }
+}
+
+/**
+ * Get the description for a user field.
+ */
+function devboxuiGetUserFieldDescription($field_name) {
+  return '';
+}

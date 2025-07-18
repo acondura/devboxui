@@ -6,6 +6,8 @@ dependencies:
     - field.field.user.user.field_regenerate_keys
     - field.field.user.user.field_ssh_private_key
     - field.field.user.user.field_ssh_public_key
+    - field.field.user.user.field_vps_hetzner
+    - field.field.user.user.field_vps_vultr
     - field.field.user.user.user_picture
     - image.style.thumbnail
   module:
@@ -41,6 +43,22 @@ content:
     settings: {  }
     third_party_settings: {  }
     weight: 52
+    region: content
+  field_vps_hetzner:
+    type: string
+    label: above
+    settings:
+      link_to_entity: false
+    third_party_settings: {  }
+    weight: 54
+    region: content
+  field_vps_vultr:
+    type: string
+    label: above
+    settings:
+      link_to_entity: false
+    third_party_settings: {  }
+    weight: 55
     region: content
   masquerade:
     settings: {  }

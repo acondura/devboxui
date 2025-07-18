@@ -7,6 +7,8 @@ dependencies:
     - field.field.user.user.field_regenerate_keys
     - field.field.user.user.field_ssh_private_key
     - field.field.user.user.field_ssh_public_key
+    - field.field.user.user.field_vps_hetzner
+    - field.field.user.user.field_vps_vultr
     - field.field.user.user.user_picture
     - image.style.thumbnail
   module:
@@ -39,5 +41,7 @@ hidden:
   field_regenerate_keys: true
   field_ssh_private_key: true
   field_ssh_public_key: true
+  field_vps_hetzner: true
+  field_vps_vultr: true
   langcode: true
   member_for: true

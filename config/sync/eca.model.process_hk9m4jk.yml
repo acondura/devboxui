@@ -231,12 +231,12 @@ modeldata: |
           <dc:Bounds x="370" y="320" width="100" height="80" />
           <bpmndi:BPMNLabel />
         </bpmndi:BPMNShape>
-        <bpmndi:BPMNShape id="Activity_1qgojd4_di" bpmnElement="Activity_1qgojd4">
-          <dc:Bounds x="520" y="320" width="100" height="80" />
-          <bpmndi:BPMNLabel />
-        </bpmndi:BPMNShape>
         <bpmndi:BPMNShape id="Activity_1sqdc8f_di" bpmnElement="Activity_1sqdc8f">
           <dc:Bounds x="670" y="320" width="100" height="80" />
+          <bpmndi:BPMNLabel />
+        </bpmndi:BPMNShape>
+        <bpmndi:BPMNShape id="Activity_1qgojd4_di" bpmnElement="Activity_1qgojd4">
+          <dc:Bounds x="520" y="320" width="100" height="80" />
           <bpmndi:BPMNLabel />
         </bpmndi:BPMNShape>
         <bpmndi:BPMNEdge id="Flow_0x78fpz_di" bpmnElement="Flow_0x78fpz">

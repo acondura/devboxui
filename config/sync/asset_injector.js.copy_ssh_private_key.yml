@@ -1,0 +1,30 @@
+uuid: e9291e61-a21e-48a1-8f99-70735f5337e0
+langcode: en
+status: true
+dependencies:
+  module:
+    - system
+id: copy_ssh_private_key
+label: 'Copy SSH private key'
+code: |
+  const el = document.querySelector('[name="field_ssh_private_key[0][value]"]');
+  el.onclick = () => {
+    el.select();
+    navigator.clipboard.writeText(el.value).then(() => {
+      const originalTitle = el.title;
+      el.title = 'Copied!';
+      setTimeout(() => el.title = originalTitle, 5000);
+    });
+  };
+noscript: ''
+noscriptRegion: {  }
+jquery: false
+header: false
+preprocess: true
+conditions:
+  request_path:
+    id: request_path
+    negate: false
+    pages: '/user/*/edit'
+contexts: {  }
+conditions_require_all: true

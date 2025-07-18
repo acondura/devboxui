@@ -1,0 +1,20 @@
+uuid: f226d60c-a192-433e-96d5-23cbb875a7a1
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.user.field_vps_hetzner
+  module:
+    - user
+id: user.user.field_vps_hetzner
+field_name: field_vps_hetzner
+entity_type: user
+bundle: user
+label: 'VPS Hetzner'
+description: ''
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string

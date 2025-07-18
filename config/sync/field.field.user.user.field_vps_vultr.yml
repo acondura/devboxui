@@ -1,0 +1,20 @@
+uuid: e593fb7c-da12-4a6d-be46-78c2a09e9868
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.user.field_vps_vultr
+  module:
+    - user
+id: user.user.field_vps_vultr
+field_name: field_vps_vultr
+entity_type: user
+bundle: user
+label: 'VPS Vultr'
+description: ''
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string
