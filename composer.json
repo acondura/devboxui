@@ -30,6 +30,7 @@
         "drupal/eca_tamper": "^2.0",
         "drupal/field_group": "^4.0",
         "drupal/gin": "^5.0",
+        "drupal/hook_event_dispatcher": "^4.2",
         "drupal/masquerade": "^2.0",
         "drupal/paragraphs": "^1.19",
         "drupal/paragraphs_ee": "^10.0",
