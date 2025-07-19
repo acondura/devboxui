@@ -52,6 +52,9 @@ events:
       -
         id: Activity_0sv4tg6
         condition: Flow_0vaofij
+      -
+        id: Activity_0wubzbm
+        condition: ''
 conditions:
   Flow_0vaofij:
     plugin: eca_entity_field_value
@@ -119,3 +122,9 @@ actions:
       -
         id: Activity_1sqdc8f
         condition: ''
+  Activity_0wubzbm:
+    plugin: devboxui_upload_keys_to_provider
+    label: 'Upload keys to provider'
+    configuration:
+      object: user
+    successors: {  }

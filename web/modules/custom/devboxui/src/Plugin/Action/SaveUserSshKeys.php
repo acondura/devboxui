@@ -12,7 +12,7 @@ use phpseclib3\Net\SFTP;
 use phpseclib3\Crypt\PublicKeyLoader;
 
 /**
- * Provides a DrupalEvaluator action.
+ * Provides a custom action.
  *
  * @Action(
  *   id = "devboxui_save_user_ssh_keys",

@@ -83,7 +83,7 @@ function devboxui_get_providers_list() {
   $vps_fields = [];
 
   foreach ($field_definitions as $field_name => $definition) {
-    if (str_starts_with($field_name, 'field_vps')) {
+    if (str_starts_with($field_name, 'field_vps_')) {
       $vps_fields[] = str_replace('field_vps_', '', $field_name);
     }
   }
