@@ -16,6 +16,6 @@ description: 'ID or name of the Server type this Server should be created with.'
 required: true
 translatable: false
 default_value: {  }
-default_value_callback: devboxui_server_type_default
+default_value_callback: ''
 settings: {  }
 field_type: list_string

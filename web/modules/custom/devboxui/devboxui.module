@@ -21,6 +21,7 @@ function devboxui_form_alter(&$form, &$form_state, $form_id) {
         $field_title = explode(' ', $field_title);
         array_shift($field_title);
         $form[$field_name]['widget'][0]['value']['#title'] = implode(' ', $field_title);
+
         // Add a description to the field.
         $form[$field_name]['widget'][0]['value']['#description'] = devboxuiGetUserFieldDescription($field_name);
       }
@@ -36,7 +37,7 @@ function devboxuiGetUserFieldDescription($field_name) {
 }
 
 /**
- * Set dynamic allowed values for the alignment field.
+ * Set dynamic allowed values.
  *
  * @param \Drupal\field\Entity\FieldStorageConfig $definition
  *   The field definition.
@@ -50,12 +51,19 @@ function devboxuiGetUserFieldDescription($field_name) {
  *
  * @see options_allowed_values()
  */
-function devboxui_server_type(FieldStorageConfig $definition, ContentEntityInterface $entity = NULL, $cacheable) {
+function devboxui_options_allowed_values(FieldStorageConfig $definition, ContentEntityInterface $entity = NULL, $cacheable) {
   $options = [];
   $entity_type = $entity->getEntityTypeId();
+  $field_name = $definition->id();
+
   if ($entity_type == 'paragraph') {
     $bundle = $entity->bundle();
     $allowed_bundles = devboxui_get_providers_list();
+    $allowed_fields = [
+      'paragraph.field_location',
+      'paragraph.field_server_type',
+      'paragraph.field_os_image',
+    ];
 
     if (in_array($bundle, $allowed_bundles)) {
       $options[] = 'Center';
@@ -79,27 +87,86 @@ function devboxui_get_providers_list() {
   return $vps_fields;
 }
 
-/**
- * Sets the default value for the alignment field.
- *
- * @param \Drupal\Core\Entity\ContentEntityInterface $entity
- *   The entity being created.
- * @param \Drupal\Core\Field\FieldDefinitionInterface $definition
- *   The field definition.
- *
- * @return array
- *   An array of default value keys with each entry keyed with the “value” key.
- *
- * @see \Drupal\Core\Field\FieldConfigBase::getDefaultValue()
- */
-function devboxui_server_type_default(ContentEntityInterface $entity, FieldDefinitionInterface $definition) {
-  $default = 'right';
-  // Article nodes should default to center alignment.
-  if ($entity->bundle() == 'devbox') {
-    $default = 'center';
-  }
 
-  return [
-    ['value' => $default],
-  ];
+/**
+ * Helper function to call the VPS provider API.
+ *
+ * @param [type] $provider
+ * @param [type] $method
+ * @param array $params
+ * @return void
+ */
+function vpsCall($provider, $path, $params = [], $method = 'GET') {
+  $method = strtoupper($method);
+  $token = getUserDevboxProviders('token')[$provider];
+  if (empty($token)) return [];
+
+  $client = \Drupal::httpClient();
+  try {
+    if ($method === 'GET') {
+      $initial_path = $path;
+      // Add query parameters to the path, if any.
+      if (!empty($params)) {
+        $query = http_build_query($params);
+        $path .= '?' . $query;
+      }
+
+      // Check if the response is cached.
+      if ($cache = \Drupal::cache('devboxui')->get($provider . ':' . $path)) {
+        return devboxProcessResponse(
+          $provider,
+          $token,
+          $initial_path,
+          $cache->data
+        );
+      }
+      else { // Get the response from the API.
+        $response = $client->get(
+          getDevboxProvidersList()[$provider]['api_url'] . '/' . $path, [
+            'headers' => [
+              'Authorization' => 'Bearer ' . $token,
+            ],
+          ]
+        );
+        $responseBody = json_decode($response->getBody(), TRUE);
+        // Cache the response for 24 hours if it's not in cache.
+        \Drupal::cache('devboxui')->set(
+          $provider . ':' . $path,
+          $responseBody,
+          time() + 86400 // Cache for 24 hours.
+        );
+        // Process the response.
+        return devboxProcessResponse(
+          $provider,
+          $token,
+          $initial_path,
+          $responseBody
+        );
+      }
+    }
+    else if ($method === 'POST') {
+      $response = $client->post(getDevboxProvidersList()[$provider]['api_url'] . '/' . $path, [
+        'headers' => [
+          'Authorization' => 'Bearer ' . $token,
+          'Content-Type' => 'application/json',
+        ],
+        'json' => $params,
+      ]);
+      return json_decode($response->getBody(), TRUE);
+    }
+    else if ($method === 'DELETE') {
+      $response = $client->delete(getDevboxProvidersList()[$provider]['api_url'] . '/' . $path, [
+        'headers' => [
+          'Authorization' => 'Bearer ' . $token,
+        ],
+      ]);
+      return json_decode($response->getBody(), TRUE);
+    }
+  } catch (\Exception $e) {
+    \Drupal::logger('devboxui')->error('VPS API error: ' . $e->getMessage());
+    return [
+      'error' => TRUE,
+      'message' => 'VPS API error: ' . $e->getMessage(),
+    ];
+  }
 }

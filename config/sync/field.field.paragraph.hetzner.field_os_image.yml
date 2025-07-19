@@ -1,17 +1,17 @@
-uuid: dc295e49-3601-494a-8804-704ca1cafced
+uuid: 65b9c598-e829-433d-9343-17d8f96568a8
 langcode: en
 status: true
 dependencies:
   config:
-    - field.storage.paragraph.field_image
+    - field.storage.paragraph.field_os_image
     - paragraphs.paragraphs_type.hetzner
   module:
     - options
-id: paragraph.hetzner.field_image
-field_name: field_image
+id: paragraph.hetzner.field_os_image
+field_name: field_os_image
 entity_type: paragraph
 bundle: hetzner
-label: Image
+label: 'OS image'
 description: 'ID or name of the Image the Server is created from.'
 required: true
 translatable: false

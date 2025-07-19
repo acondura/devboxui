@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Drupal\devboxui\Plugin\Action;
 
 use Drupal\Core\Access\AccessResultInterface;
@@ -46,7 +44,6 @@ final class SaveUserSshKeys extends ActionBase {
    * {@inheritdoc}
    */
   public function access($entity, AccountInterface $account = NULL, $return_as_object = FALSE): AccessResultInterface|bool {
-    /** @var \Drupal\Core\Entity\ContentEntityInterface $entity */
     $access = $entity->access('update', $account, TRUE);
     return $return_as_object ? $access : $access->isAllowed();
   }

@@ -15,7 +15,7 @@ dependencies:
     - eca_form
 id: process_hk9m4jk
 modeller: bpmn_io
-label: 'On user creation, create SSH keys & disable editing them'
+label: 'User actions'
 version: v1
 weight: 0
 events:

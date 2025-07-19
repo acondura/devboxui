@@ -3,9 +3,9 @@ langcode: en
 status: true
 dependencies:
   config:
-    - field.field.paragraph.hetzner.field_image
     - field.field.paragraph.hetzner.field_location
     - field.field.paragraph.hetzner.field_name
+    - field.field.paragraph.hetzner.field_os_image
     - field.field.paragraph.hetzner.field_server_type
     - paragraphs.paragraphs_type.hetzner
   module:
@@ -15,13 +15,6 @@ targetEntityType: paragraph
 bundle: hetzner
 mode: default
 content:
-  field_image:
-    type: list_default
-    label: above
-    settings: {  }
-    third_party_settings: {  }
-    weight: 2
-    region: content
   field_location:
     type: list_default
     label: above
@@ -36,6 +29,13 @@ content:
       link_to_entity: false
     third_party_settings: {  }
     weight: 0
+    region: content
+  field_os_image:
+    type: list_default
+    label: above
+    settings: {  }
+    third_party_settings: {  }
+    weight: 4
     region: content
   field_server_type:
     type: list_default

@@ -11,7 +11,7 @@ entity_type: paragraph
 type: list_string
 settings:
   allowed_values: {  }
-  allowed_values_function: devboxui_server_type
+  allowed_values_function: devboxui_options_allowed_values
 module: options
 locked: false
 cardinality: 1
