@@ -3,7 +3,6 @@ langcode: en
 status: true
 dependencies:
   config:
-    - field.field.paragraph.hetzner.field_location
     - field.field.paragraph.hetzner.field_name
     - field.field.paragraph.hetzner.field_os_image
     - field.field.paragraph.hetzner.field_server_type
@@ -13,12 +12,6 @@ targetEntityType: paragraph
 bundle: hetzner
 mode: default
 content:
-  field_location:
-    type: options_select
-    weight: 1
-    region: content
-    settings: {  }
-    third_party_settings: {  }
   field_name:
     type: string_textfield
     weight: 0

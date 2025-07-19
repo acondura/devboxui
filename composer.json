@@ -22,6 +22,7 @@
         "drupal/bpmn_io": "^2.0",
         "drupal/chosen": "^5.0",
         "drupal/coffee": "^2.0",
+        "drupal/conditional_fields": "^4.0@alpha",
         "drupal/config_ignore": "^3.3",
         "drupal/core-composer-scaffold": "11.2.2",
         "drupal/core-project-message": "11.2.2",

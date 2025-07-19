@@ -60,7 +60,6 @@ function devboxui_options_allowed_values(FieldStorageConfig $definition, Content
     $field_id = $definition->id();
     $allowed_bundles = devboxui_get_providers_list();
     $allowed_fields = [
-      'paragraph.field_location',
       'paragraph.field_server_type',
       'paragraph.field_os_image',
     ];
