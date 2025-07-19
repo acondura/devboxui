@@ -1,12 +1,12 @@
 <?php
 
-namespace Drupal\devbox\Plugin\VpsProvider;
+namespace Drupal\devboxui\Plugin\VpsProvider;
 
-use Drupal\devbox\Plugin\VpsProvider\VpsProviderPluginBase;
+use Drupal\devboxui\Plugin\VpsProvider\VpsProviderPluginBase;
 
 /**
  * @VpsProvider(
- *   id = "devbox_hetzner",
+ *   id = "hetzner",
  *   label = @Translation("Hetzner")
  * )
  */
@@ -64,7 +64,57 @@ class ProviderHetzner extends VpsProviderPluginBase {
    * @return void
    */
   public function location() {
+    $options = [];
+    $results = vpsCall('hetzner', 'locations');
+    foreach($results['locations'] as $l) {
+      $options[$l['id']] = implode(', ', [
+        $l['city'],
+        $l['country'],
+      ]);
+    }
+    return $options;
+  }
 
+  /**
+   * Get Hetzner vps server types, cache results.
+   *
+   * @return void
+   */
+  public function server_type() {
+    $options = [];
+    $results = vpsCall('hetzner', 'server_types');
+    foreach($results['server_types'] as $s) {
+      $options[$s['id']] = implode(', ', [
+        $s['description'],
+        $s['architecture'],
+        $s['cpu_type'] . ' CPU',
+        $s['cores'] . ' cores',
+        $s['disk'] . ' GB storage',
+        $s['memory'] . ' GB memory',
+      ]);
+    }
+    return $options;
+  }
+
+  /**
+   * Get Hetzner vps os images, cache results.
+   *
+   * @return void
+   */
+  public function os_image() {
+    $options = [];
+    $results = vpsCall('hetzner', 'images', [
+      'type' => 'system',
+      'status' => 'available',
+      'os_flavor' => 'ubuntu',
+      'sort' => 'name:desc',
+      'architecture' => 'x86',
+      'per_page' => '1',
+    ]);
+    foreach($results['images'] as $i) {
+      $options[$i['id']] = implode(', ', [$i['description']]);
+    }
+    return $options;
   }
 
 }

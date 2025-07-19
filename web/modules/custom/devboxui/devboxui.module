@@ -54,10 +54,10 @@ function devboxuiGetUserFieldDescription($field_name) {
 function devboxui_options_allowed_values(FieldStorageConfig $definition, ContentEntityInterface $entity = NULL, $cacheable) {
   $options = [];
   $entity_type = $entity->getEntityTypeId();
-  $field_name = $definition->id();
 
   if ($entity_type == 'paragraph') {
     $bundle = $entity->bundle();
+    $field_id = $definition->id();
     $allowed_bundles = devboxui_get_providers_list();
     $allowed_fields = [
       'paragraph.field_location',
@@ -65,8 +65,13 @@ function devboxui_options_allowed_values(FieldStorageConfig $definition, Content
       'paragraph.field_os_image',
     ];
 
-    if (in_array($bundle, $allowed_bundles)) {
-      $options[] = 'Center';
+    if (in_array($bundle, $allowed_bundles) && in_array($field_id, $allowed_fields)) {
+      $vps_manager = \Drupal::service('plugin.manager.vps_provider');
+      $method = explode('field_', $field_id)[1];
+      $vps_plugin = $vps_manager->createInstance($bundle);
+      $options = $vps_plugin->$method();
+
+      return $options;
     }
   }
 
@@ -98,13 +103,13 @@ function devboxui_get_providers_list() {
  */
 function vpsCall($provider, $path, $params = [], $method = 'GET') {
   $method = strtoupper($method);
-  $token = getUserDevboxProviders('token')[$provider];
+  $token = getUserProviderToken($provider);
+  $api_url = \Drupal::service('plugin.manager.vps_provider')->createInstance($provider)->info()['api_url'];
   if (empty($token)) return [];
 
   $client = \Drupal::httpClient();
   try {
     if ($method === 'GET') {
-      $initial_path = $path;
       // Add query parameters to the path, if any.
       if (!empty($params)) {
         $query = http_build_query($params);
@@ -113,39 +118,30 @@ function vpsCall($provider, $path, $params = [], $method = 'GET') {
 
       // Check if the response is cached.
       if ($cache = \Drupal::cache('devboxui')->get($provider . ':' . $path)) {
-        return devboxProcessResponse(
-          $provider,
-          $token,
-          $initial_path,
-          $cache->data
-        );
+        return $cache->data;
       }
       else { // Get the response from the API.
         $response = $client->get(
-          getDevboxProvidersList()[$provider]['api_url'] . '/' . $path, [
+          $api_url . '/' . $path, [
             'headers' => [
               'Authorization' => 'Bearer ' . $token,
             ],
           ]
         );
         $responseBody = json_decode($response->getBody(), TRUE);
-        // Cache the response for 24 hours if it's not in cache.
+        $cache_time = 300;
+        // Cache the response if not in cache.
         \Drupal::cache('devboxui')->set(
           $provider . ':' . $path,
           $responseBody,
-          time() + 86400 // Cache for 24 hours.
+          time() + $cache_time
         );
-        // Process the response.
-        return devboxProcessResponse(
-          $provider,
-          $token,
-          $initial_path,
-          $responseBody
-        );
+        // Return the response.
+        return $responseBody;
       }
     }
     else if ($method === 'POST') {
-      $response = $client->post(getDevboxProvidersList()[$provider]['api_url'] . '/' . $path, [
+      $response = $client->post($api_url . '/' . $path, [
         'headers' => [
           'Authorization' => 'Bearer ' . $token,
           'Content-Type' => 'application/json',
@@ -155,7 +151,7 @@ function vpsCall($provider, $path, $params = [], $method = 'GET') {
       return json_decode($response->getBody(), TRUE);
     }
     else if ($method === 'DELETE') {
-      $response = $client->delete(getDevboxProvidersList()[$provider]['api_url'] . '/' . $path, [
+      $response = $client->delete($api_url . '/' . $path, [
         'headers' => [
           'Authorization' => 'Bearer ' . $token,
         ],
@@ -169,4 +165,92 @@ function vpsCall($provider, $path, $params = [], $method = 'GET') {
       'message' => 'VPS API error: ' . $e->getMessage(),
     ];
   }
+}
+
+function getUserProviderToken($provider) {
+  // load current user
+  $user = entityManage('user', \Drupal::currentUser()->id());
+  $token = $user->get('field_vps_'.$provider)->getString();
+  return $token;
+}
+
+/*
+ * Entity Manager - a wrapper for entity CRUD & listing operations.
+ * If $values is empty, it returns the request entity if found, else false.
+ */
+function entityManage($entity_type, $entityIdArray = [], $values = []) {
+	$entityStorage = \Drupal::entityTypeManager()->getStorage($entity_type);
+
+  # Load all entities if no Id and no values were supplied
+  if(empty($entityIdArray) && empty($values))
+    return $entityStorage->loadMultiple();
+
+  # Try loading the supplied entity
+  if(is_array($entityIdArray)) # Find entity using an array of properties (e.g. vid and term name)
+    $entity = $entityStorage->loadByProperties($entityIdArray);
+  else # Find entity using a non-array property (e.g. Id)
+    $entity = $entityStorage->load($entityIdArray);
+
+  # Entity exists
+  if(!empty($entity)) {
+    # Return entity if Id or properties were supplied but no values to be set
+    if(!empty($entityIdArray) && empty($values)) {
+      # If only 1 result is returned, use the entity object (not array, in case array with object is returned)
+      if(is_array($entity) && count($entity) == 1) $entity = $entity[key($entity)];
+			# Else, return all
+      return $entity;
+    }
+
+    # If requested, delete the selected entities
+    if(!empty($values) && $values == 'del') {
+      if(is_array($entity)) {
+        foreach($entity as $e) {
+          $e->delete();
+        }
+      } else {
+        $entity->delete();
+      }
+      return;
+    }
+
+    # Use the entity object (not array, in case array with object is returned)
+    if(is_array($entity)) $entity = $entity[key($entity)];
+
+    # Update the entity
+    foreach($values as $k => $v) $entity->set($k, $v);
+    $entity->save();
+  }
+  else { // Initial entity does not exist
+    if(!empty($values)) { # Continue if values were supplied
+      if($values == 'del') return false;
+
+      // Check for previously created entity. Fixes duplication if this is run
+      // more than once when an entity property gets changed (e.g. term name change).
+      if(is_array($entityIdArray)) { // Array with properties
+        $ak = array_keys($entityIdArray); $newEntityIdArray = []; // Get array keys, start new array
+
+        if(is_array($values)) { // Use the supplied values for entity search
+          foreach ($ak as $k) $newEntityIdArray = array_merge($newEntityIdArray, [$k => $values[$k]]);
+        }
+
+        // Find entity using an array of properties (e.g. vid and term name)
+        $entity = $entityStorage->loadByProperties($newEntityIdArray);
+      }
+      else // Find entity using a non-array property (e.g. Id)
+        $entity = $entityStorage->load($entityIdArray);
+
+      if(empty($entity)) { // Entity was not previously created
+        // Create entity with supplied values
+        $entity = $entityStorage->create($values);
+        // Save the entity
+        $entity->save();
+      }
+
+      // Use the entity object (in case array with object is returned)
+      if(is_array($entity)) $entity = $entity[key($entity)];
+    }
+  }
+
+  // Return the object of the found/created/updated entity
+  return !empty($entity) ? $entity : false;
 }

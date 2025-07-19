@@ -1,6 +1,6 @@
 <?php
 
-namespace Drupal\devbox;
+namespace Drupal\devboxui;
 
 use Drupal\Core\Plugin\DefaultPluginManager;
 
@@ -13,8 +13,8 @@ class VpsProviderManager extends DefaultPluginManager {
       'Plugin/VpsProvider',
       $namespaces,
       $module_handler,
-      'Drupal\devbox\Plugin\VpsProvider\VpsProviderInterface',
-      'Drupal\devbox\Annotation\VpsProvider'
+      'Drupal\devboxui\Plugin\VpsProvider\VpsProviderInterface',
+      'Drupal\devboxui\Annotation\VpsProvider'
     );
 
     $this->alterInfo('vps_provider_info');

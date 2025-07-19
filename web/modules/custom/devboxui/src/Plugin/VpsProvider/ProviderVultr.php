@@ -1,12 +1,12 @@
 <?php
 
-namespace Drupal\devbox\Plugin\VpsProvider;
+namespace Drupal\devboxui\Plugin\VpsProvider;
 
-use Drupal\devbox\Plugin\VpsProvider\VpsProviderPluginBase;
+use Drupal\devboxui\Plugin\VpsProvider\VpsProviderPluginBase;
 
 /**
  * @VpsProvider(
- *   id = "devbox_vultr",
+ *   id = "vultr",
  *   label = @Translation("Vultr")
  * )
  */

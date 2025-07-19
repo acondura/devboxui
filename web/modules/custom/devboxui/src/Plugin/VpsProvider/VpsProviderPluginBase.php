@@ -2,10 +2,10 @@
 
 /**
  * @file
- * Contains \Drupal\devbox\Plugin\VpsProvider\VpsProviderPluginBase.
+ * Contains \Drupal\devboxui\Plugin\VpsProvider\VpsProviderPluginBase.
  */
 
-namespace Drupal\devbox\Plugin\VpsProvider;
+namespace Drupal\devboxui\Plugin\VpsProvider;
 
 use Drupal\Component\Plugin\PluginBase;
 

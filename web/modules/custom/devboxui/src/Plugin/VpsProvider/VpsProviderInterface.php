@@ -1,11 +1,11 @@
 <?php
 
-namespace Drupal\devbox\Plugin\VpsProvider;
+namespace Drupal\devboxui\Plugin\VpsProvider;
 
 /**
  * Interface VpsProviderInterface.
  *
- * @package Drupal\devbox\Plugin\VpsProvider
+ * @package Drupal\devboxui\Plugin\VpsProvider
  */
 interface VpsProviderInterface {
   public function info();

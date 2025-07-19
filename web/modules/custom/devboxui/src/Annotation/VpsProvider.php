@@ -1,6 +1,6 @@
 <?php
 
-namespace Drupal\devbox\Annotation;
+namespace Drupal\devboxui\Annotation;
 
 use Drupal\Component\Annotation\Plugin;
 

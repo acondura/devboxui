@@ -5,3 +5,6 @@ services:
       - { name: cache.bin, default_backend: cache.backend.permanent_database }
     factory: cache_factory:get
     arguments: [devboxui]
+  plugin.manager.vps_provider:
+    class: Drupal\devboxui\VpsProviderManager
+    arguments: ['@container.namespaces', '@cache.discovery', '@module_handler']
