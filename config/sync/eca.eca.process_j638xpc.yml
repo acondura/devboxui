@@ -1,0 +1,33 @@
+uuid: 0468abf9-13ac-44f0-b877-cd0aa5115563
+langcode: en
+status: true
+dependencies:
+  module:
+    - eca_form
+id: process_j638xpc
+modeller: bpmn_io
+label: 'DevBox actions'
+version: v1
+weight: 0
+events:
+  Event_18f6tmn:
+    plugin: 'form:form_submit'
+    label: 'Node save'
+    configuration:
+      form_id: ''
+      entity_type_id: node
+      bundle: devbox
+      operation: ''
+    successors:
+      -
+        id: Activity_1a2k8gb
+        condition: ''
+conditions: {  }
+gateways: {  }
+actions:
+  Activity_1a2k8gb:
+    plugin: eca_form_state_set_redirect
+    label: Redirect
+    configuration:
+      destination: /dashboard
+    successors: {  }
