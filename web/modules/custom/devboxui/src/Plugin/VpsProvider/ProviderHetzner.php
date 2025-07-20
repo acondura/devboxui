@@ -114,4 +114,23 @@ class ProviderHetzner extends VpsProviderPluginBase {
     return $options;
   }
 
+  public function ssh_key($sshKeyName, $pbkey) {
+    # Connect to VPN provider and check that SSH public key is uploaded.
+    $existing_keys = vpsCall('hetzner', 'ssh_keys');
+    $key_exists = 0;
+    foreach ($existing_keys['ssh_keys'] as $key) {
+      if ($key['public_key'] === $pbkey) {
+        $key_exists++;
+      }
+    }
+    # Does not exist.
+    if ($key_exists == 0) {
+      # Upload the SSH public key to the VPS provider.
+      vpsCall('hetzner', 'ssh_keys', [
+        'name' => $sshKeyName,
+        'public_key' => $pbkey,
+      ], 'POST');
+    }
+  }
+
 }

@@ -107,7 +107,6 @@ modeldata: |
           </camunda:field>
         </bpmn2:extensionElements>
         <bpmn2:outgoing>Flow_0vaofij</bpmn2:outgoing>
-        <bpmn2:outgoing>Flow_0dawst9</bpmn2:outgoing>
       </bpmn2:startEvent>
       <bpmn2:task id="Activity_0sv4tg6" name="Recreate SSH keys" camunda:modelerTemplate="org.drupal.action.devboxui_save_user_ssh_keys">
         <bpmn2:extensionElements>
@@ -162,6 +161,7 @@ modeldata: |
           </camunda:field>
         </bpmn2:extensionElements>
         <bpmn2:incoming>Flow_082pizn</bpmn2:incoming>
+        <bpmn2:outgoing>Flow_0sxnrc8</bpmn2:outgoing>
       </bpmn2:task>
       <bpmn2:sequenceFlow id="Flow_15u28fn" sourceRef="Activity_0sv4tg6" targetRef="Activity_1qgojd4" />
       <bpmn2:task id="Activity_1qgojd4" name="Set &#34;Regenerate keys&#34; to unchecked" camunda:modelerTemplate="org.drupal.action.eca_set_field_value">
@@ -204,9 +204,9 @@ modeldata: |
             <camunda:string>user</camunda:string>
           </camunda:field>
         </bpmn2:extensionElements>
-        <bpmn2:incoming>Flow_0dawst9</bpmn2:incoming>
+        <bpmn2:incoming>Flow_0sxnrc8</bpmn2:incoming>
       </bpmn2:task>
-      <bpmn2:sequenceFlow id="Flow_0dawst9" sourceRef="Event_1cf31fg" targetRef="Activity_0wubzbm" />
+      <bpmn2:sequenceFlow id="Flow_0sxnrc8" sourceRef="Activity_1sqdc8f" targetRef="Activity_0wubzbm" />
     </bpmn2:process>
     <bpmndi:BPMNDiagram id="sid-12fb6dfc-ad6f-4796-9039-86612b17dbf8">
       <bpmndi:BPMNPlane id="sid-411adb46-6318-4154-8104-d8c524a060d1" bpmnElement="Process_hK9m4JK">
@@ -253,7 +253,7 @@ modeldata: |
           <bpmndi:BPMNLabel />
         </bpmndi:BPMNShape>
         <bpmndi:BPMNShape id="Activity_0wubzbm_di" bpmnElement="Activity_0wubzbm">
-          <dc:Bounds x="370" y="430" width="100" height="80" />
+          <dc:Bounds x="840" y="320" width="100" height="80" />
           <bpmndi:BPMNLabel />
         </bpmndi:BPMNShape>
         <bpmndi:BPMNEdge id="Flow_0x78fpz_di" bpmnElement="Flow_0x78fpz">
@@ -283,11 +283,9 @@ modeldata: |
           <di:waypoint x="620" y="360" />
           <di:waypoint x="670" y="360" />
         </bpmndi:BPMNEdge>
-        <bpmndi:BPMNEdge id="Flow_0dawst9_di" bpmnElement="Flow_0dawst9">
-          <di:waypoint x="248" y="360" />
-          <di:waypoint x="310" y="360" />
-          <di:waypoint x="310" y="470" />
-          <di:waypoint x="370" y="470" />
+        <bpmndi:BPMNEdge id="Flow_0sxnrc8_di" bpmnElement="Flow_0sxnrc8">
+          <di:waypoint x="770" y="360" />
+          <di:waypoint x="840" y="360" />
         </bpmndi:BPMNEdge>
       </bpmndi:BPMNPlane>
     </bpmndi:BPMNDiagram>

@@ -44,22 +44,9 @@ final class UploadKeysToProvider extends ActionBase {
             $pbkey = $user->get('field_ssh_public_key');
             $provider = explode('field_vps_', $fieldk)[1];
 
-            # Connect to VPN provider and check that SSH public key is uploaded.
-            $existing_keys = vpsCall($provider, 'ssh_keys');
-            $key_exists = 0;
-            foreach ($existing_keys['ssh_keys'] as $key) {
-              if ($key['public_key'] === $pbkey) {
-                $key_exists++;
-              }
-            }
-            # Does not exist.
-            if ($key_exists == 0) {
-              # Upload the SSH public key to the VPS provider.
-              vpsCall($provider, 'ssh_keys', [
-                'name' => $sshKeyName,
-                'public_key' => $pbkey,
-              ], 'POST');
-            }
+            $vps_plugin = \Drupal::service('plugin.manager.vps_provider')->createInstance($provider);
+            # Upload SSH key if it does not exist.
+            $vps_plugin->ssh_key($sshKeyName, $pbkey);
           }
         }
       }
