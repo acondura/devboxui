@@ -1,0 +1,6 @@
+s_r_c_html5_validation:
+  version: 1.x
+  js:
+    js/s_r_c_html5_validation.js: { }
+  dependencies:
+    - core/jquery

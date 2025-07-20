@@ -1,0 +1,12 @@
+{
+  "name": "drupal/s_r_c_html5_validation",
+  "description": "Adding HTML 5 Validation for Select-Radio-Checkbox fields automatically on all forms",
+  "type": "drupal-module",
+  "authors": [
+    {
+      "name": "Rohit Rajput (rohit-drupal)",
+      "homepage": "https://www.drupal.org/u/rohit-drupal",
+      "role": "Maintainer"
+    }
+  ]
+}

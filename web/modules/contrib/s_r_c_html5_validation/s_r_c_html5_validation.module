@@ -1,0 +1,30 @@
+<?php
+
+/**
+ * @file
+ * Module file for the s_r_c_html5_validation module.
+ */
+
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Routing\RouteMatchInterface;
+
+/**
+ * Implements hook_form_alter().
+ */
+function s_r_c_html5_validation_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  // Add js file for all forms.
+  $form['#attached']['library'][] = 's_r_c_html5_validation/s_r_c_html5_validation';
+}
+
+/**
+ * Implements hook_help().
+ */
+function s_r_c_html5_validation_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    case 'help.page.s_r_c_html5_validation':
+      $output = '';
+      $output .= '<h3>' . t('About') . '</h3>';
+      $output .= '<p>' . t('Adding HTML 5 Validation for Select-Radio-Checkbox fields automatically on all forms.') . '</p>';
+      return $output;
+  }
+}

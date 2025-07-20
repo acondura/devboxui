@@ -27,6 +27,19 @@ function devboxui_form_alter(&$form, &$form_state, $form_id) {
       }
     }
   }
+  if (in_array($form_id, ['node_devbox_form', 'node_devbox_edit_form'])) {
+    $finished = FALSE;
+    for ($i = 0; $finished == FALSE; $i++) {
+      if (isset($form['field_vps_provider']['widget'][$i])) {
+        $last = array_keys($form['field_vps_provider']['widget'][$i]['subform']['field_os_image']['widget']['#options']);
+        $default = end($last);
+        $form['field_vps_provider']['widget'][$i]['subform']['field_os_image']['widget']['#default_value'] = $default;
+      }
+      else {
+        $finished = TRUE;
+      }
+    }
+  }
 }
 
 /**

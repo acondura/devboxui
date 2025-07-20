@@ -1,0 +1,9 @@
+name: Select Radio Checkbox Field HTML 5 Validation
+type: module
+description: Adding HTML 5 Validation for Select-Radio-Checkbox fields automatically on all forms.
+core_version_requirement: ^8 || ^9 || ^10 || ^11
+
+# Information added by Drupal.org packaging script on 2025-07-20
+version: '3.0.2'
+project: 's_r_c_html5_validation'
+datestamp: 1752991834

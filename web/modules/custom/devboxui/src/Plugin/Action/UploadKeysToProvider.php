@@ -13,7 +13,7 @@ use Drupal\user\Entity\User;
  *
  * @Action(
  *   id = "devboxui_upload_keys_to_provider",
- *   label = @Translation("Upload keys to provider."),
+ *   label = @Translation("Upload keys to provider"),
  *   type = "user",
  *   category = @Translation("DevBoxUI"),
  *   context = {
