@@ -2,7 +2,11 @@ uuid: 0468abf9-13ac-44f0-b877-cd0aa5115563
 langcode: en
 status: true
 dependencies:
+  config:
+    - node.type.devbox
   module:
+    - devboxui
+    - eca_content
     - eca_form
 id: process_j638xpc
 modeller: bpmn_io
@@ -10,9 +14,9 @@ label: 'DevBox actions'
 version: v1
 weight: 0
 events:
-  Event_18f6tmn:
+  Event_0uua5tn:
     plugin: 'form:form_submit'
-    label: 'Node save'
+    label: 'DevBox after submit'
     configuration:
       form_id: ''
       entity_type_id: node
@@ -20,14 +24,29 @@ events:
       operation: ''
     successors:
       -
-        id: Activity_1a2k8gb
+        id: Activity_1dwv4zy
+        condition: ''
+  Event_18f6tmn:
+    plugin: 'content_entity:insert'
+    label: 'DevBox saved (new)'
+    configuration:
+      type: 'node devbox'
+    successors:
+      -
+        id: Activity_09xmq66
         condition: ''
 conditions: {  }
 gateways: {  }
 actions:
-  Activity_1a2k8gb:
+  Activity_1dwv4zy:
     plugin: eca_form_state_set_redirect
-    label: Redirect
+    label: 'Redirect to /dashboard'
     configuration:
       destination: /dashboard
+    successors: {  }
+  Activity_09xmq66:
+    plugin: devboxui_provision_vps
+    label: 'Provision VPS'
+    configuration:
+      object: node
     successors: {  }

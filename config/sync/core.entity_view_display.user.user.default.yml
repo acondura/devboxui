@@ -20,53 +20,15 @@ targetEntityType: user
 bundle: user
 mode: default
 content:
-  field_regenerate_keys:
-    type: boolean
-    label: above
-    settings:
-      format: default
-      format_custom_false: ''
-      format_custom_true: ''
-    third_party_settings: {  }
-    weight: 53
-    region: content
-  field_ssh_private_key:
-    type: basic_string
-    label: above
-    settings: {  }
-    third_party_settings: {  }
-    weight: 51
-    region: content
-  field_ssh_public_key:
-    type: basic_string
-    label: above
-    settings: {  }
-    third_party_settings: {  }
-    weight: 52
-    region: content
-  field_vps_hetzner:
-    type: string
-    label: above
-    settings:
-      link_to_entity: false
-    third_party_settings: {  }
-    weight: 54
-    region: content
-  field_vps_vultr:
-    type: string
-    label: above
-    settings:
-      link_to_entity: false
-    third_party_settings: {  }
-    weight: 55
-    region: content
   masquerade:
     settings: {  }
     third_party_settings: {  }
-    weight: 50
+    weight: 2
     region: content
   member_for:
-    weight: 5
+    settings: {  }
+    third_party_settings: {  }
+    weight: 1
     region: content
   user_picture:
     type: image
@@ -80,4 +42,9 @@ content:
     weight: 0
     region: content
 hidden:
+  field_regenerate_keys: true
+  field_ssh_private_key: true
+  field_ssh_public_key: true
+  field_vps_hetzner: true
+  field_vps_vultr: true
   langcode: true

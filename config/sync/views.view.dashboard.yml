@@ -266,6 +266,7 @@ display:
           replica: false
           query_tags: {  }
       relationships: {  }
+      use_ajax: true
       header:
         area_text_custom:
           id: area_text_custom
@@ -1041,16 +1042,37 @@ display:
         header: false
       display_description: ''
       header:
+        area_text_custom_1:
+          id: area_text_custom_1
+          table: views
+          field: area_text_custom
+          relationship: none
+          group_type: group
+          admin_label: Title
+          plugin_id: text_custom
+          empty: true
+          content: '<h2>Dev Boxes</h2>'
+          tokenize: false
+        result:
+          id: result
+          table: views
+          field: result
+          relationship: none
+          group_type: group
+          admin_label: ''
+          plugin_id: result
+          empty: false
+          content: 'Displaying @start - @end of @total | '
         area_text_custom:
           id: area_text_custom
           table: views
           field: area_text_custom
           relationship: none
           group_type: group
-          admin_label: ''
+          admin_label: 'Add DevBox link'
           plugin_id: text_custom
           empty: true
-          content: "<h2>Dev Boxes</h2>\r\n<a href=\"/node/add/devbox\">+ DevBox</a>"
+          content: '<a href="/node/add/devbox">+ DevBox</a>'
           tokenize: false
       display_extenders: {  }
       path: dashboard
