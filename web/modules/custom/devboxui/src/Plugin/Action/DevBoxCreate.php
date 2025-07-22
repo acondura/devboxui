@@ -37,17 +37,15 @@ final class DevBoxCreate extends ActionBase {
     if ($node) {
       $vps_nodes = $node->get('field_vps_provider')->getValue();
       $total = count($vps_nodes);
-      $i = 1;
-      $title = "Provisioning VPS";
+      $title = "Provisioning VPS request";
+      $i = 1; $commands = [];
       foreach ($vps_nodes as $vps_node) {
-        $commands = [
-          "VPS $i/$total - VPS created" => [self::class, 'run_batch_actions'],
-          "VPS $i/$total - Updated" => [self::class, 'run_batch_actions'],
-          "VPS $i/$total - Upgraded" => [self::class, 'run_batch_actions'],
-        ];
-        $this->batch_wrapper($commands, $node, $title);
+        $commands["($i/$total) VPS created"] = [self::class, 'run_batch_actions'];
+        $commands["($i/$total) Ubuntu package updates"] = [self::class, 'run_batch_actions'];
+        $commands["($i/$total) Ubuntu package upgrades"] = [self::class, 'run_batch_actions'];
         $i++;
       }
+      $this->batch_wrapper($commands, $node, $title);
     }
   }
 
