@@ -27,8 +27,8 @@ function devboxui_form_alter(&$form, &$form_state, $form_id) {
       }
     }
   }
-  /*
   if (in_array($form_id, ['node_devbox_form', 'node_devbox_edit_form'])) {
+    # Use Ubuntu OS by default.
     $finished = FALSE;
     for ($i = 0; $finished == FALSE; $i++) {
       if (isset($form['field_vps_provider']['widget'][$i])) {
@@ -43,7 +43,6 @@ function devboxui_form_alter(&$form, &$form_state, $form_id) {
       }
     }
   }
-  */
 }
 
 /**

@@ -5,6 +5,7 @@ dependencies:
   config:
     - field.field.paragraph.hetzner.field_name
     - field.field.paragraph.hetzner.field_os_image
+    - field.field.paragraph.hetzner.field_response
     - field.field.paragraph.hetzner.field_server_type
     - paragraphs.paragraphs_type.hetzner
   module:
@@ -27,7 +28,7 @@ content:
     label: above
     settings: {  }
     third_party_settings: {  }
-    weight: 4
+    weight: 2
     region: content
   field_server_type:
     type: list_default
@@ -36,4 +37,5 @@ content:
     third_party_settings: {  }
     weight: 1
     region: content
-hidden: {  }
+hidden:
+  field_response: true

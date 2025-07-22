@@ -35,16 +35,23 @@ final class DevBoxCreate extends ActionBase {
    */
   public function execute(ContentEntityInterface $node = NULL): void {
     if ($node) {
-      $commands = [
-        'Step 1 completed' => [self::class, 'run_batch_verifications'],
-        'Step 2 completed' => [self::class, 'run_batch_verifications'],
-        'Step 3 completed' => [self::class, 'run_batch_verifications'],
-      ];
-      $this->batch_wrapper($commands, $node);
+      $vps_nodes = $node->get('field_vps_provider')->getValue();
+      $total = count($vps_nodes);
+      $i = 1;
+      $title = "Provisioning VPS";
+      foreach ($vps_nodes as $vps_node) {
+        $commands = [
+          "VPS $i/$total - VPS created" => [self::class, 'run_batch_actions'],
+          "VPS $i/$total - Updated" => [self::class, 'run_batch_actions'],
+          "VPS $i/$total - Upgraded" => [self::class, 'run_batch_actions'],
+        ];
+        $this->batch_wrapper($commands, $node, $title);
+        $i++;
+      }
     }
   }
 
-  public function batch_wrapper($commands = [], $node): void {
+  public function batch_wrapper($commands = [], $node = NULL, $title = ''): void {
     // Build batch operations: one per command.
     $operations = [];
     foreach ($commands as $cmdKey => $command) {
@@ -56,24 +63,24 @@ final class DevBoxCreate extends ActionBase {
       }
     }
     $batch = [
-      'title' => t('Running batch verifications'),
+      'title' => $title,
       'operations' => $operations,
-      'finished' => [self::class, 'finished'],
+      'finished' => ['::finished'],
     ];
     batch_set($batch);
   }
 
-  public static function run_batch_verifications($node, $cmdKey, &$context): void {
+  public static function run_batch_actions($node, $cmdKey, &$context): void {
     $context['message'] = t('Running: @step', ['@step' => $cmdKey]);
-    sleep(3);
+    sleep(2);
   }
 
   public static function finished($success, $results, $operations): void {
     if ($success) {
-      \Drupal::messenger()->addMessage(t('Batch verifications completed.'));
+      \Drupal::messenger()->addMessage(t('Batch actions completed.'));
     }
     else {
-      \Drupal::messenger()->addMessage(t('Batch verifications failed.'));
+      \Drupal::messenger()->addMessage(t('Batch actions failed.'));
     }
   }
 

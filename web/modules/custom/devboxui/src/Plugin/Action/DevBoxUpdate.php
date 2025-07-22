@@ -36,9 +36,9 @@ final class DevBoxUpdate extends ActionBase {
   public function execute(ContentEntityInterface $node = NULL): void {
     if ($node) {
       $commands = [
-        'Step 1 completed' => [self::class, 'run_batch_verifications'],
-        'Step 2 completed' => [self::class, 'run_batch_verifications'],
-        'Step 3 completed' => [self::class, 'run_batch_verifications'],
+        'Step 1 completed' => [self::class, 'run_batch_actions'],
+        'Step 2 completed' => [self::class, 'run_batch_actions'],
+        'Step 3 completed' => [self::class, 'run_batch_actions'],
       ];
       $this->batch_wrapper($commands, $node);
     }
@@ -63,7 +63,7 @@ final class DevBoxUpdate extends ActionBase {
     batch_set($batch);
   }
 
-  public static function run_batch_verifications($node, $cmdKey, &$context): void {
+  public static function run_batch_actions($node, $cmdKey, &$context): void {
     $context['message'] = t('Running: @step', ['@step' => $cmdKey]);
     sleep(3);
   }

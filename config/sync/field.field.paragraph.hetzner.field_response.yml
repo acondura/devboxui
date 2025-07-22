@@ -1,0 +1,19 @@
+uuid: 7403a5e0-7043-40c8-b23b-0540d6198ad2
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.paragraph.field_response
+    - paragraphs.paragraphs_type.hetzner
+id: paragraph.hetzner.field_response
+field_name: field_response
+entity_type: paragraph
+bundle: hetzner
+label: Response
+description: 'API response. Should get filled in by the background processes calling the API.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string_long
