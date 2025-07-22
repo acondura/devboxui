@@ -28,12 +28,36 @@ events:
         condition: ''
   Event_18f6tmn:
     plugin: 'content_entity:insert'
-    label: 'DevBox saved (new)'
+    label: |-
+      DevBox
+      created
     configuration:
       type: 'node devbox'
     successors:
       -
         id: Activity_09xmq66
+        condition: ''
+  Event_0ku97h8:
+    plugin: 'content_entity:predelete'
+    label: |-
+      DevBox
+      deleted
+    configuration:
+      type: 'node devbox'
+    successors:
+      -
+        id: Activity_1sz5vcs
+        condition: ''
+  Event_02a3mqb:
+    plugin: 'content_entity:update'
+    label: |-
+      DevBox
+      updated
+    configuration:
+      type: 'node devbox'
+    successors:
+      -
+        id: Activity_1wynxxi
         condition: ''
 conditions: {  }
 gateways: {  }
@@ -44,9 +68,21 @@ actions:
     configuration:
       destination: /dashboard
     successors: {  }
+  Activity_1wynxxi:
+    plugin: devboxui_update
+    label: 'DevBox Update'
+    configuration:
+      object: node
+    successors: {  }
   Activity_09xmq66:
-    plugin: devboxui_provision_vps
-    label: 'Provision VPS'
+    plugin: devboxui_create
+    label: 'DevBox Create'
+    configuration:
+      object: node
+    successors: {  }
+  Activity_1sz5vcs:
+    plugin: devboxui_delete
+    label: 'DevBox Delete'
     configuration:
       object: node
     successors: {  }

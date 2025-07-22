@@ -46,7 +46,9 @@ modeldata: |
         <bpmn2:incoming>Flow_1ayaubd</bpmn2:incoming>
       </bpmn2:task>
       <bpmn2:sequenceFlow id="Flow_1ayaubd" sourceRef="Event_0uua5tn" targetRef="Activity_1dwv4zy" />
-      <bpmn2:startEvent id="Event_18f6tmn" name="DevBox saved (new)" camunda:modelerTemplate="org.drupal.event.content_entity:insert">
+      <bpmn2:sequenceFlow id="Flow_03bxwn0" sourceRef="Event_18f6tmn" targetRef="Activity_09xmq66" />
+      <bpmn2:sequenceFlow id="Flow_1stz3vb" sourceRef="Event_0ku97h8" targetRef="Activity_1sz5vcs" />
+      <bpmn2:startEvent id="Event_18f6tmn" name="DevBox&#10;created" camunda:modelerTemplate="org.drupal.event.content_entity:insert">
         <bpmn2:extensionElements>
           <camunda:properties>
             <camunda:property name="pluginid" value="content_entity:insert" />
@@ -57,10 +59,33 @@ modeldata: |
         </bpmn2:extensionElements>
         <bpmn2:outgoing>Flow_03bxwn0</bpmn2:outgoing>
       </bpmn2:startEvent>
-      <bpmn2:task id="Activity_09xmq66" name="Provision VPS" camunda:modelerTemplate="org.drupal.action.devboxui_provision_vps">
+      <bpmn2:sequenceFlow id="Flow_0by1sje" sourceRef="Event_02a3mqb" targetRef="Activity_1wynxxi" />
+      <bpmn2:task id="Activity_1wynxxi" name="DevBox Update" camunda:modelerTemplate="org.drupal.action.devboxui_update">
         <bpmn2:extensionElements>
           <camunda:properties>
-            <camunda:property name="pluginid" value="devboxui_provision_vps" />
+            <camunda:property name="pluginid" value="devboxui_update" />
+          </camunda:properties>
+          <camunda:field name="object">
+            <camunda:string>node</camunda:string>
+          </camunda:field>
+        </bpmn2:extensionElements>
+        <bpmn2:incoming>Flow_0by1sje</bpmn2:incoming>
+      </bpmn2:task>
+      <bpmn2:startEvent id="Event_0ku97h8" name="DevBox&#10;deleted" camunda:modelerTemplate="org.drupal.event.content_entity:predelete">
+        <bpmn2:extensionElements>
+          <camunda:properties>
+            <camunda:property name="pluginid" value="content_entity:predelete" />
+          </camunda:properties>
+          <camunda:field name="type">
+            <camunda:string>node devbox</camunda:string>
+          </camunda:field>
+        </bpmn2:extensionElements>
+        <bpmn2:outgoing>Flow_1stz3vb</bpmn2:outgoing>
+      </bpmn2:startEvent>
+      <bpmn2:task id="Activity_09xmq66" name="DevBox Create" camunda:modelerTemplate="org.drupal.action.devboxui_create">
+        <bpmn2:extensionElements>
+          <camunda:properties>
+            <camunda:property name="pluginid" value="devboxui_create" />
           </camunda:properties>
           <camunda:field name="object">
             <camunda:string>node</camunda:string>
@@ -68,7 +93,28 @@ modeldata: |
         </bpmn2:extensionElements>
         <bpmn2:incoming>Flow_03bxwn0</bpmn2:incoming>
       </bpmn2:task>
-      <bpmn2:sequenceFlow id="Flow_03bxwn0" sourceRef="Event_18f6tmn" targetRef="Activity_09xmq66" />
+      <bpmn2:task id="Activity_1sz5vcs" name="DevBox Delete" camunda:modelerTemplate="org.drupal.action.devboxui_delete">
+        <bpmn2:extensionElements>
+          <camunda:properties>
+            <camunda:property name="pluginid" value="devboxui_delete" />
+          </camunda:properties>
+          <camunda:field name="object">
+            <camunda:string>node</camunda:string>
+          </camunda:field>
+        </bpmn2:extensionElements>
+        <bpmn2:incoming>Flow_1stz3vb</bpmn2:incoming>
+      </bpmn2:task>
+      <bpmn2:startEvent id="Event_02a3mqb" name="DevBox&#10;updated" camunda:modelerTemplate="org.drupal.event.content_entity:update">
+        <bpmn2:extensionElements>
+          <camunda:properties>
+            <camunda:property name="pluginid" value="content_entity:update" />
+          </camunda:properties>
+          <camunda:field name="type">
+            <camunda:string>node devbox</camunda:string>
+          </camunda:field>
+        </bpmn2:extensionElements>
+        <bpmn2:outgoing>Flow_0by1sje</bpmn2:outgoing>
+      </bpmn2:startEvent>
     </bpmn2:process>
     <bpmndi:BPMNDiagram id="sid-d21ca53f-e64d-4d4c-b2fa-346f44fed556">
       <bpmndi:BPMNPlane id="sid-c5a0fc6f-12c8-4ca9-a9c8-1d1eb87b70ea" bpmnElement="Process_j638xPc">
@@ -82,15 +128,35 @@ modeldata: |
           <dc:Bounds x="360" y="220" width="100" height="80" />
           <bpmndi:BPMNLabel />
         </bpmndi:BPMNShape>
-        <bpmndi:BPMNShape id="Event_0afs3h0_di" bpmnElement="Event_18f6tmn">
+        <bpmndi:BPMNShape id="Event_0fgsr04_di" bpmnElement="Event_18f6tmn">
           <dc:Bounds x="232" y="112" width="36" height="36" />
           <bpmndi:BPMNLabel>
-            <dc:Bounds x="215" y="155" width="71" height="27" />
+            <dc:Bounds x="232" y="155" width="39" height="27" />
           </bpmndi:BPMNLabel>
         </bpmndi:BPMNShape>
-        <bpmndi:BPMNShape id="Activity_09xmq66_di" bpmnElement="Activity_09xmq66">
+        <bpmndi:BPMNShape id="Activity_0aq93n6_di" bpmnElement="Activity_1wynxxi">
+          <dc:Bounds x="740" y="90" width="100" height="80" />
+          <bpmndi:BPMNLabel />
+        </bpmndi:BPMNShape>
+        <bpmndi:BPMNShape id="Event_0fbiv3b_di" bpmnElement="Event_0ku97h8">
+          <dc:Bounds x="982" y="112" width="36" height="36" />
+          <bpmndi:BPMNLabel>
+            <dc:Bounds x="981" y="155" width="39" height="27" />
+          </bpmndi:BPMNLabel>
+        </bpmndi:BPMNShape>
+        <bpmndi:BPMNShape id="Activity_0mcpo7a_di" bpmnElement="Activity_09xmq66">
           <dc:Bounds x="360" y="90" width="100" height="80" />
           <bpmndi:BPMNLabel />
+        </bpmndi:BPMNShape>
+        <bpmndi:BPMNShape id="Activity_1qzosfi_di" bpmnElement="Activity_1sz5vcs">
+          <dc:Bounds x="1110" y="90" width="100" height="80" />
+          <bpmndi:BPMNLabel />
+        </bpmndi:BPMNShape>
+        <bpmndi:BPMNShape id="Event_1vdz05t_di" bpmnElement="Event_02a3mqb">
+          <dc:Bounds x="612" y="112" width="36" height="36" />
+          <bpmndi:BPMNLabel>
+            <dc:Bounds x="610" y="155" width="40" height="27" />
+          </bpmndi:BPMNLabel>
         </bpmndi:BPMNShape>
         <bpmndi:BPMNEdge id="Flow_1ayaubd_di" bpmnElement="Flow_1ayaubd">
           <di:waypoint x="268" y="260" />
@@ -99,6 +165,14 @@ modeldata: |
         <bpmndi:BPMNEdge id="Flow_03bxwn0_di" bpmnElement="Flow_03bxwn0">
           <di:waypoint x="268" y="130" />
           <di:waypoint x="360" y="130" />
+        </bpmndi:BPMNEdge>
+        <bpmndi:BPMNEdge id="BPMNEdge_0j541ao" bpmnElement="Flow_1stz3vb">
+          <di:waypoint x="1018" y="130" />
+          <di:waypoint x="1110" y="130" />
+        </bpmndi:BPMNEdge>
+        <bpmndi:BPMNEdge id="BPMNEdge_0q3m5ld" bpmnElement="Flow_0by1sje">
+          <di:waypoint x="648" y="130" />
+          <di:waypoint x="740" y="130" />
         </bpmndi:BPMNEdge>
       </bpmndi:BPMNPlane>
     </bpmndi:BPMNDiagram>

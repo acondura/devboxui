@@ -11,8 +11,8 @@ use Drupal\Core\Session\AccountInterface;
  * Provides a custom action.
  *
  * @Action(
- *   id = "devboxui_provision_vps",
- *   label = @Translation("Provision VPS"),
+ *   id = "devboxui_update",
+ *   label = @Translation("DevBox Update"),
  *   type = "node",
  *   category = @Translation("DevBoxUI"),
  *   context = {
@@ -20,7 +20,7 @@ use Drupal\Core\Session\AccountInterface;
  *   }
  * )
  */
-final class ProvisionVps extends ActionBase {
+final class DevBoxUpdate extends ActionBase {
 
   /**
    * {@inheritdoc}
@@ -36,9 +36,9 @@ final class ProvisionVps extends ActionBase {
   public function execute(ContentEntityInterface $node = NULL): void {
     if ($node) {
       $commands = [
-        'Connect to VPS provider' => [self::class, 'run_batch_verifications'],
-        'Step 2' => [self::class, 'run_batch_verifications'],
-        'Step 3' => [self::class, 'run_batch_verifications'],
+        'Step 1 completed' => [self::class, 'run_batch_verifications'],
+        'Step 2 completed' => [self::class, 'run_batch_verifications'],
+        'Step 3 completed' => [self::class, 'run_batch_verifications'],
       ];
       $this->batch_wrapper($commands, $node);
     }
