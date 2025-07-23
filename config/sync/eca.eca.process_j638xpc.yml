@@ -40,7 +40,10 @@ events:
       presave
     configuration:
       type: 'node devbox'
-    successors: {  }
+    successors:
+      -
+        id: Activity_1ir9zzl
+        condition: ''
 conditions: {  }
 gateways: {  }
 actions:

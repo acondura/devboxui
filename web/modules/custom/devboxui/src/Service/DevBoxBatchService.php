@@ -27,7 +27,7 @@ class DevBoxBatchService {
   public static function run_batch_actions($node, $op, $step, &$context): void {
     $context['message'] = t('@step', ['@step' => $step]);
     // Run action
-    sleep(2);
+    sleep(1);
   }
 
   public static function finished($success, $results, $operations): void {
