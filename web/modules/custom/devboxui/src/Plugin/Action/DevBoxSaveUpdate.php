@@ -65,11 +65,11 @@ final class DevBoxSaveUpdate extends ActionBase implements ContainerFactoryPlugi
       $title = "Provisioning VPS request";
 
       $commands = [];
-      for ($j = 0; $j < $total; $j++) {
-        $i = $j + 1;
-        $commands["($i/$total) VPS created"] = [DevBoxBatchService::class, 'run_batch_actions'];
-        $commands["($i/$total) Ubuntu package updates"] = [DevBoxBatchService::class, 'run_batch_actions'];
-        $commands["($i/$total) Ubuntu package upgrades"] = [DevBoxBatchService::class, 'run_batch_actions'];
+      foreach ($vps_nodes as $vps_node) {
+        $pid = $vps_node['target_id'];
+        $commands["$pid VPS created"] = [$pid => [DevBoxBatchService::class, 'provision_vps']];
+        $commands["$pid Ubuntu package updates"] = [$pid => [DevBoxBatchService::class, 'ssh']];
+        $commands["$pid Ubuntu package upgrades"] = [$pid => [DevBoxBatchService::class, 'ssh']];
       }
 
       $this->batchService->startBatch($node, $operation, $commands, $title);
