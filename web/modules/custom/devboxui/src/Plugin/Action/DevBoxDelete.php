@@ -62,9 +62,9 @@ final class DevBoxDelete extends ActionBase implements ContainerFactoryPluginInt
       $commands = [];
       for ($j = 0; $j < $total; $j++) {
         $i = $j + 1;
-        $commands["($i/$total) VPS created"] = [self::class, 'run_batch_actions'];
-        $commands["($i/$total) Ubuntu package updates"] = [self::class, 'run_batch_actions'];
-        $commands["($i/$total) Ubuntu package upgrades"] = [self::class, 'run_batch_actions'];
+        $commands["($i/$total) VPS created"] = [DevBoxBatchService::class, 'run_batch_actions'];
+        $commands["($i/$total) Ubuntu package updates"] = [DevBoxBatchService::class, 'run_batch_actions'];
+        $commands["($i/$total) Ubuntu package upgrades"] = [DevBoxBatchService::class, 'run_batch_actions'];
       }
 
       $this->batchService->startBatch($node, $operation, $commands, $title);
