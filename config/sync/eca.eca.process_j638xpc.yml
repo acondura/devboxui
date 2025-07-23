@@ -5,6 +5,7 @@ dependencies:
   config:
     - node.type.devbox
   module:
+    - devboxui
     - eca_content
     - eca_form
 id: process_j638xpc
@@ -32,7 +33,10 @@ events:
       predelete
     configuration:
       type: 'node devbox'
-    successors: {  }
+    successors:
+      -
+        id: Activity_14lbsrj
+        condition: ''
   Event_18f6tmn:
     plugin: 'content_entity:presave'
     label: |-
@@ -52,4 +56,16 @@ actions:
     label: 'Redirect to /dashboard'
     configuration:
       destination: /dashboard
+    successors: {  }
+  Activity_1ir9zzl:
+    plugin: devboxui_save_update
+    label: 'Provision VPS'
+    configuration:
+      object: node
+    successors: {  }
+  Activity_14lbsrj:
+    plugin: devboxui_delete
+    label: 'Delete VPS'
+    configuration:
+      object: node
     successors: {  }

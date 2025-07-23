@@ -55,6 +55,7 @@ modeldata: |
             <camunda:string>node devbox</camunda:string>
           </camunda:field>
         </bpmn2:extensionElements>
+        <bpmn2:outgoing>Flow_0v8v5wg</bpmn2:outgoing>
       </bpmn2:startEvent>
       <bpmn2:startEvent id="Event_18f6tmn" name="DevBox&#10;presave" camunda:modelerTemplate="org.drupal.event.content_entity:presave">
         <bpmn2:extensionElements>
@@ -67,10 +68,30 @@ modeldata: |
         </bpmn2:extensionElements>
         <bpmn2:outgoing>Flow_0oyghrz</bpmn2:outgoing>
       </bpmn2:startEvent>
-      <bpmn2:task id="Activity_1ir9zzl" name="Provision VPS">
+      <bpmn2:task id="Activity_1ir9zzl" name="Provision VPS" camunda:modelerTemplate="org.drupal.action.devboxui_save_update">
+        <bpmn2:extensionElements>
+          <camunda:properties>
+            <camunda:property name="pluginid" value="devboxui_save_update" />
+          </camunda:properties>
+          <camunda:field name="object">
+            <camunda:string>node</camunda:string>
+          </camunda:field>
+        </bpmn2:extensionElements>
         <bpmn2:incoming>Flow_0oyghrz</bpmn2:incoming>
       </bpmn2:task>
       <bpmn2:sequenceFlow id="Flow_0oyghrz" sourceRef="Event_18f6tmn" targetRef="Activity_1ir9zzl" />
+      <bpmn2:task id="Activity_14lbsrj" name="Delete VPS" camunda:modelerTemplate="org.drupal.action.devboxui_delete">
+        <bpmn2:extensionElements>
+          <camunda:properties>
+            <camunda:property name="pluginid" value="devboxui_delete" />
+          </camunda:properties>
+          <camunda:field name="object">
+            <camunda:string>node</camunda:string>
+          </camunda:field>
+        </bpmn2:extensionElements>
+        <bpmn2:incoming>Flow_0v8v5wg</bpmn2:incoming>
+      </bpmn2:task>
+      <bpmn2:sequenceFlow id="Flow_0v8v5wg" sourceRef="Event_0ku97h8" targetRef="Activity_14lbsrj" />
     </bpmn2:process>
     <bpmndi:BPMNDiagram id="sid-d21ca53f-e64d-4d4c-b2fa-346f44fed556">
       <bpmndi:BPMNPlane id="sid-c5a0fc6f-12c8-4ca9-a9c8-1d1eb87b70ea" bpmnElement="Process_j638xPc">
@@ -100,6 +121,10 @@ modeldata: |
           <dc:Bounds x="320" y="90" width="100" height="80" />
           <bpmndi:BPMNLabel />
         </bpmndi:BPMNShape>
+        <bpmndi:BPMNShape id="Activity_14lbsrj_di" bpmnElement="Activity_14lbsrj">
+          <dc:Bounds x="650" y="90" width="100" height="80" />
+          <bpmndi:BPMNLabel />
+        </bpmndi:BPMNShape>
         <bpmndi:BPMNEdge id="Flow_1ayaubd_di" bpmnElement="Flow_1ayaubd">
           <di:waypoint x="268" y="260" />
           <di:waypoint x="320" y="260" />
@@ -107,6 +132,10 @@ modeldata: |
         <bpmndi:BPMNEdge id="Flow_0oyghrz_di" bpmnElement="Flow_0oyghrz">
           <di:waypoint x="268" y="130" />
           <di:waypoint x="320" y="130" />
+        </bpmndi:BPMNEdge>
+        <bpmndi:BPMNEdge id="Flow_0v8v5wg_di" bpmnElement="Flow_0v8v5wg">
+          <di:waypoint x="598" y="130" />
+          <di:waypoint x="650" y="130" />
         </bpmndi:BPMNEdge>
       </bpmndi:BPMNPlane>
     </bpmndi:BPMNDiagram>

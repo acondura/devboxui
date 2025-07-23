@@ -5,6 +5,7 @@ namespace Drupal\devboxui\Plugin\Action;
 use Drupal\Core\Access\AccessResultInterface;
 use Drupal\Core\Action\ActionBase;
 use Drupal\Core\Entity\ContentEntityInterface;
+use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\devboxui\Service\DevBoxBatchService;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -22,7 +23,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  *   }
  * )
  */
-final class DevBoxDelete extends ActionBase {
+final class DevBoxDelete extends ActionBase implements ContainerFactoryPluginInterface {
 
   protected DevBoxBatchService $batchService;
 
