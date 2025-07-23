@@ -5,7 +5,6 @@ dependencies:
   config:
     - node.type.devbox
   module:
-    - devboxui
     - eca_content
     - eca_form
 id: process_j638xpc
@@ -26,39 +25,22 @@ events:
       -
         id: Activity_1dwv4zy
         condition: ''
-  Event_18f6tmn:
-    plugin: 'content_entity:insert'
-    label: |-
-      DevBox
-      created
-    configuration:
-      type: 'node devbox'
-    successors:
-      -
-        id: Activity_09xmq66
-        condition: ''
   Event_0ku97h8:
     plugin: 'content_entity:predelete'
     label: |-
       DevBox
-      deleted
+      predelete
     configuration:
       type: 'node devbox'
-    successors:
-      -
-        id: Activity_1sz5vcs
-        condition: ''
-  Event_02a3mqb:
-    plugin: 'content_entity:update'
+    successors: {  }
+  Event_18f6tmn:
+    plugin: 'content_entity:presave'
     label: |-
       DevBox
-      updated
+      presave
     configuration:
       type: 'node devbox'
-    successors:
-      -
-        id: Activity_1wynxxi
-        condition: ''
+    successors: {  }
 conditions: {  }
 gateways: {  }
 actions:
@@ -67,22 +49,4 @@ actions:
     label: 'Redirect to /dashboard'
     configuration:
       destination: /dashboard
-    successors: {  }
-  Activity_1wynxxi:
-    plugin: devboxui_update
-    label: 'DevBox Update'
-    configuration:
-      object: node
-    successors: {  }
-  Activity_09xmq66:
-    plugin: devboxui_create
-    label: 'DevBox Create'
-    configuration:
-      object: node
-    successors: {  }
-  Activity_1sz5vcs:
-    plugin: devboxui_delete
-    label: 'DevBox Delete'
-    configuration:
-      object: node
     successors: {  }

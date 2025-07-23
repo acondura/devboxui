@@ -6,6 +6,8 @@ use Drupal\Core\Access\AccessResultInterface;
 use Drupal\Core\Action\ActionBase;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Session\AccountInterface;
+use Drupal\devboxui\Service\DevBoxBatchService;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Provides a custom action.
@@ -22,6 +24,22 @@ use Drupal\Core\Session\AccountInterface;
  */
 final class DevBoxDelete extends ActionBase {
 
+  protected DevBoxBatchService $batchService;
+
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, DevBoxBatchService $batchService) {
+    parent::__construct($configuration, $plugin_id, $plugin_definition);
+    $this->batchService = $batchService;
+  }
+
+  public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
+    return new static(
+      $configuration,
+      $plugin_id,
+      $plugin_definition,
+      $container->get('devboxui.batch')
+    );
+  }
+
   /**
    * {@inheritdoc}
    */
@@ -35,52 +53,20 @@ final class DevBoxDelete extends ActionBase {
    */
   public function execute(ContentEntityInterface $node = NULL): void {
     if ($node) {
+      $operation = 'delete';
       $vps_nodes = $node->get('field_vps_provider')->getValue();
       $total = count($vps_nodes);
-      $i = 1;
-      foreach ($vps_nodes as $vps_node) {
-        $title = "Deleting VPS $i";
-        $commands = [
-          'Step 1 completed' => [self::class, 'run_batch_actions'],
-          'Step 2 completed' => [self::class, 'run_batch_actions'],
-          'Step 3 completed' => [self::class, 'run_batch_actions'],
-        ];
-        $this->batch_wrapper($commands, $node, $title);
-        $i++;
+      $title = "Deleting VPS";
+
+      $commands = [];
+      for ($j = 0; $j < $total; $j++) {
+        $i = $j + 1;
+        $commands["($i/$total) VPS created"] = [self::class, 'run_batch_actions'];
+        $commands["($i/$total) Ubuntu package updates"] = [self::class, 'run_batch_actions'];
+        $commands["($i/$total) Ubuntu package upgrades"] = [self::class, 'run_batch_actions'];
       }
-    }
-  }
 
-  public function batch_wrapper($commands = [], $node, $title): void {
-    // Build batch operations: one per command.
-    $operations = [];
-    foreach ($commands as $cmdKey => $command) {
-      if (is_array($command)) {
-        $operations[] = [
-          $command,
-          [$node, $cmdKey],
-        ];
-      }
-    }
-    $batch = [
-      'title' => $title,
-      'operations' => $operations,
-      'finished' => [self::class, 'finished'],
-    ];
-    batch_set($batch);
-  }
-
-  public static function run_batch_actions($node, $cmdKey, &$context): void {
-    $context['message'] = t('Running: @step', ['@step' => $cmdKey]);
-    sleep(1);
-  }
-
-  public static function finished($success, $results, $operations): void {
-    if ($success) {
-      \Drupal::messenger()->addMessage(t('Batch verifications completed.'));
-    }
-    else {
-      \Drupal::messenger()->addMessage(t('Batch verifications failed.'));
+      $this->batchService->startBatch($node, $operation, $commands, $title);
     }
   }
 
