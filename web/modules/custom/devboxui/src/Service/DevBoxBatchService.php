@@ -78,16 +78,16 @@ class DevBoxBatchService {
 
     // Load the paragraph entity and get the response field.
     $paragraph = entityManage('paragraph', $paragraph_id);
-    $response = $paragraph->get('field_response')->getString();
+    $field_response = $paragraph->get('field_response')->getString();
 
     // Create VPS if not already provisioned.
-    if (empty($response)) {
+    if (empty($field_response)) {
       // Provision logic here.
-      $type = $paragraph->get('type')->getString();
-      $t = '';
+      $type = $paragraph->getType();
+      $vps_info = \Drupal::service('plugin.manager.vps_provider')->createInstance($type)->create_vps($paragraph);
+      $paragraph->set('field_response', $vps_info);
+      $paragraph->save();
     }
-
-    sleep(1); // Simulate time-consuming work.
   }
 
   /**

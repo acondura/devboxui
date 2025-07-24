@@ -70,7 +70,10 @@ actions:
     label: 'Create SSH keys'
     configuration:
       object: user
-    successors: {  }
+    successors:
+      -
+        id: Activity_0feou1q
+        condition: ''
   Activity_0u6dkvn:
     plugin: eca_form_field_disable
     label: 'Disable SSH private key field'
@@ -103,10 +106,7 @@ actions:
     configuration:
       replace_tokens: false
       message: 'SSH keys regenerated successfully!'
-    successors:
-      -
-        id: Activity_0wubzbm
-        condition: ''
+    successors: {  }
   Activity_1qgojd4:
     plugin: eca_set_field_value
     label: 'Set "Regenerate keys" to unchecked'
@@ -120,11 +120,20 @@ actions:
       object: user
     successors:
       -
-        id: Activity_1sqdc8f
+        id: Activity_0wubzbm
         condition: ''
   Activity_0wubzbm:
     plugin: devboxui_upload_keys_to_provider
-    label: 'Upload keys to provider'
+    label: 'Upload keys to providers'
+    configuration:
+      object: user
+    successors:
+      -
+        id: Activity_1sqdc8f
+        condition: ''
+  Activity_0feou1q:
+    plugin: devboxui_upload_keys_to_provider
+    label: 'Upload keys to providers'
     configuration:
       object: user
     successors: {  }

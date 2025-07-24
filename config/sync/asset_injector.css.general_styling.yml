@@ -21,6 +21,9 @@ code: |-
   .horizontal-tabs {
   	border: 0 !important;
   }
+  .gin--dark-mode .chosen-search-input {
+  	color: black;
+  }
 media: all
 preprocess: true
 conditions: {  }

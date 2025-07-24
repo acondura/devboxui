@@ -35,6 +35,7 @@ modeldata: |
           </camunda:field>
         </bpmn2:extensionElements>
         <bpmn2:incoming>Flow_0x78fpz</bpmn2:incoming>
+        <bpmn2:outgoing>Flow_00ixhqy</bpmn2:outgoing>
       </bpmn2:task>
       <bpmn2:sequenceFlow id="Flow_0x78fpz" sourceRef="Event_0265sth" targetRef="Activity_0xqm9kf" />
       <bpmn2:startEvent id="Event_0xdzqub" name="Use edit form loaded" camunda:modelerTemplate="org.drupal.event.form:form_build">
@@ -160,8 +161,7 @@ modeldata: |
             <camunda:string>no</camunda:string>
           </camunda:field>
         </bpmn2:extensionElements>
-        <bpmn2:incoming>Flow_082pizn</bpmn2:incoming>
-        <bpmn2:outgoing>Flow_0sxnrc8</bpmn2:outgoing>
+        <bpmn2:incoming>Flow_1nawrrz</bpmn2:incoming>
       </bpmn2:task>
       <bpmn2:sequenceFlow id="Flow_15u28fn" sourceRef="Activity_0sv4tg6" targetRef="Activity_1qgojd4" />
       <bpmn2:task id="Activity_1qgojd4" name="Set &#34;Regenerate keys&#34; to unchecked" camunda:modelerTemplate="org.drupal.action.eca_set_field_value">
@@ -194,8 +194,8 @@ modeldata: |
         <bpmn2:incoming>Flow_15u28fn</bpmn2:incoming>
         <bpmn2:outgoing>Flow_082pizn</bpmn2:outgoing>
       </bpmn2:task>
-      <bpmn2:sequenceFlow id="Flow_082pizn" sourceRef="Activity_1qgojd4" targetRef="Activity_1sqdc8f" />
-      <bpmn2:task id="Activity_0wubzbm" name="Upload keys to provider" camunda:modelerTemplate="org.drupal.action.devboxui_upload_keys_to_provider">
+      <bpmn2:sequenceFlow id="Flow_082pizn" sourceRef="Activity_1qgojd4" targetRef="Activity_0wubzbm" />
+      <bpmn2:task id="Activity_0wubzbm" name="Upload keys to providers" camunda:modelerTemplate="org.drupal.action.devboxui_upload_keys_to_provider">
         <bpmn2:extensionElements>
           <camunda:properties>
             <camunda:property name="pluginid" value="devboxui_upload_keys_to_provider" />
@@ -204,9 +204,22 @@ modeldata: |
             <camunda:string>user</camunda:string>
           </camunda:field>
         </bpmn2:extensionElements>
-        <bpmn2:incoming>Flow_0sxnrc8</bpmn2:incoming>
+        <bpmn2:incoming>Flow_082pizn</bpmn2:incoming>
+        <bpmn2:outgoing>Flow_1nawrrz</bpmn2:outgoing>
       </bpmn2:task>
-      <bpmn2:sequenceFlow id="Flow_0sxnrc8" sourceRef="Activity_1sqdc8f" targetRef="Activity_0wubzbm" />
+      <bpmn2:task id="Activity_0feou1q" name="Upload keys to providers" camunda:modelerTemplate="org.drupal.action.devboxui_upload_keys_to_provider">
+        <bpmn2:extensionElements>
+          <camunda:properties>
+            <camunda:property name="pluginid" value="devboxui_upload_keys_to_provider" />
+          </camunda:properties>
+          <camunda:field name="object">
+            <camunda:string>user</camunda:string>
+          </camunda:field>
+        </bpmn2:extensionElements>
+        <bpmn2:incoming>Flow_00ixhqy</bpmn2:incoming>
+      </bpmn2:task>
+      <bpmn2:sequenceFlow id="Flow_00ixhqy" sourceRef="Activity_0xqm9kf" targetRef="Activity_0feou1q" />
+      <bpmn2:sequenceFlow id="Flow_1nawrrz" sourceRef="Activity_0wubzbm" targetRef="Activity_1sqdc8f" />
     </bpmn2:process>
     <bpmndi:BPMNDiagram id="sid-12fb6dfc-ad6f-4796-9039-86612b17dbf8">
       <bpmndi:BPMNPlane id="sid-411adb46-6318-4154-8104-d8c524a060d1" bpmnElement="Process_hK9m4JK">
@@ -244,16 +257,20 @@ modeldata: |
           <dc:Bounds x="370" y="320" width="100" height="80" />
           <bpmndi:BPMNLabel />
         </bpmndi:BPMNShape>
-        <bpmndi:BPMNShape id="Activity_1sqdc8f_di" bpmnElement="Activity_1sqdc8f">
-          <dc:Bounds x="670" y="320" width="100" height="80" />
-          <bpmndi:BPMNLabel />
-        </bpmndi:BPMNShape>
         <bpmndi:BPMNShape id="Activity_1qgojd4_di" bpmnElement="Activity_1qgojd4">
           <dc:Bounds x="520" y="320" width="100" height="80" />
           <bpmndi:BPMNLabel />
         </bpmndi:BPMNShape>
+        <bpmndi:BPMNShape id="BPMNShape_0r4f2xe" bpmnElement="Activity_0feou1q">
+          <dc:Bounds x="460" y="70" width="100" height="80" />
+          <bpmndi:BPMNLabel />
+        </bpmndi:BPMNShape>
         <bpmndi:BPMNShape id="Activity_0wubzbm_di" bpmnElement="Activity_0wubzbm">
-          <dc:Bounds x="820" y="320" width="100" height="80" />
+          <dc:Bounds x="670" y="320" width="100" height="80" />
+          <bpmndi:BPMNLabel />
+        </bpmndi:BPMNShape>
+        <bpmndi:BPMNShape id="Activity_1sqdc8f_di" bpmnElement="Activity_1sqdc8f">
+          <dc:Bounds x="830" y="320" width="100" height="80" />
           <bpmndi:BPMNLabel />
         </bpmndi:BPMNShape>
         <bpmndi:BPMNEdge id="Flow_0x78fpz_di" bpmnElement="Flow_0x78fpz">
@@ -283,9 +300,13 @@ modeldata: |
           <di:waypoint x="620" y="360" />
           <di:waypoint x="670" y="360" />
         </bpmndi:BPMNEdge>
-        <bpmndi:BPMNEdge id="Flow_0sxnrc8_di" bpmnElement="Flow_0sxnrc8">
+        <bpmndi:BPMNEdge id="Flow_00ixhqy_di" bpmnElement="Flow_00ixhqy">
+          <di:waypoint x="400" y="110" />
+          <di:waypoint x="460" y="110" />
+        </bpmndi:BPMNEdge>
+        <bpmndi:BPMNEdge id="Flow_1nawrrz_di" bpmnElement="Flow_1nawrrz">
           <di:waypoint x="770" y="360" />
-          <di:waypoint x="820" y="360" />
+          <di:waypoint x="830" y="360" />
         </bpmndi:BPMNEdge>
       </bpmndi:BPMNPlane>
     </bpmndi:BPMNDiagram>

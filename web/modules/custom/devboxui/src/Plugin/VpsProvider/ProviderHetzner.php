@@ -131,7 +131,7 @@ class ProviderHetzner extends VpsProviderPluginBase {
     # Does not exist.
     if ($key_exists == 0) {
       # Upload the SSH public key to the VPS provider.
-      vpsCall('hetzner', 'ssh_keys', [
+      $ret = vpsCall('hetzner', 'ssh_keys', [
         'name' => $sshKeyName,
         'public_key' => $pbkey,
       ], 'POST');
@@ -140,7 +140,7 @@ class ProviderHetzner extends VpsProviderPluginBase {
 
   public function create_vps($paragraph) {
     $vpsName = $paragraph->uuid();
-    [$server_type, $location] = explode('_', $paragraph->get('field_server_type')->getValue(), 2);
+    [$server_type, $location] = explode('_', $paragraph->get('field_server_type')->getValue()[0]['value'], 2);
     $provider = 'hetzner';
     $sshKeyName = User::load(\Drupal::currentUser()->id())->uuid();
 
