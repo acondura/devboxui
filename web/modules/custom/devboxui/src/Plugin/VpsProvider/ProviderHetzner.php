@@ -3,6 +3,7 @@
 namespace Drupal\devboxui\Plugin\VpsProvider;
 
 use Drupal\devboxui\Plugin\VpsProvider\VpsProviderPluginBase;
+use Drupal\user\Entity\User;
 
 /**
  * @VpsProvider(
@@ -114,6 +115,10 @@ class ProviderHetzner extends VpsProviderPluginBase {
     return $options;
   }
 
+  /**
+   * $sshKeyName is always the user's uuid:
+   * User::load(\Drupal::currentUser()->id())->uuid();
+   */
   public function ssh_key($sshKeyName, $pbkey) {
     # Connect to VPN provider and check that SSH public key is uploaded.
     $existing_keys = vpsCall('hetzner', 'ssh_keys');
@@ -130,6 +135,28 @@ class ProviderHetzner extends VpsProviderPluginBase {
         'name' => $sshKeyName,
         'public_key' => $pbkey,
       ], 'POST');
+    }
+  }
+
+  public function create_vps($paragraph) {
+    $vpsName = $paragraph->uuid();
+    [$server_type, $location] = explode('_', $paragraph->get('field_server_type')->getValue(), 2);
+    $provider = 'hetzner';
+    $sshKeyName = User::load(\Drupal::currentUser()->id())->uuid();
+
+    # Create the server.
+    $ret = vpsCall($provider, 'servers', [
+      'name' => $vpsName,
+      'location' => $location,
+      'server_type' => $server_type,
+      'image' => $paragraph->get('field_os_image')->getString(),
+      'ssh_keys' => [$sshKeyName],
+    ], 'POST');
+
+    # Save the server ID to the paragraph field.
+    if (isset($ret['server'])) {
+      $paragraph->set('field_response', $ret['server']);
+      $paragraph->save();
     }
   }
 
