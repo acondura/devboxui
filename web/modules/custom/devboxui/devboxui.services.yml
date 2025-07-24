@@ -10,3 +10,4 @@ services:
     arguments: ['@container.namespaces', '@cache.discovery', '@module_handler']
   devboxui.batch:
     class: 'Drupal\devboxui\Service\DevBoxBatchService'
+    arguments: ['@plugin.manager.vps_provider']
