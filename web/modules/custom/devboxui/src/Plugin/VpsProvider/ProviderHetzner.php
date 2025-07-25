@@ -4,6 +4,9 @@ namespace Drupal\devboxui\Plugin\VpsProvider;
 
 use Drupal\devboxui\Plugin\VpsProvider\VpsProviderPluginBase;
 use Drupal\user\Entity\User;
+use Drupal\user\UserDataInterface;
+use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * @VpsProvider(
@@ -11,18 +14,42 @@ use Drupal\user\Entity\User;
  *   label = @Translation("Hetzner")
  * )
  */
-class ProviderHetzner extends VpsProviderPluginBase {
+class ProviderHetzner extends VpsProviderPluginBase implements ContainerFactoryPluginInterface {
 
   protected $provider;
   protected $sshKeyName;
   protected $pbkey;
   protected $user;
+  protected $sshRespField;
+  protected $userData;
 
-  public function __construct() {
+  /**
+   * ProviderHetzner constructor.
+   *
+   * @param \Drupal\user\UserDataInterface $user_data
+   *   The user.data service.
+   */
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, UserDataInterface $user_data) {
+    parent::__construct($configuration, $plugin_id, $plugin_definition);
+
     $this->provider = 'hetzner';
+    $this->userData = $user_data;
+    $this->sshRespField = 'field_ssh_response_'.$this->provider;
     $this->user = User::load(\Drupal::currentUser()->id());
     $this->sshKeyName = $this->user->uuid();
     $this->pbkey = $this->user->get('field_ssh_public_key')->getString();
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
+    return new static(
+      $configuration,
+      $plugin_id,
+      $plugin_definition,
+      $container->get('user.data')
+    );
   }
 
   public function info() {
@@ -135,7 +162,7 @@ class ProviderHetzner extends VpsProviderPluginBase {
     $server_keys = vpsCall($this->provider, 'ssh_keys');
     $key_exists = 0;
 
-    $key_resp = $this->user->get('field_ssh_response')->getString();
+    $key_resp = $this->user->get($this->sshRespField)->getString();
     if (empty($key_resp)) {
       $keyToCheck = $this->pbkey;
     }
@@ -143,10 +170,12 @@ class ProviderHetzner extends VpsProviderPluginBase {
       $key_resp = json_decode($key_resp, TRUE);
       $keyToCheck = $key_resp['ssh_key']['public_key'];
     }
-    foreach ($server_keys['ssh_keys'] as $key) {
-      if ($key['public_key'] === $keyToCheck) {
-        $key_exists++;
-        break; // Stop searching after finding the key.
+    if (!empty($keyToCheck)) {
+      foreach ($server_keys['ssh_keys'] as $key) {
+        if ($key['public_key'] === $keyToCheck) {
+          $key_exists++;
+          break; // Stop searching after finding the key.
+        }
       }
     }
 
@@ -175,7 +204,7 @@ class ProviderHetzner extends VpsProviderPluginBase {
 
   public function saveKeys($ret) {
     if (isset($ret['ssh_key']) && is_array($ret['ssh_key'])) {
-      $this->user->set('field_ssh_response', json_encode($ret));
+      $this->user->set($this->sshRespField, json_encode($ret));
       $this->user->save();
     }
   }
