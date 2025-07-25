@@ -132,12 +132,21 @@ class ProviderVultr extends VpsProviderPluginBase {
    */
   public function ssh_key() {
     # Connect to VPN provider and check that SSH public key is uploaded.
-    $existing_keys = vpsCall($this->provider, 'ssh-keys');
-    $key_exists = 0; $key_found = '';
-    foreach ($existing_keys['ssh_keys'] as $key) {
-      if ($key['ssh_key'] === $this->pbkey) {
+    $server_keys = vpsCall($this->provider, 'ssh_keys');
+    $key_exists = 0;
+
+    $key_resp = $this->user->get('field_ssh_response')->getString();
+    if (empty($key_resp)) {
+      $keyToCheck = $this->pbkey;
+    }
+    else {
+      $key_resp = json_decode($key_resp, TRUE);
+      $keyToCheck = $key_resp['ssh_key']['public_key'];
+    }
+    foreach ($server_keys['ssh_keys'] as $key) {
+      if ($key['public_key'] === $keyToCheck) {
         $key_exists++;
-        $key_found = $key;
+        break; // Stop searching after finding the key.
       }
     }
 
@@ -148,18 +157,25 @@ class ProviderVultr extends VpsProviderPluginBase {
         'name' => $this->sshKeyName,
         'ssh_key' => $this->pbkey,
       ], 'POST');
-      $this->user->set('field_ssh_response', $ret);
-      $this->user->save();
+      $this->saveKeys($ret);
     } # Key id exists, update it.
     else {
       # First, remove it.
-      $ret = vpsCall($this->provider, 'ssh-keys/'.$key_found['id'], [], 'DELETE');
+      $key_id = $key_resp['ssh_key']['id'];
+      $ret = vpsCall($this->provider, 'ssh-keys/'.$key_id, [], 'DELETE');
+
       # Then, upload it.
       $ret = vpsCall($this->provider, 'ssh-keys', [
         'name' => $this->sshKeyName,
         'ssh_key' => $this->pbkey,
       ], 'POST');
-      $this->user->set('field_ssh_response', $ret);
+      $this->saveKeys($ret);
+    }
+  }
+
+  public function saveKeys($ret) {
+    if (isset($ret['ssh_key']) && is_array($ret['ssh_key'])) {
+      $this->user->set('field_ssh_response', json_encode($ret));
       $this->user->save();
     }
   }
