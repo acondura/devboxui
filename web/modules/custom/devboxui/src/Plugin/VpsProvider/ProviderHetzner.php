@@ -13,6 +13,17 @@ use Drupal\user\Entity\User;
  */
 class ProviderHetzner extends VpsProviderPluginBase {
 
+  protected $provider = 'hetzner';
+  protected $sshKeyName;
+  protected $pbkey;
+  protected $user;
+
+  public function __construct() {
+    $this->user = User::load(\Drupal::currentUser()->id());
+    $this->sshKeyName = $this->user->uuid();
+    $this->pbkey = $this->user->get('field_ssh_public_key')->getString();
+  }
+
   public function info() {
     return [
       'name' => 'Hetzner',
@@ -31,13 +42,13 @@ class ProviderHetzner extends VpsProviderPluginBase {
   }
 
   /**
-   * Get Hetzner vps locations, cache results.
+   * Get vps locations, cache results.
    *
    * @return void
    */
   public function location() {
     $options = [];
-    $results = vpsCall('hetzner', 'locations');
+    $results = vpsCall($this->provider, 'locations');
     foreach($results['locations'] as $l) {
       $options[$l['id']] = implode(', ', [
         $l['city'],
@@ -48,13 +59,13 @@ class ProviderHetzner extends VpsProviderPluginBase {
   }
 
   /**
-   * Get Hetzner vps server types, cache results.
+   * Get vps server types, cache results.
    *
    * @return void
    */
   public function server_type() {
-    $locations = vpsCall('hetzner', 'locations');
-    $response = vpsCall('hetzner', 'server_types');
+    $locations = vpsCall($this->provider, 'locations');
+    $response = vpsCall($this->provider, 'server_types');
     $server_types = array_column($response['server_types'], 'description', 'id');
     $processed_server_types = [];
     foreach ($locations['locations'] as $lk => $lv) {
@@ -95,13 +106,13 @@ class ProviderHetzner extends VpsProviderPluginBase {
   }
 
   /**
-   * Get Hetzner vps os images, cache results.
+   * Get vps os images, cache results.
    *
    * @return void
    */
   public function os_image() {
     $options = [];
-    $results = vpsCall('hetzner', 'images', [
+    $results = vpsCall($this->provider, 'images', [
       'type' => 'system',
       'status' => 'available',
       'os_flavor' => 'ubuntu',
@@ -116,41 +127,72 @@ class ProviderHetzner extends VpsProviderPluginBase {
   }
 
   /**
-   * $sshKeyName is always the user's uuid:
-   * User::load(\Drupal::currentUser()->id())->uuid();
+   * $sshKeyName is always the user's uuid.
    */
-  public function ssh_key($sshKeyName, $pbkey) {
+  public function ssh_key() {
     # Connect to VPN provider and check that SSH public key is uploaded.
-    $existing_keys = vpsCall('hetzner', 'ssh_keys');
+    $server_keys = vpsCall($this->provider, 'ssh_keys');
     $key_exists = 0;
-    foreach ($existing_keys['ssh_keys'] as $key) {
-      if ($key['public_key'] === $pbkey) {
+
+    $key_resp = $this->user->get('field_ssh_response')->getString();
+    if (empty($key_resp)) {
+      $keyToCheck = $this->pbkey;
+    }
+    else {
+      $keyToCheck = $key_resp['ssh_keys'][0]['public_key'];
+    }
+    foreach ($server_keys['ssh_keys'] as $key) {
+      if ($key['public_key'] === $keyToCheck) {
         $key_exists++;
+        break; // Stop searching after finding the key.
       }
     }
+
     # Does not exist.
     if ($key_exists == 0) {
       # Upload the SSH public key to the VPS provider.
-      $ret = vpsCall('hetzner', 'ssh_keys', [
-        'name' => $sshKeyName,
-        'public_key' => $pbkey,
+      $ret = vpsCall($this->provider, 'ssh_keys', [
+        'name' => $this->sshKeyName,
+        'public_key' => $this->pbkey,
       ], 'POST');
+      $this->saveKeys($ret);
+    } # Key id exists, update it.
+    else {
+      # First, remove it.
+      $key_resp = json_decode($this->user->get('field_ssh_response')->getString(), TRUE);
+      $key_id = $key_resp['ssh_keys'][0]['id'];
+      $ret = vpsCall($this->provider, 'ssh_keys/'.$key_id, [], 'DELETE');
+
+      # Then, upload it.
+      $ret = vpsCall($this->provider, 'ssh_keys', [
+        'name' => $this->sshKeyName,
+        'public_key' => $this->pbkey,
+      ], 'POST');
+      $this->saveKeys($ret);
+    }
+  }
+
+  public function saveKeys($ret) {
+    if (isset($ret['ssh_keys']) && is_array($ret['ssh_keys'])) {
+      $this->user->set('field_ssh_response', json_encode($ret));
+      $this->user->save();
+      \Drupal::logger('vps')->notice('Saved field_ssh_response: @val', ['@val' => json_encode($ret)]);
+      $user = User::load($this->user->id());
+      \Drupal::logger('vps')->notice('Reloaded field_ssh_response: @val', ['@val' => $user->get('field_ssh_response')->getString()]);
     }
   }
 
   public function create_vps($paragraph) {
     $vpsName = $paragraph->uuid();
     [$server_type, $location] = explode('_', $paragraph->get('field_server_type')->getValue()[0]['value'], 2);
-    $provider = 'hetzner';
-    $sshKeyName = User::load(\Drupal::currentUser()->id())->uuid();
 
     # Create the server.
-    $ret = vpsCall($provider, 'servers', [
+    $ret = vpsCall($this->provider, 'servers', [
       'name' => $vpsName,
       'location' => $location,
       'server_type' => $server_type,
       'image' => $paragraph->get('field_os_image')->getString(),
-      'ssh_keys' => [$sshKeyName],
+      'ssh_keys' => [$this->sshKeyName],
     ], 'POST');
 
     # Save the server ID to the paragraph field.

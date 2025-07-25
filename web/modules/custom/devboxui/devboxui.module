@@ -7,7 +7,7 @@
 
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\field\Entity\FieldStorageConfig;
-use Drupal\Core\Field\FieldDefinitionInterface;
+use Drupal\user\Entity\User;
 
 /**
  * Implements hook_form_alter().
@@ -118,7 +118,9 @@ function devboxui_get_providers_list() {
  */
 function vpsCall($provider, $path, $params = [], $method = 'GET') {
   $method = strtoupper($method);
-  $token = getUserProviderToken($provider);
+  $user = User::load(\Drupal::currentUser()->id());
+  $field_name = 'field_vps_' . $provider;
+  $token = $user->get($field_name)->getValue();
   $api_url = \Drupal::service('plugin.manager.vps_provider')->createInstance($provider)->info()['api_url'];
   if (empty($token)) return [];
 
@@ -174,19 +176,16 @@ function vpsCall($provider, $path, $params = [], $method = 'GET') {
       return json_decode($response->getBody(), TRUE);
     }
   } catch (\Exception $e) {
-    \Drupal::logger('devboxui')->error('VPS API error: ' . $e->getMessage());
+    $msg = $e->getMessage();
+    \Drupal::logger('devboxui')->error('VPS API error: ' . $msg);
+    # add display message
+    \Drupal::messenger()->addError(t('An error occurred while communicating with the VPS provider API: @message', ['@message' => $msg]));
+
     return [
       'error' => TRUE,
-      'message' => 'VPS API error: ' . $e->getMessage(),
+      'message' => 'VPS API error: ' . $msg,
     ];
   }
-}
-
-function getUserProviderToken($provider) {
-  // load current user
-  $user = entityManage('user', \Drupal::currentUser()->id());
-  $token = $user->get('field_vps_'.$provider)->getString();
-  return $token;
 }
 
 /*
