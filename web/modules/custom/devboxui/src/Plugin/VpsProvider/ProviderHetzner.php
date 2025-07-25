@@ -13,12 +13,13 @@ use Drupal\user\Entity\User;
  */
 class ProviderHetzner extends VpsProviderPluginBase {
 
-  protected $provider = 'hetzner';
+  protected $provider;
   protected $sshKeyName;
   protected $pbkey;
   protected $user;
 
   public function __construct() {
+    $this->provider = 'hetzner';
     $this->user = User::load(\Drupal::currentUser()->id());
     $this->sshKeyName = $this->user->uuid();
     $this->pbkey = $this->user->get('field_ssh_public_key')->getString();

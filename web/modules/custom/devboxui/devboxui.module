@@ -68,6 +68,17 @@ function devboxuiGetUserFieldDescription($field_name) {
  * @see options_allowed_values()
  */
 function devboxui_options_allowed_values(FieldStorageConfig $definition, ContentEntityInterface $entity = NULL, $cacheable) {
+  /*
+   * Drupal's Plugin Manager is responsible for discovering, instantiating, and managing plugins.
+   * When cron runs, it may trigger any code that uses or discovers plugins.
+   * To prevent this, we check if the current user is logged in.
+   * If not, we return an empty array.
+   */
+  $uid = \Drupal::currentUser()->id();
+  if ($uid < 1) {
+    return [];
+  }
+
   $options = [];
   $entity_type = $entity->getEntityTypeId();
 
@@ -118,7 +129,11 @@ function devboxui_get_providers_list() {
  */
 function vpsCall($provider, $path, $params = [], $method = 'GET') {
   $method = strtoupper($method);
-  $user = User::load(\Drupal::currentUser()->id());
+  $uid = \Drupal::currentUser()->id();
+  if ($uid < 1) {
+    return [];
+  }
+  $user = User::load($uid);
   $field_name = 'field_vps_' . $provider;
   $token = $user->get($field_name)->getValue();
   $api_url = \Drupal::service('plugin.manager.vps_provider')->createInstance($provider)->info()['api_url'];
