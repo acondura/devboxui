@@ -52,6 +52,9 @@ events:
       -
         id: Activity_0sv4tg6
         condition: Flow_0vaofij
+      -
+        id: Activity_0zoelgf
+        condition: Flow_1u38rmi
 conditions:
   Flow_0vaofij:
     plugin: eca_entity_field_value
@@ -59,6 +62,16 @@ conditions:
       negate: false
       case: false
       expected_value: '1'
+      field_name: field_regenerate_keys
+      operator: equal
+      type: value
+      entity: user
+  Flow_1u38rmi:
+    plugin: eca_entity_field_value
+    configuration:
+      negate: false
+      case: false
+      expected_value: '0'
       field_name: field_regenerate_keys
       operator: equal
       type: value
@@ -132,6 +145,12 @@ actions:
         id: Activity_1sqdc8f
         condition: ''
   Activity_0feou1q:
+    plugin: devboxui_upload_keys_to_provider
+    label: 'Upload keys to providers'
+    configuration:
+      object: user
+    successors: {  }
+  Activity_0zoelgf:
     plugin: devboxui_upload_keys_to_provider
     label: 'Upload keys to providers'
     configuration:
