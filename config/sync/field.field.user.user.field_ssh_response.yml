@@ -1,0 +1,20 @@
+uuid: 8a9be6a7-5594-4e4c-8c37-0476802120c8
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.user.field_ssh_response
+  module:
+    - user
+id: user.user.field_ssh_response
+field_name: field_ssh_response
+entity_type: user
+bundle: user
+label: 'SSH response'
+description: ''
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string_long
