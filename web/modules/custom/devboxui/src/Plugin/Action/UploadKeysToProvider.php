@@ -46,7 +46,7 @@ final class UploadKeysToProvider extends ActionBase {
 
             $vps_plugin = \Drupal::service('plugin.manager.vps_provider')->createInstance($provider);
             # Upload SSH key if it does not exist.
-            $vps_plugin->ssh_key($sshKeyName, $pbkey);
+            $vps_plugin->ssh_key($pbkey);
           }
         }
       }
