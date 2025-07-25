@@ -11,7 +11,7 @@ field_name: field_regenerate_keys
 entity_type: user
 bundle: user
 label: 'Regenerate keys'
-description: "Enable this to create new SSH keys and the hit Save.<br>\r\nDon't forget to upload them to your VPS servers after that."
+description: "Enable this to create new SSH keys and then hit Save.<br>\r\nThis also automatically updates your SSH keys in each of your provider's account AND your existing servers."
 required: false
 translatable: false
 default_value:
