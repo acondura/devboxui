@@ -35,18 +35,17 @@ final class UploadKeysToProvider extends ActionBase {
    * {@inheritdoc}
    */
   public function execute(ContentEntityInterface $user = NULL): void {
+    # User is always provided by the action context.
     if ($user) {
-      $f = $user->getFields();
-      $sshKeyName = User::load(\Drupal::currentUser()->id())->uuid();
       foreach($user->getFields() as $fieldk => $field) {
         if (str_starts_with($fieldk, 'field_vps_')) {
-          if ($token = $user->get($fieldk)->getString()) {
-            $pbkey = $user->get('field_ssh_public_key');
+          if (!empty($user->get($fieldk)->getString())) {
+            # Get provider name.
             $provider = explode('field_vps_', $fieldk)[1];
-
+            # Initialize the provider plugin.
             $vps_plugin = \Drupal::service('plugin.manager.vps_provider')->createInstance($provider);
             # Upload SSH key if it does not exist.
-            $vps_plugin->ssh_key($pbkey);
+            $vps_plugin->ssh_key();
           }
         }
       }
