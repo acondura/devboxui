@@ -140,7 +140,8 @@ class ProviderHetzner extends VpsProviderPluginBase {
       $keyToCheck = $this->pbkey;
     }
     else {
-      $keyToCheck = $key_resp['ssh_keys'][0]['public_key'];
+      $key_resp = json_decode($key_resp, TRUE);
+      $keyToCheck = $key_resp['ssh_key']['public_key'];
     }
     foreach ($server_keys['ssh_keys'] as $key) {
       if ($key['public_key'] === $keyToCheck) {
@@ -160,8 +161,7 @@ class ProviderHetzner extends VpsProviderPluginBase {
     } # Key id exists, update it.
     else {
       # First, remove it.
-      $key_resp = json_decode($this->user->get('field_ssh_response')->getString(), TRUE);
-      $key_id = $key_resp['ssh_keys'][0]['id'];
+      $key_id = $key_resp['ssh_key']['id'];
       $ret = vpsCall($this->provider, 'ssh_keys/'.$key_id, [], 'DELETE');
 
       # Then, upload it.
@@ -174,12 +174,9 @@ class ProviderHetzner extends VpsProviderPluginBase {
   }
 
   public function saveKeys($ret) {
-    if (isset($ret['ssh_keys']) && is_array($ret['ssh_keys'])) {
+    if (isset($ret['ssh_key']) && is_array($ret['ssh_key'])) {
       $this->user->set('field_ssh_response', json_encode($ret));
       $this->user->save();
-      \Drupal::logger('vps')->notice('Saved field_ssh_response: @val', ['@val' => json_encode($ret)]);
-      $user = User::load($this->user->id());
-      \Drupal::logger('vps')->notice('Reloaded field_ssh_response: @val', ['@val' => $user->get('field_ssh_response')->getString()]);
     }
   }
 

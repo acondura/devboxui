@@ -135,7 +135,7 @@ function vpsCall($provider, $path, $params = [], $method = 'GET') {
   }
   $user = User::load($uid);
   $field_name = 'field_vps_' . $provider;
-  $token = $user->get($field_name)->getValue();
+  $token = $user->get($field_name)->getString();
   $api_url = \Drupal::service('plugin.manager.vps_provider')->createInstance($provider)->info()['api_url'];
   if (empty($token)) return [];
 
