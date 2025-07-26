@@ -60,6 +60,13 @@ class DevBoxBatchService {
   }
 
   /**
+   * Batch finished callback.
+   */
+  public static function finished($success, $results, $operations): void {
+    // Add messages or handle results after batch
+  }
+
+  /**
    * Batch callback for provisioning a VPS.
    *
    * @param \Drupal\node\NodeInterface $node
@@ -78,16 +85,7 @@ class DevBoxBatchService {
 
     // Load the paragraph entity and get the response field.
     $paragraph = entityManage('paragraph', $paragraph_id);
-    $field_response = $paragraph->get('field_response')->getString();
-
-    // Create VPS if not already provisioned.
-    if (empty($field_response)) {
-      // Provision logic here.
-      $type = $paragraph->getType();
-      $vps_info = \Drupal::service('plugin.manager.vps_provider')->createInstance($type)->create_vps($paragraph);
-      $paragraph->set('field_response', $vps_info);
-      $paragraph->save();
-    }
+    \Drupal::service('plugin.manager.vps_provider')->createInstance($paragraph->getType())->create_vps($paragraph);
   }
 
   /**
@@ -100,9 +98,24 @@ class DevBoxBatchService {
   }
 
   /**
-   * Batch finished callback.
+   * Batch callback for provisioning a VPS.
+   *
+   * @param \Drupal\node\NodeInterface $node
+   *   The node entity.
+   * @param string $op
+   *   The operation type.
+   * @param string $step
+   *   The step label.
+   * @param int $paragraph_id
+   *   The paragraph entity ID.
+   * @param array $context
+   *   The batch context array.
    */
-  public static function finished($success, $results, $operations): void {
-    // Add messages or handle results after batch
+  public static function delete_vps($node, $op, $step, $paragraph_id, &$context): void {
+    $context['message'] = t('@step', ['@step' => $step]);
+
+    // Load the paragraph entity and get the response field.
+    $paragraph = entityManage('paragraph', $paragraph_id);
+    \Drupal::service('plugin.manager.vps_provider')->createInstance($paragraph->getType())->delete_vps($paragraph);
   }
 }

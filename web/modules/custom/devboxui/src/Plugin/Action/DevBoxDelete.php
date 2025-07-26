@@ -60,11 +60,9 @@ final class DevBoxDelete extends ActionBase implements ContainerFactoryPluginInt
       $title = "Deleting VPS";
 
       $commands = [];
-      for ($j = 0; $j < $total; $j++) {
-        $i = $j + 1;
-        $commands["($i/$total) VPS created"] = [DevBoxBatchService::class, 'run_batch_actions'];
-        $commands["($i/$total) Ubuntu package updates"] = [DevBoxBatchService::class, 'run_batch_actions'];
-        $commands["($i/$total) Ubuntu package upgrades"] = [DevBoxBatchService::class, 'run_batch_actions'];
+      foreach ($vps_nodes as $vps_node) {
+        $pid = $vps_node['target_id'];
+        $commands["$pid VPS created"] = [$pid => [DevBoxBatchService::class, 'delete_vps']];
       }
 
       $this->batchService->startBatch($node, $operation, $commands, $title);

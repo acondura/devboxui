@@ -195,20 +195,30 @@ class ProviderVultr extends VpsProviderPluginBase implements ContainerFactoryPlu
     $vpsName = $paragraph->uuid();
     [$server_type, $location] = explode('_', $paragraph->get('field_server_type')->getValue()[0]['value'], 2);
 
-    # Create the server.
-    $ret = vpsCall($this->provider, 'servers', [
-      'name' => $vpsName,
-      'location' => $location,
-      'server_type' => $server_type,
-      'image' => $paragraph->get('field_os_image')->getString(),
-      'ssh_keys' => [$this->sshKeyName],
-    ], 'POST');
-
-    # Save the server ID to the paragraph field.
-    if (isset($ret['server'])) {
-      $paragraph->set('field_response', $ret['server']);
-      $paragraph->save();
+    $server_info = json_decode($paragraph->get('field_response')->getString(), TRUE);
+    if (empty($server_info)) {
+      # Create the server.
+      $ret = vpsCall($this->provider, 'servers', [
+        'name' => $vpsName,
+        'location' => $location,
+        'server_type' => $server_type,
+        'image' => $paragraph->get('field_os_image')->getString(),
+        'ssh_keys' => [$this->sshKeyName],
+      ], 'POST');
+  
+      # Save the server ID to the paragraph field.
+      if (isset($ret['server'])) {
+        $paragraph->set('field_response', json_encode($ret['server']));
+        $paragraph->save();
+      }
     }
+  }
+
+  public function delete_vps($paragraph) {
+    $server_info = json_decode($paragraph->get('field_response')->getString(), TRUE);
+
+    # Delete the server.
+    vpsCall($this->provider, 'servers/'.$server_info['id'], [], 'DELETE');
   }
 
 }
