@@ -66,6 +66,38 @@ class ProviderVultr extends VpsProviderPluginBase implements ContainerFactoryPlu
   }
 
   /**
+   * $sshKeyName is always the user's uuid.
+   */
+  public function ssh_key() {
+    $key_resp = json_decode($this->userData->get('devboxui', $this->user->id(), $this->sshRespField), TRUE);
+    // Don't upload if the current and previously stored keys are the same.
+    if (isset($key_resp['ssh_key']) && $this->pbkey == $key_resp['ssh_key']['public_key']) {
+      \Drupal::logger('dexboxui')->notice('SSH key already exists for user @uid', [
+        '@uid' => $this->user->id(),
+      ]);
+      return;
+    }
+
+    # First, delete the old key if it exists.
+    if (!empty($key_resp)) {
+      vpsCall($this->provider, 'ssh-keys/'.$key_resp['ssh_key']['id'], [], 'DELETE');
+    }
+
+    # Then, upload it.
+    $ret = vpsCall($this->provider, 'ssh-keys', [
+      'name' => $this->sshKeyName,
+      'ssh_key' => $this->pbkey,
+    ], 'POST');
+    $this->saveKeys($ret);
+  }
+
+  public function saveKeys($ret) {
+    if (isset($ret['ssh_key'])) {
+      $this->userData->set('devboxui', $this->user->id(), $this->sshRespField, json_encode($ret));
+    }
+  }
+
+  /**
    * {@inheritdoc}
    */
   public function provision(array $data) {
@@ -157,37 +189,6 @@ class ProviderVultr extends VpsProviderPluginBase implements ContainerFactoryPlu
       $options[$i['id']] = implode(', ', [$i['description']]);
     }
     return $options;
-  }
-
-  /**
-   * $sshKeyName is always the user's uuid.
-   */
-  public function ssh_key() {
-    $key_resp = json_decode($this->userData->get('devboxui', $this->user->id(), $this->sshRespField), TRUE);
-    if ($this->pbkey == $key_resp['ssh_key']['public_key']) {
-      \Drupal::logger('vps')->notice('SSH key already exists for user @uid', [
-        '@uid' => $this->user->id(),
-      ]);
-      return;
-    }
-
-    # First, delete the old key if it exists.
-    if (!empty($key_resp)) {
-      $ret = vpsCall($this->provider, 'ssh-keys/'.$key_resp['ssh_key']['id'], [], 'DELETE');
-    }
-
-    # Then, upload it.
-    $ret = vpsCall($this->provider, 'ssh-keys', [
-      'name' => $this->sshKeyName,
-      'ssh_key' => $this->pbkey,
-    ], 'POST');
-    $this->saveKeys($ret);
-  }
-
-  public function saveKeys($ret) {
-    if (isset($ret['ssh_key'])) {
-      $this->userData->set('devboxui', $this->user->id(), $this->sshRespField, json_encode($ret));
-    }
   }
 
   public function create_vps($paragraph) {
