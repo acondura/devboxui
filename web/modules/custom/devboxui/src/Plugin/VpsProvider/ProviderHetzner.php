@@ -163,48 +163,17 @@ class ProviderHetzner extends VpsProviderPluginBase implements ContainerFactoryP
    * $sshKeyName is always the user's uuid.
    */
   public function ssh_key() {
-    # Connect to VPN provider and check that SSH public key is uploaded.
-    $server_keys = vpsCall($this->provider, 'ssh_keys');
-    $key_exists = 0;
-    $ret = [];
-
-    # Get the SSH key from user data.
-    $key_resp = $this->userData->get('devboxui', $this->user->id(), $this->sshRespField);
-    if (empty($key_resp)) {
-      $keyToCheck = $this->pbkey;
-    }
-    else {
-      $key_resp = json_decode($key_resp, TRUE);
-      $keyToCheck = $key_resp['ssh_key']['public_key'];
-    }
-    if (!empty($keyToCheck)) {
-      foreach ($server_keys['ssh_keys'] as $key) {
-        if ($key['public_key'] === $keyToCheck) {
-          $key_exists++;
-          break; // Stop searching after finding the key.
-        }
-      }
+    # First, delete the old key if it exists.
+    $key_resp = json_decode($this->userData->get('devboxui', $this->user->id(), $this->sshRespField), TRUE);
+    if (!empty($key_resp)) {
+      $ret = vpsCall($this->provider, 'ssh_keys/'.$key_resp['ssh_key']['id'], [], 'DELETE');
     }
 
-    # Does not exist.
-    if ($key_exists == 0) {
-      # Upload the SSH public key to the VPS provider.
-      $ret = vpsCall($this->provider, 'ssh_keys', [
-        'name' => $this->sshKeyName,
-        'public_key' => $this->pbkey,
-      ], 'POST');
-    } # Key id exists, update it.
-    else {
-      # First, remove it.
-      $key_id = $key_resp['ssh_key']['id'];
-      $ret = vpsCall($this->provider, 'ssh_keys/'.$key_id, [], 'DELETE');
-
-      # Then, upload it.
-      $ret = vpsCall($this->provider, 'ssh_keys', [
-        'name' => $this->sshKeyName,
-        'public_key' => $this->pbkey,
-      ], 'POST');
-    }
+    # Then, upload it.
+    $ret = vpsCall($this->provider, 'ssh_keys', [
+      'name' => $this->sshKeyName,
+      'public_key' => $this->pbkey,
+    ], 'POST');
     $this->saveKeys($ret);
   }
 
