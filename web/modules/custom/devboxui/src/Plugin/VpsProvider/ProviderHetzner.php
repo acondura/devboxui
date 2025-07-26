@@ -16,11 +16,11 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  */
 class ProviderHetzner extends VpsProviderPluginBase implements ContainerFactoryPluginInterface {
 
+  protected $pbkey;
   protected $provider;
   protected $sshKeyName;
-  protected $pbkey;
-  protected $user;
   protected $sshRespField;
+  protected $user;
   protected $userData;
 
   /**
@@ -32,12 +32,17 @@ class ProviderHetzner extends VpsProviderPluginBase implements ContainerFactoryP
   public function __construct(array $configuration, $plugin_id, $plugin_definition, UserDataInterface $user_data) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
 
+    /* Default values. */
     $this->provider = 'hetzner';
-    $this->userData = $user_data;
-    $this->sshRespField = 'field_ssh_response_'.$this->provider;
     $this->user = User::load(\Drupal::currentUser()->id());
+    $this->userData = $user_data;
     $this->sshKeyName = $this->user->uuid();
+    /* END OF Default values. */
+
+    /* Computed values. */
+    $this->sshRespField = 'ssh_response_'.$this->provider;
     $this->pbkey = $this->user->get('field_ssh_public_key')->getString();
+    /* END OF Computed values. */
   }
 
   /**
@@ -161,8 +166,10 @@ class ProviderHetzner extends VpsProviderPluginBase implements ContainerFactoryP
     # Connect to VPN provider and check that SSH public key is uploaded.
     $server_keys = vpsCall($this->provider, 'ssh_keys');
     $key_exists = 0;
+    $ret = [];
 
-    $key_resp = $this->user->get($this->sshRespField)->getString();
+    # Get the SSH key from user data.
+    $key_resp = $this->userData->get('devboxui', $this->user->id(), $this->sshRespField);
     if (empty($key_resp)) {
       $keyToCheck = $this->pbkey;
     }
@@ -186,7 +193,6 @@ class ProviderHetzner extends VpsProviderPluginBase implements ContainerFactoryP
         'name' => $this->sshKeyName,
         'public_key' => $this->pbkey,
       ], 'POST');
-      $this->saveKeys($ret);
     } # Key id exists, update it.
     else {
       # First, remove it.
@@ -198,14 +204,13 @@ class ProviderHetzner extends VpsProviderPluginBase implements ContainerFactoryP
         'name' => $this->sshKeyName,
         'public_key' => $this->pbkey,
       ], 'POST');
-      $this->saveKeys($ret);
     }
+    $this->saveKeys($ret);
   }
 
   public function saveKeys($ret) {
-    if (isset($ret['ssh_key']) && is_array($ret['ssh_key'])) {
-      $this->user->set($this->sshRespField, json_encode($ret));
-      $this->user->save();
+    if (isset($ret['ssh_key'])) {
+      $this->userData->set('devboxui', $this->user->id(), $this->sshRespField, json_encode($ret));
     }
   }
 

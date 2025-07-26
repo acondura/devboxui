@@ -122,7 +122,7 @@ modeldata: |
         <bpmn2:incoming>Flow_0vaofij</bpmn2:incoming>
         <bpmn2:outgoing>Flow_15u28fn</bpmn2:outgoing>
       </bpmn2:task>
-      <bpmn2:sequenceFlow id="Flow_0vaofij" name="Regenerate keys?" camunda:modelerTemplate="org.drupal.condition.eca_entity_field_value" sourceRef="Event_1cf31fg" targetRef="Activity_0sv4tg6">
+      <bpmn2:sequenceFlow id="Flow_0vaofij" name="Regenerate keys TRUE" camunda:modelerTemplate="org.drupal.condition.eca_entity_field_value" sourceRef="Event_1cf31fg" targetRef="Activity_0sv4tg6">
         <bpmn2:extensionElements>
           <camunda:properties>
             <camunda:property name="pluginid" value="eca_entity_field_value" />
@@ -333,7 +333,7 @@ modeldata: |
           <di:waypoint x="248" y="360" />
           <di:waypoint x="370" y="360" />
           <bpmndi:BPMNLabel>
-            <dc:Bounds x="265" y="333" width="90" height="14" />
+            <dc:Bounds x="268" y="326" width="84" height="27" />
           </bpmndi:BPMNLabel>
         </bpmndi:BPMNEdge>
         <bpmndi:BPMNEdge id="Flow_15u28fn_di" bpmnElement="Flow_15u28fn">

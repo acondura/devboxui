@@ -128,11 +128,13 @@ function devboxui_get_providers_list() {
  * @return void
  */
 function vpsCall($provider, $path, $params = [], $method = 'GET') {
-  $method = strtoupper($method);
   $uid = \Drupal::currentUser()->id();
+  # Ignore if user is not logged in.
   if ($uid < 1) {
     return [];
   }
+
+  $method = strtoupper($method);
   $user = User::load($uid);
   $field_name = 'field_vps_' . $provider;
   $token = $user->get($field_name)->getString();

@@ -6,7 +6,6 @@ dependencies:
     - field.field.user.user.field_regenerate_keys
     - field.field.user.user.field_ssh_private_key
     - field.field.user.user.field_ssh_public_key
-    - field.field.user.user.field_ssh_response
     - field.field.user.user.field_vps_hetzner
     - field.field.user.user.field_vps_vultr
     - field.field.user.user.user_picture
@@ -163,5 +162,4 @@ content:
       preview_image_style: thumbnail
     third_party_settings: {  }
 hidden:
-  field_ssh_response: true
   langcode: true
