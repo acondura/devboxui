@@ -165,6 +165,13 @@ class ProviderHetzner extends VpsProviderPluginBase implements ContainerFactoryP
   public function ssh_key() {
     # First, delete the old key if it exists.
     $key_resp = json_decode($this->userData->get('devboxui', $this->user->id(), $this->sshRespField), TRUE);
+    if ($this->pbkey == $key_resp['ssh_key']['public_key']) {
+      \Drupal::logger('vps')->notice('SSH key already exists for user @uid', [
+        '@uid' => $this->user->id(),
+      ]);
+      return;
+    }
+
     if (!empty($key_resp)) {
       $ret = vpsCall($this->provider, 'ssh_keys/'.$key_resp['ssh_key']['id'], [], 'DELETE');
     }
