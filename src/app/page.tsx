@@ -32,7 +32,7 @@ export default function HomePage() {
             Enter Dashboard
           </Link>
           <a 
-            href="https://github.com/YOUR_GITHUB_USER/devboxui" 
+            href="https://github.com/acondura/devboxui" 
             target="_blank"
             rel="noreferrer"
             className="w-full sm:w-auto px-8 py-3.5 text-sm font-semibold text-slate-300 bg-slate-800 hover:bg-slate-700 rounded-lg shadow-sm border border-slate-700 transition-all"
