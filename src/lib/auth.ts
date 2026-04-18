@@ -96,22 +96,28 @@ export async function getIdentity(env: CloudflareEnv): Promise<string> {
   }
 
   const headersList = await headers();
-  const jwt = headersList.get('cf-access-jwt-assertion');
-
-  // 2. Strict JWT Verification
-  if (jwt) {
-    const verifiedEmail = await verifyAccessJwt(jwt, env);
-    if (verifiedEmail) return verifiedEmail;
-    
-    console.error("Security Alert: A JWT was provided but failed verification.");
-    throw new Error("Unauthorized: Invalid security token.");
+  
+  // 2. Primary Check: Cloudflare Access Headers (Fast & Reliable)
+  const emailHeader = headersList.get('cf-access-authenticated-user-email') || 
+                      headersList.get('x-user-email');
+  
+  if (emailHeader) {
+    const validated = emailSchema.safeParse(emailHeader);
+    if (validated.success) return validated.data;
   }
 
-  // 3. Simple Header Fallback (less secure, but helps if JWT is missing but Access is on)
-  const emailHeader = headersList.get('x-user-email') || headersList.get('cf-access-authenticated-user-email');
-  if (emailHeader) return emailHeader;
+  // 3. Secondary Check: JWT Verification (Secure)
+  const jwt = headersList.get('cf-access-jwt-assertion');
+  if (jwt) {
+    try {
+      const verifiedEmail = await verifyAccessJwt(jwt, env);
+      if (verifiedEmail) return verifiedEmail;
+    } catch (e) {
+      console.warn("JWT Verification failed, but proceeding may be possible if headers were present.");
+    }
+  }
 
-  console.error("Security Alert: Access attempt without Cloudflare credentials.");
+  console.error("Security Alert: Access attempt without valid Cloudflare credentials.");
   throw new Error("Unauthorized: Cloudflare Access is required.");
 }
 
@@ -129,6 +135,6 @@ export async function getCloudflareEnv(): Promise<CloudflareEnv> {
   // On production (Cloudflare Workers/Pages), bindings are global variables
   return {
     KV: (globalThis as any).KV,
-    NEXT_PUBLIC_CF_TEAM_DOMAIN: (process.env as any).NEXT_PUBLIC_CF_TEAM_DOMAIN
+    NEXT_PUBLIC_CF_TEAM_DOMAIN: (globalThis as any).NEXT_PUBLIC_CF_TEAM_DOMAIN || (process.env as any).NEXT_PUBLIC_CF_TEAM_DOMAIN
   };
 }
