@@ -14,11 +14,13 @@
   },
   "dependencies": {
     "@opennextjs/cloudflare": "^1.17.1",
+    "jose": "^6.2.2",
     "next": "16.1.5",
     "react": "19.1.5",
     "react-dom": "19.1.5",
     "ssh2": "^1.17.0",
-    "tweetnacl": "^1.0.3"
+    "tweetnacl": "^1.0.3",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

@@ -1,22 +1,18 @@
-export const runtime = 'edge';
-
-import { headers } from 'next/headers';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
+import { getIdentity, CloudflareEnv } from '@/lib/auth';
 import { DashboardView } from '@/modules/access/components/DashboardView';
 import { redirect } from 'next/navigation';
 
+export const runtime = 'edge';
+
 export default async function DashboardPage() {
-  const headersList = await headers();
-  // Check both common Cloudflare Access header names
-  let userEmail = headersList.get('x-user-email') || 
-                  headersList.get('cf-access-authenticated-user-email');
-
-  // Fallback for development or testing if Access is not yet configured
-  if (!userEmail && process.env.NODE_ENV === 'development') {
-    userEmail = 'dev-user@example.com';
-  }
-
-  if (!userEmail) {
-    // If we still don't have an email after login, redirect to home
+  const { env } = await getCloudflareContext() as unknown as { env: CloudflareEnv };
+  
+  let userEmail: string;
+  try {
+    userEmail = await getIdentity(env);
+  } catch (error) {
+    console.error("Auth failed:", error);
     redirect('/');
   }
 

@@ -17,7 +17,15 @@ async function generateSSHKeys() {
   return { publicKey, privateKey };
 }
 
+import { getCloudflareContext } from '@opennextjs/cloudflare';
+import { CloudflareEnv } from '@/lib/auth';
+
+// ... (generateSSHKeys remains same)
+
 export async function provisionServer(ip: string, rootPassword: string, userEmail: string) {
+  const { env } = await getCloudflareContext() as unknown as { env: CloudflareEnv };
+  const kv = env.KV;
+
   // 1. Generate Keys
   const { publicKey, privateKey } = await generateSSHKeys();
   
@@ -26,70 +34,50 @@ export async function provisionServer(ip: string, rootPassword: string, userEmai
   const userName = userEmail.split('@')[0].replace(/[^a-zA-Z0-9]/g, '_');
   
   const config: ServerConfig = {
-    id: serverId,
-    ip,
-    userName,
-    userEmail,
-    status: 'provisioning',
-    sshPrivateKey: privateKey,
-    sshPublicKey: publicKey,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    id: serverId, ip, userName, userEmail, status: 'provisioning',
+    sshPrivateKey: privateKey, sshPublicKey: publicKey,
+    createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
     logs: ['Initializing provisioning...']
   };
 
-  // Access the KV binding. In Cloudflare Workers, these are globals.
-  // @ts-ignore
-  const kv = (globalThis as any).KV || (process.env as any).KV;
   const kvKey = `servers:${userEmail}:${ip}`;
 
   const updateStatus = async (status: ServerConfig['status'], logEntry: string) => {
     config.status = status;
     config.logs = [...(config.logs || []), logEntry];
     config.updatedAt = new Date().toISOString();
-    
-    // Ensure kv is an object with a put method before calling it
-    if (kv && typeof kv === 'object' && typeof kv.put === 'function') {
-      await kv.put(kvKey, JSON.stringify(config));
-    }
+    if (kv) await kv.put(kvKey, JSON.stringify(config));
   };
 
-  if (kv && typeof kv === 'object' && typeof kv.put === 'function') {
-    await kv.put(kvKey, JSON.stringify(config));
-  }
+  if (kv) await kv.put(kvKey, JSON.stringify(config));
 
   // 3. Simulate Multi-step Provisioning
-  // Step 1: Connecting
   await new Promise(resolve => setTimeout(resolve, 2000));
   await updateStatus('provisioning', `Connected to root@${ip}. Creating user ${userName}...`);
 
-  // Step 2: Updates
   await new Promise(resolve => setTimeout(resolve, 3000));
   await updateStatus('provisioning', 'Running Ubuntu updates (apt update && upgrade)...');
 
-  // Step 3: Installing code-server
   await new Promise(resolve => setTimeout(resolve, 3000));
   await updateStatus('provisioning', 'Installing VS Code Server (code-server)...');
 
-  // Step 4: Finalizing
   await new Promise(resolve => setTimeout(resolve, 2000));
-  config.tunnelUrl = `https://${ip}.devbox.cloud`; // Simulated URL
+  config.tunnelUrl = `https://${ip}.devbox.cloud`; 
   await updateStatus('ready', 'Provisioning complete. Environment secured with Cloudflare Access.');
 
   return config;
 }
 
 export async function getServers(userEmail: string) {
-  // @ts-ignore
-  const kv = (globalThis as any).KV || (process.env as any).KV;
+  const { env } = await getCloudflareContext() as unknown as { env: CloudflareEnv };
+  const kv = env.KV;
   
-  // Check if kv is the expected namespace object
-  if (kv && typeof kv === 'object' && typeof kv.list === 'function') {
+  if (kv) {
     const list = await kv.list({ prefix: `servers:${userEmail}:` });
     const servers = await Promise.all(
       list.keys.map(async (key: any) => {
         const val = await kv.get(key.name);
-        return JSON.parse(val);
+        return JSON.parse(val!);
       })
     );
     return servers;
