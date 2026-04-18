@@ -34,10 +34,16 @@ function base64UrlDecode(str: string): string {
 function decodeJwtUnsafe(jwt: string): string | null {
   try {
     const parts = jwt.split('.');
-    if (parts.length !== 3) return null;
-    const payload = JSON.parse(base64UrlDecode(parts[1]));
+    if (parts.length !== 3) {
+      console.error("JWT does not have 3 parts:", jwt.substring(0, 10));
+      return null;
+    }
+    const payloadJson = base64UrlDecode(parts[1]);
+    const payload = JSON.parse(payloadJson);
+    console.log("Decoded JWT payload email:", payload.email);
     return (payload.email || payload.sub || null)?.toLowerCase();
-  } catch {
+  } catch (e) {
+    console.error("Unsafe JWT decode failed:", e);
     return null;
   }
 }
@@ -143,18 +149,19 @@ export async function getIdentity(env: CloudflareEnv): Promise<string> {
 
 /**
  * Safely retrieves the Cloudflare environment.
- * On production, it uses globalThis. On development, it use getCloudflareContext.
  */
 export async function getCloudflareEnv(): Promise<CloudflareEnv> {
-  if (process.env.NODE_ENV === 'development') {
+  try {
     const { getCloudflareContext } = await import('@opennextjs/cloudflare');
     const { env } = await getCloudflareContext() as unknown as { env: CloudflareEnv };
-    return env;
+    if (env && env.KV) return env;
+  } catch (e) {
+    console.warn("getCloudflareContext failed, falling back to globals.");
   }
   
-  // On production (Cloudflare Workers/Pages), bindings are global variables
+  // Final fallback to globals/process.env
   return {
-    KV: (globalThis as any).KV,
+    KV: (globalThis as any).KV || (process.env as any).KV,
     NEXT_PUBLIC_CF_TEAM_DOMAIN: (globalThis as any).NEXT_PUBLIC_CF_TEAM_DOMAIN || (process.env as any).NEXT_PUBLIC_CF_TEAM_DOMAIN
   };
 }
