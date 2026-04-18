@@ -5,12 +5,6 @@ export default function HomePage() {
     <div className="min-h-screen bg-slate-950 text-slate-50 flex flex-col items-center justify-center p-6 font-sans">
       <div className="max-w-3xl text-center space-y-8">
         
-        {/* 'Build in Public' Badge */}
-        <div className="inline-flex items-center rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-sm font-medium text-indigo-300">
-          <span className="flex h-2 w-2 rounded-full bg-indigo-500 mr-2 animate-pulse"></span>
-          Building in public
-        </div>
-
         {/* Hero Text */}
         <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-white">
           The Zero-Touch <br />

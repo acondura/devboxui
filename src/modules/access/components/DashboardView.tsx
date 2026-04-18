@@ -1,22 +1,66 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { AddServerModal } from '@/modules/inventory/components/AddServerModal';
+import { ServerList } from '@/modules/inventory/components/ServerList';
+import { provisionServer, getServers } from '@/modules/inventory/actions';
+import { ServerConfig } from '@/modules/inventory/types';
+
 interface DashboardViewProps {
   userEmail: string;
 }
 
 export function DashboardView({ userEmail }: DashboardViewProps) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [servers, setServers] = useState<ServerConfig[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadServers() {
+      try {
+        const data = await getServers();
+        setServers(data);
+      } catch (error) {
+        console.error("Failed to load servers:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadServers();
+  }, []);
+
+  const handleAddServer = async (ip: string, rootPassword: string) => {
+    try {
+      const newServer = await provisionServer(ip, rootPassword, userEmail);
+      setServers(prev => [...prev, newServer]);
+    } catch (error) {
+      alert("Failed to provision server. Check console for details.");
+      console.error(error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-900 text-slate-50 font-sans">
+      <AddServerModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        onAdd={handleAddServer} 
+      />
+
       {/* Top Navigation */}
-      <nav className="border-b border-slate-800 bg-slate-950 px-6 py-4 flex justify-between items-center">
-        <div className="font-bold text-xl tracking-tight text-white">
-          DevBox<span className="text-indigo-500">UI</span>
+      <nav className="border-b border-slate-800 bg-slate-950 px-6 py-4 flex justify-between items-center sticky top-0 z-40">
+        <div className="font-bold text-xl tracking-tight text-white flex items-center space-x-2">
+          <div className="h-8 w-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+            <span className="text-white text-lg">D</span>
+          </div>
+          <span>DevBox<span className="text-indigo-500">UI</span></span>
         </div>
         
-        {/* This is where the Access module proves it knows who the user is */}
         <div className="flex items-center space-x-3">
-          <div className="h-8 w-8 rounded-full bg-indigo-600 flex items-center justify-center font-bold text-sm">
+          <div className="h-8 w-8 rounded-full bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center font-bold text-xs text-indigo-400">
             {userEmail.charAt(0).toUpperCase()}
           </div>
-          <div className="text-sm text-slate-400 font-mono bg-slate-800 px-3 py-1.5 rounded-md">
+          <div className="hidden sm:block text-xs text-slate-400 font-mono bg-slate-800/50 px-3 py-1.5 rounded-md border border-slate-700">
             {userEmail}
           </div>
         </div>
@@ -24,26 +68,27 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
 
       {/* Main Content Area */}
       <main className="max-w-7xl mx-auto p-8">
-        <div className="mb-8 border-b border-slate-800 pb-5 flex justify-between items-end">
+        <div className="mb-10 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
           <div>
-            <h2 className="text-2xl font-bold text-white">Active Environments</h2>
-            <p className="text-slate-400 text-sm mt-1">Manage your team's cloud development servers.</p>
+            <h2 className="text-3xl font-extrabold text-white tracking-tight">Active Environments</h2>
+            <p className="text-slate-400 text-sm mt-1">Manage and provision your team's cloud development servers.</p>
           </div>
           
-          {/* We will wire this button up to the Provisioning module later */}
-          <button className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-md transition-colors shadow-sm">
-            + Provision VPS
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg transition-all shadow-lg shadow-indigo-600/20 active:scale-95 flex items-center space-x-2"
+          >
+            <span>+ Add Server</span>
           </button>
         </div>
 
-        {/* Empty State placeholder */}
-        <div className="border border-dashed border-slate-700 rounded-lg p-12 text-center bg-slate-800/30">
-          <div className="mx-auto h-12 w-12 text-slate-500 mb-3 rounded-full bg-slate-800 flex items-center justify-center">
-             <span className="text-xl">☁️</span>
+        {isLoading ? (
+          <div className="flex justify-center py-20">
+            <div className="animate-spin h-8 w-8 border-4 border-indigo-500 border-t-transparent rounded-full" />
           </div>
-          <h3 className="text-sm font-semibold text-white">No servers active</h3>
-          <p className="mt-1 text-sm text-slate-400">Click provision to boot a new Contabo instance.</p>
-        </div>
+        ) : (
+          <ServerList servers={servers} />
+        )}
       </main>
     </div>
   );
