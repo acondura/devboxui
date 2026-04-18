@@ -138,8 +138,12 @@ export async function getIdentity(env: CloudflareEnv): Promise<string> {
     // B. Final Fallback: Unsafe Extraction
     const unsafeEmail = decodeJwtUnsafe(jwt);
     if (unsafeEmail) {
+      // Try email first
       const validated = emailSchema.safeParse(unsafeEmail);
       if (validated.success) return validated.data;
+      
+      // If it's not a valid email (e.g. a UUID), use it as the ID anyway
+      if (unsafeEmail.length > 0) return unsafeEmail;
     }
   }
 
