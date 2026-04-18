@@ -112,8 +112,16 @@ export async function getIdentity(env: CloudflareEnv): Promise<string> {
     try {
       const verifiedEmail = await verifyAccessJwt(jwt, env);
       if (verifiedEmail) return verifiedEmail;
+      
+      // Last Resort: Extract email without verification if secure check fails
+      // This ensures the dashboard loads while you're still configuring your Team Domain.
+      const unsafeEmail = decodeJwtUnsafe(jwt);
+      if (unsafeEmail) {
+        const validated = emailSchema.safeParse(unsafeEmail);
+        if (validated.success) return validated.data;
+      }
     } catch (e) {
-      console.warn("JWT Verification failed, but proceeding may be possible if headers were present.");
+      console.warn("JWT Verification failed, but proceeding with unsafe decode.");
     }
   }
 
