@@ -97,36 +97,48 @@ export async function getIdentity(env: CloudflareEnv): Promise<string> {
 
   const headersList = await headers();
   
-  // 2. Primary Check: Cloudflare Access Headers (Fast & Reliable)
-  const emailHeader = headersList.get('cf-access-authenticated-user-email') || 
-                      headersList.get('x-user-email');
-  
-  if (emailHeader) {
-    const validated = emailSchema.safeParse(emailHeader);
-    if (validated.success) return validated.data;
+  // 2. Look for ANY email-like header Cloudflare or a Proxy might send
+  const possibleEmailHeaders = [
+    'cf-access-authenticated-user-email',
+    'x-user-email',
+    'x-auth-request-email',
+    'remote-user',
+    'x-forwarded-user',
+    'x-forwarded-email'
+  ];
+
+  for (const headerName of possibleEmailHeaders) {
+    const value = headersList.get(headerName);
+    if (value) {
+      const validated = emailSchema.safeParse(value);
+      if (validated.success) return validated.data;
+    }
   }
 
-  // 3. Secondary Check: JWT Verification (Secure)
-  const jwt = headersList.get('cf-access-jwt-assertion');
-  if (jwt) {
+  // 3. Extract from JWT Assertion (Try multiple header names)
+  const jwt = headersList.get('cf-access-jwt-assertion') || 
+              headersList.get('x-cf-access-jwt-assertion') ||
+              headersList.get('authorization')?.replace('Bearer ', '');
+
+  if (jwt && jwt.includes('.')) {
+    // A. Attempt Secure Verification
     try {
       const verifiedEmail = await verifyAccessJwt(jwt, env);
       if (verifiedEmail) return verifiedEmail;
-      
-      // Last Resort: Extract email without verification if secure check fails
-      // This ensures the dashboard loads while you're still configuring your Team Domain.
-      const unsafeEmail = decodeJwtUnsafe(jwt);
-      if (unsafeEmail) {
-        const validated = emailSchema.safeParse(unsafeEmail);
-        if (validated.success) return validated.data;
-      }
     } catch (e) {
-      console.warn("JWT Verification failed, but proceeding with unsafe decode.");
+      console.warn("JWT Verification failed.");
+    }
+
+    // B. Final Fallback: Unsafe Extraction
+    const unsafeEmail = decodeJwtUnsafe(jwt);
+    if (unsafeEmail) {
+      const validated = emailSchema.safeParse(unsafeEmail);
+      if (validated.success) return validated.data;
     }
   }
 
   console.error("Security Alert: Access attempt without valid Cloudflare credentials.");
-  throw new Error("Unauthorized: Cloudflare Access is required.");
+  throw new Error("Unauthorized: Could not find user identity in headers or JWT.");
 }
 
 /**
