@@ -9,7 +9,7 @@ export default function HomePage() {
         <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-white">
           The Zero-Touch <br />
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">
-            Control Plane
+            Control Pane
           </span>
         </h1>
         
