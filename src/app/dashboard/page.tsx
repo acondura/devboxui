@@ -14,9 +14,6 @@ export default async function DashboardPage() {
     hasJwt: !!headersList.get('cf-access-jwt-assertion'),
     hasEmailHeader: !!(headersList.get('cf-access-authenticated-user-email') || headersList.get('x-user-email')),
     nodeEnv: process.env.NODE_ENV,
-    jwtKeys: headersList.get('cf-access-jwt-assertion')?.split('.').length === 3 
-      ? Object.keys(JSON.parse(globalThis.atob(headersList.get('cf-access-jwt-assertion')!.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))))
-      : 'invalid-jwt'
   };
 
   try {

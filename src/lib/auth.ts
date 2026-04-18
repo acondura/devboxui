@@ -25,7 +25,8 @@ interface JWK {
 function base64UrlDecode(str: string): string {
   let base64 = str.replace(/-/g, '+').replace(/_/g, '/');
   while (base64.length % 4) base64 += '=';
-  return globalThis.atob(base64);
+  // Use atob directly to avoid "Illegal invocation" error in Cloudflare Workers
+  return atob(base64);
 }
 
 /**
