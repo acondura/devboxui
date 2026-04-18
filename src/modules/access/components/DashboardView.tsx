@@ -18,7 +18,7 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
   useEffect(() => {
     async function loadServers() {
       try {
-        const data = await getServers();
+        const data = await getServers(userEmail);
         setServers(data);
       } catch (error) {
         console.error("Failed to load servers:", error);

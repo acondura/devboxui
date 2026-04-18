@@ -79,8 +79,7 @@ export async function provisionServer(ip: string, rootPassword: string, userEmai
   return config;
 }
 
-export async function getServers() {
-  const userEmail = "user@example.com";
+export async function getServers(userEmail: string) {
   // @ts-ignore
   const kv = (globalThis as any).KV || (process.env as any).KV;
   
