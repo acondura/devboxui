@@ -6,7 +6,9 @@ import { redirect } from 'next/navigation';
 
 export default async function DashboardPage() {
   const headersList = await headers();
-  let userEmail = headersList.get('x-user-email');
+  // Check both common Cloudflare Access header names
+  let userEmail = headersList.get('x-user-email') || 
+                  headersList.get('cf-access-authenticated-user-email');
 
   // Fallback for development or testing if Access is not yet configured
   if (!userEmail && process.env.NODE_ENV === 'development') {
@@ -14,8 +16,7 @@ export default async function DashboardPage() {
   }
 
   if (!userEmail) {
-    // If you want to force access for testing on production, comment out the redirect
-    // or provide a hardcoded fallback here.
+    // If we still don't have an email after login, redirect to home
     redirect('/');
   }
 
