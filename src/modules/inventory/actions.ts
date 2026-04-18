@@ -17,13 +17,12 @@ async function generateSSHKeys() {
   return { publicKey, privateKey };
 }
 
-import { getCloudflareContext } from '@opennextjs/cloudflare';
-import { CloudflareEnv } from '@/lib/auth';
+import { getCloudflareEnv, CloudflareEnv } from '@/lib/auth';
 
 // ... (generateSSHKeys remains same)
 
 export async function provisionServer(ip: string, rootPassword: string, userEmail: string) {
-  const { env } = await getCloudflareContext() as unknown as { env: CloudflareEnv };
+  const env = await getCloudflareEnv();
   const kv = env.KV;
 
   // 1. Generate Keys
@@ -69,7 +68,7 @@ export async function provisionServer(ip: string, rootPassword: string, userEmai
 }
 
 export async function getServers(userEmail: string) {
-  const { env } = await getCloudflareContext() as unknown as { env: CloudflareEnv };
+  const env = await getCloudflareEnv();
   const kv = env.KV;
   
   if (kv) {

@@ -114,3 +114,21 @@ export async function getIdentity(env: CloudflareEnv): Promise<string> {
   console.error("Security Alert: Access attempt without Cloudflare credentials.");
   throw new Error("Unauthorized: Cloudflare Access is required.");
 }
+
+/**
+ * Safely retrieves the Cloudflare environment.
+ * On production, it uses globalThis. On development, it use getCloudflareContext.
+ */
+export async function getCloudflareEnv(): Promise<CloudflareEnv> {
+  if (process.env.NODE_ENV === 'development') {
+    const { getCloudflareContext } = await import('@opennextjs/cloudflare');
+    const { env } = await getCloudflareContext() as unknown as { env: CloudflareEnv };
+    return env;
+  }
+  
+  // On production (Cloudflare Workers/Pages), bindings are global variables
+  return {
+    KV: (globalThis as any).KV,
+    NEXT_PUBLIC_CF_TEAM_DOMAIN: (process.env as any).NEXT_PUBLIC_CF_TEAM_DOMAIN
+  };
+}
