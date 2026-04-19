@@ -6,14 +6,40 @@ import { getCloudflareEnv, getIdentity } from '@/lib/auth';
 import { CloudflareApiService } from '@/lib/cloudflare-api';
 
 /**
- * Uses Base64 obfuscation to hide the 'ssh2' string from the bundler's static analysis.
- * This prevents the bundler from trying to analyze the library's native dependencies.
+ * Executes a command on a remote server via the SSH-as-a-Service Worker.
  */
-const getSshClient = async () => {
-  // 'ssh2' encoded in base64 is 'c3NoMg=='
-  const decodedName = Buffer.from('c3NoMg==', 'base64').toString();
-  const { Client } = await import(decodedName);
-  return new Client();
+const runRemoteCommand = async (config: {
+  host: string;
+  username: string;
+  password?: string;
+  privateKey?: string;
+  command: string;
+}) => {
+  const env = await getCloudflareEnv();
+  const serviceUrl = env.SSH_SERVICE_URL; 
+  const secret = env.SSH_SERVICE_SECRET;
+
+  if (!serviceUrl || !secret) {
+    throw new Error("SSH Service configuration missing (SSH_SERVICE_URL or SSH_SERVICE_SECRET).");
+  }
+
+  const response = await fetch(serviceUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${secret}`
+    },
+    body: JSON.stringify(config)
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    let errorMessage = response.statusText;
+    try { errorMessage = JSON.parse(errorText).error || errorMessage; } catch(e) {}
+    throw new Error(`SSH Service Error: ${errorMessage}`);
+  }
+
+  return await response.json() as { success: boolean; stdout: string; stderr: string; code: number };
 };
 
 /**
@@ -72,36 +98,27 @@ async function generateSSHKeys() {
 /**
  * Executes commands on a remote server via SSH.
  */
+/**
+ * Executes commands on a remote server via SSH (Remote Service).
+ */
 async function executeSshCommands(ip: string, password: string, script: string, onLog: (log: string) => void) {
-  const conn = await getSshClient();
-  return new Promise((resolve, reject) => {
-    
-    conn.on('ready', () => {
-      onLog("SSH Connection established.");
-      conn.exec(script, (err: Error | undefined, stream: any) => {
-        if (err) return reject(err);
-        
-        stream.on('close', (code: number) => {
-          conn.end();
-          if (code === 0) resolve(true);
-          else reject(new Error(`Exit code ${code}`));
-        }).on('data', (data: Buffer) => {
-          onLog(data.toString());
-        }).stderr.on('data', (data: Buffer) => {
-          onLog(`[STDERR] ${data.toString()}`);
-        });
-      });
-    }).on('error', (err: Error) => {
-      reject(err);
-    }).connect({
-      host: ip,
-      port: 22,
-      username: 'root',
-      password: password,
-      // Note: Cloudflare Workers with OpenNext polyfill node:net to use cloudflare:sockets
-      // We may need to explicitly pass the socket if the polyfill is not enough.
-    });
+  onLog(`Sending bootstrap script to remote SSH service for ${ip}...`);
+  
+  const result = await runRemoteCommand({
+    host: ip,
+    username: 'root',
+    password: password,
+    command: script
   });
+
+  if (result.stdout) onLog(result.stdout);
+  if (result.stderr) onLog(`[STDERR] ${result.stderr}`);
+
+  if (!result.success || result.code !== 0) {
+    throw new Error(`SSH Command failed with code ${result.code}`);
+  }
+
+  return true;
 }
 
 /**

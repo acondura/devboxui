@@ -12,6 +12,8 @@
     "start": "next start",
     "lint": "next lint",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "deploy-ssh": "cd ssh-worker && npm install && npx wrangler deploy",
+    "deploy-all": "npm run deploy && npm run deploy-ssh",
     "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts"
@@ -22,7 +24,6 @@
     "next": "15.5.10",
     "react": "19.0.0",
     "react-dom": "19.0.0",
-    "ssh2": "^1.17.0",
     "tweetnacl": "^1.0.3",
     "zod": "^4.3.6"
   },
@@ -32,7 +33,6 @@
     "@types/node": "^20.19.39",
     "@types/react": "^19.1.5",
     "@types/react-dom": "^19.1.5",
-    "@types/ssh2": "^1.15.5",
     "eslint": "^9",
     "eslint-config-next": "15.4.6",
     "tailwindcss": "^4",

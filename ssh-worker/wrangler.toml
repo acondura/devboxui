@@ -1,0 +1,8 @@
+name = "devbox-ssh-service"
+main = "src/index.ts"
+compatibility_date = "2024-04-03"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+# You will override this in the Cloudflare Dashboard with a real secret
+SSH_SERVICE_SECRET = "change-me-later"
