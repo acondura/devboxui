@@ -42,6 +42,13 @@ filesToFix.forEach(file => {
     'from "node:$1"'
   );
 
+  // 3. Patch Dynamic Requires that fail in ESM: require("node:crypto") -> globalThis.crypto
+  // This is a common fix for OpenNext on Cloudflare
+  patched = patched.replace(
+    /require\(['"]node:(crypto|buffer|events)['"]\)/g,
+    'globalThis.$1'
+  );
+
   fs.writeFileSync(file, patched);
   console.log(`✅ Fixed ${file}`);
 });
