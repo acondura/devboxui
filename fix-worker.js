@@ -1,11 +1,33 @@
 const fs = require('fs');
 const path = require('path');
 
-const filesToFix = [
-  path.join(process.cwd(), '.open-next', 'worker.js'),
-  path.join(process.cwd(), '.open-next', 'server-functions', 'default', 'handler.mjs')
-];
+/**
+ * Recursively find all JS files in a directory
+ */
+function getAllFiles(dirPath, arrayOfFiles) {
+  const files = fs.readdirSync(dirPath);
+  arrayOfFiles = arrayOfFiles || [];
 
+  files.forEach(function(file) {
+    if (fs.statSync(dirPath + "/" + file).isDirectory()) {
+      arrayOfFiles = getAllFiles(dirPath + "/" + file, arrayOfFiles);
+    } else {
+      if (file.endsWith('.js') || file.endsWith('.mjs')) {
+        arrayOfFiles.push(path.join(dirPath, "/", file));
+      }
+    }
+  });
+
+  return arrayOfFiles;
+}
+
+const openNextDir = path.join(process.cwd(), '.open-next');
+if (!fs.existsSync(openNextDir)) {
+  console.error("Error: .open-next directory not found!");
+  process.exit(1);
+}
+
+const filesToFix = getAllFiles(openNextDir);
 const coreModules = [
   'buffer', 'events', 'crypto', 'util', 'stream', 'path', 'querystring', 
   'url', 'string_decoder', 'punycode', 'http', 'https', 'zlib', 'fs', 
@@ -13,12 +35,10 @@ const coreModules = [
 ];
 
 filesToFix.forEach(file => {
-  if (!fs.existsSync(file)) return;
-
   console.log(`Patching ${file}...`);
   let content = fs.readFileSync(file, 'utf8');
 
-  // 1. Inject Comprehensive Shims at the top of the file
+  // 1. Inject Comprehensive Shims at the top of EVERY file
   const shims = `
 // Cloudflare Compatibility Shims
 (function() {
@@ -41,14 +61,14 @@ filesToFix.forEach(file => {
   };
   
   globalThis.http = globalThis.http || {
-    IncomingMessage: class {},
-    ServerResponse: class {},
+    IncomingMessage: class { on() { return this; } setEncoding() { return this; } },
+    ServerResponse: class { on() { return this; } end() { return this; } setHeader() { return this; } },
     request: noop, get: noop, Agent: class {}
   };
 
   globalThis.https = globalThis.https || {
-    IncomingMessage: class {},
-    ServerResponse: class {},
+    IncomingMessage: class { on() { return this; } setEncoding() { return this; } },
+    ServerResponse: class { on() { return this; } end() { return this; } setHeader() { return this; } },
     request: noop, get: noop, Agent: class {}
   };
 
@@ -71,26 +91,25 @@ filesToFix.forEach(file => {
     content = shims + content;
   }
 
-  // 2. Patch require calls: require("http") -> require("node:http")
+  // 2. Patch require calls
   content = content.replace(
     /require\(['"](buffer|events|crypto|util|stream|path|querystring|url|string_decoder|punycode|http|https|zlib|fs|os|tls|net|dns|vm|async_hooks|perf_hooks|process)['"]\)/g,
     'require("node:$1")'
   );
 
-  // 3. Patch ESM imports: from "http" -> from "node:http"
+  // 3. Patch ESM imports
   content = content.replace(
     /from\s+['"](buffer|events|crypto|util|stream|path|querystring|url|string_decoder|punycode|http|https|zlib|fs|os|tls|net|dns|vm|async_hooks|perf_hooks|process)['"]/g,
     'from "node:$1"'
   );
 
-  // 4. Critical: Fix Dynamic Requires that fail in ESM
+  // 4. Critical: Force use of our global shims for problematic modules
   coreModules.forEach(mod => {
     const regex = new RegExp(`(?<!\\.)require\\(['"]node:${mod}['"]\\)`, 'g');
     content = content.replace(regex, `(globalThis.${mod} || {})`);
   });
 
   fs.writeFileSync(file, content);
-  console.log(`✅ Fixed ${file}`);
 });
 
-console.log('✨ Comprehensive worker patching complete.');
+console.log('✨ Universal worker patching complete.');
