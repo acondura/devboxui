@@ -19,7 +19,7 @@
   "dependencies": {
     "@opennextjs/cloudflare": "^1.17.1",
     "jose": "^6.2.2",
-    "next": "15.1.5",
+    "next": "15.5.10",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "ssh2": "^1.17.0",
