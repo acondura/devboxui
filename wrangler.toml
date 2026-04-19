@@ -1,0 +1,7 @@
+name = "devboxui"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+# You can leave secrets in the Cloudflare Dashboard UI.
+# Only non-sensitive config goes here if needed.
