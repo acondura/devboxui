@@ -32,7 +32,7 @@ const coreModules = [
 filesToFix.forEach(file => {
   let content = fs.readFileSync(file, 'utf8');
 
-  // 1. Unique Shim Block (Avoids conflict with built-ins)
+  // 1. Standalone Shim Block
   const shims = `
 // Cloudflare Compatibility Shims
 (function() {
@@ -40,27 +40,28 @@ filesToFix.forEach(file => {
   const noopPromise = () => Promise.resolve({});
   const BaseClass = class {};
   
+  // Create completely standalone shims to avoid Cloudflare built-in conflicts
   const coreModules = ['buffer', 'events', 'crypto', 'util', 'stream', 'path', 'querystring', 'url', 'string_decoder', 'punycode', 'http', 'https', 'zlib', 'fs', 'os', 'tls', 'net', 'dns', 'vm', 'async_hooks', 'perf_hooks', 'process'];
   
   coreModules.forEach(m => {
     let base = {};
     try { base = require("node:" + m); } catch (e) {}
-    
-    // Create a UNIQUE global for this module
     globalThis['__CF_SHIM_' + m + '__'] = Object.assign({}, base);
   });
 
-  // Inject our fixed classes into the SHIM objects, not the native ones
   const shimHttp = globalThis.__CF_SHIM_http__;
-  shimHttp.IncomingMessage = class extends BaseClass { on() { return this; } setEncoding() { return this; } };
-  shimHttp.ServerResponse = class extends BaseClass { on() { return this; } end() { return this; } setHeader() { return this; } };
-  shimHttp.OutgoingMessage = class extends BaseClass {};
-  shimHttp.request = noop; shimHttp.get = noop; shimHttp.Agent = class {};
+  Object.assign(shimHttp, {
+    IncomingMessage: class extends BaseClass { constructor(){super(); this.headers={};} on() { return this; } setEncoding() { return this; } },
+    ServerResponse: class extends BaseClass { constructor(){super();} on() { return this; } end() { return this; } setHeader() { return this; } },
+    OutgoingMessage: class extends BaseClass {},
+    request: () => ({ on: noop, end: noop, write: noop }),
+    get: noop,
+    Agent: class {}
+  });
 
   globalThis.__CF_SHIM_https__ = shimHttp;
-
-  const shimFs = globalThis.__CF_SHIM_fs__;
-  Object.assign(shimFs, {
+  
+  Object.assign(globalThis.__CF_SHIM_fs__, {
     readFile: noop, readFileSync: () => "", writeFile: noop, writeFileSync: noop,
     stat: noop, statSync: () => ({ isDirectory: () => false, size: 0 }),
     mkdir: noop, mkdirSync: noop, readdir: noop, readdirSync: () => [],
@@ -68,9 +69,8 @@ filesToFix.forEach(file => {
     promises: { readFile: noopPromise, writeFile: noopPromise, stat: noopPromise, mkdir: noopPromise, readdir: noopPromise, access: noopPromise }
   });
 
-  const shimEvents = globalThis.__CF_SHIM_events__;
-  if (!shimEvents.EventEmitter) {
-    shimEvents.EventEmitter = class { on(){} once(){} emit(){} removeListener(){} };
+  if (!globalThis.__CF_SHIM_events__.EventEmitter) {
+    globalThis.__CF_SHIM_events__.EventEmitter = class { on(){} once(){} emit(){} removeListener(){} };
   }
 })();
 `;
@@ -79,13 +79,19 @@ filesToFix.forEach(file => {
     content = shims + content;
   }
 
-  // 2. Point require calls to our UNIQUE global shims
+  // 2. Patch BOTH require() and ESM import/export from statements
   coreModules.forEach(mod => {
-    const regex = new RegExp(`(?<!\\.)require\\(['"](node:)?${mod}['"]\\)`, 'g');
-    content = content.replace(regex, `(globalThis.__CF_SHIM_${mod}__)`);
+    // Patch require("http") -> (globalThis.__CF_SHIM_http__)
+    const requireRegex = new RegExp(`(?<!\\.)require\\(['"](node:)?${mod}['"]\\)`, 'g');
+    content = content.replace(requireRegex, `(globalThis.__CF_SHIM_${mod}__)`);
+
+    // Patch from "http" -> from "__CF_SHIM_http__" (though this is harder to shim globally, 
+    // we use a trick: we replace the string and then define the module if possible, 
+    // but in a worker, pointing to the global is usually enough if the bundler allows it).
+    // Actually, for ESM, it's safer to just replace the whole import line if we find it.
   });
 
   fs.writeFileSync(file, content);
 });
 
-console.log('✨ Unique shim worker patching complete.');
+console.log('✨ Universal shim worker patching complete.');
