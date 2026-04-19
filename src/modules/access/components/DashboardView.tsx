@@ -18,7 +18,7 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
   useEffect(() => {
     async function loadServers() {
       try {
-        const data = await getServers(userEmail);
+        const data = await getServers();
         setServers(data);
       } catch (error) {
         console.error("Failed to load servers:", error);
@@ -31,7 +31,7 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
 
   const handleAddServer = async (ip: string, rootPassword: string) => {
     try {
-      const newServer = await provisionServer(ip, rootPassword, userEmail);
+      const newServer = await provisionServer(ip, rootPassword);
       setServers(prev => [...prev, newServer]);
     } catch (error) {
       alert("Failed to provision server. Check console for details.");
