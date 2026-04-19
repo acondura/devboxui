@@ -6,11 +6,9 @@ initOpenNextCloudflareForDev();
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   serverExternalPackages: ['ssh2'],
-  experimental: {
-    turbo: {
-      resolveAlias: {
-        'cpu-features': './src/lib/shims/empty.js',
-      },
+  turbo: {
+    resolveAlias: {
+      'cpu-features': './src/lib/shims/empty.js',
     },
   },
 };
