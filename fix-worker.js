@@ -24,7 +24,6 @@ if (!fs.existsSync(openNextDir)) {
 
 const filesToFix = getAllFiles(openNextDir);
 
-// All core modules that need the node: prefix or shimming
 const coreModules = [
   'buffer', 'events', 'crypto', 'util', 'stream', 'path', 'querystring', 
   'url', 'string_decoder', 'punycode', 'http', 'https', 'zlib', 'fs', 
@@ -34,7 +33,7 @@ const coreModules = [
 filesToFix.forEach(file => {
   let content = fs.readFileSync(file, 'utf8');
 
-  // 1. Critical Shims (for http and fs which Cloudflare doesn't fully support)
+  // 1. Surgical Shims
   const shims = `
 if (typeof globalThis.http === 'undefined' || !globalThis.http.IncomingMessage) {
   const Base = class {};
@@ -61,20 +60,19 @@ if (typeof globalThis.fs === 'undefined' || !globalThis.fs.readFile) {
     content = shims + content;
   }
 
-  // 2. Patch ALL require calls to use node: prefix or our globals
+  // 2. Safe Prefixing with Single Quotes
   coreModules.forEach(mod => {
     const regex = new RegExp(`(?<!\\.)require\\(['"](node:)?${mod}['"]\\)`, 'g');
     
     if (['http', 'https', 'fs'].includes(mod)) {
-      // Use our shims for these
       content = content.replace(regex, `(globalThis.${mod})`);
     } else {
-      // Force node: prefix for everything else to satisfy wrangler/esbuild
-      content = content.replace(regex, `require("node:${mod}")`);
+      // Use SINGLE QUOTES to avoid breaking code that is itself inside double-quoted strings
+      content = content.replace(regex, `require('node:${mod}')`);
     }
   });
 
   fs.writeFileSync(file, content);
 });
 
-console.log('✅ Surgical patching with node: prefixing complete.');
+console.log('✅ Surgical patching with single-quoted node: prefixing complete.');
