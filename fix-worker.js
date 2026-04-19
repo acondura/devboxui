@@ -1,56 +1,57 @@
 const fs = require('fs');
 const path = require('path');
 
-/**
- * Cloudflare Pages requires Node.js built-ins to be prefixed with "node:"
- * (e.g. "node:http" instead of "http"). This script finds and fixes those
- * in the bundled OpenNext output.
- */
-
 const filesToFix = [
   path.join(process.cwd(), '.open-next', 'worker.js'),
   path.join(process.cwd(), '.open-next', 'server-functions', 'default', 'handler.mjs')
 ];
 
+const coreModules = [
+  'buffer', 'events', 'crypto', 'util', 'stream', 'path', 'querystring', 
+  'url', 'string_decoder', 'punycode', 'http', 'https', 'zlib', 'fs', 
+  'os', 'tls', 'net', 'dns', 'vm', 'async_hooks', 'perf_hooks', 'process'
+];
+
 filesToFix.forEach(file => {
-  if (!fs.existsSync(file)) {
-    console.log(`Skipping missing file: ${file}`);
-    return;
-  }
+  if (!fs.existsSync(file)) return;
 
   console.log(`Patching ${file}...`);
-  const content = fs.readFileSync(file, 'utf8');
+  let content = fs.readFileSync(file, 'utf8');
 
-  // List of modules to prefix
-  const modules = [
-    'buffer', 'events', 'crypto', 'util', 'stream', 'path', 'querystring', 
-    'url', 'string_decoder', 'punycode', 'http', 'https', 'zlib', 'fs', 
-    'os', 'tls', 'net', 'dns', 'vm', 'async_hooks', 'perf_hooks', 'process'
-  ];
-
-  let patched = content;
+  // 1. Inject Shims at the top of the file to prevent "undefined" errors
+  const shims = `
+// Cloudflare Compatibility Shims
+globalThis.fs = globalThis.fs || {};
+globalThis.os = globalThis.os || { platform: () => 'linux', release: () => '1.0.0', arch: () => 'x64' };
+globalThis.path = globalThis.path || { join: (...args) => args.join('/'), resolve: (...args) => args[0] };
+globalThis.process = globalThis.process || { env: {}, nextTick: (f) => setTimeout(f, 0) };
+`;
   
-  // 1. Patch require calls: require("http") -> require("node:http")
-  patched = patched.replace(
+  if (!content.includes('Cloudflare Compatibility Shims')) {
+    content = shims + content;
+  }
+
+  // 2. Patch require calls: require("http") -> require("node:http")
+  content = content.replace(
     /require\(['"](buffer|events|crypto|util|stream|path|querystring|url|string_decoder|punycode|http|https|zlib|fs|os|tls|net|dns|vm|async_hooks|perf_hooks|process)['"]\)/g,
     'require("node:$1")'
   );
 
-  // 2. Patch ESM imports: from "http" -> from "node:http"
-  patched = patched.replace(
+  // 3. Patch ESM imports: from "http" -> from "node:http"
+  content = content.replace(
     /from\s+['"](buffer|events|crypto|util|stream|path|querystring|url|string_decoder|punycode|http|https|zlib|fs|os|tls|net|dns|vm|async_hooks|perf_hooks|process)['"]/g,
     'from "node:$1"'
   );
 
-  // 3. Patch Dynamic Requires that fail in ESM: require("node:crypto") -> globalThis.crypto
-  // This is a common fix for OpenNext on Cloudflare
-  patched = patched.replace(
-    /require\(['"]node:(crypto|buffer|events)['"]\)/g,
-    'globalThis.$1'
-  );
+  // 4. Critical: Fix Dynamic Requires that fail in ESM
+  // Instead of require("node:fs"), use the global shim or an empty object
+  coreModules.forEach(mod => {
+    const regex = new RegExp(`require\\(['"]node:${mod}['"]\\)`, 'g');
+    content = content.replace(regex, `(globalThis.${mod} || {})`);
+  });
 
-  fs.writeFileSync(file, patched);
+  fs.writeFileSync(file, content);
   console.log(`✅ Fixed ${file}`);
 });
 
-console.log('✨ Worker patching complete.');
+console.log('✨ Proactive worker patching complete.');
