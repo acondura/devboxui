@@ -23,14 +23,20 @@ if (!fs.existsSync(openNextDir)) {
 }
 
 const filesToFix = getAllFiles(openNextDir);
-const coreModules = ['http', 'https', 'fs', 'os'];
+
+// All core modules that need the node: prefix or shimming
+const coreModules = [
+  'buffer', 'events', 'crypto', 'util', 'stream', 'path', 'querystring', 
+  'url', 'string_decoder', 'punycode', 'http', 'https', 'zlib', 'fs', 
+  'os', 'tls', 'net', 'dns', 'vm', 'async_hooks', 'perf_hooks', 'process'
+];
 
 filesToFix.forEach(file => {
   let content = fs.readFileSync(file, 'utf8');
 
-  // Simple, non-intrusive shims
+  // 1. Critical Shims (for http and fs which Cloudflare doesn't fully support)
   const shims = `
-if (typeof globalThis.http === 'undefined') {
+if (typeof globalThis.http === 'undefined' || !globalThis.http.IncomingMessage) {
   const Base = class {};
   const httpShim = {
     IncomingMessage: class extends Base { constructor(){super(); this.headers={};} on(){return this;} setEncoding(){return this;} },
@@ -42,8 +48,12 @@ if (typeof globalThis.http === 'undefined') {
   globalThis.http = httpShim;
   globalThis.https = httpShim;
 }
-if (typeof globalThis.fs === 'undefined') {
-  globalThis.fs = { readFileSync: () => "", readFile: () => {}, statSync: () => ({ isDirectory: () => false }), promises: { readFile: () => Promise.resolve("") } };
+if (typeof globalThis.fs === 'undefined' || !globalThis.fs.readFile) {
+  globalThis.fs = { 
+    readFileSync: () => "", readFile: () => {}, 
+    statSync: () => ({ isDirectory: () => false }), 
+    promises: { readFile: () => Promise.resolve("") } 
+  };
 }
 `;
   
@@ -51,13 +61,20 @@ if (typeof globalThis.fs === 'undefined') {
     content = shims + content;
   }
 
-  // Only patch the critical modules
+  // 2. Patch ALL require calls to use node: prefix or our globals
   coreModules.forEach(mod => {
     const regex = new RegExp(`(?<!\\.)require\\(['"](node:)?${mod}['"]\\)`, 'g');
-    content = content.replace(regex, `(globalThis.${mod})`);
+    
+    if (['http', 'https', 'fs'].includes(mod)) {
+      // Use our shims for these
+      content = content.replace(regex, `(globalThis.${mod})`);
+    } else {
+      // Force node: prefix for everything else to satisfy wrangler/esbuild
+      content = content.replace(regex, `require("node:${mod}")`);
+    }
   });
 
   fs.writeFileSync(file, content);
 });
 
-console.log('✅ Reverted to simple surgical patching.');
+console.log('✅ Surgical patching with node: prefixing complete.');
