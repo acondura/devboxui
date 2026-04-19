@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "pages-build": "echo 'n' | opennextjs-cloudflare build && mv .open-next/worker.js .open-next/_worker.js",
+    "pages-build": "echo 'n' | opennextjs-cloudflare build && sed -i '' 's/require(\"\\(async_hooks\\|fs\\|path\\|os\\|url\\|vm\\|util\\|buffer\\|crypto\\|stream\\|http\\|https\\|events\\|net\\|tls\\|zlib\\)\")/require(\"node:\\1\")/g' .open-next/worker.js && mv .open-next/worker.js .open-next/_worker.js",
     "start": "next start",
     "lint": "next lint",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
