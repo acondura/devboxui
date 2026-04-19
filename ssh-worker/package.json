@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "browser": {
     "cpu-features": false,
-    "./crypto/build/Release/sshcrypto.node": "./sshcrypto-shim.js"
+    "ssh2/lib/protocol/crypto/build/Release/sshcrypto.node": "./sshcrypto-shim.js"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240403.0",
