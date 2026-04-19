@@ -1,26 +1,59 @@
 const fs = require('fs');
 const path = require('path');
 
-const workerPath = path.join(process.cwd(), '.open-next', 'worker.js');
+function walk(dir) {
+  let results = [];
+  const list = fs.readdirSync(dir);
+  list.forEach(file => {
+    file = path.join(dir, file);
+    const stat = fs.statSync(file);
+    if (stat && stat.isDirectory()) {
+      results = results.concat(walk(file));
+    } else {
+      if (file.endsWith('.js') || file.endsWith('.mjs')) {
+        results.push(file);
+      }
+    }
+  });
+  return results;
+}
 
-if (fs.existsSync(workerPath)) {
-  let content = fs.readFileSync(workerPath, 'utf8');
-  
-  // Modules to prefix with node:
+const openNextDir = path.join(process.cwd(), '.open-next');
+
+if (fs.existsSync(openNextDir)) {
+  const files = walk(openNextDir);
+  console.log(`🔍 Scanning ${files.length} files in .open-next...`);
+
   const modules = [
     'async_hooks', 'fs', 'path', 'os', 'url', 'vm', 'util', 
     'buffer', 'crypto', 'stream', 'http', 'https', 'events', 
     'net', 'tls', 'zlib'
   ];
 
-  modules.forEach(mod => {
-    const regex = new RegExp(`require\\("${mod}"\\)`, 'g');
-    content = content.replace(regex, `require("node:${mod}")`);
+  let fixedCount = 0;
+
+  files.forEach(file => {
+    let content = fs.readFileSync(file, 'utf8');
+    let changed = false;
+
+    modules.forEach(mod => {
+      // Handle both require("fs") and require('fs')
+      const regex = new RegExp(`require\\(["']${mod}["']\\)`, 'g');
+      if (regex.test(content)) {
+        content = content.replace(regex, `require("node:${mod}")`);
+        changed = true;
+      }
+    });
+
+    if (changed) {
+      fs.writeFileSync(file, content);
+      fixedCount++;
+      console.log(`✅ Fixed: ${path.relative(openNextDir, file)}`);
+    }
   });
 
-  fs.writeFileSync(workerPath, content);
-  console.log('✅ Successfully prefixed Node.js modules in worker.js');
+  console.log(`✨ Done! Fixed ${fixedCount} files.`);
 } else {
-  console.error('❌ Could not find .open-next/worker.js');
+  console.error('❌ Could not find .open-next directory');
   process.exit(1);
 }
