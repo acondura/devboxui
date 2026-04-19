@@ -40,6 +40,18 @@ filesToFix.forEach(file => {
     }
   };
   
+  globalThis.http = globalThis.http || {
+    IncomingMessage: class {},
+    ServerResponse: class {},
+    request: noop, get: noop, Agent: class {}
+  };
+
+  globalThis.https = globalThis.https || {
+    IncomingMessage: class {},
+    ServerResponse: class {},
+    request: noop, get: noop, Agent: class {}
+  };
+
   globalThis.os = globalThis.os || { 
     platform: () => 'linux', release: () => '1.0.0', arch: () => 'x64',
     homedir: () => '/tmp', tmpdir: () => '/tmp', hostname: () => 'cloudflare'
