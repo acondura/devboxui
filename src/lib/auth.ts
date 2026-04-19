@@ -36,16 +36,19 @@ export async function getCloudflareEnv(): Promise<CloudflareEnv> {
   try {
     const { getCloudflareContext } = await import('@opennextjs/cloudflare');
     const context = await getCloudflareContext();
-    env = context.env;
-  } catch {
-    // Fallback to globals on production if context is unavailable
-    env = {
-      KV: (globalThis as any).KV || (process.env as any).KV,
-      NEXT_PUBLIC_CF_TEAM_DOMAIN: (globalThis as any).NEXT_PUBLIC_CF_TEAM_DOMAIN || (process.env as any).NEXT_PUBLIC_CF_TEAM_DOMAIN,
-    };
+    env = { ...context.env };
+  } catch (e) {
+    console.warn("Could not load Cloudflare Context:", e);
   }
 
-  return CloudflareEnvSchema.parse(env);
+  // Merge sources: open-next context > global worker env > process.env
+  const mergedEnv = {
+    ...process.env,
+    ...(globalThis as any),
+    ...env
+  };
+
+  return CloudflareEnvSchema.parse(mergedEnv);
 }
 
 /**

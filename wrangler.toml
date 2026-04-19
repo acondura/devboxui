@@ -4,5 +4,4 @@ compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = "dist"
 
 [vars]
-# You can leave secrets in the Cloudflare Dashboard UI.
-# Only non-sensitive config goes here if needed.
+NEXT_PUBLIC_CF_TEAM_DOMAIN = "k9czuj5q2zbo29nb"
