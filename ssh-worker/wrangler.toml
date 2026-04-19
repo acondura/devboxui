@@ -3,6 +3,16 @@ main = "src/index.ts"
 compatibility_date = "2025-04-19"
 compatibility_flags = ["nodejs_compat"]
 
+[build]
+command = "npm install"
+
+[no_bundle]
+# We still want to bundle, but we need to tell esbuild to ignore the native binary
+# Wrangler doesn't have a direct 'external' flag in toml, so we use this trick:
+command = "npm install && npx esbuild src/index.ts --bundle --outfile=dist/index.js --platform=node --external:*.node --format=esm"
+
+# Update the main to point to our manually bundled file
+main = "dist/index.js"
+
 [vars]
-# You will override this in the Cloudflare Dashboard with a real secret
 SSH_SERVICE_SECRET = "change-me-later"
