@@ -144,19 +144,31 @@ export async function getIdentity(passedEnv?: CloudflareEnv): Promise<string> {
     const keys = await getAccessPublicKeys(teamDomain);
     
     if (keys.length > 0) {
-      // Attempt verification with the first available key
-      const publicKey = await importJWK(keys[0], 'RS256');
-      const { payload } = await jwtVerify(jwt, publicKey, {
-        issuer: `https://${teamDomain}.cloudflareaccess.com`,
-      });
+      console.log(`Attempting verification with ${keys.length} keys...`);
       
-      const validated = emailSchema.safeParse(payload.email);
-      if (validated.success) return validated.data;
+      for (const key of keys) {
+        try {
+          const publicKey = await importJWK(key, 'RS256');
+          const { payload } = await jwtVerify(jwt, publicKey, {
+            issuer: `https://${teamDomain}.cloudflareaccess.com`,
+          });
+          
+          const validated = emailSchema.safeParse(payload.email);
+          if (validated.success) {
+            console.log("JWT Verified successfully!");
+            return validated.data;
+          }
+        } catch (err) {
+          // If this key fails, try the next one
+          console.log(`Key ${key.kid || 'unknown'} failed verification, trying next...`);
+          continue;
+        }
+      }
     } else {
       console.error("Could not fetch any public keys from Cloudflare.");
     }
   } catch (error) {
-    console.error("JWT Verification failed:", error instanceof Error ? error.message : String(error));
+    console.error("JWT Verification process failed:", error instanceof Error ? error.message : String(error));
   }
 
   // 3. Fallback to Identity Header (Desperate fallback if verified above fails)
