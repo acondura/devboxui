@@ -168,7 +168,7 @@ export async function getServers() {
 
   const list = await kv.list({ prefix: `servers:${userEmail}:` });
   const servers = await Promise.all(
-    list.keys.map(async (key) => {
+    list.keys.map(async (key: { name: string }) => {
       const val = await kv.get(key.name);
       return JSON.parse(val!) as ServerConfig;
     })
