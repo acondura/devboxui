@@ -44,9 +44,10 @@ globalThis.process = globalThis.process || { env: {}, nextTick: (f) => setTimeou
   );
 
   // 4. Critical: Fix Dynamic Requires that fail in ESM
-  // Instead of require("node:fs"), use the global shim or an empty object
+  // Instead of require("node:fs"), use the global shim or an empty object.
+  // We use a negative lookbehind to ensure we don't break property access like st.require()
   coreModules.forEach(mod => {
-    const regex = new RegExp(`require\\(['"]node:${mod}['"]\\)`, 'g');
+    const regex = new RegExp(`(?<!\\.)require\\(['"]node:${mod}['"]\\)`, 'g');
     content = content.replace(regex, `(globalThis.${mod} || {})`);
   });
 
