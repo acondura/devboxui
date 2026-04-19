@@ -59,6 +59,7 @@ filesToFix.forEach(file => {
   const httpShim = {
     IncomingMessage: class extends BaseClass { on() { return this; } setEncoding() { return this; } },
     ServerResponse: class extends BaseClass { on() { return this; } end() { return this; } setHeader() { return this; } },
+    OutgoingMessage: class extends BaseClass {},
     request: noop, get: noop, Agent: class {}
   };
   patch('http', httpShim);
@@ -68,20 +69,12 @@ filesToFix.forEach(file => {
   patch('os', { platform: () => 'linux', homedir: () => '/tmp', tmpdir: () => '/tmp' });
   patch('path', { join: (...args) => args.filter(Boolean).join('/'), resolve: (...args) => args[args.length - 1] });
 
-  // Stream & Buffer (Ensure they exist)
-  try {
-    const s = require('node:stream');
-    patch('stream', s);
-  } catch(e) {
-    patch('stream', { Readable: BaseClass, Writable: BaseClass, Transform: BaseClass, PassThrough: BaseClass });
-  }
+  // Stream & Buffer
+  try { patch('stream', require('node:stream')); } catch(e) { patch('stream', { Readable: BaseClass, Writable: BaseClass }); }
+  try { patch('buffer', require('node:buffer')); } catch(e) { patch('buffer', { Buffer: class {} }); }
   
-  try {
-    const b = require('node:buffer');
-    patch('buffer', b);
-  } catch(e) {
-    patch('buffer', { Buffer: class {} });
-  }
+  // Events
+  try { patch('events', require('node:events')); } catch(e) { patch('events', { EventEmitter: class { on(){} once(){} emit(){} removeListener(){} } }); }
 })();
 `;
   
@@ -92,7 +85,6 @@ filesToFix.forEach(file => {
   // 2. Patch all require calls
   coreModules.forEach(mod => {
     const regex = new RegExp(`(?<!\\.)require\\(['"](node:)?${mod}['"]\\)`, 'g');
-    // Hybrid approach: Use globalThis if we patched it, otherwise try node: module
     content = content.replace(regex, `(globalThis.${mod} || (function(){try{return require("node:${mod}")}catch(e){return {}}})())`);
   });
 
