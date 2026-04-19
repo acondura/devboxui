@@ -10,7 +10,7 @@ export default async function DashboardPage() {
   
   let userEmail: string;
   try {
-    userEmail = await getIdentity();
+    userEmail = await getIdentity(env);
   } catch (error) {
     console.error("Dashboard auth failed:", error);
     redirect('/');

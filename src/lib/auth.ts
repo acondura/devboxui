@@ -54,45 +54,74 @@ export async function getCloudflareEnv(): Promise<CloudflareEnv> {
 /**
  * Fetches and caches Cloudflare Access Public Keys
  */
+/**
+ * Fetches and caches Cloudflare Access Public Keys
+ */
 async function getAccessPublicKeys(teamDomain: string): Promise<JWK[]> {
-  const url = `https://${teamDomain}.cloudflareaccess.com/cdn-cgi/access/jwks`;
-  console.log(`Fetching keys from: ${url}`);
+  const endpoints = [
+    `https://${teamDomain}.cloudflareaccess.com/cdn-cgi/access/jwks`,
+    `https://${teamDomain}.cloudflareaccess.com/cdn-cgi/access/certs`
+  ];
   
-  try {
-    const response = await fetch(url, {
-      cache: 'no-store' // Disable cache for debugging
-    });
-    
-    console.log(`JWKS Response Status: ${response.status} ${response.statusText}`);
-    
-    if (!response.ok) {
-      const text = await response.text();
-      console.error(`JWKS Fetch Error Body: ${text.substring(0, 100)}`);
-      return [];
+  for (const url of endpoints) {
+    try {
+      console.log(`Fetching keys from: ${url}`);
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: { 
+          'Accept': 'application/json',
+          'User-Agent': 'DevBoxUI-Auth' 
+        },
+        cache: 'no-store'
+      });
+      
+      if (response.ok) {
+        const data = await response.json() as { keys: JWK[] };
+        if (data.keys?.length > 0) {
+          console.log(`Successfully fetched ${data.keys.length} keys from ${url}`);
+          return data.keys;
+        }
+      } else {
+        console.warn(`Failed to fetch from ${url}: ${response.status} ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error(`Error fetching keys from ${url}:`, error);
     }
-    
-    const data = await response.json() as { keys: JWK[] };
-    return data.keys || [];
-  } catch (error) {
-    console.error("Failed to fetch CF Access keys:", error instanceof Error ? error.message : String(error));
-    return [];
   }
+  return [];
 }
 
 /**
  * Strictly verifies the identity of the requester
  */
-export async function getIdentity(): Promise<string> {
+export async function getIdentity(passedEnv?: CloudflareEnv): Promise<string> {
   // 1. Development Bypass
   if (process.env.NODE_ENV === 'development') {
     return 'dev-user@example.com';
   }
 
-  const env = await getCloudflareEnv();
+  const env = passedEnv || await getCloudflareEnv();
   const headersList = await headers();
   
   const jwt = headersList.get('cf-access-jwt-assertion');
-  const teamDomain = env.NEXT_PUBLIC_CF_TEAM_DOMAIN?.replace(/^https?:\/\//, '').replace('.cloudflareaccess.com', '').split('/')[0];
+  
+  // Try to find the team domain from env, but fallback to extracting it from the JWT issuer
+  let teamDomain = (env.NEXT_PUBLIC_CF_TEAM_DOMAIN || '').trim();
+  
+  if (!teamDomain && jwt) {
+    try {
+      const payload = JSON.parse(atob(jwt.split('.')[1]));
+      if (payload.iss) {
+        teamDomain = payload.iss.replace(/^https?:\/\//, '').replace('.cloudflareaccess.com', '').split('/')[0];
+        console.log("Extracted teamDomain from JWT:", teamDomain);
+      }
+    } catch (e) {
+      console.warn("Could not extract domain from JWT:", e);
+    }
+  }
+
+  // Final cleanup of the domain string
+  teamDomain = teamDomain.replace(/^https?:\/\//, '').replace('.cloudflareaccess.com', '').split('/')[0];
 
   console.log("Auth Debug:", {
     hasJwt: !!jwt,
@@ -100,34 +129,40 @@ export async function getIdentity(): Promise<string> {
     envKeys: Object.keys(env)
   });
 
-  // 2. Strict JWT Verification (If Configured)
-  if (jwt && teamDomain) {
-    try {
-      const keys = await getAccessPublicKeys(teamDomain);
-      console.log(`Fetched ${keys.length} Access keys`);
-      
-      if (keys.length > 0) {
-        // Try all keys if necessary, or just the first one
-        const publicKey = await importJWK(keys[0], 'RS256');
-        const { payload } = await jwtVerify(jwt, publicKey, {
-          issuer: `https://${teamDomain}.cloudflareaccess.com`,
-        });
-        
-        const validated = emailSchema.safeParse(payload.email);
-        if (validated.success) return validated.data;
-      }
-    } catch (error) {
-      console.warn("JWT Verification failed:", error instanceof Error ? error.message : String(error));
-    }
+  if (!jwt) {
+    console.error("No cf-access-jwt-assertion header found.");
+    throw new Error("Unauthorized: Cloudflare Access JWT is required.");
   }
 
-  // 3. Fallback to Identity Header (Only if JWT verification isn't possible or fails)
-  const emailHeader = headersList.get('cf-access-authenticated-user-email') || 
-                      headersList.get('x-user-email');
-  
-  console.log("Auth Fallback Email:", emailHeader);
+  if (!teamDomain) {
+    console.error("NEXT_PUBLIC_CF_TEAM_DOMAIN is missing.");
+    throw new Error("Unauthorized: Configuration error.");
+  }
 
+  // 2. Strict JWT Verification
+  try {
+    const keys = await getAccessPublicKeys(teamDomain);
+    
+    if (keys.length > 0) {
+      // Attempt verification with the first available key
+      const publicKey = await importJWK(keys[0], 'RS256');
+      const { payload } = await jwtVerify(jwt, publicKey, {
+        issuer: `https://${teamDomain}.cloudflareaccess.com`,
+      });
+      
+      const validated = emailSchema.safeParse(payload.email);
+      if (validated.success) return validated.data;
+    } else {
+      console.error("Could not fetch any public keys from Cloudflare.");
+    }
+  } catch (error) {
+    console.error("JWT Verification failed:", error instanceof Error ? error.message : String(error));
+  }
+
+  // 3. Fallback to Identity Header (Desperate fallback if verified above fails)
+  const emailHeader = headersList.get('cf-access-authenticated-user-email');
   if (emailHeader) {
+    console.warn("Using unverified identity header as fallback.");
     const validated = emailSchema.safeParse(emailHeader);
     if (validated.success) return validated.data;
   }
