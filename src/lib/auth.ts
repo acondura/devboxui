@@ -56,17 +56,25 @@ export async function getCloudflareEnv(): Promise<CloudflareEnv> {
  */
 async function getAccessPublicKeys(teamDomain: string): Promise<JWK[]> {
   const url = `https://${teamDomain}.cloudflareaccess.com/cdn-cgi/access/jwks`;
+  console.log(`Fetching keys from: ${url}`);
   
   try {
     const response = await fetch(url, {
-      next: { revalidate: 3600, tags: ['cf-access-jwks'] }
+      cache: 'no-store' // Disable cache for debugging
     });
     
-    if (!response.ok) return [];
+    console.log(`JWKS Response Status: ${response.status} ${response.statusText}`);
+    
+    if (!response.ok) {
+      const text = await response.text();
+      console.error(`JWKS Fetch Error Body: ${text.substring(0, 100)}`);
+      return [];
+    }
+    
     const data = await response.json() as { keys: JWK[] };
     return data.keys || [];
   } catch (error) {
-    console.error("Failed to fetch CF Access keys:", error);
+    console.error("Failed to fetch CF Access keys:", error instanceof Error ? error.message : String(error));
     return [];
   }
 }
