@@ -32,7 +32,7 @@ const coreModules = [
 filesToFix.forEach(file => {
   let content = fs.readFileSync(file, 'utf8');
 
-  // 1. Assertive Shims: Overwrite missing pieces even if the module exists
+  // 1. Assertive Shims
   const shims = `
 // Cloudflare Compatibility Shims
 (function() {
@@ -40,11 +40,11 @@ filesToFix.forEach(file => {
   const noopPromise = () => Promise.resolve({});
   const BaseClass = class {};
   
-  // Helper to safely extend an object
   const patch = (name, obj) => {
     globalThis[name] = Object.assign(globalThis[name] || {}, obj);
   };
 
+  // FS Shim
   patch('fs', {
     readFile: noop, readFileSync: () => "",
     writeFile: noop, writeFileSync: noop,
@@ -55,16 +55,33 @@ filesToFix.forEach(file => {
     promises: { readFile: noopPromise, writeFile: noopPromise, stat: noopPromise, mkdir: noopPromise, readdir: noopPromise, access: noopPromise }
   });
   
+  // HTTP Shim
   const httpShim = {
     IncomingMessage: class extends BaseClass { on() { return this; } setEncoding() { return this; } },
     ServerResponse: class extends BaseClass { on() { return this; } end() { return this; } setHeader() { return this; } },
     request: noop, get: noop, Agent: class {}
   };
-  
   patch('http', httpShim);
   patch('https', httpShim);
+
+  // OS & Path Shims
   patch('os', { platform: () => 'linux', homedir: () => '/tmp', tmpdir: () => '/tmp' });
   patch('path', { join: (...args) => args.filter(Boolean).join('/'), resolve: (...args) => args[args.length - 1] });
+
+  // Stream & Buffer (Ensure they exist)
+  try {
+    const s = require('node:stream');
+    patch('stream', s);
+  } catch(e) {
+    patch('stream', { Readable: BaseClass, Writable: BaseClass, Transform: BaseClass, PassThrough: BaseClass });
+  }
+  
+  try {
+    const b = require('node:buffer');
+    patch('buffer', b);
+  } catch(e) {
+    patch('buffer', { Buffer: class {} });
+  }
 })();
 `;
   
@@ -72,14 +89,14 @@ filesToFix.forEach(file => {
     content = shims + content;
   }
 
-  // 2. Patch all require calls to use our patched globals
+  // 2. Patch all require calls
   coreModules.forEach(mod => {
     const regex = new RegExp(`(?<!\\.)require\\(['"](node:)?${mod}['"]\\)`, 'g');
-    // Force the use of the global we just patched
-    content = content.replace(regex, `(globalThis.${mod})`);
+    // Hybrid approach: Use globalThis if we patched it, otherwise try node: module
+    content = content.replace(regex, `(globalThis.${mod} || (function(){try{return require("node:${mod}")}catch(e){return {}}})())`);
   });
 
-  // 3. Patch ESM imports to use node: prefix
+  // 3. Patch ESM imports
   content = content.replace(
     /from\s+['"](buffer|events|crypto|util|stream|path|querystring|url|string_decoder|punycode|http|https|zlib|fs|os|tls|net|dns|vm|async_hooks|perf_hooks|process)['"]/g,
     'from "node:$1"'
@@ -88,4 +105,4 @@ filesToFix.forEach(file => {
   fs.writeFileSync(file, content);
 });
 
-console.log('✨ Assertive worker patching complete.');
+console.log('✨ Robust worker patching complete.');
