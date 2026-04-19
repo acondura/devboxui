@@ -32,7 +32,7 @@ const coreModules = [
 filesToFix.forEach(file => {
   let content = fs.readFileSync(file, 'utf8');
 
-  // 1. Clean, Bundler-Friendly Shims
+  // 1. Shims Block
   const shims = `
 // Cloudflare Compatibility Shims
 (function() {
@@ -40,7 +40,6 @@ filesToFix.forEach(file => {
   const noopPromise = () => Promise.resolve({});
   const BaseClass = class {};
   
-  // Initialize globals for all core modules
   const modules = ['buffer', 'events', 'crypto', 'util', 'stream', 'path', 'querystring', 'url', 'string_decoder', 'punycode', 'http', 'https', 'zlib', 'fs', 'os', 'tls', 'net', 'dns', 'vm', 'async_hooks', 'perf_hooks', 'process'];
   
   modules.forEach(m => {
@@ -53,7 +52,6 @@ filesToFix.forEach(file => {
     }
   });
 
-  // Force-inject missing pieces into the globals we just loaded
   const patch = (name, obj) => {
     globalThis[name] = Object.assign(globalThis[name] || {}, obj);
   };
@@ -87,13 +85,14 @@ filesToFix.forEach(file => {
     content = shims + content;
   }
 
-  // 2. Simple replacement: require("module") -> globalThis["module"]
+  // 2. Safe property access replacement: require("crypto") -> (globalThis.crypto)
+  // We avoid brackets and quotes to stay compatible with string literals in the code.
   coreModules.forEach(mod => {
     const regex = new RegExp(`(?<!\\.)require\\(['"](node:)?${mod}['"]\\)`, 'g');
-    content = content.replace(regex, `(globalThis["${mod}"])`);
+    content = content.replace(regex, `(globalThis.${mod})`);
   });
 
   fs.writeFileSync(file, content);
 });
 
-console.log('✨ Clean worker patching complete.');
+console.log('✨ Safe worker patching complete.');
