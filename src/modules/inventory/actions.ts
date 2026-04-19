@@ -1,12 +1,16 @@
 'use server';
 
+export const runtime = 'nodejs';
+
 import { ServerConfig } from './types';
 import nacl from 'tweetnacl';
 import { getCloudflareEnv, getIdentity } from '@/lib/auth';
 import { CloudflareApiService } from '@/lib/cloudflare-api';
-// Dynamic import for ssh2 to avoid build-time analysis issues on Cloudflare Edge
+
+// Use a "hidden" dynamic import to bypass Turbopack's static analysis
 const getSshClient = async () => {
-  const { Client } = await import('ssh2');
+  const packageName = 'ssh2';
+  const { Client } = await import(packageName);
   return new Client();
 };
 
