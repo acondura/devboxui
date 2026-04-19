@@ -1,8 +1,3 @@
-import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
-
-// Enable calling `getCloudflareContext()` in `next dev`.
-initOpenNextCloudflareForDev();
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   eslint: {
@@ -11,7 +6,10 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  serverExternalPackages: ['ssh2'],
+  output: 'standalone',
+  experimental: {
+    serverComponentsExternalPackages: ['@cloudflare/workers-types'],
+  }
 };
 
 export default nextConfig;
