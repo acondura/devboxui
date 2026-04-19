@@ -1,13 +1,9 @@
 const fs = require('fs');
 const path = require('path');
 
-/**
- * Recursively find all JS files in a directory
- */
 function getAllFiles(dirPath, arrayOfFiles) {
   const files = fs.readdirSync(dirPath);
   arrayOfFiles = arrayOfFiles || [];
-
   files.forEach(function(file) {
     if (fs.statSync(dirPath + "/" + file).isDirectory()) {
       arrayOfFiles = getAllFiles(dirPath + "/" + file, arrayOfFiles);
@@ -17,7 +13,6 @@ function getAllFiles(dirPath, arrayOfFiles) {
       }
     }
   });
-
   return arrayOfFiles;
 }
 
@@ -38,12 +33,13 @@ filesToFix.forEach(file => {
   console.log(`Patching ${file}...`);
   let content = fs.readFileSync(file, 'utf8');
 
-  // 1. Inject Comprehensive Shims at the top of EVERY file
+  // 1. Inject Comprehensive Shims at the top
   const shims = `
 // Cloudflare Compatibility Shims
 (function() {
   const noop = () => {};
   const noopPromise = () => Promise.resolve({});
+  const BaseClass = class {};
   
   globalThis.fs = globalThis.fs || {
     readFile: noop, readFileSync: () => "",
@@ -52,38 +48,18 @@ filesToFix.forEach(file => {
     mkdir: noop, mkdirSync: noop,
     readdir: noop, readdirSync: () => [],
     access: noop, accessSync: noop,
-    watch: () => ({ close: noop }),
-    promises: {
-      readFile: noopPromise, writeFile: noopPromise,
-      stat: noopPromise, mkdir: noopPromise,
-      readdir: noopPromise, access: noopPromise
-    }
+    promises: { readFile: noopPromise, writeFile: noopPromise, stat: noopPromise, mkdir: noopPromise, readdir: noopPromise, access: noopPromise }
   };
   
   globalThis.http = globalThis.http || {
-    IncomingMessage: class { on() { return this; } setEncoding() { return this; } },
-    ServerResponse: class { on() { return this; } end() { return this; } setHeader() { return this; } },
+    IncomingMessage: class extends BaseClass { on() { return this; } setEncoding() { return this; } },
+    ServerResponse: class extends BaseClass { on() { return this; } end() { return this; } setHeader() { return this; } },
     request: noop, get: noop, Agent: class {}
   };
 
-  globalThis.https = globalThis.https || {
-    IncomingMessage: class { on() { return this; } setEncoding() { return this; } },
-    ServerResponse: class { on() { return this; } end() { return this; } setHeader() { return this; } },
-    request: noop, get: noop, Agent: class {}
-  };
-
-  globalThis.os = globalThis.os || { 
-    platform: () => 'linux', release: () => '1.0.0', arch: () => 'x64',
-    homedir: () => '/tmp', tmpdir: () => '/tmp', hostname: () => 'cloudflare'
-  };
-  
-  globalThis.path = globalThis.path || { 
-    join: (...args) => args.filter(Boolean).join('/'), 
-    resolve: (...args) => args[args.length - 1],
-    dirname: (p) => p.split('/').slice(0, -1).join('/') || '.',
-    basename: (p) => p.split('/').pop(),
-    extname: (p) => p.includes('.') ? '.' + p.split('.').pop() : ''
-  };
+  globalThis.https = globalThis.https || globalThis.http;
+  globalThis.os = globalThis.os || { platform: () => 'linux', homedir: () => '/tmp', tmpdir: () => '/tmp' };
+  globalThis.path = globalThis.path || { join: (...args) => args.filter(Boolean).join('/'), resolve: (...args) => args[args.length - 1] };
 })();
 `;
   
@@ -91,25 +67,21 @@ filesToFix.forEach(file => {
     content = shims + content;
   }
 
-  // 2. Patch require calls
-  content = content.replace(
-    /require\(['"](buffer|events|crypto|util|stream|path|querystring|url|string_decoder|punycode|http|https|zlib|fs|os|tls|net|dns|vm|async_hooks|perf_hooks|process)['"]\)/g,
-    'require("node:$1")'
-  );
+  // 2. Patch all require calls to use a "Safe Proxy"
+  // Instead of require("http"), we use (globalThis.http || require("node:http"))
+  coreModules.forEach(mod => {
+    // This regex catches require("http"), require('http'), and require("node:http")
+    const regex = new RegExp(`(?<!\\.)require\\(['"](node:)?${mod}['"]\\)`, 'g');
+    content = content.replace(regex, `(globalThis.${mod} || (function(){try{return require("node:${mod}")}catch(e){return {}}})())`);
+  });
 
-  // 3. Patch ESM imports
+  // 3. Patch ESM imports to use node: prefix
   content = content.replace(
     /from\s+['"](buffer|events|crypto|util|stream|path|querystring|url|string_decoder|punycode|http|https|zlib|fs|os|tls|net|dns|vm|async_hooks|perf_hooks|process)['"]/g,
     'from "node:$1"'
   );
 
-  // 4. Critical: Force use of our global shims for problematic modules
-  coreModules.forEach(mod => {
-    const regex = new RegExp(`(?<!\\.)require\\(['"]node:${mod}['"]\\)`, 'g');
-    content = content.replace(regex, `(globalThis.${mod} || {})`);
-  });
-
   fs.writeFileSync(file, content);
 });
 
-console.log('✨ Universal worker patching complete.');
+console.log('✨ Ultimate worker patching complete.');
