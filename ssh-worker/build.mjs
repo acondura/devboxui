@@ -7,16 +7,15 @@ await esbuild.build({
   bundle: true,
   outfile: 'dist/index.js',
   format: 'esm',
-  platform: 'node', // Switch to node platform to better handle CJS dependencies
+  platform: 'node',
   target: 'es2022',
-  // Mark all built-ins as external
   external: builtinModules.flatMap(m => [m, `node:${m}`]),
   banner: {
-    // This shim allows CJS 'require' calls to work for node: built-ins on Cloudflare
     js: `
 import { Buffer } from 'node:buffer';
 import { Socket } from 'node:net';
 import { EventEmitter } from 'node:events';
+import assert from 'node:assert';
 import crypto from 'node:crypto';
 import stream from 'node:stream';
 import util from 'node:util';
@@ -33,6 +32,7 @@ const _node_modules = {
   'node:buffer': { Buffer },
   'node:net': { Socket },
   'node:events': EventEmitter,
+  'node:assert': assert,
   'node:crypto': crypto,
   'node:stream': stream,
   'node:util': util,
@@ -46,7 +46,6 @@ const _node_modules = {
   'node:child_process': child_process,
 };
 
-// Add non-prefixed versions for older CJS code
 Object.keys(_node_modules).forEach(key => {
   _node_modules[key.replace('node:', '')] = _node_modules[key];
 });
@@ -69,4 +68,4 @@ const require = (name) => {
   ],
 }).catch(() => process.exit(1));
 
-console.log('✅ SSH Worker bundled successfully (Require-shim injected, Binaries ignored).');
+console.log('✅ SSH Worker bundled successfully (Complete Require-shim injected).');
