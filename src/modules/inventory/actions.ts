@@ -112,6 +112,9 @@ export async function provisionServer(ip: string, rootPassword: string) {
   const userEmail = await getIdentity();
   const env = await getCloudflareEnv();
   const kv = env.KV;
+  if (!kv) {
+    throw new Error("Database Error: The 'KV' binding is missing. Please check your wrangler.toml or Cloudflare Dashboard settings.");
+  }
   const cfApi = new CloudflareApiService(env);
 
   // 1. Generate SSH Keys
