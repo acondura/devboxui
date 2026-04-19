@@ -1,12 +1,9 @@
 {
   "name": "devbox-ssh-service",
   "version": "1.0.0",
-  "browser": {
-    "cpu-features": false,
-    "ssh2/lib/protocol/crypto/build/Release/sshcrypto.node": "./sshcrypto-shim.js"
-  },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240403.0",
+    "esbuild": "^0.20.2",
     "typescript": "^5.0.0",
     "wrangler": "^3.114.17"
   },
