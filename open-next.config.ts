@@ -56,7 +56,6 @@ const config: OpenNextConfig = {
       queue: "dummy",
     },
   },
-  },
 };
 
 export default config;
