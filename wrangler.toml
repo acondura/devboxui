@@ -1,6 +1,4 @@
 name = "devboxui"
-compatibility_date = "2026-04-07"
+pages_build_output_dir = "dist"
+compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
-
-[site]
-bucket = ".open-next/assets"
