@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "pages-build": "echo 'n' | opennextjs-cloudflare build && node fix-worker.js && cp -r .open-next/assets/* .open-next/ && mv .open-next/worker.js .open-next/_worker.js",
+    "pages-build": "echo 'n' | opennextjs-cloudflare build && node fix-worker.js && mv .open-next/worker.js .open-next/_worker.js",
     "start": "next start",
     "lint": "next lint",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
