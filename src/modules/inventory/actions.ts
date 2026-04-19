@@ -78,7 +78,7 @@ async function executeSshCommands(ip: string, password: string, script: string, 
     
     conn.on('ready', () => {
       onLog("SSH Connection established.");
-      conn.exec(script, (err, stream) => {
+      conn.exec(script, (err: Error | undefined, stream: any) => {
         if (err) return reject(err);
         
         stream.on('close', (code: number) => {
@@ -91,7 +91,7 @@ async function executeSshCommands(ip: string, password: string, script: string, 
           onLog(`[STDERR] ${data.toString()}`);
         });
       });
-    }).on('error', (err) => {
+    }).on('error', (err: Error) => {
       reject(err);
     }).connect({
       host: ip,
