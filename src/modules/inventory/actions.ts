@@ -6,13 +6,14 @@ import { getCloudflareEnv, getIdentity } from '@/lib/auth';
 import { CloudflareApiService } from '@/lib/cloudflare-api';
 
 /**
- * Uses eval('require') to completely bypass Turbopack/Webpack static analysis.
- * This ensures the bundler never tries to 'digest' the ssh2 library at build time.
+ * Uses Base64 obfuscation to hide the 'ssh2' string from the bundler's static analysis.
+ * This prevents the bundler from trying to analyze the library's native dependencies.
  */
 const getSshClient = async () => {
-  // @ts-ignore - eval('require') is a trick to hide dependencies from bundlers
-  const ssh2 = typeof eval === 'function' ? eval('require("ssh2")') : await import('ssh2');
-  return new ssh2.Client();
+  // 'ssh2' encoded in base64 is 'c3NoMg=='
+  const decodedName = Buffer.from('c3NoMg==', 'base64').toString();
+  const { Client } = await import(decodedName);
+  return new Client();
 };
 
 /**
