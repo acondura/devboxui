@@ -7,7 +7,8 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "echo 'n' | opennextjs-cloudflare build",
+    "build": "next build",
+    "pages-build": "echo 'n' | opennextjs-cloudflare build",
     "start": "next start",
     "lint": "next lint",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
