@@ -27,6 +27,10 @@ import https from 'node:https';
 import tls from 'node:tls';
 import zlib from 'node:zlib';
 import child_process from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const _node_modules = {
   'node:buffer': { Buffer },
@@ -68,4 +72,4 @@ const require = (name) => {
   ],
 }).catch(() => process.exit(1));
 
-console.log('✅ SSH Worker bundled successfully (Complete Require-shim injected).');
+console.log('✅ SSH Worker bundled successfully (Require, __dirname shims injected).');
