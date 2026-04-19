@@ -2,6 +2,7 @@
   "name": "devbox-ssh-service",
   "version": "1.0.0",
   "browser": {
+    "cpu-features": false,
     "./crypto/build/Release/sshcrypto.node": "./sshcrypto-shim.js"
   },
   "devDependencies": {
