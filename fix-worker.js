@@ -32,7 +32,7 @@ const coreModules = [
 filesToFix.forEach(file => {
   let content = fs.readFileSync(file, 'utf8');
 
-  // 1. Shims Block
+  // 1. Unique Shim Block (Avoids conflict with built-ins)
   const shims = `
 // Cloudflare Compatibility Shims
 (function() {
@@ -40,43 +40,37 @@ filesToFix.forEach(file => {
   const noopPromise = () => Promise.resolve({});
   const BaseClass = class {};
   
-  const modules = ['buffer', 'events', 'crypto', 'util', 'stream', 'path', 'querystring', 'url', 'string_decoder', 'punycode', 'http', 'https', 'zlib', 'fs', 'os', 'tls', 'net', 'dns', 'vm', 'async_hooks', 'perf_hooks', 'process'];
+  const coreModules = ['buffer', 'events', 'crypto', 'util', 'stream', 'path', 'querystring', 'url', 'string_decoder', 'punycode', 'http', 'https', 'zlib', 'fs', 'os', 'tls', 'net', 'dns', 'vm', 'async_hooks', 'perf_hooks', 'process'];
   
-  modules.forEach(m => {
-    if (!globalThis[m]) {
-      try {
-        globalThis[m] = require("node:" + m);
-      } catch (e) {
-        globalThis[m] = {};
-      }
-    }
+  coreModules.forEach(m => {
+    let base = {};
+    try { base = require("node:" + m); } catch (e) {}
+    
+    // Create a UNIQUE global for this module
+    globalThis['__CF_SHIM_' + m + '__'] = Object.assign({}, base);
   });
 
-  const patch = (name, obj) => {
-    globalThis[name] = Object.assign(globalThis[name] || {}, obj);
-  };
+  // Inject our fixed classes into the SHIM objects, not the native ones
+  const shimHttp = globalThis.__CF_SHIM_http__;
+  shimHttp.IncomingMessage = class extends BaseClass { on() { return this; } setEncoding() { return this; } };
+  shimHttp.ServerResponse = class extends BaseClass { on() { return this; } end() { return this; } setHeader() { return this; } };
+  shimHttp.OutgoingMessage = class extends BaseClass {};
+  shimHttp.request = noop; shimHttp.get = noop; shimHttp.Agent = class {};
 
-  patch('fs', {
+  globalThis.__CF_SHIM_https__ = shimHttp;
+
+  const shimFs = globalThis.__CF_SHIM_fs__;
+  Object.assign(shimFs, {
     readFile: noop, readFileSync: () => "", writeFile: noop, writeFileSync: noop,
     stat: noop, statSync: () => ({ isDirectory: () => false, size: 0 }),
     mkdir: noop, mkdirSync: noop, readdir: noop, readdirSync: () => [],
     access: noop, accessSync: noop,
     promises: { readFile: noopPromise, writeFile: noopPromise, stat: noopPromise, mkdir: noopPromise, readdir: noopPromise, access: noopPromise }
   });
-  
-  const httpShim = {
-    IncomingMessage: class extends BaseClass { on() { return this; } setEncoding() { return this; } },
-    ServerResponse: class extends BaseClass { on() { return this; } end() { return this; } setHeader() { return this; } },
-    OutgoingMessage: class extends BaseClass {},
-    request: noop, get: noop, Agent: class {}
-  };
-  patch('http', httpShim);
-  patch('https', httpShim);
-  patch('os', { platform: () => 'linux', homedir: () => '/tmp', tmpdir: () => '/tmp' });
-  patch('path', { join: (...args) => args.filter(Boolean).join('/'), resolve: (...args) => args[args.length - 1] });
-  
-  if (!globalThis.events.EventEmitter) {
-    patch('events', { EventEmitter: class { on(){} once(){} emit(){} removeListener(){} } });
+
+  const shimEvents = globalThis.__CF_SHIM_events__;
+  if (!shimEvents.EventEmitter) {
+    shimEvents.EventEmitter = class { on(){} once(){} emit(){} removeListener(){} };
   }
 })();
 `;
@@ -85,14 +79,13 @@ filesToFix.forEach(file => {
     content = shims + content;
   }
 
-  // 2. Safe property access replacement: require("crypto") -> (globalThis.crypto)
-  // We avoid brackets and quotes to stay compatible with string literals in the code.
+  // 2. Point require calls to our UNIQUE global shims
   coreModules.forEach(mod => {
     const regex = new RegExp(`(?<!\\.)require\\(['"](node:)?${mod}['"]\\)`, 'g');
-    content = content.replace(regex, `(globalThis.${mod})`);
+    content = content.replace(regex, `(globalThis.__CF_SHIM_${mod}__)`);
   });
 
   fs.writeFileSync(file, content);
 });
 
-console.log('✨ Safe worker patching complete.');
+console.log('✨ Unique shim worker patching complete.');
