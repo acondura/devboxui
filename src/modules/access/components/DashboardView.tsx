@@ -8,9 +8,10 @@ import { ServerConfig } from '@/modules/inventory/types';
 
 interface DashboardViewProps {
   userEmail: string;
+  teamDomain: string;
 }
 
-export function DashboardView({ userEmail }: DashboardViewProps) {
+export function DashboardView({ userEmail, teamDomain }: DashboardViewProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [servers, setServers] = useState<ServerConfig[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -39,6 +40,18 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
     }
   };
 
+  const handleLogout = () => {
+    if (!teamDomain) {
+      window.location.href = '/';
+      return;
+    }
+    
+    // Cloudflare Access standard logout URL with returnTo redirect
+    const cleanDomain = teamDomain.replace(/^https?:\/\//, '').replace('.cloudflareaccess.com', '').split('/')[0];
+    const returnTo = encodeURIComponent(window.location.origin);
+    window.location.href = `https://${cleanDomain}.cloudflareaccess.com/cdn-cgi/access/logout?returnTo=${returnTo}`;
+  };
+
   return (
     <div className="min-h-screen bg-slate-900 text-slate-50 font-sans">
       <AddServerModal 
@@ -63,6 +76,12 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
           <div className="hidden sm:block text-xs text-slate-400 font-mono bg-slate-800/50 px-3 py-1.5 rounded-md border border-slate-700">
             {userEmail}
           </div>
+          <button 
+            onClick={handleLogout}
+            className="text-xs font-bold text-slate-400 hover:text-white px-3 py-1.5 rounded-md border border-slate-800 hover:bg-slate-800 transition-colors"
+          >
+            Logout
+          </button>
         </div>
       </nav>
 

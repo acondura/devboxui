@@ -15,5 +15,5 @@ export default async function DashboardPage() {
     redirect('/');
   }
 
-  return <DashboardView userEmail={userEmail} />;
+  return <DashboardView userEmail={userEmail} teamDomain={env.NEXT_PUBLIC_CF_TEAM_DOMAIN || ''} />;
 }
