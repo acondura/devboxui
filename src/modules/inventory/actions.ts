@@ -1,17 +1,18 @@
 'use server';
 
-export const runtime = 'nodejs';
-
 import { ServerConfig } from './types';
 import nacl from 'tweetnacl';
 import { getCloudflareEnv, getIdentity } from '@/lib/auth';
 import { CloudflareApiService } from '@/lib/cloudflare-api';
 
-// Use a "hidden" dynamic import to bypass Turbopack's static analysis
+/**
+ * Uses eval('require') to completely bypass Turbopack/Webpack static analysis.
+ * This ensures the bundler never tries to 'digest' the ssh2 library at build time.
+ */
 const getSshClient = async () => {
-  const packageName = 'ssh2';
-  const { Client } = await import(packageName);
-  return new Client();
+  // @ts-ignore - eval('require') is a trick to hide dependencies from bundlers
+  const ssh2 = typeof eval === 'function' ? eval('require("ssh2")') : await import('ssh2');
+  return new ssh2.Client();
 };
 
 /**
