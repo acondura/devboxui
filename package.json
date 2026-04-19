@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "pages-build": "echo 'n' | opennextjs-cloudflare build && node fix-worker.js && rm -rf dist && cp -r .open-next dist && cp -r dist/assets/* dist/ && mv dist/worker.js dist/_worker.js && echo '{\"version\":1,\"include\":[\"/*\"],\"exclude\":[\"/_next/static/*\",\"/favicon.ico\"]}' > dist/_routes.json",
+    "pages-build": "echo 'n' | opennextjs-cloudflare build && rm -rf dist && cp -r .open-next dist && cp -r dist/assets/* dist/ && mv dist/worker.js dist/_worker.js && echo '{\"version\":1,\"include\":[\"/*\"],\"exclude\":[\"/_next/static/*\",\"/favicon.ico\"]}' > dist/_routes.json",
     "start": "next start",
     "lint": "next lint",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
