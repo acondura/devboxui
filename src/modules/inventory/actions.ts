@@ -4,7 +4,11 @@ import { ServerConfig } from './types';
 import nacl from 'tweetnacl';
 import { getCloudflareEnv, getIdentity } from '@/lib/auth';
 import { CloudflareApiService } from '@/lib/cloudflare-api';
-import { Client } from 'ssh2';
+// Dynamic import for ssh2 to avoid build-time analysis issues on Cloudflare Edge
+const getSshClient = async () => {
+  const { Client } = await import('ssh2');
+  return new Client();
+};
 
 /**
  * Generates the full sequence of bash commands to bootstrap the server.
@@ -63,8 +67,8 @@ async function generateSSHKeys() {
  * Executes commands on a remote server via SSH.
  */
 async function executeSshCommands(ip: string, password: string, script: string, onLog: (log: string) => void) {
+  const conn = await getSshClient();
   return new Promise((resolve, reject) => {
-    const conn = new Client();
     
     conn.on('ready', () => {
       onLog("SSH Connection established.");
