@@ -83,11 +83,20 @@ export async function getIdentity(): Promise<string> {
   const jwt = headersList.get('cf-access-jwt-assertion');
   const teamDomain = env.NEXT_PUBLIC_CF_TEAM_DOMAIN?.replace(/^https?:\/\//, '').replace('.cloudflareaccess.com', '').split('/')[0];
 
+  console.log("Auth Debug:", {
+    hasJwt: !!jwt,
+    teamDomain,
+    envKeys: Object.keys(env)
+  });
+
   // 2. Strict JWT Verification (If Configured)
   if (jwt && teamDomain) {
     try {
       const keys = await getAccessPublicKeys(teamDomain);
+      console.log(`Fetched ${keys.length} Access keys`);
+      
       if (keys.length > 0) {
+        // Try all keys if necessary, or just the first one
         const publicKey = await importJWK(keys[0], 'RS256');
         const { payload } = await jwtVerify(jwt, publicKey, {
           issuer: `https://${teamDomain}.cloudflareaccess.com`,
@@ -97,7 +106,7 @@ export async function getIdentity(): Promise<string> {
         if (validated.success) return validated.data;
       }
     } catch (error) {
-      console.warn("JWT Verification failed, checking header fallback...");
+      console.warn("JWT Verification failed:", error instanceof Error ? error.message : String(error));
     }
   }
 
@@ -105,6 +114,8 @@ export async function getIdentity(): Promise<string> {
   const emailHeader = headersList.get('cf-access-authenticated-user-email') || 
                       headersList.get('x-user-email');
   
+  console.log("Auth Fallback Email:", emailHeader);
+
   if (emailHeader) {
     const validated = emailSchema.safeParse(emailHeader);
     if (validated.success) return validated.data;
