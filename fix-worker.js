@@ -18,13 +18,41 @@ filesToFix.forEach(file => {
   console.log(`Patching ${file}...`);
   let content = fs.readFileSync(file, 'utf8');
 
-  // 1. Inject Shims at the top of the file to prevent "undefined" errors
+  // 1. Inject Comprehensive Shims at the top of the file
   const shims = `
 // Cloudflare Compatibility Shims
-globalThis.fs = globalThis.fs || {};
-globalThis.os = globalThis.os || { platform: () => 'linux', release: () => '1.0.0', arch: () => 'x64' };
-globalThis.path = globalThis.path || { join: (...args) => args.join('/'), resolve: (...args) => args[0] };
-globalThis.process = globalThis.process || { env: {}, nextTick: (f) => setTimeout(f, 0) };
+(function() {
+  const noop = () => {};
+  const noopPromise = () => Promise.resolve({});
+  
+  globalThis.fs = globalThis.fs || {
+    readFile: noop, readFileSync: () => "",
+    writeFile: noop, writeFileSync: noop,
+    stat: noop, statSync: () => ({ isDirectory: () => false, size: 0 }),
+    mkdir: noop, mkdirSync: noop,
+    readdir: noop, readdirSync: () => [],
+    access: noop, accessSync: noop,
+    watch: () => ({ close: noop }),
+    promises: {
+      readFile: noopPromise, writeFile: noopPromise,
+      stat: noopPromise, mkdir: noopPromise,
+      readdir: noopPromise, access: noopPromise
+    }
+  };
+  
+  globalThis.os = globalThis.os || { 
+    platform: () => 'linux', release: () => '1.0.0', arch: () => 'x64',
+    homedir: () => '/tmp', tmpdir: () => '/tmp', hostname: () => 'cloudflare'
+  };
+  
+  globalThis.path = globalThis.path || { 
+    join: (...args) => args.filter(Boolean).join('/'), 
+    resolve: (...args) => args[args.length - 1],
+    dirname: (p) => p.split('/').slice(0, -1).join('/') || '.',
+    basename: (p) => p.split('/').pop(),
+    extname: (p) => p.includes('.') ? '.' + p.split('.').pop() : ''
+  };
+})();
 `;
   
   if (!content.includes('Cloudflare Compatibility Shims')) {
@@ -44,8 +72,6 @@ globalThis.process = globalThis.process || { env: {}, nextTick: (f) => setTimeou
   );
 
   // 4. Critical: Fix Dynamic Requires that fail in ESM
-  // Instead of require("node:fs"), use the global shim or an empty object.
-  // We use a negative lookbehind to ensure we don't break property access like st.require()
   coreModules.forEach(mod => {
     const regex = new RegExp(`(?<!\\.)require\\(['"]node:${mod}['"]\\)`, 'g');
     content = content.replace(regex, `(globalThis.${mod} || {})`);
@@ -55,4 +81,4 @@ globalThis.process = globalThis.process || { env: {}, nextTick: (f) => setTimeou
   console.log(`✅ Fixed ${file}`);
 });
 
-console.log('✨ Proactive worker patching complete.');
+console.log('✨ Comprehensive worker patching complete.');
