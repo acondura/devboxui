@@ -30,10 +30,9 @@ const coreModules = [
 ];
 
 filesToFix.forEach(file => {
-  console.log(`Patching ${file}...`);
   let content = fs.readFileSync(file, 'utf8');
 
-  // 1. Inject Comprehensive Shims at the top
+  // 1. Assertive Shims: Overwrite missing pieces even if the module exists
   const shims = `
 // Cloudflare Compatibility Shims
 (function() {
@@ -41,7 +40,12 @@ filesToFix.forEach(file => {
   const noopPromise = () => Promise.resolve({});
   const BaseClass = class {};
   
-  globalThis.fs = globalThis.fs || {
+  // Helper to safely extend an object
+  const patch = (name, obj) => {
+    globalThis[name] = Object.assign(globalThis[name] || {}, obj);
+  };
+
+  patch('fs', {
     readFile: noop, readFileSync: () => "",
     writeFile: noop, writeFileSync: noop,
     stat: noop, statSync: () => ({ isDirectory: () => false, size: 0 }),
@@ -49,17 +53,18 @@ filesToFix.forEach(file => {
     readdir: noop, readdirSync: () => [],
     access: noop, accessSync: noop,
     promises: { readFile: noopPromise, writeFile: noopPromise, stat: noopPromise, mkdir: noopPromise, readdir: noopPromise, access: noopPromise }
-  };
+  });
   
-  globalThis.http = globalThis.http || {
+  const httpShim = {
     IncomingMessage: class extends BaseClass { on() { return this; } setEncoding() { return this; } },
     ServerResponse: class extends BaseClass { on() { return this; } end() { return this; } setHeader() { return this; } },
     request: noop, get: noop, Agent: class {}
   };
-
-  globalThis.https = globalThis.https || globalThis.http;
-  globalThis.os = globalThis.os || { platform: () => 'linux', homedir: () => '/tmp', tmpdir: () => '/tmp' };
-  globalThis.path = globalThis.path || { join: (...args) => args.filter(Boolean).join('/'), resolve: (...args) => args[args.length - 1] };
+  
+  patch('http', httpShim);
+  patch('https', httpShim);
+  patch('os', { platform: () => 'linux', homedir: () => '/tmp', tmpdir: () => '/tmp' });
+  patch('path', { join: (...args) => args.filter(Boolean).join('/'), resolve: (...args) => args[args.length - 1] });
 })();
 `;
   
@@ -67,12 +72,11 @@ filesToFix.forEach(file => {
     content = shims + content;
   }
 
-  // 2. Patch all require calls to use a "Safe Proxy"
-  // Instead of require("http"), we use (globalThis.http || require("node:http"))
+  // 2. Patch all require calls to use our patched globals
   coreModules.forEach(mod => {
-    // This regex catches require("http"), require('http'), and require("node:http")
     const regex = new RegExp(`(?<!\\.)require\\(['"](node:)?${mod}['"]\\)`, 'g');
-    content = content.replace(regex, `(globalThis.${mod} || (function(){try{return require("node:${mod}")}catch(e){return {}}})())`);
+    // Force the use of the global we just patched
+    content = content.replace(regex, `(globalThis.${mod})`);
   });
 
   // 3. Patch ESM imports to use node: prefix
@@ -84,4 +88,4 @@ filesToFix.forEach(file => {
   fs.writeFileSync(file, content);
 });
 
-console.log('✨ Ultimate worker patching complete.');
+console.log('✨ Assertive worker patching complete.');
