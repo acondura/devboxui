@@ -1,7 +1,0 @@
-name = "devboxui"
-compatibility_date = "2024-09-23"
-compatibility_flags = ["nodejs_compat"]
-pages_build_output_dir = "dist"
-
-[vars]
-NEXT_PUBLIC_CF_TEAM_DOMAIN = "k9czuj5q2zbo29nb"
