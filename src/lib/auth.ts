@@ -8,6 +8,9 @@ import { z } from 'zod';
 export const CloudflareEnvSchema = z.object({
   KV: z.any(),
   NEXT_PUBLIC_CF_TEAM_DOMAIN: z.string().optional(),
+  CLOUDFLARE_API_TOKEN: z.string().optional(),
+  CLOUDFLARE_ACCOUNT_ID: z.string().optional(),
+  CLOUDFLARE_ZONE_ID: z.string().optional(),
 });
 
 export type CloudflareEnv = z.infer<typeof CloudflareEnvSchema>;

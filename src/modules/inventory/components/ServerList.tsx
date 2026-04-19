@@ -30,34 +30,43 @@ export function ServerList({ servers }: ServerListProps) {
                 <h4 className="font-bold text-white uppercase tracking-wider text-xs">{server.status}</h4>
               </div>
               <p className="text-lg font-mono text-indigo-400 mt-1">{server.ip}</p>
+              {server.tunnelUrl && (
+                <p className="text-[10px] font-mono text-slate-500 mt-0.5 truncate max-w-[150px]">
+                  {server.tunnelUrl.replace('https://', '')}
+                </p>
+              )}
             </div>
             <div className="bg-slate-800 px-2 py-1 rounded text-[10px] font-bold text-slate-400 uppercase">
-              Ubuntu 22.04
+              Ubuntu 24.04
             </div>
           </div>
           
           <div className="p-5 space-y-4">
             <div className="flex justify-between text-sm">
-              <span className="text-slate-500">User</span>
+              <span className="text-slate-500">Workspace User</span>
               <span className="text-slate-300 font-mono">{server.userName}</span>
             </div>
             
-            {server.status === 'ready' && server.tunnelUrl && (
+            {server.status === 'ready' && server.tunnelUrl ? (
               <a 
                 href={server.tunnelUrl} 
                 target="_blank" 
                 rel="noreferrer"
-                className="block w-full text-center bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-400 font-semibold py-2 rounded-lg border border-indigo-500/30 transition-all text-sm"
+                className="block w-full text-center bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-lg shadow-lg shadow-indigo-600/20 transition-all text-sm active:scale-95"
               >
-                Open VS Code
+                Launch VS Code
               </a>
-            )}
-            
-            {server.status === 'provisioning' && (
-              <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-indigo-500 h-full w-1/2 animate-[shimmer_2s_infinite]" />
+            ) : server.status === 'provisioning' ? (
+              <div className="space-y-2">
+                <div className="flex justify-between text-[10px] uppercase font-bold text-slate-500 tracking-widest">
+                  <span>Provisioning</span>
+                  <span className="animate-pulse">In Progress...</span>
+                </div>
+                <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                  <div className="bg-indigo-500 h-full w-1/2 animate-[shimmer_2s_infinite]" />
+                </div>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       ))}
