@@ -5,9 +5,6 @@ set -e
 # Replace this manually in the Hetzner UI before creating the server.
 TUNNEL_TOKEN="REPLACE_WITH_YOUR_CLOUDFLARE_TUNNEL_TOKEN"
 
-# Generate random password
-ANDREI_PASSWORD=$(openssl rand -base64 16)
-
 # --- 1. System Update ---
 export DEBIAN_FRONTEND=noninteractive
 apt-get update && apt-get -y upgrade
@@ -15,10 +12,10 @@ apt-get update && apt-get -y upgrade
 # --- 2. Create User 'andrei' & Sync SSH Keys ---
 if ! id "andrei" &>/dev/null; then
     useradd -m -s /bin/bash andrei
-    echo "andrei:$ANDREI_PASSWORD" | chpasswd
     usermod -aG sudo andrei
     echo "andrei ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/andrei
     
+    # Sync SSH keys from root
     mkdir -p /home/andrei/.ssh
     if [ -f /root/.ssh/authorized_keys ]; then
         cp /root/.ssh/authorized_keys /home/andrei/.ssh/
@@ -37,7 +34,7 @@ apt-get update
 apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 usermod -aG docker andrei
 
-# --- 4. Install DDEV (Running as 'andrei' to avoid root check) ---
+# --- 4. Install DDEV ---
 sudo -u andrei bash -c "curl -fsSL https://ddev.com/install.sh | bash"
 
 # --- 5. Install Cloudflare Tunnel ---
@@ -49,11 +46,12 @@ if [ "$TUNNEL_TOKEN" != "REPLACE_WITH_YOUR_CLOUDFLARE_TUNNEL_TOKEN" ]; then
     cloudflared service install "$TUNNEL_TOKEN"
 fi
 
-# --- 6. Deploy Code-Server ---
+# --- 6. Deploy Code-Server (Master Workspace) ---
 PUID=$(id -u andrei)
 PGID=$(id -g andrei)
 
-mkdir -p /home/andrei/config /home/andrei/project
+# Create the parent project directory
+mkdir -p /home/andrei/config /home/andrei/projects
 chown -R andrei:andrei /home/andrei
 
 docker run -d \
@@ -61,20 +59,18 @@ docker run -d \
   -e PUID=$PUID \
   -e PGID=$PGID \
   -e TZ=Europe/Bucharest \
-  -e PASSWORD=$ANDREI_PASSWORD \
-  -e SUDO_PASSWORD=$ANDREI_PASSWORD \
   -e DEFAULT_WORKSPACE=/config/workspace \
-  -p 8443:8443 \
   -v /home/andrei/config:/config \
-  -v /home/andrei/project:/config/workspace \
+  -v /home/andrei/projects:/config/workspace \
   -v /var/run/docker.sock:/var/run/docker.sock \
+  -p 8443:8443 \
   --restart unless-stopped \
-  linuxserver/code-server:latest
+  linuxserver/code-server:latest \
+  --auth none
 
-# --- 7. Install Xdebug Extension ---
+# --- 7. Install PHP Debug Extension ---
 docker exec -u andrei code-server /usr/lib/code-server/bin/code-server --install-extension xdebug.php-debug
 
 echo "------------------------------------------------"
-echo "✅ Setup Complete!"
-echo "User: andrei | Password: $ANDREI_PASSWORD"
+echo "✅ Setup Complete! Master Server is Ready."
 echo "------------------------------------------------"
