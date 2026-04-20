@@ -2,14 +2,13 @@
 set -e
 
 # --- 0. Configuration ---
-# DO NOT COMMIT YOUR REAL TOKEN TO GIT.
-# Replace this placeholder MANUALLY in the Hetzner UI before creating the server.
+# Replace this manually in the Hetzner UI before creating the server.
 TUNNEL_TOKEN="REPLACE_WITH_YOUR_CLOUDFLARE_TUNNEL_TOKEN"
 
-# Generate a random secure password for the user
+# Generate random password
 ANDREI_PASSWORD=$(openssl rand -base64 16)
 
-# --- 1. System Update & Upgrade ---
+# --- 1. System Update ---
 export DEBIAN_FRONTEND=noninteractive
 apt-get update && apt-get -y upgrade
 
@@ -20,7 +19,6 @@ if ! id "andrei" &>/dev/null; then
     usermod -aG sudo andrei
     echo "andrei ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/andrei
     
-    # Mirror root's SSH keys
     mkdir -p /home/andrei/.ssh
     if [ -f /root/.ssh/authorized_keys ]; then
         cp /root/.ssh/authorized_keys /home/andrei/.ssh/
@@ -39,8 +37,8 @@ apt-get update
 apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 usermod -aG docker andrei
 
-# --- 4. Install DDEV ---
-curl -fsSL https://ddev.com/install.sh | bash
+# --- 4. Install DDEV (Running as 'andrei' to avoid root check) ---
+sudo -u andrei bash -c "curl -fsSL https://ddev.com/install.sh | bash"
 
 # --- 5. Install Cloudflare Tunnel ---
 curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
@@ -73,12 +71,10 @@ docker run -d \
   --restart unless-stopped \
   linuxserver/code-server:latest
 
-# --- 7. Install PHP Debug Extension ---
+# --- 7. Install Xdebug Extension ---
 docker exec -u andrei code-server /usr/lib/code-server/bin/code-server --install-extension xdebug.php-debug
 
-# Final Log
 echo "------------------------------------------------"
 echo "✅ Setup Complete!"
-echo "User: andrei"
-echo "Password: $ANDREI_PASSWORD"
+echo "User: andrei | Password: $ANDREI_PASSWORD"
 echo "------------------------------------------------"
