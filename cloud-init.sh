@@ -52,6 +52,14 @@ PGID=$(id -g andrei)
 
 # Create the parent project directory
 mkdir -p /home/andrei/config /home/andrei/projects
+
+# Pre-configure code-server to disable authentication (Cloudflare Tunnel handles security)
+cat <<EOF > /home/andrei/config/config.yaml
+bind-addr: 0.0.0.0:8443
+auth: none
+cert: false
+EOF
+
 chown -R andrei:andrei /home/andrei
 
 docker run -d \
@@ -65,8 +73,7 @@ docker run -d \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -p 8443:8443 \
   --restart unless-stopped \
-  linuxserver/code-server:latest \
-  --auth none
+  linuxserver/code-server:latest
 
 # --- 7. Install PHP Debug Extension ---
 docker exec -u andrei code-server /usr/lib/code-server/bin/code-server --install-extension xdebug.php-debug
