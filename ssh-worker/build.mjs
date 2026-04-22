@@ -12,6 +12,13 @@ await esbuild.build({
   external: builtinModules.flatMap(m => [m, `node:${m}`]),
   banner: {
     js: `
+// Nuclear Option: Disable Wasm to force Pure JS fallbacks
+globalThis.WebAssembly = {
+  ...globalThis.WebAssembly,
+  instantiate: () => Promise.reject(new Error('Wasm disallowed')),
+  instantiateStreaming: () => Promise.reject(new Error('Wasm disallowed'))
+};
+
 import { Buffer } from 'node:buffer';
 import { Socket, connect } from 'node:net';
 import { EventEmitter } from 'node:events';
