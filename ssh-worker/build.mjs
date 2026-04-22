@@ -83,9 +83,13 @@ const require = (name) => {
   },
   plugins: [
     {
-      name: 'ignore-node-binaries',
+      name: 'ssh2-crypto-impersonator',
       setup(build) {
+        // Intercept both the native .node files and the ssh2-crypto module itself
         build.onResolve({ filter: /\.node$/ }, () => ({
+          path: path.resolve('sshcrypto-shim.js'),
+        }));
+        build.onResolve({ filter: /^ssh2-crypto$/ }, () => ({
           path: path.resolve('sshcrypto-shim.js'),
         }));
       },
