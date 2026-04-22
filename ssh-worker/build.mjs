@@ -22,6 +22,7 @@ import util from 'node:util';
 import path from 'node:path';
 
 // Mock unsupported modules for Workers environment
+class DummyAgent {}
 const fs = { 
   readFile: (p, cb) => cb(new Error('FS not available')), 
   readFileSync: () => { throw new Error('FS not available'); },
@@ -30,8 +31,8 @@ const fs = {
 };
 const dns = { lookup: () => {} };
 const child_process = { exec: () => {} };
-const http = {};
-const https = {};
+const http = { Agent: DummyAgent };
+const https = { Agent: DummyAgent };
 const tls = {};
 const zlib = {};
 
