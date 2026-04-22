@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { AddServerModal } from '@/modules/inventory/components/AddServerModal';
 import { ServerList } from '@/modules/inventory/components/ServerList';
-import { provisionServer, getServers, addProject } from '@/modules/inventory/actions';
+import { provisionServer, getServers, addProject, deleteServer } from '@/modules/inventory/actions';
 import { ServerConfig } from '@/modules/inventory/types';
 
 interface DashboardViewProps {
@@ -46,6 +46,16 @@ export function DashboardView({ userEmail, teamDomain }: DashboardViewProps) {
       setServers(prev => prev.map(s => s.id === serverId ? updatedServer : s));
     } catch (error) {
       alert("Failed to add project. Check console for details.");
+      console.error(error);
+    }
+  };
+
+  const handleDeleteServer = async (serverId: string) => {
+    try {
+      await deleteServer(serverId);
+      setServers(prev => prev.filter(s => s.id !== serverId));
+    } catch (error) {
+      alert("Failed to delete server. Check console for details.");
       console.error(error);
     }
   };
@@ -116,7 +126,7 @@ export function DashboardView({ userEmail, teamDomain }: DashboardViewProps) {
             <div className="animate-spin h-8 w-8 border-4 border-indigo-500 border-t-transparent rounded-full" />
           </div>
         ) : (
-          <ServerList servers={servers} onAddProject={handleAddProject} />
+          <ServerList servers={servers} onAddProject={handleAddProject} onDeleteServer={handleDeleteServer} />
         )}
       </main>
     </div>

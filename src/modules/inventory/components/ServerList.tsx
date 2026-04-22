@@ -5,9 +5,10 @@ import { AddProjectModal } from './AddProjectModal';
 interface ServerListProps {
   servers: ServerConfig[];
   onAddProject: (serverId: string, projectName: string) => Promise<void>;
+  onDeleteServer: (serverId: string) => Promise<void>;
 }
 
-export function ServerList({ servers, onAddProject }: ServerListProps) {
+export function ServerList({ servers, onAddProject, onDeleteServer }: ServerListProps) {
   if (servers.length === 0) {
     return (
       <div className="border border-dashed border-slate-700 rounded-xl p-12 text-center bg-slate-800/20">
@@ -25,14 +26,27 @@ export function ServerList({ servers, onAddProject }: ServerListProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {servers.map((server) => (
-        <ServerCard key={server.id} server={server} onAddProject={onAddProject} />
+        <ServerCard key={server.id} server={server} onAddProject={onAddProject} onDeleteServer={onDeleteServer} />
       ))}
     </div>
   );
 }
 
-function ServerCard({ server, onAddProject }: { server: ServerConfig, onAddProject: (serverId: string, projectName: string) => Promise<void> }) {
+function ServerCard({ server, onAddProject, onDeleteServer }: { server: ServerConfig, onAddProject: (serverId: string, projectName: string) => Promise<void>, onDeleteServer: (serverId: string) => Promise<void> }) {
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (confirm("Are you sure you want to delete this server? This will also remove the Cloudflare Tunnel and all associated DNS records.")) {
+      setIsDeleting(true);
+      try {
+        await onDeleteServer(server.id);
+      } catch (e) {
+        alert("Failed to delete server.");
+        setIsDeleting(false);
+      }
+    }
+  };
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden hover:border-indigo-500/50 transition-all group relative">
@@ -58,6 +72,20 @@ function ServerCard({ server, onAddProject }: { server: ServerConfig, onAddProje
         <div className="bg-slate-800 px-2 py-1 rounded text-[10px] font-bold text-slate-400 uppercase">
           Ubuntu 24.04
         </div>
+        <button 
+          onClick={handleDelete}
+          disabled={isDeleting}
+          className="ml-2 p-1 text-slate-500 hover:text-red-500 transition-colors disabled:opacity-50"
+          title="Delete Server"
+        >
+          {isDeleting ? (
+            <div className="h-4 w-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          )}
+        </button>
       </div>
       
       <div className="p-5 space-y-4">

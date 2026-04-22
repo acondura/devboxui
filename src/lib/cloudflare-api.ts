@@ -90,4 +90,28 @@ export class CloudflareApiService {
       }),
     });
   }
+
+  /**
+   * Deletes a tunnel and all associated configurations.
+   */
+  async deleteTunnel(tunnelId: string) {
+    await this.request(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/cfd_tunnel/${tunnelId}`, {
+      method: "DELETE",
+    });
+  }
+
+  /**
+   * Searches for a DNS record by name and deletes it.
+   */
+  async deleteDnsRecord(name: string) {
+    // 1. Find the record ID
+    const records = await this.request<any[]>(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/dns_records?name=${name}`);
+    
+    // 2. Delete all matches (usually just one)
+    for (const record of records) {
+      await this.request(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/dns_records/${record.id}`, {
+        method: "DELETE",
+      });
+    }
+  }
 }
