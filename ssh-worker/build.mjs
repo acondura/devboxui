@@ -20,6 +20,7 @@ import crypto from 'node:crypto';
 import stream from 'node:stream';
 import util from 'node:util';
 import path from 'node:path';
+import zlib from 'node:zlib';
 
 // Mock unsupported modules for Workers environment
 class DummyAgent {}
@@ -34,7 +35,6 @@ const child_process = { exec: () => {} };
 const http = { Agent: DummyAgent };
 const https = { Agent: DummyAgent };
 const tls = {};
-const zlib = {};
 
 // Hardcode these since there is no real filesystem on Workers
 const __filename = '/index.js';
@@ -49,13 +49,13 @@ const _node_modules = {
   'node:stream': stream,
   'node:util': util,
   'node:path': path,
+  'node:zlib': zlib,
   'node:fs': fs,
   'node:dns': dns,
   'node:child_process': child_process,
   'node:http': http,
   'node:https': https,
   'node:tls': tls,
-  'node:zlib': zlib,
 };
 
 Object.keys(_node_modules).forEach(key => {
