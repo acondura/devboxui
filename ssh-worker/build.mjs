@@ -13,8 +13,14 @@ await esbuild.build({
   banner: {
     js: `
 // Nuclear Option: Disable Wasm to force Pure JS fallbacks
+class WasmError extends Error { constructor(msg) { super(msg); this.name = 'WebAssemblyError'; } }
 globalThis.WebAssembly = {
   ...globalThis.WebAssembly,
+  RuntimeError: WasmError,
+  CompileError: WasmError,
+  LinkError: WasmError,
+  Module: class { constructor() { throw new Error('Wasm disallowed'); } },
+  Instance: class { constructor() { throw new Error('Wasm disallowed'); } },
   instantiate: () => Promise.reject(new Error('Wasm disallowed')),
   instantiateStreaming: () => Promise.reject(new Error('Wasm disallowed'))
 };
