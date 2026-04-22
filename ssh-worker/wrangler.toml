@@ -1,10 +1,9 @@
 name = "devbox-ssh-service"
 main = "dist/index.js"
 compatibility_date = "2025-04-19"
-compatibility_flags = ["nodejs_compat"]
+compatibility_flags = ["nodejs_compat", "wasm_eval"]
 
 [build]
 command = "npm install && node build.mjs"
 
-[vars]
-SSH_SERVICE_SECRET = "change-me-later"
+
