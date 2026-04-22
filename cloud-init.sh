@@ -21,6 +21,9 @@ while fuser /var/lib/dpkg/lock-mirror >/dev/null 2>&1 || fuser /var/lib/apt/list
 done
 
 apt-get update
+apt-get install -y ufw
+ufw allow 22/tcp
+ufw --force enable
 
 # --- 2. Create User '$DEV_USER' & Sync SSH Keys ---
 if ! id "$DEV_USER" &>/dev/null; then
@@ -43,18 +46,18 @@ sudo -u "$DEV_USER" bash -c "curl -fsSL https://raw.githubusercontent.com/ohmyba
 # Ensure the theme is set to '90210'
 sed -i 's/OSH_THEME="[^"]*"/OSH_THEME="90210"/' /home/"$DEV_USER"/.bashrc
 
-# --- 3. Install Docker ---
+# --- 3. Install Docker & Tools ---
 apt-get install -y ca-certificates curl gnupg lsb-release
 mkdir -p /etc/apt/keyrings
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --batch --yes --dearmor -o /etc/apt/keyrings/docker.gpg
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
 apt-get update
 apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
-usermod -aG docker "$DEV_USER"
 
-# Configure Docker to use DEV_USER group for the socket so the container inherits access
+# Configure Docker for socket access
 echo "{\"group\": \"$DEV_USER\"}" > /etc/docker/daemon.json
 systemctl restart docker
+usermod -aG docker "$DEV_USER"
 
 
 
@@ -72,17 +75,37 @@ fi
 PUID=$(id -u "$DEV_USER")
 PGID=$(id -g "$DEV_USER")
 
-# Create the parent project directory
+# Create the parent project directory and symlink for Docker path mirroring
 mkdir -p /home/"$DEV_USER"/config /home/"$DEV_USER"/projects
+ln -sfn /home/"$DEV_USER"/projects /workspace
+chown -R "$DEV_USER":"$DEV_USER" /home/"$DEV_USER"
 
-# Pre-configure code-server to disable authentication (Cloudflare Tunnel handles security)
+# --- 6.1 Pre-configure Container Environment (Host-side) ---
+echo "⚙️ Pre-configuring container environment..."
+
+# Pre-install Oh My Bash for the container user
+sudo -u "$DEV_USER" bash -c "export HOME=/home/$DEV_USER/config; curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh | bash -s -- --unattended"
+sed -i 's/OSH_THEME="[^"]*"/OSH_THEME="90210"/' /home/"$DEV_USER"/config/.bashrc
+sed -i "s|/home/$DEV_USER/config|/config|g" /home/"$DEV_USER"/config/.bashrc
+
+# Pre-configure Git for the container
+cat <<EOF > /home/"$DEV_USER"/config/.gitconfig
+[user]
+    name = $GIT_USER_NAME
+    email = $GIT_USER_EMAIL
+EOF
+
+# Save the container sudo password
+echo "$DEV_USER" > /home/"$DEV_USER"/config/.pass
+chmod 600 /home/"$DEV_USER"/config/.pass
+
+# Pre-configure code-server
 cat <<EOF > /home/"$DEV_USER"/config/config.yaml
 bind-addr: 0.0.0.0:8443
 auth: none
 cert: false
 EOF
 
-# Create code-server settings for font sizes
 mkdir -p /home/"$DEV_USER"/config/data/User
 cat <<EOF > /home/"$DEV_USER"/config/data/User/settings.json
 {
@@ -92,10 +115,7 @@ cat <<EOF > /home/"$DEV_USER"/config/data/User/settings.json
 }
 EOF
 
-# Save the container sudo password to a file in the user's home directory (mapped to /config in container)
-echo "$DEV_USER" > /home/"$DEV_USER"/config/.pass
-chmod 600 /home/"$DEV_USER"/config/.pass
-
+# Final permission sync
 chown -R "$DEV_USER":"$DEV_USER" /home/"$DEV_USER"
 
 docker run -d \
@@ -104,53 +124,40 @@ docker run -d \
   -e PGID=$PGID \
   -e SUDO_PASSWORD="$DEV_USER" \
   -e TZ=Europe/Bucharest \
-  -e DEFAULT_WORKSPACE=/config/workspace \
+  -e DEFAULT_WORKSPACE=/workspace \
   -v /home/"$DEV_USER"/config:/config \
-  -v /home/"$DEV_USER"/projects:/config/workspace \
+  -v /workspace:/workspace \
   -v /var/run/docker.sock:/var/run/docker.sock \
-  -p 8443:8443 \
+  -v /usr/bin/docker:/usr/bin/docker \
+  -v /usr/libexec/docker/cli-plugins:/usr/libexec/docker/cli-plugins \
+  -p 127.0.0.1:8443:8443 \
+  -p 9003:9003 \
   --restart unless-stopped \
   linuxserver/code-server:latest
 
-# --- 7. Install Container Tools & Extensions ---
-# Wait a bit for the server to start up
-sleep 15
+# --- 7. Final Container Setup (Async) ---
+echo "🐳 Finalizing container tools (DDEV, Vim, extensions)..."
 
-# Install system-level Vim for the terminal
-echo "📦 Installing Vim in container..."
-docker exec -u root code-server bash -c "apt-get install -y vim" || true
-
-# Install DDEV in container using apt-get
-echo "🐳 Installing DDEV in container..."
-docker exec -u root code-server bash -c "
-apt-get update && apt-get install -y curl gnupg
-install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://pkg.ddev.com/apt/gpg.key | gpg --dearmor | tee /etc/apt/keyrings/ddev.gpg > /dev/null
-chmod a+r /etc/apt/keyrings/ddev.gpg
-echo 'deb [signed-by=/etc/apt/keyrings/ddev.gpg] https://pkg.ddev.com/apt/ * *' | tee /etc/apt/sources.list.d/ddev.list >/dev/null
-apt-get update && apt-get install -y ddev
+docker exec -d -u root code-server bash -c "
+    # Ensure Docker socket is accessible
+    chmod 666 /var/run/docker.sock
+    
+    # Install DDEV Repo
+    apt-get update && apt-get install -y curl gnupg
+    install -m 0755 -d /etc/apt/keyrings
+    curl -fsSL https://pkg.ddev.com/apt/gpg.key | gpg --batch --yes --dearmor -o /etc/apt/keyrings/ddev.gpg
+    echo 'deb [signed-by=/etc/apt/keyrings/ddev.gpg] https://pkg.ddev.com/apt/ * *' > /etc/apt/sources.list.d/ddev.list
+    
+    # Install DDEV and Vim
+    apt-get update && apt-get install -y ddev vim
+    
+    # Permissions & Initializations
+    echo 'abc ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/abc
+    sudo -u abc mkcert -install
+    
+    # Extensions
+    sudo -u abc code-server --install-extension xdebug.php-debug --install-extension vscodevim.vim
 "
-
-# Enable NOPASSWD for the container user (abc)
-echo "🔓 Enabling NOPASSWD in container..."
-docker exec -u root code-server bash -c "echo 'abc ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers.d/abc"
-
-# Initialize mkcert
-echo "🔐 Initializing mkcert..."
-docker exec -u abc code-server bash -c "sudo mkcert -install"
-
-# Install Oh My Bash in container
-echo "🐚 Installing Oh My Bash in container..."
-docker exec -u abc code-server bash -c "curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh | bash -s -- --unattended"
-docker exec -u abc code-server sed -i 's/OSH_THEME="[^"]*"/OSH_THEME="90210"/' /config/.bashrc
-
-# Install VS Code Extensions (Run in background to avoid blocking the reboot)
-echo "🧩 Installing VS Code extensions in background..."
-docker exec -d -u abc code-server bash -c "code-server --install-extension xdebug.php-debug --install-extension vscodevim.vim"
-
-# Configure Git
-echo "⚙️ Configuring Git..."
-docker exec -u abc code-server bash -c "git config --global user.name \"$GIT_USER_NAME\" && git config --global user.email \"$GIT_USER_EMAIL\""
 
 echo "------------------------------------------------"
 echo "✅ Setup Complete! Master Server is Ready."
