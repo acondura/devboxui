@@ -75,9 +75,8 @@ fi
 PUID=$(id -u "$DEV_USER")
 PGID=$(id -g "$DEV_USER")
 
-# Create the parent project directory and symlink for Docker path mirroring
+# Create the parent project directory
 mkdir -p /home/"$DEV_USER"/config /home/"$DEV_USER"/projects
-ln -sfn /home/"$DEV_USER"/projects /workspace
 chown -R "$DEV_USER":"$DEV_USER" /home/"$DEV_USER"
 
 # --- 6.1 Pre-configure Container Environment (Host-side) ---
@@ -124,9 +123,8 @@ docker run -d \
   -e PGID=$PGID \
   -e SUDO_PASSWORD="$DEV_USER" \
   -e TZ=Europe/Bucharest \
-  -e DEFAULT_WORKSPACE=/workspace \
-  -v /home/"$DEV_USER"/config:/config \
-  -v /workspace:/workspace \
+  -e DEFAULT_WORKSPACE=/home/"$DEV_USER"/config/workspace \
+  -v /home/"$DEV_USER":/home/"$DEV_USER" \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v /usr/bin/docker:/usr/bin/docker \
   -v /usr/libexec/docker/cli-plugins:/usr/libexec/docker/cli-plugins \
@@ -139,6 +137,9 @@ docker run -d \
 echo "🐳 Finalizing container tools (DDEV, Vim, extensions)..."
 
 docker exec -d -u root code-server bash -c "
+    # Create the mirror symlink so /config points to the user's isolated home
+    ln -sfn /home/\"$DEV_USER\"/config /config
+    
     # Ensure Docker socket is accessible
     chmod 666 /var/run/docker.sock
     
