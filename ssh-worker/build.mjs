@@ -72,7 +72,17 @@ const require = (name) => {
 };
 `,
   },
-  plugins: [],
+  plugins: [
+    {
+      name: 'native-node-blocker',
+      setup(build) {
+        // Intercept any attempt to load a .node binary and redirect to our shim
+        build.onResolve({ filter: /\.node$/ }, () => ({
+          path: path.resolve('sshcrypto-shim.js'),
+        }));
+      },
+    },
+  ],
 }).catch(() => process.exit(1));
 
 console.log('✅ SSH Worker bundled successfully (Require, Static paths injected).');
