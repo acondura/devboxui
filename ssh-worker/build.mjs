@@ -10,21 +10,12 @@ await esbuild.build({
   platform: 'node',
   target: 'es2022',
   external: builtinModules.flatMap(m => [m, `node:${m}`]),
+  alias: {
+    'cpu-features': path.resolve('sshcrypto-shim.js'),
+    'ssh2-crypto': path.resolve('sshcrypto-shim.js'),
+  },
   banner: {
     js: `
-// Nuclear Option: Disable Wasm to force Pure JS fallbacks
-class WasmError extends Error { constructor(msg) { super(msg); this.name = 'WebAssemblyError'; } }
-globalThis.WebAssembly = {
-  ...globalThis.WebAssembly,
-  RuntimeError: WasmError,
-  CompileError: WasmError,
-  LinkError: WasmError,
-  Module: class { constructor() { throw new Error('Wasm disallowed'); } },
-  Instance: class { constructor() { throw new Error('Wasm disallowed'); } },
-  instantiate: () => Promise.reject(new Error('Wasm disallowed')),
-  instantiateStreaming: () => Promise.reject(new Error('Wasm disallowed'))
-};
-
 import { Buffer } from 'node:buffer';
 import { Socket, connect } from 'node:net';
 import { EventEmitter } from 'node:events';
@@ -81,20 +72,7 @@ const require = (name) => {
 };
 `,
   },
-  plugins: [
-    {
-      name: 'ssh2-crypto-impersonator',
-      setup(build) {
-        // Intercept both the native .node files and the ssh2-crypto module itself
-        build.onResolve({ filter: /\.node$/ }, () => ({
-          path: path.resolve('sshcrypto-shim.js'),
-        }));
-        build.onResolve({ filter: /^ssh2-crypto$/ }, () => ({
-          path: path.resolve('sshcrypto-shim.js'),
-        }));
-      },
-    },
-  ],
+  plugins: [],
 }).catch(() => process.exit(1));
 
 console.log('✅ SSH Worker bundled successfully (Require, Static paths injected).');
