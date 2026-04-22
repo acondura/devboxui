@@ -21,9 +21,6 @@ while fuser /var/lib/dpkg/lock-mirror >/dev/null 2>&1 || fuser /var/lib/apt/list
 done
 
 apt-get update
-apt-get install -y ufw
-ufw allow 22/tcp
-ufw --force enable
 
 # --- 2. Create User '$DEV_USER' & Sync SSH Keys ---
 if ! id "$DEV_USER" &>/dev/null; then
@@ -76,7 +73,7 @@ PUID=$(id -u "$DEV_USER")
 PGID=$(id -g "$DEV_USER")
 
 # Create the parent project directory
-mkdir -p /home/"$DEV_USER"/config /home/"$DEV_USER"/projects
+mkdir -p /home/"$DEV_USER"/config /home/"$DEV_USER"/workspace
 chown -R "$DEV_USER":"$DEV_USER" /home/"$DEV_USER"
 
 # --- 6.1 Pre-configure Container Environment (Host-side) ---
@@ -123,7 +120,8 @@ docker run -d \
   -e PGID=$PGID \
   -e SUDO_PASSWORD="$DEV_USER" \
   -e TZ=Europe/Bucharest \
-  -e DEFAULT_WORKSPACE=/home/"$DEV_USER"/config/workspace \
+  -e DEFAULT_WORKSPACE=/home/"$DEV_USER"/workspace \
+  -v /home/"$DEV_USER"/config:/config \
   -v /home/"$DEV_USER":/home/"$DEV_USER" \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v /usr/bin/docker:/usr/bin/docker \
@@ -137,9 +135,6 @@ docker run -d \
 echo "🐳 Finalizing container tools (DDEV, Vim, extensions)..."
 
 docker exec -d -u root code-server bash -c "
-    # Create the mirror symlink so /config points to the user's isolated home
-    ln -sfn /home/\"$DEV_USER\"/config /config
-    
     # Ensure Docker socket is accessible
     chmod 666 /var/run/docker.sock
     
@@ -168,6 +163,12 @@ echo "Sudo Password (Container): [NOT REQUIRED / NOPASSWD]"
 echo "Sudo Password (Host): [NOT REQUIRED / NOPASSWD]"
 echo "Code-Server: Auth Disabled (via Cloudflare)"
 echo "------------------------------------------------"
+
+# --- 8. Final Security (Firewall) ---
+echo "🔒 Hardening server firewall..."
+apt-get install -y ufw
+ufw allow 22/tcp
+ufw --force enable
 
 # Signal that the setup is done
 echo "✅ SETUP FINISHED - Server is ready for use." > /etc/motd
