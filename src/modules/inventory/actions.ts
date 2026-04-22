@@ -224,39 +224,47 @@ export async function provisionServer(ip: string, rootPassword: string) {
     projects: []
   };
 
+  // 3. Execution (Don't save to KV yet)
   const kvKey = `servers:${userEmail}:${ip}`;
-  const updateStatus = async (status: ServerConfig['status'], logEntry: string) => {
-    config.status = status;
-    config.logs = [...(config.logs || []), logEntry.slice(0, 500)]; // Cap logs per entry
-    config.updatedAt = new Date().toISOString();
-    await kv.put(kvKey, JSON.stringify(config));
-  };
-
-  await kv.put(kvKey, JSON.stringify(config));
+  let tunnelId: string | undefined;
 
   try {
-    // 3. Cloudflare Automation: Create Tunnel & DNS
-    await updateStatus('provisioning', "Creating Cloudflare Tunnel...");
-    const { id: tunnelId, token: tunnelToken } = await cfApi.createTunnel(`tunnel-${serverId}`);
-    config.tunnelId = tunnelId; // Store it for future project updates
+    // 3.1 Cloudflare Automation: Create Tunnel & DNS
+    console.log("Creating Cloudflare Tunnel...");
+    const tunnelResult = await cfApi.createTunnel(`tunnel-${serverId}`);
+    tunnelId = tunnelResult.id;
+    config.tunnelId = tunnelId;
     
-    await updateStatus('provisioning', "Setting up DNS and Routing...");
-    await cfApi.setupHostname(hostname, tunnelId);
+    console.log("Setting up DNS and Routing...");
+    await cfApi.setupHostname(hostname, tunnelResult.id);
 
-    // 4. Server Automation: Execute Bootstrap Script via SSH
+    // 3.2 Server Automation: Execute Bootstrap Script via SSH
     const managementKey = env.MANAGEMENT_SSH_PUBLIC_KEY || '';
-    const bootstrapScript = getBootstrapScript(userName, publicKey, tunnelToken, managementKey);
+    const bootstrapScript = getBootstrapScript(userName, publicKey, tunnelResult.token, managementKey);
     
-    await updateStatus('provisioning', `Connecting to ${ip} to begin installation...`);
+    console.log(`Connecting to ${ip} to begin installation...`);
     await executeSshCommands(ip, rootPassword, bootstrapScript, (log) => {
-      // In a real app, you might want to stream these logs via WebSockets or long-polling
       console.log(`[SSH ${ip}]: ${log}`);
     });
 
-    await updateStatus('ready', 'Server is ready! Access gated by Cloudflare.');
+    // 4. Success! Now commit to KV
+    config.status = 'ready';
+    config.updatedAt = new Date().toISOString();
+    config.logs = [...(config.logs || []), 'Server provisioned successfully.'];
+    await kv.put(kvKey, JSON.stringify(config));
+
   } catch (error) {
-    await updateStatus('error', `Provisioning failed: ${error instanceof Error ? error.message : String(error)}`);
-    throw error;
+    console.error("Provisioning failed, cleaning up...", error);
+    
+    // Cleanup any partially created resources
+    try {
+      if (tunnelId) await cfApi.deleteTunnel(tunnelId);
+      await cfApi.deleteDnsRecord(hostname);
+    } catch (cleanupError) {
+      console.error("Cleanup failed:", cleanupError);
+    }
+
+    throw error; // Let the UI handle the error alert
   }
 
   return config;
