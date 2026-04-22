@@ -13,6 +13,7 @@ await esbuild.build({
   banner: {
     js: `
 import { Buffer } from 'node:buffer';
+import { Socket, connect } from 'node:net';
 import { EventEmitter } from 'node:events';
 import assert from 'node:assert';
 import crypto from 'node:crypto';
@@ -40,6 +41,7 @@ const __dirname = '/';
 
 const _node_modules = {
   'node:buffer': { Buffer },
+  'node:net': { Socket, connect },
   'node:events': EventEmitter,
   'node:assert': assert,
   'node:crypto': crypto,
