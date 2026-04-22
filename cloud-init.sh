@@ -5,6 +5,8 @@ set -e
 # Replace these manually in the Hetzner UI before creating the server.
 TUNNEL_TOKEN="REPLACE_WITH_YOUR_CLOUDFLARE_TUNNEL_TOKEN"
 DEV_USER="andrei"
+GIT_USER_NAME="Andrei Condurachi"
+GIT_USER_EMAIL="acondurachi@opisnet.com"
 
 # --- 1. System Update ---
 export DEBIAN_FRONTEND=noninteractive
@@ -49,6 +51,11 @@ echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.
 apt-get update
 apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 usermod -aG docker "$DEV_USER"
+
+# Configure Docker to use DEV_USER group for the socket so the container inherits access
+echo "{\"group\": \"$DEV_USER\"}" > /etc/docker/daemon.json
+systemctl restart docker
+
 
 
 
@@ -140,6 +147,10 @@ docker exec -u abc code-server sed -i 's/OSH_THEME="[^"]*"/OSH_THEME="90210"/' /
 # Install VS Code Extensions (Run in background to avoid blocking the reboot)
 echo "🧩 Installing VS Code extensions in background..."
 docker exec -d -u abc code-server bash -c "code-server --install-extension xdebug.php-debug --install-extension vscodevim.vim"
+
+# Configure Git
+echo "⚙️ Configuring Git..."
+docker exec -u abc code-server bash -c "git config --global user.name \"$GIT_USER_NAME\" && git config --global user.email \"$GIT_USER_EMAIL\""
 
 echo "------------------------------------------------"
 echo "✅ Setup Complete! Master Server is Ready."
