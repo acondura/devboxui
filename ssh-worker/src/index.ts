@@ -52,8 +52,36 @@ export default {
           username,
           password,
           privateKey,
-          // Critical: Tell ssh2 to use Cloudflare's socket API
-          readyTimeout: 20000,
+          // Critical: Tell ssh2 to use standard algorithms supported by node:crypto
+          // This avoids the library trying to load WebAssembly for Ed25519/Poly1305
+          algorithms: {
+            kex: [
+              'diffie-hellman-group14-sha256',
+              'diffie-hellman-group16-sha512',
+              'diffie-hellman-group-exchange-sha256',
+              'ecdh-sha2-nistp256',
+              'ecdh-sha2-nistp384',
+              'ecdh-sha2-nistp521',
+            ],
+            cipher: [
+              'aes128-ctr',
+              'aes192-ctr',
+              'aes256-ctr',
+              'aes128-gcm',
+              'aes256-gcm',
+            ],
+            hmac: [
+              'hmac-sha2-256',
+              'hmac-sha2-512',
+            ],
+            serverHostKey: [
+              'ssh-rsa',
+              'ecdsa-sha2-nistp256',
+              'ecdsa-sha2-nistp384',
+              'ecdsa-sha2-nistp521',
+            ],
+          },
+          readyTimeout: 30000,
         });
       });
     } catch (e: any) {
