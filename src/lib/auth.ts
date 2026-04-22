@@ -13,6 +13,8 @@ export const CloudflareEnvSchema = z.object({
   CLOUDFLARE_ZONE_ID: z.string().optional(),
   SSH_SERVICE_URL: z.string().optional(),
   SSH_SERVICE_SECRET: z.string().optional(),
+  MANAGEMENT_SSH_PUBLIC_KEY: z.string().optional(),
+  MANAGEMENT_SSH_PRIVATE_KEY: z.string().optional(),
 });
 
 export type CloudflareEnv = z.infer<typeof CloudflareEnvSchema>;

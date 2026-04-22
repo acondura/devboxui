@@ -45,22 +45,41 @@ export class CloudflareApiService {
 
   /**
    * Routes a hostname to the tunnel and creates a DNS record.
+   * This is additive - it fetches existing rules and appends the new one.
    */
-  async setupHostname(hostname: string, tunnelId: string) {
-    // 1. Update Tunnel Configuration (Ingress Rule)
+  async setupHostname(hostname: string, tunnelId: string, service: string = "http://localhost:8443") {
+    // 1. Fetch current configuration
+    let currentConfig: any = { ingress: [] };
+    try {
+      const result = await this.request<any>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/cfd_tunnel/${tunnelId}/configurations`);
+      currentConfig = result?.config || { ingress: [] };
+    } catch (e) {
+      console.warn("Could not fetch existing tunnel config, starting fresh.");
+    }
+
+    // 2. Filter out existing rules for this hostname (to avoid duplicates)
+    const otherRules = (currentConfig.ingress || []).filter((rule: any) => 
+      rule.hostname !== hostname && rule.service !== "http_status:404"
+    );
+
+    // 3. Build new ingress rules
+    const newIngress = [
+      ...otherRules,
+      { hostname, service },
+      { service: "http_status:404" } // Always keep 404 as the last rule
+    ];
+
+    // 4. Update Tunnel Configuration
     await this.request(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/cfd_tunnel/${tunnelId}/configurations`, {
       method: "PUT",
       body: JSON.stringify({
         config: {
-          ingress: [
-            { hostname, service: "http://localhost:8443" },
-            { service: "http_status:404" }
-          ]
+          ingress: newIngress
         }
       }),
     });
 
-    // 2. Create CNAME record in DNS
+    // 5. Create CNAME record in DNS
     await this.request(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/dns_records`, {
       method: "POST",
       body: JSON.stringify({

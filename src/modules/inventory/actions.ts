@@ -45,43 +45,116 @@ const runRemoteCommand = async (config: {
 /**
  * Generates the full sequence of bash commands to bootstrap the server.
  */
-function getBootstrapScript(username: string, publicKey: string, tunnelToken: string) {
-  return `
-# 1. System Update & Docker Install
-export DEBIAN_FRONTEND=noninteractive
-apt-get update && apt-get upgrade -y
-curl -fsSL https://get.docker.com -o get-docker.sh
-sh get-docker.sh
+/**
+ * Generates the full sequence of bash commands to bootstrap the server.
+ */
+function getBootstrapScript(username: string, publicKey: string, tunnelToken: string, managementKey: string) {
+  return `#!/bin/bash
+set -e
 
-# 2. Create Unique User
-if ! id -u ${username} >/dev/null 2>&1; then
-  useradd -m -s /bin/bash ${username}
-  usermod -aG docker ${username}
+# --- 0. Configuration ---
+DEV_USER="${username}"
+GIT_USER_NAME="DevBox User"
+GIT_USER_EMAIL="${username}@devboxui.local"
+MANAGEMENT_SSH_KEY="${managementKey}"
+TUNNEL_TOKEN="${tunnelToken}"
+
+# --- 1. Host Setup & Hardening ---
+export DEBIAN_FRONTEND=noninteractive
+apt-get update
+apt-get install -y ca-certificates curl gnupg lsb-release ufw
+
+# --- 2. Docker ---
+mkdir -p /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --batch --yes --dearmor -o /etc/apt/keyrings/docker.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list
+apt-get update
+apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+# --- 3. Host User & SSH ---
+if ! id "$DEV_USER" &>/dev/null; then
+    useradd -m -s /bin/bash "$DEV_USER"
+    usermod -aG sudo,docker "$DEV_USER"
+    echo "$DEV_USER ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/"$DEV_USER"
+    
+    mkdir -p /home/"$DEV_USER"/.ssh
+    # Add User Key
+    echo "${publicKey}" >> /home/"$DEV_USER"/.ssh/authorized_keys
+    # Add Management Key
+    if [ -n "$MANAGEMENT_SSH_KEY" ]; then
+        echo "$MANAGEMENT_SSH_KEY" >> /home/"$DEV_USER"/.ssh/authorized_keys
+    fi
+    # Sync from root
+    [ -f /root/.ssh/authorized_keys ] && cat /root/.ssh/authorized_keys >> /home/"$DEV_USER"/.ssh/authorized_keys
+    
+    chown -R "$DEV_USER":"$DEV_USER" /home/"$DEV_USER"/.ssh
+    chmod 700 /home/"$DEV_USER"/.ssh
+    chmod 600 /home/"$DEV_USER"/.ssh/authorized_keys || true
 fi
 
-# 3. Setup SSH for User
-mkdir -p /home/${username}/.ssh
-echo "${publicKey}" > /home/${username}/.ssh/authorized_keys
-chown -R ${username}:${username} /home/${username}/.ssh
-chmod 700 /home/${username}/.ssh
-chmod 600 /home/${username}/.ssh/authorized_keys
+# --- 4. Deployment (The Symmetry Strategy) ---
+# Mirror path for DDEV compatibility
+C_ROOT="/home/$DEV_USER"
+mkdir -p "$C_ROOT/workspace"
 
-# 4. Run VS Code Server (code-server)
+# 4.1 Pre-configure (Host-side)
+sudo -u "$DEV_USER" bash -c "export HOME=$C_ROOT; curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh | bash -s -- --unattended"
+sed -i "s|OSH_THEME=\"[^\"]*\"|OSH_THEME=\"90210\"|" "$C_ROOT/.bashrc"
+
+cat <<EOF > "$C_ROOT/.gitconfig"
+[user]
+    name = \$GIT_USER_NAME
+    email = \$GIT_USER_EMAIL
+EOF
+
+# Code-Server Settings
+mkdir -p "$C_ROOT/config/data/User"
+cat <<EOF > "$C_ROOT/config/config.yaml"
+bind-addr: 0.0.0.0:8443
+auth: none
+cert: false
+EOF
+
+cat <<EOF > "$C_ROOT/config/data/User/settings.json"
+{
+    "editor.fontSize": 15,
+    "terminal.integrated.fontSize": 15,
+    "workbench.colorTheme": "Default Dark+"
+}
+EOF
+
+chown -R "$DEV_USER":"$DEV_USER" "$C_ROOT"
+
+# 4.2 Start Containers
 docker run -d \\
   --name=code-server \\
-  -e PUID=$(id -u ${username}) \\
-  -e PGID=$(id -g ${username}) \\
-  -e TZ=Etc/UTC \\
-  -e DEFAULT_WORKSPACE=/home/${username} \\
-  -p 8443:8443 \\
-  -v /home/${username}/code-config:/config \\
+  -e PUID=$(id -u "$DEV_USER") -e PGID=$(id -g "$DEV_USER") \\
+  -e DEFAULT_WORKSPACE="$C_ROOT/workspace" \\
+  -v "$C_ROOT/config":/config \\
+  -v "$C_ROOT":"$C_ROOT" \\
+  -v /var/run/docker.sock:/var/run/docker.sock \\
+  -v /usr/bin/docker:/usr/bin/docker \\
+  -v /usr/libexec/docker/cli-plugins:/usr/libexec/docker/cli-plugins \\
+  -p 127.0.0.1:8443:8443 \\
+  -p 9003:9003 \\
   --restart unless-stopped \\
   lscr.io/linuxserver/code-server:latest
 
-# 5. Bootstrap Cloudflare Tunnel
-curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
-dpkg -i cloudflared.deb
-cloudflared service install ${tunnelToken}
+docker run -d \\
+  --name=tunnel \\
+  --restart unless-stopped \\
+  cloudflare/cloudflared:latest tunnel --no-autoupdate run --token "\$TUNNEL_TOKEN"
+
+# 4.3 Final Container Setup
+docker exec -d -u root code-server bash -c "
+    chmod 666 /var/run/docker.sock
+    apt-get update && apt-get install -y curl gnupg vim ddev
+    sudo -u abc mkcert -install
+"
+
+# --- 5. Final Security ---
+ufw allow 22/tcp
+ufw --force enable
   `.trim();
 }
 
@@ -147,7 +220,8 @@ export async function provisionServer(ip: string, rootPassword: string) {
     sshPrivateKey: privateKey, sshPublicKey: publicKey,
     createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
     logs: ['Starting Zero-Touch provisioning...'],
-    tunnelUrl: `https://${hostname}`
+    tunnelUrl: `https://${hostname}`,
+    projects: []
   };
 
   const kvKey = `servers:${userEmail}:${ip}`;
@@ -164,12 +238,14 @@ export async function provisionServer(ip: string, rootPassword: string) {
     // 3. Cloudflare Automation: Create Tunnel & DNS
     await updateStatus('provisioning', "Creating Cloudflare Tunnel...");
     const { id: tunnelId, token: tunnelToken } = await cfApi.createTunnel(`tunnel-${serverId}`);
+    config.tunnelId = tunnelId; // Store it for future project updates
     
     await updateStatus('provisioning', "Setting up DNS and Routing...");
     await cfApi.setupHostname(hostname, tunnelId);
 
     // 4. Server Automation: Execute Bootstrap Script via SSH
-    const bootstrapScript = getBootstrapScript(userName, publicKey, tunnelToken);
+    const managementKey = env.MANAGEMENT_SSH_PUBLIC_KEY || '';
+    const bootstrapScript = getBootstrapScript(userName, publicKey, tunnelToken, managementKey);
     
     await updateStatus('provisioning', `Connecting to ${ip} to begin installation...`);
     await executeSshCommands(ip, rootPassword, bootstrapScript, (log) => {
@@ -205,4 +281,57 @@ export async function getServers() {
   );
   
   return servers;
+}
+
+/**
+ * Adds a new DDEV project to an existing server.
+ */
+export async function addProject(serverId: string, projectName: string) {
+  const userEmail = await getIdentity();
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+  const cfApi = new CloudflareApiService(env);
+
+  if (!kv) throw new Error("KV database missing.");
+
+  // 1. Find the server
+  const list = await kv.list({ prefix: `servers:${userEmail}:` });
+  let serverKey = "";
+  let config: ServerConfig | null = null;
+
+  for (const key of list.keys) {
+    const val = await kv.get(key.name);
+    const c = JSON.parse(val!) as ServerConfig;
+    if (c.id === serverId) {
+      serverKey = key.name;
+      config = c;
+      break;
+    }
+  }
+
+  if (!config || !serverKey) throw new Error("Server not found.");
+  if (!config.tunnelId) throw new Error("Server is missing a Tunnel ID.");
+
+  // 2. Generate Project Domain
+  const cleanName = projectName.toLowerCase().replace(/[^a-z0-9]/g, '-');
+  const baseDomain = config.tunnelUrl?.replace('https://', '') || '';
+  const projectDomain = `${cleanName}.${baseDomain}`;
+
+  // 3. Update Cloudflare Tunnel & DNS
+  await cfApi.setupHostname(projectDomain, config.tunnelId);
+
+  // 4. Update Server State
+  const newProject = {
+    name: projectName,
+    domain: projectDomain,
+    status: 'ready' as const
+  };
+
+  config.projects = [...(config.projects || []), newProject];
+  config.updatedAt = new Date().toISOString();
+  config.logs = [...(config.logs || []), `Added project: ${projectName} at ${projectDomain}`];
+
+  await kv.put(serverKey, JSON.stringify(config));
+
+  return config;
 }

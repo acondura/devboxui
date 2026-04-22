@@ -9,7 +9,13 @@ export interface ServerConfig {
   createdAt: string;
   updatedAt: string;
   tunnelUrl?: string;
+  tunnelId?: string; // Added to help with updates
   logs?: string[];
+  projects?: {
+    name: string;
+    domain: string;
+    status: 'ready' | 'provisioning' | 'error';
+  }[];
 }
 
 export interface ProvisioningState {
