@@ -117,7 +117,7 @@ export class CloudflareApiService {
    */
   async setupAccess(hostname: string, allowedEmail: string) {
     // 1. Create Access Application
-    const app = await this.request<any>(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/access/apps`, {
+    const app = await this.request<any>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps`, {
       method: "POST",
       body: JSON.stringify({
         name: `DevBox: ${hostname}`,
@@ -130,7 +130,7 @@ export class CloudflareApiService {
     });
 
     // 2. Create Access Policy
-    await this.request(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/access/apps/${app.id}/policies`, {
+    await this.request(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps/${app.id}/policies`, {
       method: "POST",
       body: JSON.stringify({
         name: "Allow Creator",
@@ -150,12 +150,12 @@ export class CloudflareApiService {
    */
   async deleteAccess(hostname: string) {
     // 1. Find the application by domain
-    const apps = await this.request<any[]>(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/access/apps`);
+    const apps = await this.request<any[]>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps`);
     const app = apps.find(a => a.domain === hostname);
 
     if (app) {
       // 2. Delete the application (policies are deleted automatically)
-      await this.request(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/access/apps/${app.id}`, {
+      await this.request(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps/${app.id}`, {
         method: "DELETE",
       });
     }

@@ -74,7 +74,6 @@ async function getAccessPublicKeys(teamDomain: string): Promise<JWK[]> {
   const url = `https://${teamDomain}.cloudflareaccess.com/cdn-cgi/access/certs`;
   
   try {
-    console.log(`Fetching keys from: ${url}`);
     const response = await fetch(url, {
       method: 'GET',
       headers: { 
@@ -87,7 +86,6 @@ async function getAccessPublicKeys(teamDomain: string): Promise<JWK[]> {
     if (response.ok) {
       const data = await response.json() as { keys: JWK[] };
       if (data.keys?.length > 0) {
-        console.log(`Successfully fetched ${data.keys.length} keys from ${url}`);
         cachedKeys = data.keys;
         keysFetchedAt = Date.now();
         return data.keys;
@@ -124,7 +122,6 @@ export async function getIdentity(passedEnv?: CloudflareEnv): Promise<string> {
       const payload = JSON.parse(atob(jwt.split('.')[1]));
       if (payload.iss) {
         teamDomain = payload.iss.replace(/^https?:\/\//, '').replace('.cloudflareaccess.com', '').split('/')[0];
-        console.log("Extracted teamDomain from JWT:", teamDomain);
       }
     } catch (e) {
       console.warn("Could not extract domain from JWT:", e);
@@ -133,12 +130,6 @@ export async function getIdentity(passedEnv?: CloudflareEnv): Promise<string> {
 
   // Final cleanup of the domain string
   teamDomain = teamDomain.replace(/^https?:\/\//, '').replace('.cloudflareaccess.com', '').split('/')[0];
-
-  console.log("Auth Debug:", {
-    hasJwt: !!jwt,
-    teamDomain,
-    envKeys: Object.keys(env)
-  });
 
   if (!jwt) {
     console.error("No cf-access-jwt-assertion header found.");
@@ -155,8 +146,6 @@ export async function getIdentity(passedEnv?: CloudflareEnv): Promise<string> {
     const keys = await getAccessPublicKeys(teamDomain);
     
     if (keys.length > 0) {
-      console.log(`Attempting verification with ${keys.length} keys...`);
-      
       for (const key of keys) {
         try {
           const publicKey = await importJWK(key, 'RS256');
@@ -166,12 +155,10 @@ export async function getIdentity(passedEnv?: CloudflareEnv): Promise<string> {
           
           const validated = emailSchema.safeParse(payload.email);
           if (validated.success) {
-            console.log("JWT Verified successfully!");
             return validated.data;
           }
         } catch (err) {
           // If this key fails, try the next one
-          console.log(`Key ${key.kid || 'unknown'} failed verification, trying next...`);
           continue;
         }
       }
