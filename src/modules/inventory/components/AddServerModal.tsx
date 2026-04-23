@@ -10,6 +10,8 @@ interface AddServerModalProps {
 
 export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) {
   const [name, setName] = useState('');
+  const [serverType, setServerType] = useState('cx22');
+  const [location, setLocation] = useState('nbg1');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
@@ -18,7 +20,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await onAdd(name);
+      await onAdd(name, serverType, location);
       onClose();
     } catch (err) {
       console.error("Failed to add server:", err);
@@ -49,10 +51,40 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
               onChange={(e) => setName(e.target.value)}
               className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
             />
-            <p className="mt-2 text-xs text-slate-500 italic">
-              We'll automatically create a Hetzner VPS and bootstrap it with Docker and VS Code.
-            </p>
           </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-400 mb-1.5">Server Type</label>
+              <select
+                value={serverType}
+                onChange={(e) => setServerType(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer"
+              >
+                <option value="cx22">Intel (2 vCPU, 4GB)</option>
+                <option value="cpx11">AMD (2 vCPU, 2GB)</option>
+                <option value="cax11">ARM (2 vCPU, 4GB)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-400 mb-1.5">Location</label>
+              <select
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer"
+              >
+                <option value="nbg1">🇩🇪 Nuremberg</option>
+                <option value="fsn1">🇩🇪 Falkenstein</option>
+                <option value="hel1">🇫🇮 Helsinki</option>
+                <option value="ash">🇺🇸 Ashburn, VA</option>
+                <option value="hil">🇺🇸 Hillsboro, OR</option>
+              </select>
+            </div>
+          </div>
+
+          <p className="text-xs text-slate-500 italic px-1">
+            We'll automatically create a Hetzner VPS and bootstrap it with Docker and VS Code via Cloud-Init.
+          </p>
           
           <div className="pt-2">
             <button

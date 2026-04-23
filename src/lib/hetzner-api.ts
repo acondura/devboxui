@@ -22,17 +22,19 @@ export class HetznerApiService {
   private token: string;
   private baseUrl = 'https://api.hetzner.cloud/v1';
 
-  constructor(env: CloudflareEnv) {
-    if (!env.HETZNER_API_TOKEN) {
-      throw new Error("Hetzner API Token is missing. Please set HETZNER_API_TOKEN in your environment.");
-    }
-    this.token = env.HETZNER_API_TOKEN;
+  constructor(env: CloudflareEnv, token?: string) {
+    this.token = token || env.HETZNER_API_TOKEN || '';
   }
 
   /**
    * Creates a new Hetzner Cloud Server with Cloud-Init user_data
    */
-  async createServer(name: string, userData: string): Promise<HetznerServerResponse> {
+  async createServer(
+    name: string, 
+    userData: string, 
+    serverType: string = 'cx22', 
+    location: string = 'nbg1'
+  ): Promise<HetznerServerResponse> {
     const response = await fetch(`${this.baseUrl}/servers`, {
       method: 'POST',
       headers: {
@@ -41,9 +43,9 @@ export class HetznerApiService {
       },
       body: JSON.stringify({
         name,
-        server_type: 'cx22', // Standard efficient tier
+        server_type: serverType,
         image: 'ubuntu-24.04',
-        location: 'nbg1', // Nuremberg (Standard default)
+        location: location,
         user_data: userData,
         start_after_create: true,
         public_net: {

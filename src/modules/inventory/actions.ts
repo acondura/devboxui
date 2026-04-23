@@ -196,17 +196,55 @@ async function executeSshCommands(ip: string, password: string, script: string, 
 }
 
 /**
- * Provisions a new server automatically via Hetzner API and Cloud-Init.
+ * Retrieves per-user settings (like Hetzner API Token) from KV.
  */
-export async function provisionServer(customName?: string) {
+export async function getUserSettings() {
   const userEmail = await getIdentity();
   const env = await getCloudflareEnv();
   const kv = env.KV;
-  if (!kv) {
-    throw new Error("Database Error: The 'KV' binding is missing. Please check your wrangler.toml or Cloudflare Dashboard settings.");
+  if (!kv) return null;
+
+  const data = await kv.get(`settings:${userEmail}`);
+  if (!data) return { hetznerToken: '' };
+  
+  return JSON.parse(data) as { hetznerToken: string };
+}
+
+/**
+ * Saves per-user settings to KV.
+ */
+export async function saveUserSettings(settings: { hetznerToken: string }) {
+  const userEmail = await getIdentity();
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+  if (!kv) throw new Error("KV database missing.");
+
+  await kv.put(`settings:${userEmail}`, JSON.stringify(settings));
+  return { success: true };
+}
+
+/**
+ * Provisions a new server automatically via Hetzner API and Cloud-Init.
+ */
+export async function provisionServer(
+  customName?: string, 
+  serverType: string = 'cx22', 
+  location: string = 'nbg1'
+) {
+  const userEmail = await getIdentity();
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+  
+  // 0. Fetch User Token
+  const settings = await getUserSettings();
+  const token = settings?.hetznerToken || env.HETZNER_API_TOKEN;
+  
+  if (!token) {
+    throw new Error("Hetzner API Token is missing. Please set it in Settings or contact your administrator.");
   }
+
   const cfApi = new CloudflareApiService(env);
-  const hetznerApi = new HetznerApiService(env);
+  const hetznerApi = new HetznerApiService(env, token);
 
   // 1. Generate SSH Keys for the user
   const { publicKey, privateKey } = await generateSSHKeys();
@@ -228,7 +266,7 @@ export async function provisionServer(customName?: string) {
     sshPublicKey: publicKey, 
     createdAt: new Date().toISOString(), 
     updatedAt: new Date().toISOString(),
-    logs: ['Starting Cloud-Init provisioning via Hetzner API...'],
+    logs: [`Starting Cloud-Init provisioning (${serverType} in ${location}) via Hetzner API...`],
     tunnelUrl: `https://${hostname}`,
     projects: []
   };
@@ -251,8 +289,8 @@ export async function provisionServer(customName?: string) {
     const bootstrapScript = getBootstrapScript(userName, publicKey, tunnelResult.token, managementKey);
     
     // 5. Hetzner Automation: Create Server
-    console.log(`Requesting new server '${name}' from Hetzner...`);
-    const hetznerResult = await hetznerApi.createServer(name, bootstrapScript);
+    console.log(`Requesting new ${serverType} server '${name}' in ${location} from Hetzner...`);
+    const hetznerResult = await hetznerApi.createServer(name, bootstrapScript, serverType, location);
     hetznerServerId = hetznerResult.server.id;
     config.hetznerServerId = hetznerServerId;
     
