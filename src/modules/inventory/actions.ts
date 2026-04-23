@@ -284,6 +284,9 @@ export async function provisionServer(
     console.log("Setting up DNS and Routing...");
     await cfApi.setupHostname(hostname, tunnelResult.id);
 
+    console.log(`Setting up Zero Trust Access for ${userEmail}...`);
+    await cfApi.setupAccess(hostname, userEmail);
+
     // 4. Generate Cloud-Init Script with baked-in SSH keys and Tunnel token
     const managementKey = env.MANAGEMENT_SSH_PUBLIC_KEY || '';
     const bootstrapScript = getBootstrapScript(userName, publicKey, tunnelResult.token, managementKey);
@@ -314,6 +317,11 @@ export async function provisionServer(
     // Cleanup Cloudflare resources
     if (tunnelId) {
       try { await cfApi.deleteTunnel(tunnelId); } catch (e) { console.error("Cleanup: Failed to delete tunnel", e); }
+    }
+    
+    // Cleanup DNS Record
+    if (hostname) {
+      try { await cfApi.deleteDnsRecord(hostname); } catch (e) { console.error("Cleanup: Failed to delete DNS record", e); }
     }
     
     // Cleanup Hetzner resources
@@ -380,8 +388,10 @@ export async function addProject(serverId: string, projectName: string) {
   const baseDomain = config.tunnelUrl?.replace('https://', '') || '';
   const projectDomain = `${cleanName}.${baseDomain}`;
 
-  // 3. Update Cloudflare Tunnel & DNS
+  // 3. Update Cloudflare Tunnel, DNS & Access
   await cfApi.setupHostname(projectDomain, config.tunnelId);
+  console.log(`Setting up Zero Trust Access for project ${projectDomain}...`);
+  await cfApi.setupAccess(projectDomain, userEmail);
 
   // 4. Update Server State
   const newProject = {
@@ -432,14 +442,16 @@ export async function deleteServer(serverId: string) {
     // Delete DNS Records (Main and Projects)
     if (config.tunnelUrl) {
       const hostname = config.tunnelUrl.replace('https://', '');
-      console.log(`Deleting DNS record: ${hostname}`);
+      console.log(`Cleaning up DNS and Access for ${hostname}...`);
       await cfApi.deleteDnsRecord(hostname).catch(e => console.error("DNS deletion failed:", e));
+      await cfApi.deleteAccess(hostname).catch(e => console.error("Access deletion failed:", e));
     }
 
     if (config.projects) {
       for (const project of config.projects) {
-        console.log(`Deleting project DNS record: ${project.domain}`);
+        console.log(`Cleaning up DNS and Access for project: ${project.domain}`);
         await cfApi.deleteDnsRecord(project.domain).catch(e => console.error(`Project DNS deletion failed for ${project.domain}:`, e));
+        await cfApi.deleteAccess(project.domain).catch(e => console.error(`Project Access deletion failed for ${project.domain}:`, e));
       }
     }
 

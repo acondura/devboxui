@@ -79,16 +79,86 @@ export class CloudflareApiService {
       }),
     });
 
-    // 5. Create CNAME record in DNS
-    await this.request(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/dns_records`, {
+    // 5. Manage DNS Record (Idempotent)
+    const targetContent = `${tunnelId}.cfargotunnel.com`;
+    const records = await this.request<any[]>(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/dns_records?name=${hostname}&type=CNAME`);
+    const existing = records.find(r => r.name === hostname);
+
+    if (existing) {
+      if (existing.content !== targetContent) {
+        console.log(`Updating existing DNS record for ${hostname}...`);
+        await this.request(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/dns_records/${existing.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            content: targetContent,
+            proxied: true,
+          }),
+        });
+      } else {
+        console.log(`DNS record for ${hostname} is already correct. Skipping.`);
+      }
+    } else {
+      console.log(`Creating new DNS record for ${hostname}...`);
+      await this.request(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/dns_records`, {
+        method: "POST",
+        body: JSON.stringify({
+          type: "CNAME",
+          name: hostname,
+          content: targetContent,
+          proxied: true,
+        }),
+      });
+    }
+  }
+
+  /**
+   * Protects a hostname with Cloudflare Access (Zero Trust).
+   * Creates an Application and an 'Allow' policy for the specified email.
+   */
+  async setupAccess(hostname: string, allowedEmail: string) {
+    // 1. Create Access Application
+    const app = await this.request<any>(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/access/apps`, {
       method: "POST",
       body: JSON.stringify({
-        type: "CNAME",
-        name: hostname,
-        content: `${tunnelId}.cfargotunnel.com`,
-        proxied: true,
+        name: `DevBox: ${hostname}`,
+        domain: hostname,
+        type: "self_hosted",
+        session_duration: "24h",
+        app_launcher_visible: true,
+        http_only_cookie_attribute: true,
       }),
     });
+
+    // 2. Create Access Policy
+    await this.request(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/access/apps/${app.id}/policies`, {
+      method: "POST",
+      body: JSON.stringify({
+        name: "Allow Creator",
+        decision: "allow",
+        precedence: 1,
+        include: [
+          { email: { email: allowedEmail } }
+        ]
+      }),
+    });
+
+    return app.id;
+  }
+
+  /**
+   * Removes Cloudflare Access protection for a hostname.
+   */
+  async deleteAccess(hostname: string) {
+    // 1. Find the application by domain
+    const apps = await this.request<any[]>(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/access/apps`);
+    const app = apps.find(a => a.domain === hostname);
+
+    if (app) {
+      // 2. Delete the application (policies are deleted automatically)
+      await this.request(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/access/apps/${app.id}`, {
+        method: "DELETE",
+      });
+    }
   }
 
   /**
