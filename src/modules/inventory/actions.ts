@@ -4,6 +4,7 @@ import { ServerConfig } from './types';
 import nacl from 'tweetnacl';
 import { getCloudflareEnv, getIdentity } from '@/lib/auth';
 import { CloudflareApiService } from '@/lib/cloudflare-api';
+import { HetznerApiService } from '@/lib/hetzner-api';
 
 /**
  * Executes a command on a remote server via the SSH-as-a-Service Worker.
@@ -195,10 +196,9 @@ async function executeSshCommands(ip: string, password: string, script: string, 
 }
 
 /**
- * Provisions a new server by IP. 
- * Securely retrieves user identity internally.
+ * Provisions a new server automatically via Hetzner API and Cloud-Init.
  */
-export async function provisionServer(ip: string, rootPassword: string) {
+export async function provisionServer(customName?: string) {
   const userEmail = await getIdentity();
   const env = await getCloudflareEnv();
   const kv = env.KV;
@@ -206,30 +206,38 @@ export async function provisionServer(ip: string, rootPassword: string) {
     throw new Error("Database Error: The 'KV' binding is missing. Please check your wrangler.toml or Cloudflare Dashboard settings.");
   }
   const cfApi = new CloudflareApiService(env);
+  const hetznerApi = new HetznerApiService(env);
 
-  // 1. Generate SSH Keys
+  // 1. Generate SSH Keys for the user
   const { publicKey, privateKey } = await generateSSHKeys();
-  
+
   // 2. Initialize Server Configuration
   const serverId = crypto.randomUUID();
+  const shortId = serverId.slice(0, 8);
+  const name = customName || `devbox-${shortId}`;
   const userName = userEmail.split('@')[0].replace(/[^a-zA-Z0-9]/g, '_');
-  const hostname = `devbox-${serverId.slice(0, 8)}.devboxui.com`; // Example hostname pattern
+  const hostname = `${name}.devboxui.com`; 
   
   const config: ServerConfig = {
-    id: serverId, ip, userName, userEmail, status: 'provisioning',
-    sshPrivateKey: privateKey, sshPublicKey: publicKey,
-    createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-    logs: ['Starting Zero-Touch provisioning...'],
+    id: serverId, 
+    ip: 'pending', 
+    userName, 
+    userEmail, 
+    status: 'provisioning',
+    sshPrivateKey: privateKey, 
+    sshPublicKey: publicKey, 
+    createdAt: new Date().toISOString(), 
+    updatedAt: new Date().toISOString(),
+    logs: ['Starting Cloud-Init provisioning via Hetzner API...'],
     tunnelUrl: `https://${hostname}`,
     projects: []
   };
 
-  // 3. Execution (Don't save to KV yet)
-  const kvKey = `servers:${userEmail}:${ip}`;
   let tunnelId: string | undefined;
+  let hetznerServerId: number | undefined;
 
   try {
-    // 3.1 Cloudflare Automation: Create Tunnel & DNS
+    // 3. Cloudflare Automation: Create Tunnel & DNS
     console.log("Creating Cloudflare Tunnel...");
     const tunnelResult = await cfApi.createTunnel(`tunnel-${serverId}`);
     tunnelId = tunnelResult.id;
@@ -238,36 +246,45 @@ export async function provisionServer(ip: string, rootPassword: string) {
     console.log("Setting up DNS and Routing...");
     await cfApi.setupHostname(hostname, tunnelResult.id);
 
-    // 3.2 Server Automation: Execute Bootstrap Script via SSH
+    // 4. Generate Cloud-Init Script with baked-in SSH keys and Tunnel token
     const managementKey = env.MANAGEMENT_SSH_PUBLIC_KEY || '';
     const bootstrapScript = getBootstrapScript(userName, publicKey, tunnelResult.token, managementKey);
     
-    console.log(`Connecting to ${ip} to begin installation...`);
-    await executeSshCommands(ip, rootPassword, bootstrapScript, (log) => {
-      console.log(`[SSH ${ip}]: ${log}`);
-    });
+    // 5. Hetzner Automation: Create Server
+    console.log(`Requesting new server '${name}' from Hetzner...`);
+    const hetznerResult = await hetznerApi.createServer(name, bootstrapScript);
+    hetznerServerId = hetznerResult.server.id;
+    config.hetznerServerId = hetznerServerId;
+    
+    const ip = hetznerResult.server.public_net.ipv4.ip;
+    config.ip = ip;
+    config.logs = [...(config.logs || []), `Hetzner server created at ${ip}`];
 
-    // 4. Success! Now commit to KV
-    config.status = 'ready';
+    // 5. Success! Commit to KV
+    config.status = 'ready'; // In cloud-init flow, we assume it will finish
     config.updatedAt = new Date().toISOString();
-    config.logs = [...(config.logs || []), 'Server provisioned successfully.'];
+    config.logs = [...(config.logs || []), 'Server creation triggered. Provisioning will continue in the background.'];
+    
+    const kvKey = `servers:${userEmail}:${ip}`;
     await kv.put(kvKey, JSON.stringify(config));
+
+    return { success: true, server: config };
 
   } catch (error) {
     console.error("Provisioning failed, cleaning up...", error);
     
-    // Cleanup any partially created resources
-    try {
-      if (tunnelId) await cfApi.deleteTunnel(tunnelId);
-      await cfApi.deleteDnsRecord(hostname);
-    } catch (cleanupError) {
-      console.error("Cleanup failed:", cleanupError);
+    // Cleanup Cloudflare resources
+    if (tunnelId) {
+      try { await cfApi.deleteTunnel(tunnelId); } catch (e) { console.error("Cleanup: Failed to delete tunnel", e); }
+    }
+    
+    // Cleanup Hetzner resources
+    if (hetznerServerId) {
+      try { await hetznerApi.deleteServer(hetznerServerId); } catch (e) { console.error("Cleanup: Failed to delete Hetzner server", e); }
     }
 
-    throw error; // Let the UI handle the error alert
+    throw error;
   }
-
-  return config;
 }
 
 /**
@@ -352,51 +369,55 @@ export async function deleteServer(serverId: string) {
   const env = await getCloudflareEnv();
   const kv = env.KV;
   const cfApi = new CloudflareApiService(env);
+  const hetznerApi = new HetznerApiService(env);
 
   if (!kv) throw new Error("KV database missing.");
 
-  // 1. Find the server
-  const list = await kv.list({ prefix: `servers:${userEmail}:` });
-  let serverKey = "";
-  let config: ServerConfig | null = null;
+  // 1. Find the server in KV
+  const servers = await getServers();
+  const config = servers.find(s => s.id === serverId);
 
-  for (const key of list.keys) {
-    const val = await kv.get(key.name);
-    const c = JSON.parse(val!) as ServerConfig;
-    if (c.id === serverId) {
-      serverKey = key.name;
-      config = c;
-      break;
-    }
+  if (!config) {
+    throw new Error("Server not found.");
   }
 
-  if (!config || !serverKey) throw new Error("Server not found.");
+  // 2. Automated Cleanup
+  console.log(`Starting cleanup for server ${config.ip || 'pending'}...`);
 
-  // 2. Cleanup Cloudflare Tunnel & DNS
   try {
+    // Delete Cloudflare Tunnel
     if (config.tunnelId) {
-      console.log(`Cleaning up Cloudflare Tunnel: ${config.tunnelId}`);
-      await cfApi.deleteTunnel(config.tunnelId);
+      console.log("Deleting Cloudflare Tunnel...");
+      await cfApi.deleteTunnel(config.tunnelId).catch(e => console.error("Tunnel deletion failed:", e));
     }
-    
-    // Cleanup main hostname
+
+    // Delete DNS Records (Main and Projects)
     if (config.tunnelUrl) {
       const hostname = config.tunnelUrl.replace('https://', '');
-      await cfApi.deleteDnsRecord(hostname);
+      console.log(`Deleting DNS record: ${hostname}`);
+      await cfApi.deleteDnsRecord(hostname).catch(e => console.error("DNS deletion failed:", e));
     }
 
-    // Cleanup project hostnames
     if (config.projects) {
       for (const project of config.projects) {
-        await cfApi.deleteDnsRecord(project.domain);
+        console.log(`Deleting project DNS record: ${project.domain}`);
+        await cfApi.deleteDnsRecord(project.domain).catch(e => console.error(`Project DNS deletion failed for ${project.domain}:`, e));
       }
     }
+
+    // Delete Hetzner Server
+    if (config.hetznerServerId) {
+      console.log(`Deleting Hetzner server ${config.hetznerServerId}...`);
+      await hetznerApi.deleteServer(config.hetznerServerId).catch(e => console.error("Hetzner deletion failed:", e));
+    }
   } catch (e) {
-    console.error("Cloudflare cleanup partially failed, continuing with KV deletion:", e);
+    console.error("Cleanup process encountered errors, proceeding with KV removal:", e);
   }
 
   // 3. Remove from KV
-  await kv.delete(serverKey);
+  // Note: We use the IP in the key, so we need it. If it's still 'pending', we'll need to find the key.
+  const kvKey = `servers:${userEmail}:${config.ip}`;
+  await kv.delete(kvKey);
 
   return { success: true };
 }

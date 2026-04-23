@@ -1,9 +1,0 @@
-name = "devbox-ssh-service"
-main = "dist/index.js"
-compatibility_date = "2024-04-01"
-compatibility_flags = ["nodejs_compat", "nodejs_zlib"]
-
-[build]
-command = "npm install && node build.mjs"
-
-

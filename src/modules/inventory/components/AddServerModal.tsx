@@ -9,8 +9,7 @@ interface AddServerModalProps {
 }
 
 export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) {
-  const [ip, setIp] = useState('');
-  const [rootPassword, setRootPassword] = useState('');
+  const [name, setName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
@@ -18,16 +17,21 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    await onAdd(ip, rootPassword);
-    setIsSubmitting(false);
-    onClose();
+    try {
+      await onAdd(name);
+      onClose();
+    } catch (err) {
+      console.error("Failed to add server:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
       <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden transform transition-all animate-in fade-in zoom-in duration-200">
         <div className="px-6 py-5 border-b border-slate-800 flex justify-between items-center">
-          <h3 className="text-xl font-bold text-white">Add New Server</h3>
+          <h3 className="text-xl font-bold text-white">Spawn New DevBox</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -37,29 +41,16 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
         
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1.5">Server IP Address</label>
+            <label className="block text-sm font-medium text-slate-400 mb-1.5">DevBox Name (Optional)</label>
             <input
               type="text"
-              required
-              placeholder="e.g. 123.45.67.89"
-              value={ip}
-              onChange={(e) => setIp(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1.5">Root Password</label>
-            <input
-              type="password"
-              required
-              placeholder="••••••••"
-              value={rootPassword}
-              onChange={(e) => setRootPassword(e.target.value)}
+              placeholder="e.g. project-x-dev"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
               className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
             />
             <p className="mt-2 text-xs text-slate-500 italic">
-              Used only for initial bootstrapping. We generate unique SSH keys for subsequent access.
+              We'll automatically create a Hetzner VPS and bootstrap it with Docker and VS Code.
             </p>
           </div>
           
@@ -75,10 +66,10 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span>Provisioning...</span>
+                  <span>Spawning...</span>
                 </>
               ) : (
-                <span>Add Server & Provision</span>
+                <span>Spawn DevBox ✨</span>
               )}
             </button>
           </div>

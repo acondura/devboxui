@@ -9,7 +9,8 @@ export interface ServerConfig {
   createdAt: string;
   updatedAt: string;
   tunnelUrl?: string;
-  tunnelId?: string; // Added to help with updates
+  tunnelId?: string;
+  hetznerServerId?: number;
   logs?: string[];
   projects?: {
     name: string;

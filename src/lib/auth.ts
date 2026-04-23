@@ -15,6 +15,7 @@ export const CloudflareEnvSchema = z.object({
   SSH_SERVICE_SECRET: z.string().optional(),
   MANAGEMENT_SSH_PUBLIC_KEY: z.string().optional(),
   MANAGEMENT_SSH_PRIVATE_KEY: z.string().optional(),
+  HETZNER_API_TOKEN: z.string().optional(),
 });
 
 export type CloudflareEnv = z.infer<typeof CloudflareEnvSchema>;

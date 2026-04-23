@@ -1,0 +1,80 @@
+import { CloudflareEnv } from './auth';
+
+export interface HetznerServerResponse {
+  server: {
+    id: number;
+    name: string;
+    status: string;
+    public_net: {
+      ipv4: {
+        ip: string;
+      };
+    };
+  };
+  action: {
+    id: number;
+    command: string;
+    status: string;
+  };
+}
+
+export class HetznerApiService {
+  private token: string;
+  private baseUrl = 'https://api.hetzner.cloud/v1';
+
+  constructor(env: CloudflareEnv) {
+    if (!env.HETZNER_API_TOKEN) {
+      throw new Error("Hetzner API Token is missing. Please set HETZNER_API_TOKEN in your environment.");
+    }
+    this.token = env.HETZNER_API_TOKEN;
+  }
+
+  /**
+   * Creates a new Hetzner Cloud Server with Cloud-Init user_data
+   */
+  async createServer(name: string, userData: string): Promise<HetznerServerResponse> {
+    const response = await fetch(`${this.baseUrl}/servers`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.token}`
+      },
+      body: JSON.stringify({
+        name,
+        server_type: 'cx22', // Standard efficient tier
+        image: 'ubuntu-24.04',
+        location: 'nbg1', // Nuremberg (Standard default)
+        user_data: userData,
+        start_after_create: true,
+        public_net: {
+          enable_ipv4: true,
+          enable_ipv6: false
+        }
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Hetzner API Error: ${response.status} ${response.statusText} - ${error}`);
+    }
+
+    return await response.json() as HetznerServerResponse;
+  }
+
+  /**
+   * Deletes a server (cleanup)
+   */
+  async deleteServer(serverId: number): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/servers/${serverId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${this.token}`
+      }
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error(`Failed to delete server ${serverId}:`, error);
+    }
+  }
+}

@@ -30,10 +30,12 @@ export function DashboardView({ userEmail, teamDomain }: DashboardViewProps) {
     loadServers();
   }, []);
 
-  const handleAddServer = async (ip: string, rootPassword: string) => {
+  const handleAddServer = async (name: string) => {
     try {
-      const newServer = await provisionServer(ip, rootPassword);
-      setServers(prev => [...prev, newServer]);
+      const result = await provisionServer(name);
+      if (result.success && result.server) {
+        setServers(prev => [...prev, result.server]);
+      }
     } catch (error) {
       alert("Failed to provision server. Check console for details.");
       console.error(error);
