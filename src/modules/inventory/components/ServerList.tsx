@@ -59,14 +59,14 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { se
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden hover:border-indigo-500/50 transition-all group relative">
+    <div className="bg-slate-900 border border-slate-800 rounded-xl hover:border-indigo-500/50 transition-all group relative">
       <AddProjectModal 
         isOpen={isProjectModalOpen} 
         onClose={() => setIsProjectModalOpen(false)} 
         onAdd={(name) => onAddProject(server.id, name)} 
       />
       
-      <div className="p-5 border-b border-slate-800 bg-slate-950/50 flex justify-between items-start">
+      <div className="p-5 border-b border-slate-800 bg-slate-950/50 rounded-t-xl flex justify-between items-start">
         <div>
           <div className="flex items-center space-x-2">
             <span className={`h-2 w-2 rounded-full ${server.status === 'ready' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
@@ -101,7 +101,7 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { se
                 </svg>
               )}
               {/* Tooltip */}
-              <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover/lock:opacity-100 transition-opacity bg-slate-700 text-white text-[10px] py-1 px-2 rounded pointer-events-none whitespace-nowrap z-10">
+              <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover/lock:opacity-100 transition-opacity bg-slate-700 text-white text-[10px] py-1 px-2 rounded pointer-events-none whitespace-nowrap z-50">
                 {server.isLocked ? 'Protection active (Click to unlock)' : 'Unprotected (Click to lock)'}
               </div>
             </button>
