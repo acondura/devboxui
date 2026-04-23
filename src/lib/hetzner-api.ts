@@ -132,7 +132,8 @@ export class HetznerApiService {
         'Authorization': `Bearer ${this.token}`
       },
       body: JSON.stringify({
-        delete: enableDeleteProtection
+        delete: enableDeleteProtection,
+        rebuild: enableDeleteProtection
       })
     });
 
