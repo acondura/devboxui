@@ -62,37 +62,43 @@ export async function getCloudflareEnv(): Promise<CloudflareEnv> {
 /**
  * Fetches and caches Cloudflare Access Public Keys
  */
+let cachedKeys: JWK[] | null = null;
+let keysFetchedAt = 0;
+const CACHE_TTL = 1000 * 60 * 60; // 1 hour
+
 async function getAccessPublicKeys(teamDomain: string): Promise<JWK[]> {
-  const endpoints = [
-    `https://${teamDomain}.cloudflareaccess.com/cdn-cgi/access/jwks`,
-    `https://${teamDomain}.cloudflareaccess.com/cdn-cgi/access/certs`
-  ];
-  
-  for (const url of endpoints) {
-    try {
-      console.log(`Fetching keys from: ${url}`);
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: { 
-          'Accept': 'application/json',
-          'User-Agent': 'DevBoxUI-Auth' 
-        },
-        cache: 'no-store'
-      });
-      
-      if (response.ok) {
-        const data = await response.json() as { keys: JWK[] };
-        if (data.keys?.length > 0) {
-          console.log(`Successfully fetched ${data.keys.length} keys from ${url}`);
-          return data.keys;
-        }
-      } else {
-        console.warn(`Failed to fetch from ${url}: ${response.status} ${response.statusText}`);
-      }
-    } catch (error) {
-      console.error(`Error fetching keys from ${url}:`, error);
-    }
+  if (cachedKeys && Date.now() - keysFetchedAt < CACHE_TTL) {
+    return cachedKeys;
   }
+
+  const url = `https://${teamDomain}.cloudflareaccess.com/cdn-cgi/access/certs`;
+  
+  try {
+    console.log(`Fetching keys from: ${url}`);
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { 
+        'Accept': 'application/json',
+        'User-Agent': 'DevBoxUI-Auth' 
+      },
+      next: { revalidate: 3600 } // Use Next.js cache
+    });
+    
+    if (response.ok) {
+      const data = await response.json() as { keys: JWK[] };
+      if (data.keys?.length > 0) {
+        console.log(`Successfully fetched ${data.keys.length} keys from ${url}`);
+        cachedKeys = data.keys;
+        keysFetchedAt = Date.now();
+        return data.keys;
+      }
+    } else {
+      console.warn(`Failed to fetch from ${url}: ${response.status} ${response.statusText}`);
+    }
+  } catch (error) {
+    console.error(`Error fetching keys from ${url}:`, error);
+  }
+  
   return [];
 }
 
