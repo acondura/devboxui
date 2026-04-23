@@ -65,8 +65,11 @@ TUNNEL_TOKEN="${tunnelToken}"
 export DEBIAN_FRONTEND=noninteractive
 if [ -n "$ROOT_PASSWORD" ]; then
     echo "root:$ROOT_PASSWORD" | chpasswd
+    # Clear "password change required" flag set by Hetzner
+    chage -d $(date +%Y-%m-%d) root
 fi
 echo "⚠️ SETUP IN PROGRESS - Please wait a few minutes before using the server." > /etc/motd
+set -x # Enable command tracing for logs
 
 apt-get update
 apt-get install -y ca-certificates curl gnupg lsb-release ufw
@@ -76,6 +79,7 @@ if ! id "$DEV_USER" &>/dev/null; then
     useradd -m -s /bin/bash "$DEV_USER"
     if [ -n "$ROOT_PASSWORD" ]; then
         echo "$DEV_USER:$ROOT_PASSWORD" | chpasswd
+        chage -d $(date +%Y-%m-%d) "$DEV_USER"
     fi
     usermod -aG sudo "$DEV_USER"
     echo "$DEV_USER ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/"$DEV_USER"
