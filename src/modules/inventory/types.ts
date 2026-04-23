@@ -6,6 +6,7 @@ export interface ServerConfig {
   status: 'provisioning' | 'ready' | 'error';
   sshPrivateKey: string;
   sshPublicKey: string;
+  rootPassword?: string;
   createdAt: string;
   updatedAt: string;
   tunnelUrl?: string;

@@ -32,6 +32,7 @@ export interface HetznerServerResponse {
     command: string;
     status: string;
   };
+  root_password?: string;
 }
 
 export interface HetznerServersResponse {

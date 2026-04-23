@@ -49,43 +49,42 @@ const runRemoteCommand = async (config: {
 /**
  * Generates the full sequence of bash commands to bootstrap the server.
  */
-function getBootstrapScript(username: string, publicKey: string, tunnelToken: string, managementKey: string) {
+function getBootstrapScript(username: string, publicKey: string, tunnelToken: string, managementKey: string, rootPassword?: string) {
   return `#!/bin/bash
 set -e
 
 # --- 0. Configuration ---
 DEV_USER="${username}"
+ROOT_PASSWORD="${rootPassword || ''}"
 GIT_USER_NAME="DevBox User"
 GIT_USER_EMAIL="${username}@devboxui.local"
 MANAGEMENT_SSH_KEY="${managementKey}"
 TUNNEL_TOKEN="${tunnelToken}"
 
-# --- 1. Host Setup & Hardening ---
+# --- 1. System Update & Passwords ---
 export DEBIAN_FRONTEND=noninteractive
+if [ -n "$ROOT_PASSWORD" ]; then
+    echo "root:$ROOT_PASSWORD" | chpasswd
+fi
+echo "⚠️ SETUP IN PROGRESS - Please wait a few minutes before using the server." > /etc/motd
+
 apt-get update
 apt-get install -y ca-certificates curl gnupg lsb-release ufw
 
-# --- 2. Docker ---
-mkdir -p /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --batch --yes --dearmor -o /etc/apt/keyrings/docker.gpg
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list
-apt-get update
-apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
-
-# --- 3. Host User & SSH ---
+# --- 2. Create User '$DEV_USER' & SSH ---
 if ! id "$DEV_USER" &>/dev/null; then
     useradd -m -s /bin/bash "$DEV_USER"
-    usermod -aG sudo,docker "$DEV_USER"
+    if [ -n "$ROOT_PASSWORD" ]; then
+        echo "$DEV_USER:$ROOT_PASSWORD" | chpasswd
+    fi
+    usermod -aG sudo "$DEV_USER"
     echo "$DEV_USER ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/"$DEV_USER"
     
     mkdir -p /home/"$DEV_USER"/.ssh
-    # Add User Key
     echo "${publicKey}" >> /home/"$DEV_USER"/.ssh/authorized_keys
-    # Add Management Key
     if [ -n "$MANAGEMENT_SSH_KEY" ]; then
         echo "$MANAGEMENT_SSH_KEY" >> /home/"$DEV_USER"/.ssh/authorized_keys
     fi
-    # Sync from root
     [ -f /root/.ssh/authorized_keys ] && cat /root/.ssh/authorized_keys >> /home/"$DEV_USER"/.ssh/authorized_keys
     
     chown -R "$DEV_USER":"$DEV_USER" /home/"$DEV_USER"/.ssh
@@ -93,12 +92,27 @@ if ! id "$DEV_USER" &>/dev/null; then
     chmod 600 /home/"$DEV_USER"/.ssh/authorized_keys || true
 fi
 
-# --- 4. Deployment (The Symmetry Strategy) ---
-# Mirror path for DDEV compatibility
-C_ROOT="/home/$DEV_USER"
-mkdir -p "$C_ROOT/workspace"
+# --- 3. Install Docker ---
+mkdir -p /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --batch --yes --dearmor -o /etc/apt/keyrings/docker.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list
+apt-get update
+apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+usermod -aG docker "$DEV_USER"
 
-# 4.1 Pre-configure (Host-side)
+# --- 4. Install Cloudflare Tunnel (Host Service) ---
+curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+dpkg -i cloudflared.deb
+rm cloudflared.deb
+if [ -n "$TUNNEL_TOKEN" ]; then
+    cloudflared service install "$TUNNEL_TOKEN"
+fi
+
+# --- 5. Deploy Code-Server ---
+C_ROOT="/home/$DEV_USER"
+mkdir -p "$C_ROOT/workspace" "$C_ROOT/config/data/User"
+
+# Pre-configure (Host-side)
 sudo -u "$DEV_USER" bash -c "export HOME=$C_ROOT; curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh | bash -s -- --unattended"
 sed -i "s|OSH_THEME=\"[^\"]*\"|OSH_THEME=\"90210\"|" "$C_ROOT/.bashrc"
 
@@ -108,8 +122,6 @@ cat <<EOF > "$C_ROOT/.gitconfig"
     email = \$GIT_USER_EMAIL
 EOF
 
-# Code-Server Settings
-mkdir -p "$C_ROOT/config/data/User"
 cat <<EOF > "$C_ROOT/config/config.yaml"
 bind-addr: 0.0.0.0:8443
 auth: none
@@ -126,10 +138,11 @@ EOF
 
 chown -R "$DEV_USER":"$DEV_USER" "$C_ROOT"
 
-# 4.2 Start Containers
+# Start code-server container
 docker run -d \\
   --name=code-server \\
   -e PUID=$(id -u "$DEV_USER") -e PGID=$(id -g "$DEV_USER") \\
+  -e SUDO_PASSWORD="$ROOT_PASSWORD" \\
   -e DEFAULT_WORKSPACE="$C_ROOT/workspace" \\
   -v "$C_ROOT/config":/config \\
   -v "$C_ROOT":"$C_ROOT" \\
@@ -141,13 +154,25 @@ docker run -d \\
   --restart unless-stopped \\
   lscr.io/linuxserver/code-server:latest
 
-docker run -d \\
-  --name=tunnel \\
-  --restart unless-stopped \\
-  cloudflare/cloudflared:latest tunnel --no-autoupdate run --token "\$TUNNEL_TOKEN"
-
-# 4.3 Final Container Setup
+# Final Container Setup
 docker exec -d -u root code-server bash -c "
+    chmod 666 /var/run/docker.sock
+    apt-get update && apt-get install -y curl gnupg
+    install -m 0755 -d /etc/apt/keyrings
+    curl -fsSL https://pkg.ddev.com/apt/gpg.key | gpg --batch --yes --dearmor -o /etc/apt/keyrings/ddev.gpg
+    echo 'deb [signed-by=/etc/apt/keyrings/ddev.gpg] https://pkg.ddev.com/apt/ * *' > /etc/apt/sources.list.d/ddev.list
+    apt-get update && apt-get install -y ddev vim
+    sudo -u abc mkcert -install
+    sudo -u abc code-server --install-extension xdebug.php-debug --install-extension vscodevim.vim
+"
+
+# Firewall
+ufw allow 22/tcp
+ufw --force enable
+
+echo "✅ SETUP FINISHED - Server is ready for use." > /etc/motd
+`;
+}
     chmod 666 /var/run/docker.sock
     apt-get update && apt-get install -y curl gnupg vim ddev
     sudo -u abc mkcert -install
@@ -247,7 +272,7 @@ export async function provisionServer(
   const cfApi = new CloudflareApiService(env);
   const hetznerApi = new HetznerApiService(env, hetznerToken);
 
-  // 1. Generate SSH Keys for the user
+  // 1. Generate SSH Keys
   const { publicKey, privateKey } = await generateSSHKeys();
 
   // 2. Initialize Server Configuration
@@ -297,6 +322,12 @@ export async function provisionServer(
     const hetznerResult = await hetznerApi.createServer(name, bootstrapScript, serverType, location, image);
     hetznerServerId = hetznerResult.server.id;
     config.hetznerServerId = hetznerServerId;
+    
+    // Store the root password generated by Hetzner
+    if (hetznerResult.root_password) {
+      console.log("Captured root password from Hetzner.");
+      config.rootPassword = hetznerResult.root_password;
+    }
 
     const ip = hetznerResult.server.public_net.ipv4.ip;
     config.ip = ip;
