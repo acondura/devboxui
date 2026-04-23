@@ -116,7 +116,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
               >
                 {options.serverTypes.map(t => (
                   <option key={t.id} value={t.name}>
-                    {t.description} ({t.architecture === 'arm' ? 'ARM' : 'x86'})
+                    {t.name.toUpperCase()} - {t.description}
                   </option>
                 ))}
                 {isLoadingOptions && <option>Loading types...</option>}
@@ -137,6 +137,40 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
               </select>
             </div>
           </div>
+
+          {/* Specs Summary */}
+          {!isLoadingOptions && currentType && (
+            <div className="grid grid-cols-4 gap-2">
+              <div className="bg-slate-950/40 border border-slate-800/50 rounded-xl p-2.5 text-center">
+                <p className="text-[9px] uppercase tracking-wider text-slate-500 font-bold mb-0.5">Cores</p>
+                <p className="text-xs font-bold text-slate-200">{currentType.cores} vCPU</p>
+              </div>
+              <div className="bg-slate-950/40 border border-slate-800/50 rounded-xl p-2.5 text-center">
+                <p className="text-[9px] uppercase tracking-wider text-slate-500 font-bold mb-0.5">RAM</p>
+                <p className="text-xs font-bold text-slate-200">{currentType.memory} GB</p>
+              </div>
+              <div className="bg-slate-950/40 border border-slate-800/50 rounded-xl p-2.5 text-center">
+                <p className="text-[9px] uppercase tracking-wider text-slate-500 font-bold mb-0.5">Disk</p>
+                <p className="text-xs font-bold text-slate-200">{currentType.disk} GB</p>
+              </div>
+              <div className="bg-slate-950/40 border border-slate-800/50 rounded-xl p-2.5 text-center">
+                <p className="text-[9px] uppercase tracking-wider text-slate-500 font-bold mb-0.5">Arch</p>
+                <p className="text-xs font-bold text-slate-200 uppercase">{currentType.architecture}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Deprecation Warning */}
+          {currentType?.deprecation && (
+            <div className="bg-amber-900/20 border border-amber-900/30 rounded-xl p-3 flex items-start space-x-3">
+              <svg className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <p className="text-xs text-amber-200/70 leading-relaxed">
+                Scheduled for deprecation on <strong className="text-amber-400">{new Date(currentType.deprecation).toLocaleDateString()}</strong>.
+              </p>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-slate-400 mb-1.5">OS Image</label>
