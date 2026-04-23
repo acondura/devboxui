@@ -49,7 +49,7 @@ const runRemoteCommand = async (config: {
 /**
  * Generates the full sequence of bash commands to bootstrap the server.
  */
-function getBootstrapScript(username: string, publicKey: string, tunnelToken: string, managementKey: string, rootPassword?: string) {
+function getBootstrapScript(username: string, publicKey: string, tunnelToken: string, managementKey: string, userSSHKey: string = '', rootPassword?: string) {
   return `#!/bin/bash
 set -e
 
@@ -59,17 +59,27 @@ ROOT_PASSWORD="${rootPassword || ''}"
 GIT_USER_NAME="DevBox User"
 GIT_USER_EMAIL="${username}@devboxui.local"
 MANAGEMENT_SSH_KEY="${managementKey}"
+USER_SSH_KEY="${userSSHKey}"
 TUNNEL_TOKEN="${tunnelToken}"
 
 # --- 1. System Update & Passwords ---
 export DEBIAN_FRONTEND=noninteractive
+
+# Wait for apt locks
+while fuser /var/lib/dpkg/lock-mirror >/dev/null 2>&1 || fuser /var/lib/apt/lists/lock >/dev/null 2>&1 || fuser /var/lib/dpkg/lock >/dev/null 2>&1; do
+   echo "Waiting for other software managers to finish..."
+   sleep 5
+done
+
+# Clear "password change required" flag set by Hetzner immediately
+chage -d $(date +%Y-%m-%d) root
+
 if [ -n "$ROOT_PASSWORD" ]; then
     echo "root:$ROOT_PASSWORD" | chpasswd
-    # Clear "password change required" flag set by Hetzner
-    chage -d $(date +%Y-%m-%d) root
 fi
+
 echo "⚠️ SETUP IN PROGRESS - Please wait a few minutes before using the server." > /etc/motd
-set -x # Enable command tracing for logs
+set -x 
 
 apt-get update
 apt-get install -y ca-certificates curl gnupg lsb-release ufw
@@ -85,11 +95,29 @@ if ! id "$DEV_USER" &>/dev/null; then
     echo "$DEV_USER ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/"$DEV_USER"
     
     mkdir -p /home/"$DEV_USER"/.ssh
+    # Add System Generated Key
     echo "${publicKey}" >> /home/"$DEV_USER"/.ssh/authorized_keys
+    # Add User Custom Key
+    if [ -n "$USER_SSH_KEY" ]; then
+        echo "$USER_SSH_KEY" >> /home/"$DEV_USER"/.ssh/authorized_keys
+        mkdir -p /root/.ssh
+        echo "$USER_SSH_KEY" >> /root/.ssh/authorized_keys
+        chmod 700 /root/.ssh
+        chmod 600 /root/.ssh/authorized_keys
+    fi
+    # Add Management Key
     if [ -n "$MANAGEMENT_SSH_KEY" ]; then
         echo "$MANAGEMENT_SSH_KEY" >> /home/"$DEV_USER"/.ssh/authorized_keys
     fi
+    # Sync from root
     [ -f /root/.ssh/authorized_keys ] && cat /root/.ssh/authorized_keys >> /home/"$DEV_USER"/.ssh/authorized_keys
+    
+    # Remove duplicates from root
+    if [ -f /root/.ssh/authorized_keys ]; then
+        sort -u /root/.ssh/authorized_keys -o /root/.ssh/authorized_keys
+    fi
+    # Remove duplicates from user
+    sort -u /home/"$DEV_USER"/.ssh/authorized_keys -o /home/"$DEV_USER"/.ssh/authorized_keys
     
     chown -R "$DEV_USER":"$DEV_USER" /home/"$DEV_USER"/.ssh
     chmod 700 /home/"$DEV_USER"/.ssh
@@ -142,6 +170,12 @@ EOF
 
 chown -R "$DEV_USER":"$DEV_USER" "$C_ROOT"
 
+# Wait for docker daemon
+while ! docker info >/dev/null 2>&1; do
+  echo "Waiting for Docker..."
+  sleep 2
+done
+
 # Start code-server container
 docker run -d \\
   --name=code-server \\
@@ -158,7 +192,16 @@ docker run -d \\
   --restart unless-stopped \\
   lscr.io/linuxserver/code-server:latest
 
-# Final Container Setup
+# Final Container Setup (Wait for container to be ready)
+MAX_RETRIES=30
+COUNT=0
+while ! docker ps | grep -q code-server; do
+    if [ $COUNT -ge $MAX_RETRIES ]; then echo "Container failed to start"; exit 1; fi
+    echo "Waiting for code-server container..."
+    sleep 2
+    COUNT=$((COUNT+1))
+done
+
 docker exec -d -u root code-server bash -c "
     chmod 666 /var/run/docker.sock
     apt-get update && apt-get install -y curl gnupg
@@ -224,15 +267,15 @@ export async function getUserSettings() {
   if (!kv) return null;
 
   const data = await kv.get(`settings:${userEmail}`);
-  if (!data) return { hetznerToken: '' };
+  if (!data) return { hetznerToken: '', sshPublicKey: '' };
 
-  return JSON.parse(data) as { hetznerToken: string };
+  return JSON.parse(data) as { hetznerToken: string; sshPublicKey: string };
 }
 
 /**
  * Saves per-user settings to KV.
  */
-export async function saveUserSettings(settings: { hetznerToken: string }) {
+export async function saveUserSettings(settings: { hetznerToken: string; sshPublicKey: string }) {
   const userEmail = await getIdentity();
   const env = await getCloudflareEnv();
   const kv = env.KV;
@@ -309,7 +352,8 @@ export async function provisionServer(
 
     // 4. Generate Cloud-Init Script with baked-in SSH keys and Tunnel token
     const managementKey = env.MANAGEMENT_SSH_PUBLIC_KEY || '';
-    const bootstrapScript = getBootstrapScript(userName, publicKey, tunnelResult.token, managementKey);
+    const userSSHKey = settings?.sshPublicKey || '';
+    const bootstrapScript = getBootstrapScript(userName, publicKey, tunnelResult.token, managementKey, userSSHKey);
 
     // 5. Hetzner Automation: Create Server
     console.log(`Requesting new ${serverType} server '${name}' in ${location} from Hetzner...`);

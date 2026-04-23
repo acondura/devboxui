@@ -72,7 +72,21 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { se
             <span className={`h-2 w-2 rounded-full ${server.status === 'ready' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
             <h4 className="font-bold text-white uppercase tracking-wider text-xs">{server.status}</h4>
           </div>
-          <p className="text-lg font-mono text-indigo-400 mt-1">{server.ip}</p>
+          <div className="flex items-center space-x-2 mt-1 group/ip">
+            <p className="text-lg font-mono text-indigo-400">{server.ip}</p>
+            <button 
+              onClick={() => {
+                navigator.clipboard.writeText(server.ip);
+                alert("IP copied to clipboard!"); // Simple feedback for now
+              }}
+              className="text-slate-600 hover:text-indigo-400 transition-colors opacity-0 group-hover/ip:opacity-100"
+              title="Copy IP"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+              </svg>
+            </button>
+          </div>
           {server.tunnelUrl && (
             <p className="text-[10px] font-mono text-slate-500 mt-0.5 truncate max-w-[150px]">
               {server.tunnelUrl.replace('https://', '')}

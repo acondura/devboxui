@@ -1,18 +1,21 @@
 import { useState, useEffect } from 'react';
-import { getHetznerOptions } from '@/modules/inventory/actions';
+import { getHetznerOptions, getUserSettings } from '@/modules/inventory/actions';
 
 interface AddServerModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onOpenSettings: () => void;
   onAdd: (name: string, serverType: string, location: string, image: string) => Promise<void>;
 }
 
-export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) {
+export function AddServerModal({ isOpen, onClose, onOpenSettings, onAdd }: AddServerModalProps) {
   const [name, setName] = useState('');
   const [serverType, setServerType] = useState('cpx21');
   const [location, setLocation] = useState('nbg1');
   const [image, setImage] = useState('ubuntu-24.04');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasSSHKey, setHasSSHKey] = useState(true);
+  const [isCheckingKey, setIsCheckingKey] = useState(true);
   
   const [options, setOptions] = useState<{
     serverTypes: any[];
@@ -25,8 +28,16 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
     if (isOpen) {
       async function loadOptions() {
         setIsLoadingOptions(true);
-        const data = await getHetznerOptions();
+        setIsCheckingKey(true);
+        
+        const [data, settings] = await Promise.all([
+          getHetznerOptions(),
+          getUserSettings()
+        ]);
+        
         setOptions(data);
+        setHasSSHKey(!!settings?.sshPublicKey);
+        setIsCheckingKey(false);
         
         // Set defaults if data available
         if (data.serverTypes.length > 0) {
@@ -54,6 +65,15 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
 
   // Filter images based on architecture
   const filteredImages = options.images.filter(i => i.architecture === currentArch);
+
+  // Sort server types by price (for the current location)
+  const sortedServerTypes = [...options.serverTypes].sort((a, b) => {
+    const getPrice = (t: any) => {
+      const p = t.prices.find((p: any) => p.location === location) || t.prices[0];
+      return parseFloat(p?.price_monthly?.gross || '0');
+    };
+    return getPrice(a) - getPrice(b);
+  });
 
   // Find price for current selection
   const selectedPrice = currentType?.prices.find((p: any) => p.location === location) || currentType?.prices[0];
@@ -94,6 +114,27 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
         </div>
         
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          {!hasSSHKey && !isCheckingKey && (
+            <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl space-y-2">
+              <div className="flex items-center space-x-2 text-amber-500">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.268 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span className="text-sm font-bold">SSH Key Required</span>
+              </div>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                You must add your SSH Public Key in settings before you can launch a DevBox. This ensures you can access your server securely.
+              </p>
+              <button 
+                type="button"
+                onClick={() => { onClose(); onOpenSettings(); }}
+                className="text-xs font-bold text-amber-500 hover:text-amber-400 underline underline-offset-4"
+              >
+                Go to Settings to add key →
+              </button>
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-slate-400 mb-1.5">DevBox Name (Optional)</label>
             <input
@@ -101,7 +142,8 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
               placeholder="e.g. project-x-dev"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+              disabled={!hasSSHKey}
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all disabled:opacity-50"
             />
           </div>
 
@@ -111,14 +153,18 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
               <select
                 value={serverType}
                 onChange={(e) => setServerType(e.target.value)}
-                disabled={isLoadingOptions}
+                disabled={isLoadingOptions || !hasSSHKey}
                 className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer disabled:opacity-50"
               >
-                {options.serverTypes.map(t => (
-                  <option key={t.id} value={t.name}>
-                    {t.name.toUpperCase()} - {t.description}
-                  </option>
-                ))}
+                {sortedServerTypes.map(t => {
+                  const p = t.prices.find((p: any) => p.location === location) || t.prices[0];
+                  const priceLabel = p ? `(€${parseFloat(p.price_monthly.gross).toFixed(2)})` : '';
+                  return (
+                    <option key={t.id} value={t.name}>
+                      {t.name.toUpperCase()} - {t.description} {priceLabel}
+                    </option>
+                  );
+                })}
                 {isLoadingOptions && <option>Loading types...</option>}
               </select>
             </div>
@@ -213,8 +259,8 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
           <div className="pt-2">
             <button
               type="submit"
-              disabled={isSubmitting || isLoadingOptions}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800 text-white font-semibold py-3 rounded-lg transition-all shadow-lg shadow-indigo-500/20 flex items-center justify-center space-x-2"
+              disabled={isSubmitting || isLoadingOptions || !hasSSHKey}
+              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 text-white font-semibold py-3 rounded-lg transition-all shadow-lg shadow-indigo-500/20 flex items-center justify-center space-x-2"
             >
               {isSubmitting ? (
                 <>
