@@ -254,7 +254,7 @@ export async function provisionServer(
   const shortId = serverId.slice(0, 8);
   const name = customName || `devbox-${shortId}`;
   const userName = userEmail.split('@')[0].replace(/[^a-zA-Z0-9]/g, '_');
-  const hostname = `${name}.devboxui.com`;
+  const hostname = `${name}-code.devboxui.com`;
 
   const config: ServerConfig = {
     id: serverId,
@@ -446,8 +446,7 @@ export async function addProject(serverId: string, projectName: string) {
 
   // 2. Generate Project Domain
   const cleanName = projectName.toLowerCase().replace(/[^a-z0-9]/g, '-');
-  const baseDomain = config.tunnelUrl?.replace('https://', '') || '';
-  const projectDomain = `${cleanName}.${baseDomain}`;
+  const projectDomain = `${cleanName}-app.devboxui.com`;
 
   // 3. Update Cloudflare Tunnel, DNS & Access
   await cfApi.setupHostname(projectDomain, config.tunnelId);
