@@ -13,6 +13,8 @@ await esbuild.build({
   alias: {
     'cpu-features': path.resolve('sshcrypto-shim.js'),
     'ssh2-crypto': path.resolve('sshcrypto-shim.js'),
+    './poly1305': path.resolve('sshcrypto-shim.js'),
+    '../crypto/poly1305': path.resolve('sshcrypto-shim.js'),
   },
   banner: {
     js: `
@@ -74,10 +76,14 @@ const require = (name) => {
   },
   plugins: [
     {
-      name: 'native-node-blocker',
+      name: 'wasm-module-blocker',
       setup(build) {
-        // Intercept any attempt to load a .node binary and redirect to our shim
+        // Intercept any attempt to load a .node binary
         build.onResolve({ filter: /\.node$/ }, () => ({
+          path: path.resolve('sshcrypto-shim.js'),
+        }));
+        // Intercept any variant of poly1305 imports (relative or absolute)
+        build.onResolve({ filter: /poly1305(\.js)?$/ }, () => ({
           path: path.resolve('sshcrypto-shim.js'),
         }));
       },
