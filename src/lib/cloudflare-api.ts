@@ -116,31 +116,47 @@ export class CloudflareApiService {
    * Creates an Application and an 'Allow' policy for the specified email.
    */
   async setupAccess(hostname: string, allowedEmail: string) {
-    // 1. Create Access Application
-    const app = await this.request<any>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps`, {
-      method: "POST",
-      body: JSON.stringify({
-        name: `DevBox: ${hostname}`,
-        domain: hostname,
-        type: "self_hosted",
-        session_duration: "24h",
-        app_launcher_visible: true,
-        http_only_cookie_attribute: true,
-      }),
-    });
+    // 1. Check if application already exists
+    const apps = await this.request<any[]>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps`);
+    let app = apps.find(a => a.domain === hostname);
 
-    // 2. Create Access Policy
-    await this.request(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps/${app.id}/policies`, {
-      method: "POST",
-      body: JSON.stringify({
-        name: "Allow Creator",
-        decision: "allow",
-        precedence: 1,
-        include: [
-          { email: { email: allowedEmail } }
-        ]
-      }),
-    });
+    if (!app) {
+      console.log(`Creating new Access Application for ${hostname}...`);
+      app = await this.request<any>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps`, {
+        method: "POST",
+        body: JSON.stringify({
+          name: `DevBox: ${hostname}`,
+          domain: hostname,
+          type: "self_hosted",
+          session_duration: "24h",
+          app_launcher_visible: true,
+          http_only_cookie_attribute: true,
+        }),
+      });
+    } else {
+      console.log(`Access Application for ${hostname} already exists, skipping creation.`);
+    }
+
+    // 2. Check if "Allow Creator" policy already exists
+    const policies = await this.request<any[]>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps/${app.id}/policies`);
+    const hasPolicy = policies.some(p => p.name === "Allow Creator");
+
+    if (!hasPolicy) {
+      console.log(`Creating Access Policy for ${allowedEmail}...`);
+      await this.request(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps/${app.id}/policies`, {
+        method: "POST",
+        body: JSON.stringify({
+          name: "Allow Creator",
+          decision: "allow",
+          precedence: 1,
+          include: [
+            { email: { email: allowedEmail } }
+          ]
+        }),
+      });
+    } else {
+      console.log(`Access Policy for ${allowedEmail} already exists, skipping.`);
+    }
 
     return app.id;
   }
