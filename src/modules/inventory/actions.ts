@@ -173,16 +173,6 @@ ufw --force enable
 echo "✅ SETUP FINISHED - Server is ready for use." > /etc/motd
 `;
 }
-    chmod 666 /var/run/docker.sock
-    apt-get update && apt-get install -y curl gnupg vim ddev
-    sudo -u abc mkcert -install
-"
-
-# --- 5. Final Security ---
-ufw allow 22/tcp
-ufw --force enable
-  `.trim();
-}
 
 /**
  * Helper to generate SSH keys
