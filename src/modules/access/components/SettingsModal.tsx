@@ -10,13 +10,21 @@ interface SettingsModalProps {
 
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [hetznerToken, setHetznerToken] = useState('');
+  const [cfToken, setCfToken] = useState('');
+  const [cfAccountId, setCfAccountId] = useState('');
+  const [cfZoneId, setCfZoneId] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       getUserSettings().then(settings => {
-        if (settings) setHetznerToken(settings.hetznerToken || '');
+        if (settings) {
+          setHetznerToken(settings.hetznerToken || '');
+          setCfToken(settings.cfToken || '');
+          setCfAccountId(settings.cfAccountId || '');
+          setCfZoneId(settings.cfZoneId || '');
+        }
       });
     }
   }, [isOpen]);
@@ -28,7 +36,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     setIsSaving(true);
     setStatus(null);
     try {
-      await saveUserSettings({ hetznerToken });
+      await saveUserSettings({ hetznerToken, cfToken, cfAccountId, cfZoneId });
       setStatus({ type: 'success', message: 'Settings saved successfully!' });
       setTimeout(() => setStatus(null), 3000);
     } catch (err) {
@@ -47,7 +55,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37a1.724 1.724 0 002.572-1.065z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            <span>User Settings</span>
+            <span>Cloud Settings</span>
           </h3>
           <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -56,19 +64,57 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           </button>
         </div>
         
-        <form onSubmit={handleSave} className="p-6 space-y-6">
+        <form onSubmit={handleSave} className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
           <div>
-            <label className="block text-sm font-medium text-slate-400 mb-2">Hetzner API Token</label>
-            <input
-              type="password"
-              placeholder="hcl_..."
-              value={hetznerToken}
-              onChange={(e) => setHetznerToken(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-            />
-            <p className="mt-2 text-xs text-slate-500">
-              Get this from your <a href="https://console.hetzner.cloud" target="_blank" className="text-indigo-400 hover:underline">Hetzner Cloud Console</a> under Security - API Tokens.
-            </p>
+            <label className="block text-[10px] uppercase font-bold text-slate-500 tracking-widest mb-2">Hetzner Infrastructure</label>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">API Token</label>
+                <input
+                  type="password"
+                  placeholder="hcl_..."
+                  value={hetznerToken}
+                  onChange={(e) => setHetznerToken(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 text-white placeholder-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-slate-800">
+            <label className="block text-[10px] uppercase font-bold text-slate-500 tracking-widest mb-2">Cloudflare Networking</label>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">API Token</label>
+                <input
+                  type="password"
+                  placeholder="Cloudflare API Token"
+                  value={cfToken}
+                  onChange={(e) => setCfToken(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 text-white placeholder-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Account ID</label>
+                <input
+                  type="text"
+                  placeholder="Cloudflare Account ID"
+                  value={cfAccountId}
+                  onChange={(e) => setCfAccountId(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 text-white placeholder-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Zone ID</label>
+                <input
+                  type="text"
+                  placeholder="Cloudflare Zone ID"
+                  value={cfZoneId}
+                  onChange={(e) => setCfZoneId(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2 text-white placeholder-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                />
+              </div>
+            </div>
           </div>
 
           {status && (

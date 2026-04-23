@@ -205,15 +205,25 @@ export async function getUserSettings() {
   if (!kv) return null;
 
   const data = await kv.get(`settings:${userEmail}`);
-  if (!data) return { hetznerToken: '' };
+  if (!data) return { hetznerToken: '', cfToken: '', cfAccountId: '', cfZoneId: '' };
   
-  return JSON.parse(data) as { hetznerToken: string };
+  return JSON.parse(data) as { 
+    hetznerToken: string;
+    cfToken?: string;
+    cfAccountId?: string;
+    cfZoneId?: string;
+  };
 }
 
 /**
  * Saves per-user settings to KV.
  */
-export async function saveUserSettings(settings: { hetznerToken: string }) {
+export async function saveUserSettings(settings: { 
+  hetznerToken: string,
+  cfToken?: string,
+  cfAccountId?: string,
+  cfZoneId?: string
+}) {
   const userEmail = await getIdentity();
   const env = await getCloudflareEnv();
   const kv = env.KV;
@@ -237,14 +247,22 @@ export async function provisionServer(
   
   // 0. Fetch User Token
   const settings = await getUserSettings();
-  const token = settings?.hetznerToken || env.HETZNER_API_TOKEN;
+  const hetznerToken = settings?.hetznerToken || env.HETZNER_API_TOKEN;
   
-  if (!token) {
-    throw new Error("Hetzner API Token is missing. Please set it in Settings or contact your administrator.");
+  if (!hetznerToken) {
+    throw new Error("Hetzner API Token is missing. Please set it in Settings.");
   }
 
-  const cfApi = new CloudflareApiService(env);
-  const hetznerApi = new HetznerApiService(env, token);
+  // 0.1 Prepare Cloudflare Service (Priority: User Settings > Global Env)
+  const cfConfig = {
+    ...env,
+    CLOUDFLARE_API_TOKEN: settings?.cfToken || env.CLOUDFLARE_API_TOKEN,
+    CLOUDFLARE_ACCOUNT_ID: settings?.cfAccountId || env.CLOUDFLARE_ACCOUNT_ID,
+    CLOUDFLARE_ZONE_ID: settings?.cfZoneId || env.CLOUDFLARE_ZONE_ID,
+  };
+
+  const cfApi = new CloudflareApiService(cfConfig);
+  const hetznerApi = new HetznerApiService(env, hetznerToken);
 
   // 1. Generate SSH Keys for the user
   const { publicKey, privateKey } = await generateSSHKeys();
@@ -361,7 +379,18 @@ export async function addProject(serverId: string, projectName: string) {
   const userEmail = await getIdentity();
   const env = await getCloudflareEnv();
   const kv = env.KV;
-  const cfApi = new CloudflareApiService(env);
+  
+  const settings = await getUserSettings();
+
+  // 0.1 Prepare Cloudflare Service (Priority: User Settings > Global Env)
+  const cfConfig = {
+    ...env,
+    CLOUDFLARE_API_TOKEN: settings?.cfToken || env.CLOUDFLARE_API_TOKEN,
+    CLOUDFLARE_ACCOUNT_ID: settings?.cfAccountId || env.CLOUDFLARE_ACCOUNT_ID,
+    CLOUDFLARE_ZONE_ID: settings?.cfZoneId || env.CLOUDFLARE_ZONE_ID,
+  };
+
+  const cfApi = new CloudflareApiService(cfConfig);
 
   if (!kv) throw new Error("KV database missing.");
 
@@ -416,8 +445,18 @@ export async function deleteServer(serverId: string) {
   const userEmail = await getIdentity();
   const env = await getCloudflareEnv();
   const kv = env.KV;
-  const cfApi = new CloudflareApiService(env);
-  const hetznerApi = new HetznerApiService(env);
+  const settings = await getUserSettings();
+  
+  // 0.1 Prepare Cloudflare Service (Priority: User Settings > Global Env)
+  const cfConfig = {
+    ...env,
+    CLOUDFLARE_API_TOKEN: settings?.cfToken || env.CLOUDFLARE_API_TOKEN,
+    CLOUDFLARE_ACCOUNT_ID: settings?.cfAccountId || env.CLOUDFLARE_ACCOUNT_ID,
+    CLOUDFLARE_ZONE_ID: settings?.cfZoneId || env.CLOUDFLARE_ZONE_ID,
+  };
+
+  const cfApi = new CloudflareApiService(cfConfig);
+  const hetznerApi = new HetznerApiService(env, settings?.hetznerToken);
 
   if (!kv) throw new Error("KV database missing.");
 
