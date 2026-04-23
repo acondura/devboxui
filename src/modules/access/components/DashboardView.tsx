@@ -32,9 +32,9 @@ export function DashboardView({ userEmail, teamDomain }: DashboardViewProps) {
     loadServers();
   }, []);
 
-  const handleAddServer = async (name: string, serverType: string, location: string) => {
+  const handleAddServer = async (name: string, serverType: string, location: string, image: string) => {
     try {
-      const result = await provisionServer(name, serverType, location);
+      const result = await provisionServer(name, serverType, location, image);
       if (result.success && result.server) {
         setServers(prev => [...prev, result.server]);
       }

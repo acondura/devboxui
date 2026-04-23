@@ -228,8 +228,9 @@ export async function saveUserSettings(settings: { hetznerToken: string }) {
  */
 export async function provisionServer(
   customName?: string,
-  serverType: string = 'cx21',
-  location: string = 'nbg1'
+  serverType: string = 'cpx21',
+  location: string = 'nbg1',
+  image: string = 'ubuntu-24.04'
 ) {
   const userEmail = await getIdentity();
   const env = await getCloudflareEnv();
@@ -293,7 +294,7 @@ export async function provisionServer(
 
     // 5. Hetzner Automation: Create Server
     console.log(`Requesting new ${serverType} server '${name}' in ${location} from Hetzner...`);
-    const hetznerResult = await hetznerApi.createServer(name, bootstrapScript, serverType, location);
+    const hetznerResult = await hetznerApi.createServer(name, bootstrapScript, serverType, location, image);
     hetznerServerId = hetznerResult.server.id;
     config.hetznerServerId = hetznerServerId;
 
@@ -570,4 +571,26 @@ export async function toggleServerLock(serverId: string, enableLock: boolean) {
   await kv.put(kvKey, JSON.stringify(config));
 
   return { success: true, isLocked: enableLock };
+}
+
+/**
+ * Fetches dynamic server types, locations and images from Hetzner.
+ */
+export async function getHetznerOptions() {
+  const env = await getCloudflareEnv();
+  const settings = await getUserSettings();
+  const hetznerApi = new HetznerApiService(env, settings?.hetznerToken);
+
+  try {
+    const [serverTypes, locations, images] = await Promise.all([
+      hetznerApi.getServerTypes(),
+      hetznerApi.getLocations(),
+      hetznerApi.getImages()
+    ]);
+
+    return { serverTypes, locations, images };
+  } catch (error) {
+    console.error("Failed to fetch Hetzner options:", error);
+    return { serverTypes: [], locations: [], images: [] };
+  }
 }

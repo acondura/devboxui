@@ -52,8 +52,9 @@ export class HetznerApiService {
   async createServer(
     name: string, 
     userData: string, 
-    serverType: string = 'cx22', 
-    location: string = 'nbg1'
+    serverType: string = 'cpx21', 
+    location: string = 'nbg1',
+    image: string = 'ubuntu-24.04'
   ): Promise<HetznerServerResponse> {
     const response = await fetch(`${this.baseUrl}/servers`, {
       method: 'POST',
@@ -64,7 +65,7 @@ export class HetznerApiService {
       body: JSON.stringify({
         name,
         server_type: serverType,
-        image: 'ubuntu-24.04',
+        image: image,
         location: location,
         user_data: userData,
         start_after_create: true,
@@ -121,6 +122,47 @@ export class HetznerApiService {
       console.error(`Failed to delete server ${serverId}:`, error);
     }
   }
+  /**
+   * Gets available server types
+   */
+  async getServerTypes(): Promise<any[]> {
+    const response = await fetch(`${this.baseUrl}/server_types`, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${this.token}` }
+    });
+    if (!response.ok) return [];
+    const data = (await response.json()) as any;
+    return data.server_types.filter((t: any) => !t.deprecated);
+  }
+
+  /**
+   * Gets available locations
+   */
+  async getLocations(): Promise<any[]> {
+    const response = await fetch(`${this.baseUrl}/locations`, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${this.token}` }
+    });
+    if (!response.ok) return [];
+    const data = (await response.json()) as any;
+    return data.locations;
+  }
+
+  /**
+   * Gets available images (filtered to Ubuntu)
+   */
+  async getImages(): Promise<any[]> {
+    const response = await fetch(`${this.baseUrl}/images?type=system`, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${this.token}` }
+    });
+    if (!response.ok) return [];
+    const data = (await response.json()) as any;
+    return data.images
+      .filter((i: any) => i.os_flavor === 'ubuntu' && i.status === 'available' && !i.deprecated)
+      .sort((a: any, b: any) => b.name.localeCompare(a.name)); // Latest first
+  }
+
   /**
    * Toggles protection on a server
    */
