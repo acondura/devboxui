@@ -1,21 +1,37 @@
 import { CloudflareEnv } from './auth';
 
-export interface HetznerServerResponse {
-  server: {
-    id: number;
-    name: string;
-    status: string;
-    public_net: {
-      ipv4: {
-        ip: string;
-      };
+export interface HetznerServer {
+  id: number;
+  name: string;
+  status: string;
+  public_net: {
+    ipv4: {
+      ip: string;
     };
   };
+  server_type: {
+    name: string;
+  };
+  datacenter: {
+    location: {
+      name: string;
+      city: string;
+    }
+  };
+  created: string;
+}
+
+export interface HetznerServerResponse {
+  server: HetznerServer;
   action: {
     id: number;
     command: string;
     status: string;
   };
+}
+
+export interface HetznerServersResponse {
+  servers: HetznerServer[];
 }
 
 export class HetznerApiService {
@@ -61,6 +77,28 @@ export class HetznerApiService {
     }
 
     return await response.json() as HetznerServerResponse;
+  }
+
+  /**
+   * Gets a list of all servers in the project
+   */
+  async getAllServers(): Promise<HetznerServer[]> {
+    if (!this.token) return [];
+    
+    const response = await fetch(`${this.baseUrl}/servers`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${this.token}`
+      }
+    });
+
+    if (!response.ok) {
+      console.error(`Failed to fetch servers: ${response.status} ${response.statusText}`);
+      return [];
+    }
+
+    const data = await response.json() as HetznerServersResponse;
+    return data.servers;
   }
 
   /**

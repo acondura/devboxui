@@ -344,14 +344,64 @@ export async function getServers() {
   if (!kv) return [];
 
   const list = await kv.list({ prefix: `servers:${userEmail}:` });
-  const servers = await Promise.all(
+  const kvServers = await Promise.all(
     list.keys.map(async (key: { name: string }) => {
       const val = await kv.get(key.name);
       return JSON.parse(val!) as ServerConfig;
     })
   );
 
-  return servers;
+  // Fetch from Hetzner API if token is available
+  const settings = await getUserSettings();
+  const hetznerToken = settings?.hetznerToken || env.HETZNER_API_TOKEN;
+  
+  if (hetznerToken) {
+    try {
+      const hetznerApi = new HetznerApiService(env, hetznerToken);
+      const hetznerServers = await hetznerApi.getAllServers();
+      
+      const kvIps = new Set(kvServers.map(s => s.ip));
+      const hetznerIds = new Set(hetznerServers.map(s => s.id));
+
+      // Add discovered Hetzner servers not in KV
+      for (const hs of hetznerServers) {
+        if (!hs.public_net?.ipv4?.ip) continue;
+        
+        const ip = hs.public_net.ipv4.ip;
+        if (!kvIps.has(ip)) {
+           kvServers.push({
+             id: `hetzner-${hs.id}`,
+             ip: ip,
+             userName: 'unknown',
+             userEmail: userEmail,
+             status: hs.status === 'running' ? 'ready' : 'provisioning',
+             sshPrivateKey: '',
+             sshPublicKey: '',
+             createdAt: hs.created,
+             updatedAt: hs.created,
+             hetznerServerId: hs.id,
+             logs: ['Server discovered from Hetzner API.'],
+             tunnelUrl: `http://${ip}`,
+             projects: []
+           });
+        }
+      }
+
+      // Cleanup KV servers that were deleted in Hetzner
+      for (let i = kvServers.length - 1; i >= 0; i--) {
+        const s = kvServers[i];
+        if (s.hetznerServerId && !hetznerIds.has(s.hetznerServerId)) {
+          kvServers.splice(i, 1);
+          await kv.delete(`servers:${userEmail}:${s.ip}`);
+        }
+      }
+
+    } catch (e) {
+      console.error("Failed to fetch/sync Hetzner servers:", e);
+    }
+  }
+
+  return kvServers;
 }
 
 /**
