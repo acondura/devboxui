@@ -48,6 +48,20 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
     }
   }, [isOpen]);
 
+  // Find current architecture
+  const currentType = options.serverTypes.find(t => t.name === serverType);
+  const currentArch = currentType?.architecture || 'x86';
+
+  // Filter images based on architecture
+  const filteredImages = options.images.filter(i => i.architecture === currentArch);
+
+  // Auto-switch image if current image is not in filtered list
+  useEffect(() => {
+    if (filteredImages.length > 0 && !filteredImages.some(i => i.name === image)) {
+      setImage(filteredImages[0].name);
+    }
+  }, [serverType, options.images, image, filteredImages]);
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -97,7 +111,9 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
                 className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer disabled:opacity-50"
               >
                 {options.serverTypes.map(t => (
-                  <option key={t.id} value={t.name}>{t.description}</option>
+                  <option key={t.id} value={t.name}>
+                    {t.description} ({t.architecture === 'arm' ? 'ARM' : 'x86'})
+                  </option>
                 ))}
                 {isLoadingOptions && <option>Loading types...</option>}
               </select>
@@ -126,10 +142,13 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
               disabled={isLoadingOptions}
               className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer disabled:opacity-50"
             >
-              {options.images.map(i => (
-                <option key={i.id} value={i.name}>{i.description}</option>
+              {filteredImages.map(i => (
+                <option key={i.id} value={i.name}>
+                  {i.description} ({i.architecture === 'arm' ? 'ARM' : 'x86'})
+                </option>
               ))}
               {isLoadingOptions && <option>Loading images...</option>}
+              {!isLoadingOptions && filteredImages.length === 0 && <option>No compatible images</option>}
             </select>
           </div>
 
