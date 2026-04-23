@@ -55,6 +55,10 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
   // Filter images based on architecture
   const filteredImages = options.images.filter(i => i.architecture === currentArch);
 
+  // Find price for current selection
+  const selectedPrice = currentType?.prices.find((p: any) => p.location === location) || currentType?.prices[0];
+  const monthlyPrice = selectedPrice?.price_monthly?.gross;
+
   // Auto-switch image if current image is not in filtered list
   useEffect(() => {
     if (filteredImages.length > 0 && !filteredImages.some(i => i.name === image)) {
@@ -150,6 +154,22 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
               {isLoadingOptions && <option>Loading images...</option>}
               {!isLoadingOptions && filteredImages.length === 0 && <option>No compatible images</option>}
             </select>
+          </div>
+
+          <div className="bg-slate-950/50 border border-slate-800/50 rounded-xl p-4 flex justify-between items-center">
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Estimated Cost</p>
+              <p className="text-xl font-black text-white">
+                {monthlyPrice ? `€${parseFloat(monthlyPrice).toFixed(2)}` : '--'}
+                <span className="text-xs text-slate-400 font-normal ml-1">/ month</span>
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Hourly</p>
+              <p className="text-sm font-mono text-indigo-400">
+                {selectedPrice?.price_hourly?.gross ? `€${parseFloat(selectedPrice.price_hourly.gross).toFixed(4)}` : '--'}
+              </p>
+            </div>
           </div>
 
           <p className="text-xs text-slate-500 italic px-1">
