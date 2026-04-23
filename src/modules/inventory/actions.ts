@@ -17,7 +17,7 @@ const runRemoteCommand = async (config: {
   command: string;
 }) => {
   const env = await getCloudflareEnv();
-  const serviceUrl = env.SSH_SERVICE_URL; 
+  const serviceUrl = env.SSH_SERVICE_URL;
   const secret = env.SSH_SERVICE_SECRET;
 
   if (!serviceUrl || !secret) {
@@ -36,7 +36,7 @@ const runRemoteCommand = async (config: {
   if (!response.ok) {
     const errorText = await response.text();
     let errorMessage = response.statusText;
-    try { errorMessage = JSON.parse(errorText).error || errorMessage; } catch(e) {}
+    try { errorMessage = JSON.parse(errorText).error || errorMessage; } catch (e) { }
     throw new Error(`SSH Service Error: ${errorMessage}`);
   }
 
@@ -177,7 +177,7 @@ async function generateSSHKeys() {
  */
 async function executeSshCommands(ip: string, password: string, script: string, onLog: (log: string) => void) {
   onLog(`Sending bootstrap script to remote SSH service for ${ip}...`);
-  
+
   const result = await runRemoteCommand({
     host: ip,
     username: 'root',
@@ -205,25 +205,15 @@ export async function getUserSettings() {
   if (!kv) return null;
 
   const data = await kv.get(`settings:${userEmail}`);
-  if (!data) return { hetznerToken: '', cfToken: '', cfAccountId: '', cfZoneId: '' };
-  
-  return JSON.parse(data) as { 
-    hetznerToken: string;
-    cfToken?: string;
-    cfAccountId?: string;
-    cfZoneId?: string;
-  };
+  if (!data) return { hetznerToken: '' };
+
+  return JSON.parse(data) as { hetznerToken: string };
 }
 
 /**
  * Saves per-user settings to KV.
  */
-export async function saveUserSettings(settings: { 
-  hetznerToken: string,
-  cfToken?: string,
-  cfAccountId?: string,
-  cfZoneId?: string
-}) {
+export async function saveUserSettings(settings: { hetznerToken: string }) {
   const userEmail = await getIdentity();
   const env = await getCloudflareEnv();
   const kv = env.KV;
@@ -237,31 +227,23 @@ export async function saveUserSettings(settings: {
  * Provisions a new server automatically via Hetzner API and Cloud-Init.
  */
 export async function provisionServer(
-  customName?: string, 
-  serverType: string = 'cx22', 
+  customName?: string,
+  serverType: string = 'cx22',
   location: string = 'nbg1'
 ) {
   const userEmail = await getIdentity();
   const env = await getCloudflareEnv();
   const kv = env.KV;
-  
+
   // 0. Fetch User Token
   const settings = await getUserSettings();
   const hetznerToken = settings?.hetznerToken || env.HETZNER_API_TOKEN;
-  
+
   if (!hetznerToken) {
     throw new Error("Hetzner API Token is missing. Please set it in Settings.");
   }
 
-  // 0.1 Prepare Cloudflare Service (Priority: User Settings > Global Env)
-  const cfConfig = {
-    ...env,
-    CLOUDFLARE_API_TOKEN: settings?.cfToken || env.CLOUDFLARE_API_TOKEN,
-    CLOUDFLARE_ACCOUNT_ID: settings?.cfAccountId || env.CLOUDFLARE_ACCOUNT_ID,
-    CLOUDFLARE_ZONE_ID: settings?.cfZoneId || env.CLOUDFLARE_ZONE_ID,
-  };
-
-  const cfApi = new CloudflareApiService(cfConfig);
+  const cfApi = new CloudflareApiService(env);
   const hetznerApi = new HetznerApiService(env, hetznerToken);
 
   // 1. Generate SSH Keys for the user
@@ -272,17 +254,17 @@ export async function provisionServer(
   const shortId = serverId.slice(0, 8);
   const name = customName || `devbox-${shortId}`;
   const userName = userEmail.split('@')[0].replace(/[^a-zA-Z0-9]/g, '_');
-  const hostname = `${name}.devboxui.com`; 
-  
+  const hostname = `${name}.devboxui.com`;
+
   const config: ServerConfig = {
-    id: serverId, 
-    ip: 'pending', 
-    userName, 
-    userEmail, 
+    id: serverId,
+    ip: 'pending',
+    userName,
+    userEmail,
     status: 'provisioning',
-    sshPrivateKey: privateKey, 
-    sshPublicKey: publicKey, 
-    createdAt: new Date().toISOString(), 
+    sshPrivateKey: privateKey,
+    sshPublicKey: publicKey,
+    createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     logs: [`Starting Cloud-Init provisioning (${serverType} in ${location}) via Hetzner API...`],
     tunnelUrl: `https://${hostname}`,
@@ -298,7 +280,7 @@ export async function provisionServer(
     const tunnelResult = await cfApi.createTunnel(`tunnel-${serverId}`);
     tunnelId = tunnelResult.id;
     config.tunnelId = tunnelId;
-    
+
     console.log("Setting up DNS and Routing...");
     await cfApi.setupHostname(hostname, tunnelResult.id);
 
@@ -308,13 +290,13 @@ export async function provisionServer(
     // 4. Generate Cloud-Init Script with baked-in SSH keys and Tunnel token
     const managementKey = env.MANAGEMENT_SSH_PUBLIC_KEY || '';
     const bootstrapScript = getBootstrapScript(userName, publicKey, tunnelResult.token, managementKey);
-    
+
     // 5. Hetzner Automation: Create Server
     console.log(`Requesting new ${serverType} server '${name}' in ${location} from Hetzner...`);
     const hetznerResult = await hetznerApi.createServer(name, bootstrapScript, serverType, location);
     hetznerServerId = hetznerResult.server.id;
     config.hetznerServerId = hetznerServerId;
-    
+
     const ip = hetznerResult.server.public_net.ipv4.ip;
     config.ip = ip;
     config.logs = [...(config.logs || []), `Hetzner server created at ${ip}`];
@@ -323,7 +305,7 @@ export async function provisionServer(
     config.status = 'ready'; // In cloud-init flow, we assume it will finish
     config.updatedAt = new Date().toISOString();
     config.logs = [...(config.logs || []), 'Server creation triggered. Provisioning will continue in the background.'];
-    
+
     const kvKey = `servers:${userEmail}:${ip}`;
     await kv.put(kvKey, JSON.stringify(config));
 
@@ -331,17 +313,17 @@ export async function provisionServer(
 
   } catch (error) {
     console.error("Provisioning failed, cleaning up...", error);
-    
+
     // Cleanup Cloudflare resources
     if (tunnelId) {
       try { await cfApi.deleteTunnel(tunnelId); } catch (e) { console.error("Cleanup: Failed to delete tunnel", e); }
     }
-    
+
     // Cleanup DNS Record
     if (hostname) {
       try { await cfApi.deleteDnsRecord(hostname); } catch (e) { console.error("Cleanup: Failed to delete DNS record", e); }
     }
-    
+
     // Cleanup Hetzner resources
     if (hetznerServerId) {
       try { await hetznerApi.deleteServer(hetznerServerId); } catch (e) { console.error("Cleanup: Failed to delete Hetzner server", e); }
@@ -358,7 +340,7 @@ export async function getServers() {
   const userEmail = await getIdentity();
   const env = await getCloudflareEnv();
   const kv = env.KV;
-  
+
   if (!kv) return [];
 
   const list = await kv.list({ prefix: `servers:${userEmail}:` });
@@ -368,7 +350,7 @@ export async function getServers() {
       return JSON.parse(val!) as ServerConfig;
     })
   );
-  
+
   return servers;
 }
 
@@ -379,18 +361,10 @@ export async function addProject(serverId: string, projectName: string) {
   const userEmail = await getIdentity();
   const env = await getCloudflareEnv();
   const kv = env.KV;
-  
+
   const settings = await getUserSettings();
 
-  // 0.1 Prepare Cloudflare Service (Priority: User Settings > Global Env)
-  const cfConfig = {
-    ...env,
-    CLOUDFLARE_API_TOKEN: settings?.cfToken || env.CLOUDFLARE_API_TOKEN,
-    CLOUDFLARE_ACCOUNT_ID: settings?.cfAccountId || env.CLOUDFLARE_ACCOUNT_ID,
-    CLOUDFLARE_ZONE_ID: settings?.cfZoneId || env.CLOUDFLARE_ZONE_ID,
-  };
-
-  const cfApi = new CloudflareApiService(cfConfig);
+  const cfApi = new CloudflareApiService(env);
 
   if (!kv) throw new Error("KV database missing.");
 
@@ -446,16 +420,8 @@ export async function deleteServer(serverId: string) {
   const env = await getCloudflareEnv();
   const kv = env.KV;
   const settings = await getUserSettings();
-  
-  // 0.1 Prepare Cloudflare Service (Priority: User Settings > Global Env)
-  const cfConfig = {
-    ...env,
-    CLOUDFLARE_API_TOKEN: settings?.cfToken || env.CLOUDFLARE_API_TOKEN,
-    CLOUDFLARE_ACCOUNT_ID: settings?.cfAccountId || env.CLOUDFLARE_ACCOUNT_ID,
-    CLOUDFLARE_ZONE_ID: settings?.cfZoneId || env.CLOUDFLARE_ZONE_ID,
-  };
 
-  const cfApi = new CloudflareApiService(cfConfig);
+  const cfApi = new CloudflareApiService(env);
   const hetznerApi = new HetznerApiService(env, settings?.hetznerToken);
 
   if (!kv) throw new Error("KV database missing.");
