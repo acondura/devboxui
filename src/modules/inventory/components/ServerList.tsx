@@ -6,9 +6,10 @@ interface ServerListProps {
   servers: ServerConfig[];
   onAddProject: (serverId: string, projectName: string) => Promise<void>;
   onDeleteServer: (serverId: string) => Promise<void>;
+  onToggleLock?: (serverId: string, enableLock: boolean) => Promise<void>;
 }
 
-export function ServerList({ servers, onAddProject, onDeleteServer }: ServerListProps) {
+export function ServerList({ servers, onAddProject, onDeleteServer, onToggleLock }: ServerListProps) {
   if (servers.length === 0) {
     return (
       <div className="border border-dashed border-slate-700 rounded-xl p-12 text-center bg-slate-800/20">
@@ -26,15 +27,24 @@ export function ServerList({ servers, onAddProject, onDeleteServer }: ServerList
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {servers.map((server) => (
-        <ServerCard key={server.id} server={server} onAddProject={onAddProject} onDeleteServer={onDeleteServer} />
+        <ServerCard key={server.id} server={server} onAddProject={onAddProject} onDeleteServer={onDeleteServer} onToggleLock={onToggleLock} />
       ))}
     </div>
   );
 }
 
-function ServerCard({ server, onAddProject, onDeleteServer }: { server: ServerConfig, onAddProject: (serverId: string, projectName: string) => Promise<void>, onDeleteServer: (serverId: string) => Promise<void> }) {
+function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { server: ServerConfig, onAddProject: (serverId: string, projectName: string) => Promise<void>, onDeleteServer: (serverId: string) => Promise<void>, onToggleLock?: (serverId: string, enableLock: boolean) => Promise<void> }) {
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isTogglingLock, setIsTogglingLock] = useState(false);
+
+  const handleToggleLock = async () => {
+    if (onToggleLock) {
+      setIsTogglingLock(true);
+      await onToggleLock(server.id, !server.isLocked);
+      setIsTogglingLock(false);
+    }
+  };
 
   const handleDelete = async () => {
     if (confirm("Are you sure you want to delete this server? This will also remove the Cloudflare Tunnel and all associated DNS records.")) {
@@ -69,23 +79,48 @@ function ServerCard({ server, onAddProject, onDeleteServer }: { server: ServerCo
             </p>
           )}
         </div>
-        <div className="bg-slate-800 px-2 py-1 rounded text-[10px] font-bold text-slate-400 uppercase">
-          Ubuntu 24.04
-        </div>
-        <button 
-          onClick={handleDelete}
-          disabled={isDeleting}
-          className="ml-2 p-1 text-slate-500 hover:text-red-500 transition-colors disabled:opacity-50"
-          title="Delete Server"
-        >
-          {isDeleting ? (
-            <div className="h-4 w-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
-          ) : (
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
+        <div className="flex items-center space-x-1">
+          <div className="bg-slate-800 px-2 py-1 rounded text-[10px] font-bold text-slate-400 uppercase mr-1">
+            Ubuntu 24.04
+          </div>
+          {server.hetznerServerId && (
+            <button 
+              onClick={handleToggleLock}
+              disabled={isTogglingLock}
+              className={`p-1.5 rounded transition-colors group/lock relative ${server.isLocked ? 'text-indigo-400 hover:bg-indigo-500/10' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-300'}`}
+            >
+              {isTogglingLock ? (
+                <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              ) : server.isLocked ? (
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                </svg>
+              )}
+              {/* Tooltip */}
+              <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover/lock:opacity-100 transition-opacity bg-slate-700 text-white text-[10px] py-1 px-2 rounded pointer-events-none whitespace-nowrap z-10">
+                {server.isLocked ? 'Protection active (Click to unlock)' : 'Unprotected (Click to lock)'}
+              </div>
+            </button>
           )}
-        </button>
+          <button 
+            onClick={handleDelete}
+            disabled={isDeleting || server.isLocked}
+            className={`p-1.5 transition-colors rounded ${server.isLocked ? 'text-slate-700 cursor-not-allowed' : 'text-slate-500 hover:text-red-500 hover:bg-slate-800'}`}
+            title={server.isLocked ? "Unlock server to delete" : "Delete Server"}
+          >
+            {isDeleting ? (
+              <div className="h-4 w-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            )}
+          </button>
+        </div>
       </div>
       
       <div className="p-5 space-y-4">

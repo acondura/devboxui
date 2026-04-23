@@ -361,7 +361,7 @@ export async function getServers() {
       const hetznerServers = await hetznerApi.getAllServers();
       
       const kvIps = new Set(kvServers.map(s => s.ip));
-      const hetznerIds = new Set(hetznerServers.map(s => s.id));
+      const hetznerMap = new Map(hetznerServers.map(s => [s.id, s]));
 
       // Add discovered Hetzner servers not in KV
       for (const hs of hetznerServers) {
@@ -380,6 +380,7 @@ export async function getServers() {
              createdAt: hs.created,
              updatedAt: hs.created,
              hetznerServerId: hs.id,
+             isLocked: hs.protection?.delete || false,
              logs: ['Server discovered from Hetzner API.'],
              tunnelUrl: `http://${ip}`,
              projects: []
@@ -387,12 +388,19 @@ export async function getServers() {
         }
       }
 
-      // Cleanup KV servers that were deleted in Hetzner
+      // Cleanup KV servers that were deleted in Hetzner and update lock status
       for (let i = kvServers.length - 1; i >= 0; i--) {
         const s = kvServers[i];
-        if (s.hetznerServerId && !hetznerIds.has(s.hetznerServerId)) {
-          kvServers.splice(i, 1);
-          await kv.delete(`servers:${userEmail}:${s.ip}`);
+        if (s.hetznerServerId) {
+          const hs = hetznerMap.get(s.hetznerServerId);
+          if (!hs) {
+            // Deleted in Hetzner
+            kvServers.splice(i, 1);
+            await kv.delete(`servers:${userEmail}:${s.ip}`);
+          } else {
+            // Update lock status
+            s.isLocked = hs.protection?.delete || false;
+          }
         }
       }
 
@@ -525,4 +533,42 @@ export async function deleteServer(serverId: string) {
   await kv.delete(kvKey);
 
   return { success: true };
+}
+
+/**
+ * Toggles the protection status (lock) of a server on Hetzner.
+ */
+export async function toggleServerLock(serverId: string, enableLock: boolean) {
+  const userEmail = await getIdentity();
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+  const settings = await getUserSettings();
+
+  const hetznerApi = new HetznerApiService(env, settings?.hetznerToken);
+
+  if (!kv) throw new Error("KV database missing.");
+
+  // 1. Find the server in KV
+  const servers = await getServers();
+  const config = servers.find(s => s.id === serverId);
+
+  if (!config) {
+    throw new Error("Server not found.");
+  }
+
+  if (!config.hetznerServerId) {
+    throw new Error("Cannot lock/unlock a server not managed by Hetzner.");
+  }
+
+  // 2. Call Hetzner API
+  await hetznerApi.changeProtection(config.hetznerServerId, enableLock);
+
+  // 3. Update KV state for immediate feedback
+  config.isLocked = enableLock;
+  config.updatedAt = new Date().toISOString();
+  
+  const kvKey = `servers:${userEmail}:${config.ip}`;
+  await kv.put(kvKey, JSON.stringify(config));
+
+  return { success: true, isLocked: enableLock };
 }

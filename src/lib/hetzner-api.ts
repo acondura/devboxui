@@ -19,6 +19,10 @@ export interface HetznerServer {
     }
   };
   created: string;
+  protection: {
+    delete: boolean;
+    rebuild: boolean;
+  };
 }
 
 export interface HetznerServerResponse {
@@ -115,6 +119,27 @@ export class HetznerApiService {
     if (!response.ok) {
       const error = await response.text();
       console.error(`Failed to delete server ${serverId}:`, error);
+    }
+  }
+  /**
+   * Toggles protection on a server
+   */
+  async changeProtection(serverId: number, enableDeleteProtection: boolean): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/servers/${serverId}/actions/change_protection`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.token}`
+      },
+      body: JSON.stringify({
+        delete: enableDeleteProtection
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error(`Failed to change protection for server ${serverId}:`, error);
+      throw new Error(`Failed to change protection: ${response.statusText}`);
     }
   }
 }

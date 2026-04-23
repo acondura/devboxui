@@ -64,6 +64,19 @@ export function DashboardView({ userEmail, teamDomain }: DashboardViewProps) {
     }
   };
 
+  const handleToggleLock = async (serverId: string, enableLock: boolean) => {
+    try {
+      const { toggleServerLock } = await import('@/modules/inventory/actions');
+      const result = await toggleServerLock(serverId, enableLock);
+      if (result.success) {
+        setServers(prev => prev.map(s => s.id === serverId ? { ...s, isLocked: result.isLocked } : s));
+      }
+    } catch (error) {
+      alert("Failed to toggle server protection. Check console for details.");
+      console.error(error);
+    }
+  };
+
   const handleLogout = () => {
     if (!teamDomain) {
       window.location.href = '/';
@@ -147,7 +160,7 @@ export function DashboardView({ userEmail, teamDomain }: DashboardViewProps) {
             <div className="animate-spin h-8 w-8 border-4 border-indigo-500 border-t-transparent rounded-full" />
           </div>
         ) : (
-          <ServerList servers={servers} onAddProject={handleAddProject} onDeleteServer={handleDeleteServer} />
+          <ServerList servers={servers} onAddProject={handleAddProject} onDeleteServer={handleDeleteServer} onToggleLock={handleToggleLock} />
         )}
       </main>
     </div>

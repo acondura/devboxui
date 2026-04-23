@@ -12,6 +12,7 @@ export interface ServerConfig {
   tunnelId?: string;
   hetznerServerId?: number;
   logs?: string[];
+  isLocked?: boolean;
   projects?: {
     name: string;
     domain: string;
