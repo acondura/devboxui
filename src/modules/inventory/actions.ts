@@ -228,7 +228,7 @@ export async function saveUserSettings(settings: { hetznerToken: string }) {
  */
 export async function provisionServer(
   customName?: string,
-  serverType: string = 'cx22',
+  serverType: string = 'cx21',
   location: string = 'nbg1'
 ) {
   const userEmail = await getIdentity();

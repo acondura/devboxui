@@ -5,12 +5,12 @@ import { useState } from 'react';
 interface AddServerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (ip: string, rootPassword: string) => void;
+  onAdd: (name: string, serverType: string, location: string) => Promise<void>;
 }
 
 export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) {
   const [name, setName] = useState('');
-  const [serverType, setServerType] = useState('cx22');
+  const [serverType, setServerType] = useState('cx21');
   const [location, setLocation] = useState('nbg1');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -61,7 +61,8 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
                 onChange={(e) => setServerType(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer"
               >
-                <option value="cx22">Intel (2 vCPU, 4GB)</option>
+                <option value="cx21">Intel (2 vCPU, 4GB)</option>
+                <option value="cpx21">AMD (3 vCPU, 4GB)</option>
                 <option value="cpx11">AMD (2 vCPU, 2GB)</option>
                 <option value="cax11">ARM (2 vCPU, 4GB)</option>
               </select>
