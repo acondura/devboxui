@@ -49,21 +49,34 @@ const runRemoteCommand = async (config: {
 /**
  * Generates the full sequence of bash commands to bootstrap the server.
  */
-function getBootstrapScript(username: string, publicKey: string, tunnelToken: string, managementKey: string, userSSHKey: string = '', rootPassword?: string) {
+function getBootstrapScript(username: string, publicKey: string, tunnelToken: string, managementKey: string, userSSHKey: string = '', serverId: string, provisioningToken: string, callbackUrl: string, rootPassword?: string) {
   return `#!/bin/bash
 set -e
 
 # --- 0. Configuration ---
 DEV_USER="${username}"
 ROOT_PASSWORD="${rootPassword || ''}"
+SERVER_ID="${serverId}"
+PROV_TOKEN="${provisioningToken}"
+CALLBACK_URL="${callbackUrl}"
 GIT_USER_NAME="DevBox User"
 GIT_USER_EMAIL="${username}@devboxui.local"
 MANAGEMENT_SSH_KEY="${managementKey}"
 USER_SSH_KEY="${userSSHKey}"
 TUNNEL_TOKEN="${tunnelToken}"
 
+# Helper for reporting status
+report_status() {
+    local status_msg="$1"
+    echo "Reporting status: $status_msg"
+    curl -s -X POST "$CALLBACK_URL" \
+      -H "Content-Type: application/json" \
+      -d "{\\"serverId\\": \\"$SERVER_ID\\", \\"token\\": \\"$PROV_TOKEN\\", \\"status\\": \\"$status_msg\\"}" || true
+}
+
 # --- 1. System Update & Passwords ---
 export DEBIAN_FRONTEND=noninteractive
+report_status "Initializing system..."
 
 # Wait for apt locks
 while fuser /var/lib/dpkg/lock-mirror >/dev/null 2>&1 || fuser /var/lib/apt/lists/lock >/dev/null 2>&1 || fuser /var/lib/dpkg/lock >/dev/null 2>&1; do
@@ -71,7 +84,7 @@ while fuser /var/lib/dpkg/lock-mirror >/dev/null 2>&1 || fuser /var/lib/apt/list
    sleep 5
 done
 
-# Clear "password change required" flag set by Hetzner immediately
+report_status "Hardening server and setting up users..."
 chage -d $(date +%Y-%m-%d) root
 
 if [ -n "$ROOT_PASSWORD" ]; then
@@ -128,11 +141,12 @@ fi
 mkdir -p /etc/apt/keyrings
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --batch --yes --dearmor -o /etc/apt/keyrings/docker.gpg
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list
+report_status "Installing Docker..."
 apt-get update
 apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 usermod -aG docker "$DEV_USER"
 
-# --- 4. Install Cloudflare Tunnel (Host Service) ---
+report_status "Setting up Cloudflare Tunnel..."
 curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
 dpkg -i cloudflared.deb
 rm cloudflared.deb
@@ -176,6 +190,7 @@ while ! docker info >/dev/null 2>&1; do
   sleep 2
 done
 
+report_status "Deploying Code-Server..."
 # Start code-server container
 docker run -d \\
   --name=code-server \\
@@ -217,6 +232,8 @@ docker exec -d -u root code-server bash -c "
 ufw allow 22/tcp
 ufw --force enable
 
+# Finished
+report_status "Ready"
 echo "✅ SETUP FINISHED - Server is ready for use." > /etc/motd
 `;
 }
@@ -353,7 +370,25 @@ export async function provisionServer(
     // 4. Generate Cloud-Init Script with baked-in SSH keys and Tunnel token
     const managementKey = env.MANAGEMENT_SSH_PUBLIC_KEY || '';
     const userSSHKey = settings?.sshPublicKey || '';
-    const bootstrapScript = getBootstrapScript(userName, publicKey, tunnelResult.token, managementKey, userSSHKey);
+    const provisioningToken = crypto.randomUUID();
+    config.provisioningToken = provisioningToken;
+    config.detailedStatus = 'Starting bootstrap...';
+    
+    // Construct callback URL (assuming same host)
+    // In Cloudflare Workers, we can use the request URL or hardcode if needed
+    // For now, let's assume the user is on devboxui.com
+    const callbackUrl = `https://devboxui.com/api/provisioning/status`; 
+    
+    const bootstrapScript = getBootstrapScript(
+      userName, 
+      publicKey, 
+      tunnelResult.token, 
+      managementKey, 
+      userSSHKey, 
+      serverId, 
+      provisioningToken, 
+      callbackUrl
+    );
 
     // 5. Hetzner Automation: Create Server
     console.log(`Checking SSH keys on Hetzner project...`);

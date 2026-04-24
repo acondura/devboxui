@@ -188,7 +188,7 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { se
         ) : server.status === 'provisioning' ? (
           <div className="space-y-2">
             <div className="flex justify-between text-[10px] uppercase font-bold text-slate-500 tracking-widest">
-              <span>Provisioning</span>
+              <span>{server.detailedStatus || 'Provisioning'}</span>
               <span className="animate-pulse">In Progress...</span>
             </div>
             <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">

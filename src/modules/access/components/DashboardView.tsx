@@ -32,6 +32,23 @@ export function DashboardView({ userEmail, teamDomain }: DashboardViewProps) {
     loadServers();
   }, []);
 
+  // Poll for updates if any server is provisioning
+  useEffect(() => {
+    const provisioningCount = servers.filter(s => s.status === 'provisioning').length;
+    if (provisioningCount === 0) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const data = await getServers();
+        setServers(data || []);
+      } catch (error) {
+        console.error("Polling error:", error);
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [servers]);
+
   const handleAddServer = async (name: string, serverType: string, location: string, image: string) => {
     try {
       const result = await provisionServer(name, serverType, location, image);

@@ -19,6 +19,8 @@ export interface ServerConfig {
     domain: string;
     status: 'ready' | 'provisioning' | 'error';
   }[];
+  detailedStatus?: string;
+  provisioningToken?: string;
 }
 
 export interface ProvisioningState {
