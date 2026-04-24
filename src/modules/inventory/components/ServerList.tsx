@@ -74,18 +74,7 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { se
           </div>
           <div className="flex items-center space-x-2 mt-1 group/ip">
             <p className="text-lg font-mono text-indigo-400">{server.ip}</p>
-            <button 
-              onClick={() => {
-                navigator.clipboard.writeText(server.ip);
-                alert("IP copied to clipboard!"); // Simple feedback for now
-              }}
-              className="text-slate-600 hover:text-indigo-400 transition-colors opacity-0 group-hover/ip:opacity-100"
-              title="Copy IP"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-              </svg>
-            </button>
+            <CopyButton value={server.ip} />
           </div>
           {server.tunnelUrl && (
             <p className="text-[10px] font-mono text-slate-500 mt-0.5 truncate max-w-[150px]">
@@ -263,5 +252,33 @@ function PasswordField({ value }: { value: string }) {
         </button>
       </div>
     </div>
+  );
+}
+
+function CopyButton({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(value);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <button 
+      onClick={handleCopy}
+      className={`transition-all duration-200 ${copied ? 'text-emerald-500 opacity-100' : 'text-slate-600 hover:text-indigo-400 opacity-0 group-hover/ip:opacity-100'}`}
+      title="Copy to clipboard"
+    >
+      {copied ? (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+        </svg>
+      ) : (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+        </svg>
+      )}
+    </button>
   );
 }

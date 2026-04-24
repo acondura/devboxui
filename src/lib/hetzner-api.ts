@@ -55,7 +55,8 @@ export class HetznerApiService {
     userData: string, 
     serverType: string = 'cpx21', 
     location: string = 'nbg1',
-    image: string = 'ubuntu-24.04'
+    image: string = 'ubuntu-24.04',
+    sshKeys: (string | number)[] = []
   ): Promise<HetznerServerResponse> {
     const response = await fetch(`${this.baseUrl}/servers`, {
       method: 'POST',
@@ -70,6 +71,7 @@ export class HetznerApiService {
         location: location,
         user_data: userData,
         start_after_create: true,
+        ssh_keys: sshKeys,
         public_net: {
           enable_ipv4: true,
           enable_ipv6: false
@@ -185,5 +187,42 @@ export class HetznerApiService {
       console.error(`Failed to change protection for server ${serverId}:`, error);
       throw new Error(`Failed to change protection: ${response.statusText}`);
     }
+  }
+
+  /**
+   * Gets all SSH keys in the project
+   */
+  async getSSHKeys(): Promise<any[]> {
+    const response = await fetch(`${this.baseUrl}/ssh_keys`, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${this.token}` }
+    });
+    if (!response.ok) return [];
+    const data = await response.json() as any;
+    return data.ssh_keys;
+  }
+
+  /**
+   * Creates/Registers an SSH key in Hetzner
+   */
+  async createSSHKey(name: string, publicKey: string): Promise<any> {
+    const response = await fetch(`${this.baseUrl}/ssh_keys`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.token}`
+      },
+      body: JSON.stringify({ name, public_key: publicKey })
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      // If it already exists, that's fine, but we should handle it
+      if (response.status === 409) return null;
+      throw new Error(`Failed to create SSH key: ${error}`);
+    }
+
+    const data = await response.json() as any;
+    return data.ssh_key;
   }
 }

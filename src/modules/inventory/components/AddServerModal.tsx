@@ -39,10 +39,20 @@ export function AddServerModal({ isOpen, onClose, onOpenSettings, onAdd }: AddSe
         setHasSSHKey(!!settings?.sshPublicKey);
         setIsCheckingKey(false);
         
+        // Reset form values on open
+        setName('');
+        
         // Set defaults if data available
         if (data.serverTypes.length > 0) {
-          const defaultType = data.serverTypes.find(t => t.name === 'cpx21') || data.serverTypes[0];
-          setServerType(defaultType.name);
+          // Sort types locally to find the cheapest for the current location
+          const sorted = [...data.serverTypes].sort((a, b) => {
+            const getPrice = (t: any) => {
+              const p = t.prices.find((p: any) => p.location === location) || t.prices[0];
+              return parseFloat(p?.price_monthly?.gross || '0');
+            };
+            return getPrice(a) - getPrice(b);
+          });
+          setServerType(sorted[0].name);
         }
         if (data.locations.length > 0) {
           const defaultLoc = data.locations.find(l => l.name === 'nbg1') || data.locations[0];
@@ -136,13 +146,14 @@ export function AddServerModal({ isOpen, onClose, onOpenSettings, onAdd }: AddSe
           )}
 
           <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1.5">DevBox Name (Optional)</label>
+            <label className="block text-sm font-medium text-slate-400 mb-1.5">DevBox Name (Required)</label>
             <input
               type="text"
               placeholder="e.g. project-x-dev"
               value={name}
               onChange={(e) => setName(e.target.value)}
               disabled={!hasSSHKey}
+              required
               className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all disabled:opacity-50"
             />
           </div>
@@ -158,10 +169,11 @@ export function AddServerModal({ isOpen, onClose, onOpenSettings, onAdd }: AddSe
               >
                 {sortedServerTypes.map(t => {
                   const p = t.prices.find((p: any) => p.location === location) || t.prices[0];
-                  const priceLabel = p ? `(€${parseFloat(p.price_monthly.gross).toFixed(2)})` : '';
+                  const priceLabel = p ? `€${parseFloat(p.price_monthly.gross).toFixed(2)}` : '';
+                  const specs = `${t.cores} vCPU / ${t.memory}GB RAM / ${t.disk}GB / ${t.architecture.toUpperCase()}`;
                   return (
                     <option key={t.id} value={t.name}>
-                      {t.name.toUpperCase()} - {t.description} {priceLabel}
+                      {t.name.toUpperCase()} - ({priceLabel}) - {specs}
                     </option>
                   );
                 })}

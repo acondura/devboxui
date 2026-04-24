@@ -356,8 +356,30 @@ export async function provisionServer(
     const bootstrapScript = getBootstrapScript(userName, publicKey, tunnelResult.token, managementKey, userSSHKey);
 
     // 5. Hetzner Automation: Create Server
+    console.log(`Checking SSH keys on Hetzner project...`);
+    let sshKeyNames: string[] = [];
+    if (settings?.sshPublicKey) {
+      try {
+        const existingKeys = await hetznerApi.getSSHKeys();
+        // Compare keys (trimmed, ignoring label)
+        const cleanedUserKey = settings.sshPublicKey.trim().split(' ').slice(0, 2).join(' ');
+        const foundKey = existingKeys.find(k => k.public_key.trim().includes(cleanedUserKey));
+        
+        if (foundKey) {
+          sshKeyNames.push(foundKey.name);
+        } else {
+          const newKeyName = `devbox-${userEmail.split('@')[0]}-${Date.now().toString().slice(-4)}`;
+          console.log(`Registering new SSH key '${newKeyName}' with Hetzner...`);
+          await hetznerApi.createSSHKey(newKeyName, settings.sshPublicKey);
+          sshKeyNames.push(newKeyName);
+        }
+      } catch (e) {
+        console.warn("Failed to manage Hetzner SSH keys, continuing with Cloud-Init only", e);
+      }
+    }
+
     console.log(`Requesting new ${serverType} server '${name}' in ${location} from Hetzner...`);
-    const hetznerResult = await hetznerApi.createServer(name, bootstrapScript, serverType, location, image);
+    const hetznerResult = await hetznerApi.createServer(name, bootstrapScript, serverType, location, image, sshKeyNames);
     hetznerServerId = hetznerResult.server.id;
     config.hetznerServerId = hetznerServerId;
     
