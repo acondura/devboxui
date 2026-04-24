@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ServerConfig } from '../types';
 import { AddProjectModal } from './AddProjectModal';
+import { getServerLogs } from '../actions';
 
 interface ServerListProps {
   servers: ServerConfig[];
@@ -37,6 +38,26 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { se
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isTogglingLock, setIsTogglingLock] = useState(false);
+  const [logs, setLogs] = useState<string | null>(null);
+  const [isFetchingLogs, setIsFetchingLogs] = useState(false);
+  const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
+
+  const handleFetchLogs = async () => {
+    setIsLogsModalOpen(true);
+    setIsFetchingLogs(true);
+    try {
+      const result = await getServerLogs(server.id);
+      if (result.success) {
+        setLogs(result.logs ?? "No logs found.");
+      } else {
+        setLogs("Failed to fetch logs: " + result.error);
+      }
+    } catch (e) {
+      setLogs("Error fetching logs: " + String(e));
+    } finally {
+      setIsFetchingLogs(false);
+    }
+  };
 
   const handleToggleLock = async () => {
     if (onToggleLock) {
@@ -86,6 +107,15 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { se
           <div className="bg-slate-800 px-2 py-1 rounded text-[10px] font-bold text-slate-400 uppercase mr-1">
             Ubuntu 24.04
           </div>
+          <button 
+            onClick={handleFetchLogs}
+            className="p-1.5 text-slate-500 hover:text-indigo-400 hover:bg-slate-800 rounded transition-colors"
+            title="View setup logs"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </button>
           {server.hetznerServerId && (
             <button 
               onClick={handleToggleLock}
@@ -197,6 +227,62 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { se
           </div>
         ) : null}
       </div>
+      {/* Debug Logs Modal */}
+      {isLogsModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md">
+          <div className="w-full max-w-4xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-200">
+            <div className="px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
+              <h3 className="text-lg font-bold text-white flex items-center space-x-2">
+                <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span>Server Debug Logs: {server.ip}</span>
+              </h3>
+              <button onClick={() => setIsLogsModalOpen(false)} className="text-slate-400 hover:text-white transition-colors">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-6 overflow-auto bg-slate-950 font-mono text-xs text-slate-300 flex-1 min-h-0">
+              {isFetchingLogs ? (
+                <div className="flex flex-col items-center justify-center py-20 space-y-4">
+                  <div className="h-10 w-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                  <p className="text-slate-500 animate-pulse text-sm">Fetching live logs from {server.ip}...</p>
+                </div>
+              ) : (
+                <pre className="whitespace-pre-wrap break-all leading-relaxed">
+                  {logs || "No logs available."}
+                </pre>
+              )}
+            </div>
+            <div className="px-6 py-4 border-t border-slate-800 flex justify-end space-x-3 bg-slate-950/50">
+              <button 
+                onClick={handleFetchLogs}
+                disabled={isFetchingLogs}
+                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 text-white rounded-xl text-sm font-bold transition-all flex items-center space-x-2"
+              >
+                <svg className={`w-4 h-4 ${isFetchingLogs ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span>Refresh Logs</span>
+              </button>
+              <button 
+                onClick={() => setIsLogsModalOpen(false)}
+                className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-sm font-bold transition-all"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <AddProjectModal 
+        isOpen={isProjectModalOpen}
+        onClose={() => setIsProjectModalOpen(false)}
+        onAdd={(projectName) => onAddProject(server.id, projectName)}
+      />
     </div>
   );
 }

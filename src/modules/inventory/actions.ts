@@ -147,11 +147,19 @@ apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 usermod -aG docker "$DEV_USER"
 
 report_status "Setting up Cloudflare Tunnel..."
-curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+# Detect architecture
+ARCH=$(dpkg --print-architecture)
+if [ "$ARCH" = "arm64" ]; then
+  CF_PKG="cloudflared-linux-arm64.deb"
+else
+  CF_PKG="cloudflared-linux-amd64.deb"
+fi
+curl -L --output cloudflared.deb "https://github.com/cloudflare/cloudflared/releases/latest/download/$CF_PKG"
 dpkg -i cloudflared.deb
 rm cloudflared.deb
 if [ -n "$TUNNEL_TOKEN" ]; then
     cloudflared service install "$TUNNEL_TOKEN"
+    systemctl start cloudflared || true
 fi
 
 # --- 5. Deploy Code-Server ---
@@ -718,5 +726,47 @@ export async function getHetznerOptions() {
   } catch (error) {
     console.error("Failed to fetch Hetzner options:", error);
     return { serverTypes: [], locations: [], images: [] };
+  }
+}
+
+/**
+ * Fetches real-time setup and tunnel logs from the server via SSH.
+ */
+export async function getServerLogs(serverId: string) {
+  const userEmail = await getIdentity();
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+  if (!kv) throw new Error("KV database missing.");
+
+  const servers = await getServers();
+  const config = servers.find(s => s.id === serverId);
+
+  if (!config) throw new Error("Server not found.");
+
+  const cmd = `
+    echo "=== CLOUD-INIT OUTPUT ==="
+    [ -f /var/log/cloud-init-output.log ] && cat /var/log/cloud-init-output.log | tail -n 100 || echo "No cloud-init log found."
+    echo ""
+    echo "=== TUNNEL STATUS ==="
+    systemctl status cloudflared --no-pager || echo "Cloudflared not installed."
+    echo ""
+    echo "=== DOCKER STATUS ==="
+    docker ps -a
+    echo ""
+    echo "=== DOCKER LOGS (code-server) ==="
+    docker logs code-server --tail 50 2>&1 || echo "No code-server container logs."
+  `;
+
+  try {
+    const result = await runRemoteCommand({
+      host: config.ip,
+      username: config.userName,
+      privateKey: config.sshPrivateKey,
+      command: cmd
+    });
+    return { success: true, logs: result.stdout };
+  } catch (error) {
+    console.error("Failed to fetch logs:", error);
+    return { success: false, error: String(error) };
   }
 }
