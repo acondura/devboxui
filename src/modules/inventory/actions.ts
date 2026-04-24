@@ -274,6 +274,8 @@ docker exec -d -u root code-server bash -c "
     echo 'deb [signed-by=/etc/apt/keyrings/ddev.gpg] https://pkg.ddev.com/apt/ * *' > /etc/apt/sources.list.d/ddev.list
     apt-get update && apt-get install -y ddev vim
     sudo -u abc mkcert -install
+    sudo -u abc bash -c "$(curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh) --unattended"
+    sed -i 's/OSH_THEME="[^"]*"/OSH_THEME="90210"/' /config/.bashrc
     sudo -u abc code-server --install-extension xdebug.php-debug --install-extension vscodevim.vim
 "
 
