@@ -229,7 +229,11 @@ printf '[user]\n    name = %s\n    email = %s\n' "$GIT_USER_NAME" "$GIT_USER_EMA
 
 printf 'bind-addr: 0.0.0.0:8443\nauth: none\ncert: false\n' > "$C_ROOT/config/config.yaml"
 
-printf '{\n    "editor.fontSize": 15,\n    "terminal.integrated.fontSize": 15,\n    "workbench.colorTheme": "Default Dark+"\n}\n' > "$C_ROOT/config/data/User/settings.json"
+echo '{' > "$C_ROOT/config/data/User/settings.json"
+echo '    "editor.fontSize": 15,' >> "$C_ROOT/config/data/User/settings.json"
+echo '    "terminal.integrated.fontSize": 15,' >> "$C_ROOT/config/data/User/settings.json"
+echo '    "workbench.colorTheme": "Dark+"' >> "$C_ROOT/config/data/User/settings.json"
+echo '}' >> "$C_ROOT/config/data/User/settings.json"
 
 chown -R "$DEV_USER":"$DEV_USER" "$C_ROOT"
 
