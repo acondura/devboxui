@@ -218,20 +218,25 @@ if [ -n "$TUNNEL_TOKEN" ]; then
 fi
 
 # --- 5. Deploy Code-Server ---
-C_ROOT="/home/$DEV_USER"
-mkdir -p "$C_ROOT/workspace" "$C_ROOT/config/data/User"
+C_ROOT="/home/\$DEV_USER"
+mkdir -p "\$C_ROOT/workspace" "\$C_ROOT/config/data/User"
 
 # Pre-configure (Host-side)
-sudo -u "$DEV_USER" bash -c "export HOME=$C_ROOT; curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh | bash -s -- --unattended"
-# Simple sed without complex quotes
-sed -i 's/OSH_THEME="[^"]*"/OSH_THEME="90210"/' "$C_ROOT/.bashrc"
+sudo -u "\$DEV_USER" bash -c "export HOME=\$C_ROOT; curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh | bash -s -- --unattended"
+
+# Robust theme update (Host)
+if [ -f "\$C_ROOT/.bashrc" ]; then
+    grep -v "OSH_THEME=" "\$C_ROOT/.bashrc" > "\$C_ROOT/.bashrc.tmp"
+    echo 'OSH_THEME="90210"' >> "\$C_ROOT/.bashrc.tmp"
+    mv "\$C_ROOT/.bashrc.tmp" "\$C_ROOT/.bashrc"
+fi
 
 # Base64 encoded configs to survive all shells
-echo 'W3VzZXJdCiAgICBuYW1lID0gR2l0SHViIFVzZXIKICAgIGVtYWlsID0gZGV2Ym94QHVzZXIubG9jYWwK' | base64 -d > "$C_ROOT/.gitconfig"
-echo 'YmluZC1hZGRyOiAwLjAuMC4wOjg0NDMKYXV0aDogbm9uZQpjZXJ0OiBmYWxzZQo=' | base64 -d > "$C_ROOT/config/config.yaml"
-echo 'ewogICAgImVkaXRvci5mb250U2l6ZSI6IDE1LAogICAgInRlcm1pbmFsLmludGVncmF0ZWQuZm9udFNpemUiOiAxNSwKICAgICJ3b3JrYmVuY2guY29sb3JUaGVtZSI6ICJEYXJrKyIKfQo=' | base64 -d > "$C_ROOT/config/data/User/settings.json"
+echo 'W3VzZXJdCiAgICBuYW1lID0gR2l0SHViIFVzZXIKICAgIGVtYWlsID0gZGV2Ym94QHVzZXIubG9jYWwK' | base64 -d > "\$C_ROOT/.gitconfig"
+echo 'YmluZC1hZGRyOiAwLjAuMC4wOjg0NDMKYXV0aDogbm9uZQpjZXJ0OiBmYWxzZQo=' | base64 -d > "\$C_ROOT/config/config.yaml"
+echo 'ewogICAgImVkaXRvci5mb250U2l6ZSI6IDE1LAogICAgInRlcm1pbmFsLmludGVncmF0ZWQuZm9udFNpemUiOiAxNSwKICAgICJ3b3JrYmVuY2guY29sb3JUaGVtZSI6ICJEYXJrKyIKfQo=' | base64 -d > "\$C_ROOT/config/data/User/settings.json"
 
-chown -R "$DEV_USER":"$DEV_USER" "$C_ROOT"
+chown -R "\$DEV_USER":"\$DEV_USER" "\$C_ROOT"
 
 # Wait for docker daemon
 while ! docker info >/dev/null 2>&1; do
@@ -243,11 +248,11 @@ report_status "Deploying Code-Server..."
 # Start code-server container
 docker run -d \\
   --name=code-server \\
-  -e PUID=$(id -u "$DEV_USER") -e PGID=$(id -g "$DEV_USER") \\
-  -e SUDO_PASSWORD="$ROOT_PASSWORD" \\
-  -e DEFAULT_WORKSPACE="$C_ROOT/workspace" \\
-  -v "$C_ROOT/config":/config \\
-  -v "$C_ROOT":"$C_ROOT" \\
+  -e PUID=1000 -e PGID=1000 \\
+  -e SUDO_PASSWORD= \\
+  -e DEFAULT_WORKSPACE=/home/\$DEV_USER/workspace \\
+  -v /home/\$DEV_USER/config:/config \\
+  -v /home/\$DEV_USER:/home/\$DEV_USER \\
   -v /var/run/docker.sock:/var/run/docker.sock \\
   -v /usr/bin/docker:/usr/bin/docker \\
   -v /usr/libexec/docker/cli-plugins:/usr/libexec/docker/cli-plugins \\
@@ -260,22 +265,27 @@ docker run -d \\
 MAX_RETRIES=30
 COUNT=0
 while ! docker ps | grep -q code-server; do
-    if [ $COUNT -ge $MAX_RETRIES ]; then echo "Container failed to start"; exit 1; fi
+    if [ "\$COUNT" -ge "\$MAX_RETRIES" ]; then echo "Container failed to start"; exit 1; fi
     echo "Waiting for code-server container..."
     sleep 2
-    COUNT=$((COUNT+1))
+    COUNT=\$((COUNT + 1))
 done
 
 docker exec -d -u root code-server bash -c "
     chmod 666 /var/run/docker.sock
-    apt-get update && apt-get install -y curl gnupg
-    install -m 0755 -d /etc/apt/keyrings
-    curl -fsSL https://pkg.ddev.com/apt/gpg.key | gpg --batch --yes --dearmor -o /etc/apt/keyrings/ddev.gpg
-    echo 'deb [signed-by=/etc/apt/keyrings/ddev.gpg] https://pkg.ddev.com/apt/ * *' > /etc/apt/sources.list.d/ddev.list
+    echo \"andrei ALL=(ALL) NOPASSWD:ALL\" >> /etc/sudoers
+    mkdir -p /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    echo \"deb [arch=\$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu noble stable\" > /etc/apt/sources.list.d/docker.list
+    curl -fsSL https://pkg.ddev.com/apt/gpg.key | gpg --dearmor -o /etc/apt/keyrings/ddev.gpg
+    echo \"deb [signed-by=/etc/apt/keyrings/ddev.gpg] https://pkg.ddev.com/apt/ * *\" > /etc/apt/sources.list.d/ddev.list
     apt-get update && apt-get install -y ddev vim
     sudo -u abc mkcert -install
-    sudo -u abc bash -c "$(curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh) --unattended"
-    sed -i 's/OSH_THEME="[^"]*"/OSH_THEME="90210"/' /config/.bashrc
+    sudo -u abc bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh) --unattended\"
+    # Robust theme update inside container
+    grep -v \"OSH_THEME=\" /config/.bashrc > /config/.bashrc.tmp
+    echo 'OSH_THEME=\"90210\"' >> /config/.bashrc.tmp
+    mv /config/.bashrc.tmp /config/.bashrc
     sudo -u abc code-server --install-extension xdebug.php-debug --install-extension vscodevim.vim
 "
 
