@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { AddServerModal } from '@/modules/inventory/components/AddServerModal';
 import { SettingsModal } from '@/modules/access/components/SettingsModal';
 import { ServerList } from '@/modules/inventory/components/ServerList';
@@ -123,12 +124,12 @@ export function DashboardView({ userEmail, teamDomain }: DashboardViewProps) {
 
       {/* Top Navigation */}
       <nav className="border-b border-slate-800 bg-slate-950 px-6 py-4 flex justify-between items-center sticky top-0 z-40">
-        <div className="font-bold text-xl tracking-tight text-white flex items-center space-x-2">
+        <Link href="/" className="font-bold text-xl tracking-tight text-white flex items-center space-x-2 hover:opacity-80 transition-opacity">
           <div className="h-8 w-8 bg-indigo-600 rounded-lg flex items-center justify-center">
             <span className="text-white text-lg">D</span>
           </div>
           <span>DevBox<span className="text-indigo-500">UI</span></span>
-        </div>
+        </Link>
         
         <div className="flex items-center space-x-3">
           <div className="h-8 w-8 rounded-full bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center font-bold text-xs text-indigo-400">
