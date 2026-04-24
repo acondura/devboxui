@@ -213,8 +213,7 @@ export class CloudflareApiService {
     const token = await this.request<any>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/service_tokens`, {
       method: "POST",
       body: JSON.stringify({
-        name: "DevBox Provisioning Heartbeats",
-        duration: "3y"
+        name: "DevBox Provisioning Heartbeats"
       })
     });
 
