@@ -695,9 +695,13 @@ export async function deleteServer(serverId: string) {
     // Delete DNS Records (Main and Projects)
     if (config.tunnelUrl) {
       const hostname = config.tunnelUrl.replace('https://', '');
-      console.log(`Cleaning up DNS and Access for ${hostname}...`);
+      const logsHostname = hostname.replace('-code.', '-logs.');
+      console.log(`Cleaning up DNS and Access for ${hostname} and ${logsHostname}...`);
       await cfApi.deleteDnsRecord(hostname).catch(e => console.error("DNS deletion failed:", e));
       await cfApi.deleteAccess(hostname).catch(e => console.error("Access deletion failed:", e));
+      
+      await cfApi.deleteDnsRecord(logsHostname).catch(e => console.error("Logs DNS deletion failed:", e));
+      await cfApi.deleteAccess(logsHostname).catch(e => console.error("Logs Access deletion failed:", e));
     }
 
     if (config.projects) {

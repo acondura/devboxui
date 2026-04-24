@@ -187,6 +187,21 @@ export class CloudflareApiService {
   }
 
   /**
+   * Searches for a DNS record by name and deletes it.
+   */
+  async deleteDnsRecord(name: string) {
+    // 1. Find the record ID
+    const records = await this.request<any[]>(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/dns_records?name=${name}`);
+    
+    // 2. Delete all matches (usually just one)
+    for (const record of records) {
+      await this.request(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/dns_records/${record.id}`, {
+        method: "DELETE",
+      });
+    }
+  }
+
+  /**
    * Gets or creates a service token for provisioning heartbeats.
    */
   async getOrCreateServiceToken(kv: any) {
