@@ -35,20 +35,29 @@ export function DashboardView({ userEmail, teamDomain }: DashboardViewProps) {
 
   // Poll for updates if any server is provisioning
   useEffect(() => {
-    const provisioningCount = servers.filter(s => s.status === 'provisioning').length;
-    if (provisioningCount === 0) return;
+    const isProvisioning = servers.some(s => s.status === 'provisioning');
+    if (!isProvisioning) return;
 
-    const interval = setInterval(async () => {
+    let timerId: NodeJS.Timeout;
+
+    async function poll() {
       try {
         const data = await getServers();
         setServers(data || []);
+        
+        // Re-schedule only if still provisioning
+        if (data && data.some(s => s.status === 'provisioning')) {
+          timerId = setTimeout(poll, 3000);
+        }
       } catch (error) {
         console.error("Polling error:", error);
+        timerId = setTimeout(poll, 5000); // Wait longer on error
       }
-    }, 5000);
+    }
 
-    return () => clearInterval(interval);
-  }, [servers]);
+    timerId = setTimeout(poll, 3000);
+    return () => clearTimeout(timerId);
+  }, [servers.some(s => s.status === 'provisioning')]); // Only re-run if provisioning status changes
 
   const handleAddServer = async (name: string, serverType: string, location: string, image: string) => {
     try {

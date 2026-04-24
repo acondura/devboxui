@@ -100,8 +100,14 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { se
       <div className="p-5 border-b border-slate-800 bg-slate-950/50 rounded-t-xl flex justify-between items-start">
         <div>
           <div className="flex items-center space-x-2">
-            <span className={`h-2 w-2 rounded-full ${server.status === 'ready' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-            <h4 className="font-bold text-white uppercase tracking-wider text-xs">{server.status}</h4>
+            {server.status === 'provisioning' ? (
+              <div className="h-2 w-2 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <span className={`h-2 w-2 rounded-full ${server.status === 'ready' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-slate-600'}`} />
+            )}
+            <h4 className="font-bold text-white uppercase tracking-wider text-[10px]">
+              {server.status === 'provisioning' ? (server.detailedStatus || 'Provisioning...') : server.status}
+            </h4>
           </div>
           <div className="flex items-center space-x-2 mt-1 group/ip">
             <p className="text-lg font-mono text-indigo-400">{server.ip}</p>
