@@ -536,12 +536,17 @@ export async function getServers() {
   if (!kv) return [];
 
   const list = await kv.list({ prefix: `servers:${userEmail}:` });
-  const kvServers = await Promise.all(
-    list.keys.map(async (key: { name: string }) => {
+  const kvServers = (await Promise.all(
+    list.keys.map(async (key: any) => {
       const val = await kv.get(key.name);
-      return JSON.parse(val!) as ServerConfig;
+      if (!val) {
+        console.warn(`Self-healing: Deleting ghost key ${key.name}`);
+        await kv.delete(key.name).catch(() => {});
+        return null;
+      }
+      return JSON.parse(val) as ServerConfig;
     })
-  );
+  )).filter((s): s is ServerConfig => s !== null);
 
   // Fetch from Hetzner API if token is available
   const settings = await getUserSettings();
