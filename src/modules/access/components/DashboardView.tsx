@@ -96,15 +96,8 @@ export function DashboardView({ userEmail, teamDomain }: DashboardViewProps) {
   };
 
   const handleLogout = () => {
-    if (!teamDomain) {
-      window.location.href = '/';
-      return;
-    }
-    
-    // Cloudflare Access standard logout URL with returnTo redirect
-    const cleanDomain = teamDomain.replace(/^https?:\/\//, '').replace('.cloudflareaccess.com', '').split('/')[0];
-    const returnTo = encodeURIComponent(window.location.origin);
-    window.location.href = `https://${cleanDomain}.cloudflareaccess.com/cdn-cgi/access/logout?returnTo=${returnTo}`;
+    // Standard Cloudflare Access logout on the application domain
+    window.location.href = '/cdn-cgi/access/logout';
   };
 
   return (
