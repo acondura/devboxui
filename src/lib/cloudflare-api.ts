@@ -187,16 +187,61 @@ export class CloudflareApiService {
   }
 
   /**
-   * Searches for a DNS record by name and deletes it.
+   * Gets or creates a service token for provisioning heartbeats.
    */
-  async deleteDnsRecord(name: string) {
-    // 1. Find the record ID
-    const records = await this.request<any[]>(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/dns_records?name=${name}`);
+  async getOrCreateServiceToken(kv: any) {
+    const TOKEN_KEY = "config:provisioning_service_token";
+    const existing = await kv.get(TOKEN_KEY);
+    if (existing) return JSON.parse(existing) as { id: string, client_id: string, client_secret: string };
+
+    console.log("Creating new Cloudflare Access Service Token...");
+    const token = await this.request<any>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/service_tokens`, {
+      method: "POST",
+      body: JSON.stringify({
+        name: "DevBox Provisioning Heartbeats",
+        duration: "3y"
+      })
+    });
+
+    const data = {
+      id: token.id,
+      client_id: token.client_id,
+      client_secret: token.client_secret
+    };
+
+    await kv.put(TOKEN_KEY, JSON.stringify(data));
+    return data;
+  }
+
+  /**
+   * Authorizes a service token to bypass Access for a specific hostname.
+   */
+  async authorizeServiceToken(hostname: string, serviceTokenId: string) {
+    const apps = await this.request<any[]>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps`);
+    // Find app that matches the hostname or the root domain
+    const rootDomain = hostname.split('.').slice(-2).join('.');
+    const app = apps.find(a => a.domain === hostname || a.domain === rootDomain);
     
-    // 2. Delete all matches (usually just one)
-    for (const record of records) {
-      await this.request(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/dns_records/${record.id}`, {
-        method: "DELETE",
+    if (!app) {
+      console.warn(`Could not find Access App for ${hostname} to authorize service token.`);
+      return;
+    }
+
+    const policies = await this.request<any[]>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps/${app.id}/policies`);
+    const hasPolicy = policies.some(p => p.name === "Allow Service Tokens");
+
+    if (!hasPolicy) {
+      console.log(`Authorizing Service Token for ${app.domain}...`);
+      await this.request(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps/${app.id}/policies`, {
+        method: "POST",
+        body: JSON.stringify({
+          name: "Allow Service Tokens",
+          decision: "non_identity",
+          precedence: 1,
+          include: [
+            { service_token: { token_id: serviceTokenId } }
+          ]
+        })
       });
     }
   }

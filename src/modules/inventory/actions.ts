@@ -49,7 +49,7 @@ const runRemoteCommand = async (config: {
 /**
  * Generates the full sequence of bash commands to bootstrap the server.
  */
-function getBootstrapScript(username: string, publicKey: string, tunnelToken: string, managementKey: string, userSSHKey: string = '', serverId: string, provisioningToken: string, callbackUrl: string, rootPassword?: string) {
+function getBootstrapScript(username: string, publicKey: string, tunnelToken: string, managementKey: string, userSSHKey: string = '', serverId: string, provisioningToken: string, callbackUrl: string, rootPassword?: string, serviceTokenId?: string, serviceTokenSecret?: string) {
   return `#!/bin/bash
 set -e
 
@@ -65,12 +65,17 @@ MANAGEMENT_SSH_KEY="${managementKey}"
 USER_SSH_KEY="${userSSHKey}"
 TUNNEL_TOKEN="${tunnelToken}"
 
+SERVICE_TOKEN_ID="${serviceTokenId || ''}"
+SERVICE_TOKEN_SECRET="${serviceTokenSecret || ''}"
+
 # Helper for reporting status
 report_status() {
     local status_msg="$1"
     echo "Reporting status: $status_msg"
     curl -s -X POST "$CALLBACK_URL" \
       -H "Content-Type: application/json" \
+      -H "CF-Access-Client-Id: $SERVICE_TOKEN_ID" \
+      -H "CF-Access-Client-Secret: $SERVICE_TOKEN_SECRET" \
       -d "{\\"serverId\\": \\"$SERVER_ID\\", \\"token\\": \\"$PROV_TOKEN\\", \\"status\\": \\"$status_msg\\"}" || true
 }
 
@@ -426,10 +431,14 @@ export async function provisionServer(
     config.provisioningToken = provisioningToken;
     config.detailedStatus = 'Starting bootstrap...';
     
-    // Construct callback URL (assuming same host)
-    // In Cloudflare Workers, we can use the request URL or hardcode if needed
-    // For now, let's assume the user is on devboxui.com
-    const callbackUrl = `https://devboxui.com/api/provisioning/status`; 
+    // Construct callback URL dynamically
+    const requestHost = env.NEXT_PUBLIC_APP_URL || 'https://devboxui.com';
+    const callbackUrl = `${requestHost}/api/provisioning/status`; 
+    
+    // 3.5 Setup Service Token for bypassing Cloudflare Access during provisioning
+    console.log("Setting up Cloudflare Access Service Token...");
+    const serviceToken = await cfApi.getOrCreateServiceToken(kv);
+    await cfApi.authorizeServiceToken(requestHost.replace('https://', ''), serviceToken.id);
     
     const bootstrapScript = getBootstrapScript(
       userName, 
@@ -439,7 +448,10 @@ export async function provisionServer(
       userSSHKey, 
       serverId, 
       provisioningToken, 
-      callbackUrl
+      callbackUrl,
+      undefined,
+      serviceToken.client_id,
+      serviceToken.client_secret
     );
 
     // 5. Hetzner Automation: Create Server
