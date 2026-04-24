@@ -225,25 +225,11 @@ mkdir -p "$C_ROOT/workspace" "$C_ROOT/config/data/User"
 sudo -u "$DEV_USER" bash -c "export HOME=$C_ROOT; curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh | bash -s -- --unattended"
 sed -i "s|OSH_THEME=\"[^\"]*\"|OSH_THEME=\"90210\"|" "$C_ROOT/.bashrc"
 
-cat <<'EOF' > "$C_ROOT/.gitconfig"
-[user]
-    name = $GIT_USER_NAME
-    email = $GIT_USER_EMAIL
-EOF
+printf '[user]\n    name = %s\n    email = %s\n' "$GIT_USER_NAME" "$GIT_USER_EMAIL" > "$C_ROOT/.gitconfig"
 
-cat <<'EOF' > "$C_ROOT/config/config.yaml"
-bind-addr: 0.0.0.0:8443
-auth: none
-cert: false
-EOF
+printf 'bind-addr: 0.0.0.0:8443\nauth: none\ncert: false\n' > "$C_ROOT/config/config.yaml"
 
-cat <<'EOF' > "$C_ROOT/config/data/User/settings.json"
-{
-    "editor.fontSize": 15,
-    "terminal.integrated.fontSize": 15,
-    "workbench.colorTheme": "Default Dark+"
-}
-EOF
+printf '{\n    "editor.fontSize": 15,\n    "terminal.integrated.fontSize": 15,\n    "workbench.colorTheme": "Default Dark+"\n}\n' > "$C_ROOT/config/data/User/settings.json"
 
 chown -R "$DEV_USER":"$DEV_USER" "$C_ROOT"
 
