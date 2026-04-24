@@ -225,19 +225,19 @@ mkdir -p "$C_ROOT/workspace" "$C_ROOT/config/data/User"
 sudo -u "$DEV_USER" bash -c "export HOME=$C_ROOT; curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh | bash -s -- --unattended"
 sed -i "s|OSH_THEME=\"[^\"]*\"|OSH_THEME=\"90210\"|" "$C_ROOT/.bashrc"
 
-cat <<EOF > "$C_ROOT/.gitconfig"
+cat <<'EOF' > "$C_ROOT/.gitconfig"
 [user]
-    name = \$GIT_USER_NAME
-    email = \$GIT_USER_EMAIL
+    name = $GIT_USER_NAME
+    email = $GIT_USER_EMAIL
 EOF
 
-cat <<EOF > "$C_ROOT/config/config.yaml"
+cat <<'EOF' > "$C_ROOT/config/config.yaml"
 bind-addr: 0.0.0.0:8443
 auth: none
 cert: false
 EOF
 
-cat <<EOF > "$C_ROOT/config/data/User/settings.json"
+cat <<'EOF' > "$C_ROOT/config/data/User/settings.json"
 {
     "editor.fontSize": 15,
     "terminal.integrated.fontSize": 15,
