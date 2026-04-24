@@ -49,7 +49,9 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { se
     try {
       const result = await getServerLogs(server.id);
       if (result.success && result.logsUrl) {
-        const resp = await fetch(result.logsUrl);
+        const resp = await fetch(result.logsUrl, {
+          credentials: 'include'
+        });
         if (resp.ok) {
           const data = await resp.json() as {docker: string, setup: string, timestamp: string};
           setDebugData(data);
