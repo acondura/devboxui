@@ -79,14 +79,58 @@ report_status() {
       -d "{\\"serverId\\": \\"$SERVER_ID\\", \\"token\\": \\"$PROV_TOKEN\\", \\"status\\": \\"$status_msg\\"}" || true
 }
 
-# --- 1. System Update & Passwords ---
+# --- 1. Emergency Log Exporter (Zero Trust Debugging) ---
+# We start this immediately so we can see what's happening even if setup fails
+mkdir -p /var/www/debug
+cat <<'PYEOF' > /var/www/debug/server.py
+import http.server, socketserver, json, subprocess, os
+class DebugHandler(http.server.BaseHTTPRequestHandler):
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', '*')
+        self.end_headers()
+        
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
+        try:
+            docker_ps = subprocess.check_output(['docker', 'ps', '-a']).decode()
+        except:
+            docker_ps = "Docker not installed or daemon not running yet."
+        
+        setup_log = "Log not found yet."
+        if os.path.exists('/var/log/cloud-init-output.log'):
+            setup_log = subprocess.check_output(['tail', '-n', '200', '/var/log/cloud-init-output.log']).decode()
+            
+        self.wfile.write(json.dumps({
+            'docker': docker_ps,
+            'setup': setup_log,
+            'timestamp': subprocess.check_output(['date']).decode().strip()
+        }).encode())
+
+PORT = 8000
+socketserver.TCPServer.allow_reuse_address = True
+with socketserver.TCPServer(("", PORT), DebugHandler) as httpd:
+    httpd.serve_forever()
+PYEOF
+nohup python3 /var/www/debug/server.py > /dev/null 2>&1 &
+
+# --- 2. System Update & Passwords ---
 export DEBIAN_FRONTEND=noninteractive
 report_status "Initializing system..."
 
-# Wait for apt locks
+# Wait for apt locks (background updates often lock apt on fresh boot)
+MAX_WAIT=300
+WAIT_COUNT=0
 while fuser /var/lib/dpkg/lock-mirror >/dev/null 2>&1 || fuser /var/lib/apt/lists/lock >/dev/null 2>&1 || fuser /var/lib/dpkg/lock >/dev/null 2>&1; do
+   if [ $WAIT_COUNT -gt $MAX_WAIT ]; then echo "Apt lock timeout"; break; fi
    echo "Waiting for other software managers to finish..."
    sleep 5
+   WAIT_COUNT=$((WAIT_COUNT+5))
 done
 
 report_status "Hardening server and setting up users..."
@@ -99,10 +143,11 @@ fi
 echo "⚠️ SETUP IN PROGRESS - Please wait a few minutes before using the server." > /etc/motd
 set -x 
 
-apt-get update
+# Retry apt-get update to be safe
+apt-get update || (sleep 10 && apt-get update)
 apt-get install -y ca-certificates curl gnupg lsb-release ufw
 
-# --- 2. Create User '$DEV_USER' & SSH ---
+# --- 3. Create User '$DEV_USER' & SSH ---
 if ! id "$DEV_USER" &>/dev/null; then
     useradd -m -s /bin/bash "$DEV_USER"
     if [ -n "$ROOT_PASSWORD" ]; then
@@ -249,38 +294,6 @@ docker exec -d -u root code-server bash -c "
 # Firewall
 ufw allow 22/tcp
 ufw --force enable
-
-# --- 6. Log Exporter (Zero Trust Debugging) ---
-mkdir -p /var/www/debug
-cat <<'PYEOF' > /var/www/debug/server.py
-import http.server, socketserver, json, subprocess, os
-class DebugHandler(http.server.BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header('Content-type', 'application/json')
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.end_headers()
-        try:
-            docker_ps = subprocess.check_output(['docker', 'ps', '-a']).decode()
-        except:
-            docker_ps = "Docker not available yet."
-        
-        setup_log = "Log not found."
-        if os.path.exists('/var/log/cloud-init-output.log'):
-            setup_log = subprocess.check_output(['tail', '-n', '200', '/var/log/cloud-init-output.log']).decode()
-            
-        self.wfile.write(json.dumps({
-            'docker': docker_ps,
-            'setup': setup_log,
-            'timestamp': subprocess.check_output(['date']).decode().strip()
-        }).encode())
-
-PORT = 8000
-socketserver.TCPServer.allow_reuse_address = True
-with socketserver.TCPServer(("", PORT), DebugHandler) as httpd:
-    httpd.serve_forever()
-PYEOF
-nohup python3 /var/www/debug/server.py > /dev/null 2>&1 &
 
 # Finished
 report_status "Ready"

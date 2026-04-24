@@ -86,16 +86,30 @@ export function SettingsModal({ isOpen, onClose, userEmail }: SettingsModalProps
               className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono text-xs resize-none"
               required
             />
-            <div className="mt-3 p-3 bg-slate-950/50 border border-slate-800 rounded-lg space-y-2">
-              <p className="text-[10px] font-bold text-slate-300 uppercase tracking-tight">How to generate a key:</p>
-              <div className="space-y-1 text-[10px] text-slate-500 font-mono">
-                <p className="text-indigo-400"># Linux / macOS / WSL:</p>
-                <p className="bg-slate-900 p-1 rounded select-all text-slate-300">ssh-keygen -t ed25519 -C "{userEmail}"</p>
-                <p className="pt-1 text-indigo-400"># Windows (PowerShell):</p>
-                <p className="bg-slate-900 p-1 rounded select-all text-slate-300">ssh-keygen.exe</p>
+            <div className="mt-4 p-4 bg-indigo-500/5 border border-indigo-500/10 rounded-xl space-y-3">
+              <p className="text-xs font-bold text-indigo-400 uppercase tracking-wider">How to generate a key:</p>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-[11px] text-slate-500 font-medium mb-1.5 flex items-center space-x-1.5">
+                    <span className="w-1 h-1 rounded-full bg-slate-700" />
+                    <span>Linux / macOS / WSL:</span>
+                  </p>
+                  <code className="block bg-slate-950 p-2.5 rounded-lg border border-slate-800 select-all text-xs text-slate-200 font-mono">
+                    ssh-keygen -t ed25519 -C "{userEmail}"
+                  </code>
+                </div>
+                <div>
+                  <p className="text-[11px] text-slate-500 font-medium mb-1.5 flex items-center space-x-1.5">
+                    <span className="w-1 h-1 rounded-full bg-slate-700" />
+                    <span>Windows (PowerShell):</span>
+                  </p>
+                  <code className="block bg-slate-950 p-2.5 rounded-lg border border-slate-800 select-all text-xs text-slate-200 font-mono">
+                    ssh-keygen.exe
+                  </code>
+                </div>
               </div>
-              <p className="text-[10px] text-slate-500 italic pt-1 leading-relaxed">
-                Copy the content of <code>~/.ssh/id_ed25519.pub</code> and paste it above.
+              <p className="text-[11px] text-slate-500 italic leading-relaxed pt-1">
+                Copy the contents of <code className="text-indigo-400 font-bold">~/.ssh/id_ed25519.pub</code> and paste it into the box above.
               </p>
             </div>
           </div>
