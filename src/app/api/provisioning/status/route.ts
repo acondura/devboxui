@@ -2,11 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCloudflareEnv } from '@/lib/auth';
 import { ServerConfig } from '@/modules/inventory/types';
 
-export const runtime = 'edge';
 
 export async function POST(req: NextRequest) {
   try {
-    const { serverId, token, status } = await req.json();
+    const { serverId, token, status } = await req.json() as { serverId: string; token: string; status: string };
     const env = await getCloudflareEnv();
     const kv = env.KV;
 
