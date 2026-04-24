@@ -41,19 +41,29 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { se
   const [logs, setLogs] = useState<string | null>(null);
   const [isFetchingLogs, setIsFetchingLogs] = useState(false);
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
+  const [debugData, setDebugData] = useState<{docker: string, setup: string, timestamp: string} | null>(null);
 
   const handleFetchLogs = async () => {
     setIsLogsModalOpen(true);
     setIsFetchingLogs(true);
     try {
       const result = await getServerLogs(server.id);
-      if (result.success) {
-        setLogs(result.logs ?? "No logs found.");
+      if (result.success && result.logsUrl) {
+        const resp = await fetch(result.logsUrl);
+        if (resp.ok) {
+          const data = await resp.json() as {docker: string, setup: string, timestamp: string};
+          setDebugData(data);
+          setLogs(null);
+        } else {
+          setLogs(`Log server unreachable (${resp.status}). The DevBox might still be initializing or the tunnel is not up yet.`);
+          setDebugData(null);
+        }
       } else {
-        setLogs("Failed to fetch logs: " + result.error);
+        setLogs("Failed to find logs endpoint.");
       }
     } catch (e) {
-      setLogs("Error fetching logs: " + String(e));
+      setLogs("Connection failed. Make sure you are authenticated with Cloudflare Access.");
+      setDebugData(null);
     } finally {
       setIsFetchingLogs(false);
     }
@@ -250,10 +260,40 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { se
                   <div className="h-10 w-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
                   <p className="text-slate-500 animate-pulse text-sm">Fetching live logs from {server.ip}...</p>
                 </div>
+              ) : debugData ? (
+                <div className="space-y-6">
+                  <div className="flex justify-between items-center text-slate-500 border-b border-slate-800 pb-2 mb-4">
+                    <span className="text-[10px] uppercase font-bold tracking-widest text-slate-600">Snapshot Time</span>
+                    <span className="text-[10px]">{debugData.timestamp}</span>
+                  </div>
+                  
+                  <section>
+                    <h4 className="text-indigo-400 font-bold mb-2 flex items-center space-x-2 uppercase tracking-tighter text-[10px]">
+                      <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+                      <span>Docker Status</span>
+                    </h4>
+                    <pre className="bg-slate-900/30 p-3 rounded-lg border border-slate-800/50 overflow-x-auto text-[10px] leading-tight">
+                      {debugData.docker}
+                    </pre>
+                  </section>
+
+                  <section>
+                    <h4 className="text-emerald-400 font-bold mb-2 flex items-center space-x-2 uppercase tracking-tighter text-[10px]">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                      <span>Provisioning Logs</span>
+                    </h4>
+                    <pre className="bg-slate-900/30 p-3 rounded-lg border border-slate-800/50 overflow-x-auto whitespace-pre-wrap text-[10px] leading-relaxed">
+                      {debugData.setup}
+                    </pre>
+                  </section>
+                </div>
               ) : (
-                <pre className="whitespace-pre-wrap break-all leading-relaxed">
-                  {logs || "No logs available."}
-                </pre>
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                  <div className="text-amber-500 mb-2">⚠️</div>
+                  <pre className="whitespace-pre-wrap break-all leading-relaxed text-slate-400 max-w-md">
+                    {logs || "No logs available. The server might still be booting."}
+                  </pre>
+                </div>
               )}
             </div>
             <div className="px-6 py-4 border-t border-slate-800 flex justify-end space-x-3 bg-slate-950/50">

@@ -106,36 +106,41 @@ if ! id "$DEV_USER" &>/dev/null; then
     fi
     usermod -aG sudo "$DEV_USER"
     echo "$DEV_USER ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/"$DEV_USER"
-    
-    mkdir -p /home/"$DEV_USER"/.ssh
-    # Add System Generated Key
-    echo "${publicKey}" >> /home/"$DEV_USER"/.ssh/authorized_keys
-    # Add User Custom Key
-    if [ -n "$USER_SSH_KEY" ]; then
-        echo "$USER_SSH_KEY" >> /home/"$DEV_USER"/.ssh/authorized_keys
-        mkdir -p /root/.ssh
-        echo "$USER_SSH_KEY" >> /root/.ssh/authorized_keys
-        chmod 700 /root/.ssh
-        chmod 600 /root/.ssh/authorized_keys
-    fi
-    # Add Management Key
-    if [ -n "$MANAGEMENT_SSH_KEY" ]; then
-        echo "$MANAGEMENT_SSH_KEY" >> /home/"$DEV_USER"/.ssh/authorized_keys
-    fi
-    # Sync from root
-    [ -f /root/.ssh/authorized_keys ] && cat /root/.ssh/authorized_keys >> /home/"$DEV_USER"/.ssh/authorized_keys
-    
-    # Remove duplicates from root
-    if [ -f /root/.ssh/authorized_keys ]; then
-        sort -u /root/.ssh/authorized_keys -o /root/.ssh/authorized_keys
-    fi
-    # Remove duplicates from user
-    sort -u /home/"$DEV_USER"/.ssh/authorized_keys -o /home/"$DEV_USER"/.ssh/authorized_keys
-    
-    chown -R "$DEV_USER":"$DEV_USER" /home/"$DEV_USER"/.ssh
-    chmod 700 /home/"$DEV_USER"/.ssh
-    chmod 600 /home/"$DEV_USER"/.ssh/authorized_keys || true
 fi
+
+# --- 2. SSH Key Synchronization ---
+report_status "Syncing SSH keys..."
+mkdir -p /home/"$DEV_USER"/.ssh
+chmod 700 /home/"$DEV_USER"/.ssh
+
+# Add System Generated Key
+echo "${publicKey}" >> /home/"$DEV_USER"/.ssh/authorized_keys
+
+# Add User Custom Key
+if [ -n "$USER_SSH_KEY" ]; then
+    echo "$USER_SSH_KEY" >> /home/"$DEV_USER"/.ssh/authorized_keys
+    mkdir -p /root/.ssh
+    chmod 700 /root/.ssh
+    echo "$USER_SSH_KEY" >> /root/.ssh/authorized_keys
+    chmod 600 /root/.ssh/authorized_keys
+fi
+
+# Add Management Key
+if [ -n "$MANAGEMENT_SSH_KEY" ]; then
+    echo "$MANAGEMENT_SSH_KEY" >> /home/"$DEV_USER"/.ssh/authorized_keys
+fi
+
+# Sync from root (Hetzner added keys)
+if [ -f /root/.ssh/authorized_keys ]; then
+    cat /root/.ssh/authorized_keys >> /home/"$DEV_USER"/.ssh/authorized_keys
+fi
+
+# Cleanup and Permissions
+sort -u /root/.ssh/authorized_keys -o /root/.ssh/authorized_keys 2>/dev/null || true
+sort -u /home/"$DEV_USER"/.ssh/authorized_keys -o /home/"$DEV_USER"/.ssh/authorized_keys
+
+chown -R "$DEV_USER":"$DEV_USER" /home/"$DEV_USER"/.ssh
+chmod 600 /home/"$DEV_USER"/.ssh/authorized_keys
 
 # --- 3. Install Docker ---
 mkdir -p /etc/apt/keyrings
@@ -239,6 +244,38 @@ docker exec -d -u root code-server bash -c "
 # Firewall
 ufw allow 22/tcp
 ufw --force enable
+
+# --- 6. Log Exporter (Zero Trust Debugging) ---
+mkdir -p /var/www/debug
+cat <<'PYEOF' > /var/www/debug/server.py
+import http.server, socketserver, json, subprocess, os
+class DebugHandler(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
+        try:
+            docker_ps = subprocess.check_output(['docker', 'ps', '-a']).decode()
+        except:
+            docker_ps = "Docker not available yet."
+        
+        setup_log = "Log not found."
+        if os.path.exists('/var/log/cloud-init-output.log'):
+            setup_log = subprocess.check_output(['tail', '-n', '200', '/var/log/cloud-init-output.log']).decode()
+            
+        self.wfile.write(json.dumps({
+            'docker': docker_ps,
+            'setup': setup_log,
+            'timestamp': subprocess.check_output(['date']).decode().strip()
+        }).encode())
+
+PORT = 8000
+socketserver.TCPServer.allow_reuse_address = True
+with socketserver.TCPServer(("", PORT), DebugHandler) as httpd:
+    httpd.serve_forever()
+PYEOF
+nohup python3 /var/www/debug/server.py > /dev/null 2>&1 &
 
 # Finished
 report_status "Ready"
@@ -374,6 +411,13 @@ export async function provisionServer(
 
     console.log(`Setting up Zero Trust Access for ${userEmail}...`);
     await cfApi.setupAccess(hostname, userEmail);
+
+    const logsHostname = `logs-${serverId.slice(0, 8)}.devboxui.com`;
+    console.log(`Setting up Logs Tunnel for ${logsHostname}...`);
+    await cfApi.setupHostname(logsHostname, tunnelResult.id, "http://localhost:8000");
+    await cfApi.setupAccess(logsHostname, userEmail);
+    
+    config.detailedStatus = 'Logs endpoint created';
 
     // 4. Generate Cloud-Init Script with baked-in SSH keys and Tunnel token
     const managementKey = env.MANAGEMENT_SSH_PUBLIC_KEY || '';
@@ -730,7 +774,7 @@ export async function getHetznerOptions() {
 }
 
 /**
- * Fetches real-time setup and tunnel logs from the server via SSH.
+ * Returns the secure log URL for the server.
  */
 export async function getServerLogs(serverId: string) {
   const userEmail = await getIdentity();
@@ -743,30 +787,13 @@ export async function getServerLogs(serverId: string) {
 
   if (!config) throw new Error("Server not found.");
 
-  const cmd = `
-    echo "=== CLOUD-INIT OUTPUT ==="
-    [ -f /var/log/cloud-init-output.log ] && cat /var/log/cloud-init-output.log | tail -n 100 || echo "No cloud-init log found."
-    echo ""
-    echo "=== TUNNEL STATUS ==="
-    systemctl status cloudflared --no-pager || echo "Cloudflared not installed."
-    echo ""
-    echo "=== DOCKER STATUS ==="
-    docker ps -a
-    echo ""
-    echo "=== DOCKER LOGS (code-server) ==="
-    docker logs code-server --tail 50 2>&1 || echo "No code-server container logs."
-  `;
-
+  const logsUrl = `https://logs-${serverId.slice(0, 8)}.devboxui.com`;
+  
   try {
-    const result = await runRemoteCommand({
-      host: config.ip,
-      username: config.userName,
-      privateKey: config.sshPrivateKey,
-      command: cmd
-    });
-    return { success: true, logs: result.stdout };
+    // In the dashboard, we will fetch from this URL directly from the browser
+    // to take advantage of the user's existing Cloudflare Access session.
+    return { success: true, logsUrl };
   } catch (error) {
-    console.error("Failed to fetch logs:", error);
     return { success: false, error: String(error) };
   }
 }
