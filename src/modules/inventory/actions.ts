@@ -412,7 +412,7 @@ export async function provisionServer(
     console.log(`Setting up Zero Trust Access for ${userEmail}...`);
     await cfApi.setupAccess(hostname, userEmail);
 
-    const logsHostname = `logs-${serverId.slice(0, 8)}.devboxui.com`;
+    const logsHostname = `${name}-logs.devboxui.com`;
     console.log(`Setting up Logs Tunnel for ${logsHostname}...`);
     await cfApi.setupHostname(logsHostname, tunnelResult.id, "http://localhost:8000");
     await cfApi.setupAccess(logsHostname, userEmail);
@@ -787,7 +787,7 @@ export async function getServerLogs(serverId: string) {
 
   if (!config) throw new Error("Server not found.");
 
-  const logsUrl = `https://logs-${serverId.slice(0, 8)}.devboxui.com`;
+  const logsUrl = config.tunnelUrl?.replace('-code.', '-logs.') || `https://logs-${serverId.slice(0, 8)}.devboxui.com`;
   
   try {
     // In the dashboard, we will fetch from this URL directly from the browser
