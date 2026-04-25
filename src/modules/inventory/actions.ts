@@ -64,37 +64,48 @@ TUNNEL_TOKEN="${tunnelToken}"
 SERVICE_TOKEN_ID="${serviceTokenId || ''}"
 SERVICE_TOKEN_SECRET="${serviceTokenSecret || ''}"
 
-# --- 1. System Resilience & Immediate Reporting ---
-export DEBIAN_FRONTEND=noninteractive
-# Open debug port in case ufw is active
-ufw allow 8000/tcp || echo "ufw not present or failed"
-
 # Helper for reporting status
 report_status() {
     local status_msg="$1"
     echo "Reporting status: $status_msg"
-    # Attempt to report status with retry logic and verbose logging
+    # Attempt to report status with retry logic and tool fallback
     for i in 1 2 3; do
-      local response_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$CALLBACK_URL" \
-        -H "Content-Type: application/json" \
-        -H "CF-Access-Client-Id: $SERVICE_TOKEN_ID" \
-        -H "CF-Access-Client-Secret: $SERVICE_TOKEN_SECRET" \
-        -d "{\\\"serverId\\\": \\\"$SERVER_ID\\\", \\\"token\\\": \\\"$PROV_TOKEN\\\", \\\"status\\\": \\\"$status_msg\\\"}")
+      local response_code="000"
+      if command -v curl >/dev/null 2>&1; then
+        response_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$CALLBACK_URL" \
+          -H "Content-Type: application/json" \
+          -H "CF-Access-Client-Id: $SERVICE_TOKEN_ID" \
+          -H "CF-Access-Client-Secret: $SERVICE_TOKEN_SECRET" \
+          -d "{\\\"serverId\\\": \\\"$SERVER_ID\\\", \\\"token\\\": \\\"$PROV_TOKEN\\\", \\\"status\\\": \\\"$status_msg\\\"}")
+      elif command -v wget >/dev/null 2>&1; then
+        # Fallback to wget if curl is not yet available
+        wget -q --spider --method=POST --header="Content-Type: application/json" \
+          --header="CF-Access-Client-Id: $SERVICE_TOKEN_ID" \
+          --header="CF-Access-Client-Secret: $SERVICE_TOKEN_SECRET" \
+          --body-data="{\"serverId\": \"$SERVER_ID\", \"token\": \"$PROV_TOKEN\", \"status\": \"$status_msg\"}" \
+          "$CALLBACK_URL" && response_code="200"
+      fi
       
       echo "Status report attempt $i: HTTP $response_code" >> /var/log/provisioning-heartbeat.log
       
-      if [ "$response_code" -eq 200 ]; then
+      if [ "$response_code" -eq 200 ] || [ "$response_code" -eq 201 ]; then
         return 0
       fi
       sleep 2
     done
+    return 0 # Never fail the whole script because of a status report
 }
 
-# First report as early as possible
-report_status "Initializing system..."
+# --- 1. System Resilience & Immediate Reporting ---
+export DEBIAN_FRONTEND=noninteractive
+# Install curl as early as humanly possible
+apt-get update && apt-get install -y curl wget || echo "Warning: initial tool install failed"
 
-# Install curl immediately as it is our primary communication tool
-apt-get update && apt-get install -y curl || echo "Warning: apt-get update failed, using existing tools"
+# Open debug port in case ufw is active
+ufw allow 8000/tcp || echo "ufw not present or failed"
+
+# First report
+report_status "Initializing system..."
 
 # --- 2. Emergency Log Exporter (Zero Trust Debugging) ---
 # We start this immediately so we can see what's happening even if setup fails
