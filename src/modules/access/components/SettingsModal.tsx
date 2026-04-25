@@ -111,11 +111,27 @@ export function SettingsModal({ isOpen, onClose, userEmail }: SettingsModalProps
                 onClick={async () => {
                   try {
                     const keyPair = await window.crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]);
-                    const exportedPublic = await window.crypto.subtle.exportKey("raw", keyPair.publicKey);
+                    const exportedPublic = new Uint8Array(await window.crypto.subtle.exportKey("raw", keyPair.publicKey));
                     const exportedPrivate = await window.crypto.subtle.exportKey("pkcs8", keyPair.privateKey);
-                    const pubBase64 = btoa(String.fromCharCode(...new Uint8Array(exportedPublic)));
+                    
+                    // Correct SSH Ed25519 Public Key Format:
+                    // 4 bytes: length of "ssh-ed25519" (00 00 00 0b)
+                    // 11 bytes: "ssh-ed25519"
+                    // 4 bytes: length of public key (00 00 00 20)
+                    // 32 bytes: the public key
+                    const prefix = new Uint8Array([
+                      0, 0, 0, 11, 115, 115, 104, 45, 101, 100, 50, 53, 53, 49, 57, 
+                      0, 0, 0, 32
+                    ]);
+                    
+                    const fullKey = new Uint8Array(prefix.length + exportedPublic.length);
+                    fullKey.set(prefix);
+                    fullKey.set(exportedPublic, prefix.length);
+                    
+                    const pubBase64 = btoa(String.fromCharCode(...fullKey));
+                    const sshPubKey = `ssh-ed25519 ${pubBase64} devboxui-generated`;
+                    
                     const privBase64 = btoa(String.fromCharCode(...new Uint8Array(exportedPrivate)));
-                    const sshPubKey = `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI${pubBase64} devboxui-generated`;
                     setSshPublicKey(sshPubKey);
                     const blob = new Blob([`-----BEGIN PRIVATE KEY-----\n${privBase64.match(/.{1,64}/g)?.join('\n')}\n-----END PRIVATE KEY-----`], { type: 'text/plain' });
                     const url = URL.createObjectURL(blob);
