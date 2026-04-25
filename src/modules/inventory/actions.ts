@@ -45,7 +45,7 @@ const runRemoteCommand = async (config: {
 /**
  * Generates the full sequence of bash commands to bootstrap the server.
  */
-function getBootstrapScript(username: string, userEmail: string, tunnelToken: string, managementKey: string, userSSHKey: string, serverId: string, provisioningToken: string, callbackUrl: string, rootPassword?: string, serviceTokenId?: string, serviceTokenSecret?: string) {
+function getBootstrapScript(username: string, userEmail: string, tunnelToken: string, managementKey: string, userSSHKey: string, serverId: string, provisioningToken: string, callbackUrl: string, rootPassword?: string, serviceTokenId?: string, serviceTokenSecret?: string, hetznerToken?: string) {
   return `#!/bin/bash
 set -e
 
@@ -60,13 +60,26 @@ GIT_USER_EMAIL="${userEmail}"
 MANAGEMENT_SSH_KEY="${managementKey}"
 USER_SSH_KEY="${userSSHKey}"
 TUNNEL_TOKEN="${tunnelToken}"
+HETZNER_TOKEN="${hetznerToken || ''}"
 
 SERVICE_TOKEN_ID="${serviceTokenId || ''}"
 SERVICE_TOKEN_SECRET="${serviceTokenSecret || ''}"
 
+# Helper to update Hetzner server name with status
+hetzner_heartbeat() {
+    local status_msg="$1"
+    echo "$status_msg" > /var/www/debug/status.txt
+    if [ -n "$HETZNER_TOKEN" ] && [ -n "$SERVER_ID" ]; then
+        curl -X PUT "https://api.hetzner.cloud/v1/servers/$SERVER_ID" \
+            -H "Authorization: Bearer $HETZNER_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\\"name\\": \\"${username}-$(echo $status_msg | tr ' ' '-')\\"}" || true
+    fi
+}
+
 # --- 1. Emergency Log Exporter (Zero Trust Debugging) ---
 mkdir -p /var/www/debug
-echo "Initializing system..." > /var/www/debug/status.txt
+hetzner_heartbeat "Initializing system"
 ln -sf /var/log/cloud-init-output.log /var/www/debug/setup.log
 
 cat <<'PYEOF' > /var/www/debug/server.py
@@ -109,8 +122,8 @@ with socketserver.TCPServer(("", PORT), DebugHandler) as httpd:
     httpd.serve_forever()
 PYEOF
 
-# Start the server in the background
-(python3 /var/www/debug/server.py &)
+# Start the server in the background with nohup to ensure survival
+nohup python3 /var/www/debug/server.py > /var/log/debug-server.log 2>&1 &
 
 # --- 2. System Resilience & Immediate Reporting ---
 export DEBIAN_FRONTEND=noninteractive
@@ -118,20 +131,26 @@ export DEBIAN_FRONTEND=noninteractive
 ufw allow 8080/tcp || echo "ufw not present or failed"
 
 # CRITICAL: Wait for apt locks (background updates often lock apt on fresh boot)
+# We use a simple apt-get update retry loop instead of 'fuser' (which might be missing)
 echo "Waiting for apt locks..."
-while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || fuser /var/lib/apt/lists/lock >/dev/null 2>&1; do
-    echo "Apt is locked by another process, waiting..."
-    sleep 5
+for i in {1..20}; do
+    if apt-get update 2>&1 | grep -q "Could not get lock"; then
+        echo "Apt is locked, retrying in 5s... ($i/20)"
+        sleep 5
+    else
+        echo "Apt lock acquired."
+        break
+    fi
 done
 
-# Install curl as early as humanly possible
-apt-get update && apt-get install -y curl wget || echo "Warning: initial tool install failed"
+# Install tools
+apt-get install -y curl wget || echo "Warning: tool install failed"
 
 # Helper for reporting status
 report_status() {
     local status_msg="$1"
-    echo "$status_msg" > /var/www/debug/status.txt
     echo "Reporting status: $status_msg"
+    hetzner_heartbeat "$status_msg"
     # Attempt to report status with retry logic and tool fallback
     for i in 1 2 3; do
       local response_code="000"
@@ -540,7 +559,8 @@ export async function provisionServer(
       callbackUrl,
       undefined,
       serviceToken.client_id,
-      serviceToken.client_secret
+      serviceToken.client_secret,
+      hetznerToken
     );
 
     // 5. Hetzner Automation: Manage SSH Keys
@@ -951,4 +971,39 @@ export async function getServerLogs(serverId: string) {
   } catch (error) {
     return { success: false, error: String(error) };
   }
+}
+
+/**
+ * Manually forces a server's status to 'ready'.
+ */
+export async function forceReadyServer(serverId: string) {
+  const userEmail = await getIdentity();
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+
+  if (!kv) throw new Error("KV database missing.");
+
+  const list = await kv.list({ prefix: `servers:${userEmail}:` });
+  let serverKey = "";
+  let config: ServerConfig | null = null;
+
+  for (const key of list.keys) {
+    const val = await kv.get(key.name);
+    if (!val) continue;
+    const c = JSON.parse(val) as ServerConfig;
+    if (c.id === serverId) {
+      serverKey = key.name;
+      config = c;
+      break;
+    }
+  }
+
+  if (!config || !serverKey) throw new Error("Server not found.");
+
+  config.status = 'ready';
+  config.detailedStatus = 'Manually forced to ready';
+  config.updatedAt = new Date().toISOString();
+
+  await kv.put(serverKey, JSON.stringify(config));
+  return config;
 }
