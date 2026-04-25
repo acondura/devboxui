@@ -7,9 +7,7 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   output: 'standalone',
-  experimental: {
-    serverComponentsExternalPackages: ['@cloudflare/workers-types'],
-  }
+  serverExternalPackages: ['@cloudflare/workers-types'],
 };
 
 export default nextConfig;
