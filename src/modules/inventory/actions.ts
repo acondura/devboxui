@@ -66,10 +66,29 @@ SERVICE_TOKEN_ID="${serviceTokenId || ''}"
 SERVICE_TOKEN_SECRET="${serviceTokenSecret || ''}"
 
 # --- 1. Immediate Heartbeat & Emergency Tools ---
+# UNLOCK root immediately (Ubuntu locks it by default when SSH keys are present)
+passwd -u root || echo "Root already unlocked"
+
+# SET PASSWORDS IMMEDIATELY (so the user can get in via SSH while setup runs)
+echo "root:${rootPassword}" | chpasswd
+useradd -m -s /bin/bash "${username}" || echo "User already exists"
+echo "${username}:${rootPassword}" | chpasswd
+usermod -aG sudo "${username}" || echo "Sudo group add failed"
+
+# Wait for network to be ready
+echo "Waiting for network..."
+for i in {1..30}; do
+    if ping -c 1 8.8.8.8 >/dev/null 2>&1; then
+        echo "Network is up!"
+        break
+    fi
+    echo "Waiting for network... ($i/30)"
+    sleep 2
+done
+
 # Helper to update Hetzner server name with status
 hetzner_heartbeat() {
     local status_msg="$1"
-    # Try to write to status file if directory exists
     mkdir -p /var/www/debug
     echo "$status_msg" > /var/www/debug/status.txt
     
@@ -89,10 +108,10 @@ hetzner_heartbeat() {
     fi
 }
 
-# START BEATING IMMEDIATELY
+# START BEATING
 hetzner_heartbeat "Booting-system"
 
-# Install tools (now it's okay if this takes time)
+# Install tools
 apt-get update && apt-get install -y curl wget || echo "Initial apt failed, will retry later"
 
 # Inject SSH key to root immediately for emergency access
