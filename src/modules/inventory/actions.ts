@@ -490,31 +490,39 @@ export async function provisionServer(
       serviceToken.client_secret
     );
 
-    // 5. Hetzner Automation: Create Server
-    console.log(`Checking SSH keys on Hetzner project...`);
-    const sshKeyNames: string[] = [];
-    if (settings?.sshPublicKey) {
+    // 5. Hetzner Automation: Manage SSH Keys
+    console.log(`Managing SSH keys on Hetzner...`);
+    const sshKeyIds: (string | number)[] = [];
+    
+    const keysToRegister = [
+      { name: `devbox-${userName}`, key: userSSHKey },
+      { name: 'devbox-mgmt', key: managementKey }
+    ].filter(k => k.key);
+
+    for (const k of keysToRegister) {
       try {
         const existingKeys = await hetznerApi.getSSHKeys();
-        // Compare keys (trimmed, ignoring label)
-        const cleanedUserKey = settings.sshPublicKey.trim().split(' ').slice(0, 2).join(' ');
-        const foundKey = existingKeys.find(k => k.public_key.trim().includes(cleanedUserKey));
+        const cleanedKey = k.key.trim().split(' ').slice(0, 2).join(' ');
+        const foundKey = existingKeys.find(ex => ex.public_key.trim().includes(cleanedKey));
         
         if (foundKey) {
-          sshKeyNames.push(foundKey.name);
+          sshKeyIds.push(foundKey.id);
         } else {
-          const newKeyName = `devbox-${userEmail.split('@')[0]}-${Date.now().toString().slice(-4)}`;
-          console.log(`Registering new SSH key '${newKeyName}' with Hetzner...`);
-          await hetznerApi.createSSHKey(newKeyName, settings.sshPublicKey);
-          sshKeyNames.push(newKeyName);
+          console.log(`Registering key '${k.name}' with Hetzner...`);
+          const created = await hetznerApi.createSSHKey(k.name, k.key);
+          if (created) sshKeyIds.push(created.id);
         }
       } catch (e) {
-        console.warn("Failed to manage Hetzner SSH keys, continuing with Cloud-Init only", e);
+        console.error(`Warning: Failed to register SSH key ${k.name}:`, e);
       }
     }
 
-    console.log(`Requesting new ${serverType} server '${name}' in ${location} from Hetzner...`);
-    const hetznerResult = await hetznerApi.createServer(name, bootstrapScript, serverType, location, image, sshKeyNames);
+    if (sshKeyIds.length === 0) {
+      throw new Error("Failed to register any SSH keys with Hetzner. Aborting launch to prevent root password fallback.");
+    }
+
+    console.log(`Requesting new ${serverType} server '${name}' in ${location} with ${sshKeyIds.length} keys...`);
+    const hetznerResult = await hetznerApi.createServer(name, bootstrapScript, serverType, location, image, sshKeyIds);
     hetznerServerId = hetznerResult.server.id;
     config.hetznerServerId = hetznerServerId;
     
