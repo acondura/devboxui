@@ -136,7 +136,7 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
           <div className="h-8 w-8 bg-indigo-600 rounded-lg flex items-center justify-center">
             <span className="text-white text-lg font-black">D</span>
           </div>
-          <span className="uppercase italic tracking-tighter">DevBox<span className="text-indigo-500">UI</span></span>
+          <span className="uppercase tracking-tighter">DevBox<span className="text-indigo-500">UI</span></span>
         </Link>
         
         <div className="flex items-center space-x-3">
@@ -172,7 +172,7 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
           <div className="mb-10 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
             <div>
-              <h2 className="text-3xl font-extrabold text-white tracking-tight uppercase italic">Active <span className="text-indigo-500">DevBoxes</span></h2>
+              <h2 className="text-3xl font-extrabold text-white tracking-tight uppercase">Dashboard</h2>
               <p className="text-slate-400 text-sm mt-1">Manage and provision your team&apos;s cloud development servers.</p>
             </div>
             

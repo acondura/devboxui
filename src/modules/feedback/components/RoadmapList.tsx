@@ -63,7 +63,7 @@ export function RoadmapList() {
                           item.type === 'bug' ? 'bg-red-500/10 text-red-500' : 
                           item.type === 'feature' ? 'bg-blue-500/10 text-blue-500' : 'bg-slate-800 text-slate-400'
                         }`}>
-                          {item.type}
+                          {item.type === 'feature' ? 'New Feature' : item.type === 'improvement' ? 'Existing Feature' : item.type}
                         </span>
                         
                         {/* Admin Controls */}

@@ -22,7 +22,7 @@ export default async function AdminPage() {
   if (!isAdmin) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-center">
-        <h1 className="text-4xl font-black text-white mb-4 tracking-tight uppercase italic">Unauthorized</h1>
+        <h1 className="text-4xl font-black text-white mb-4 tracking-tight uppercase">Unauthorized</h1>
         <p className="text-slate-500 mb-8 max-w-md">This area is for the DevBoxUI administrators only. Your account ({userEmail}) does not have permission to view this page.</p>
         <Link href="/dashboard" className="text-indigo-400 hover:underline font-bold uppercase tracking-widest text-xs">Return to Dashboard</Link>
       </div>

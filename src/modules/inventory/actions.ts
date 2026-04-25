@@ -35,7 +35,7 @@ const runRemoteCommand = async (config: {
   if (!response.ok) {
     const errorText = await response.text();
     let errorMessage = response.statusText;
-    try { errorMessage = JSON.parse(errorText).error || errorMessage; } catch (_e) { }
+    try { errorMessage = JSON.parse(errorText).error || errorMessage; } catch { }
     throw new Error(`SSH Service Error: ${errorMessage}`);
   }
 

@@ -46,7 +46,7 @@ export function AddProjectModal({ isOpen, onClose, onAdd }: AddProjectModalProps
               onChange={(e) => setProjectName(e.target.value)}
               className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
             />
-            <p className="mt-2 text-xs text-slate-500 italic">
+            <p className="mt-2 text-xs text-slate-500">
               This will create a new subdomain and route it to your DDEV environment.
             </p>
           </div>

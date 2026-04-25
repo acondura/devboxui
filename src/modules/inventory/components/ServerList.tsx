@@ -63,7 +63,7 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { se
       } else {
         setLogs("Failed to find logs endpoint.");
       }
-    } catch (e) {
+    } catch {
       setLogs("Connection failed. Make sure you are authenticated with Cloudflare Access.");
       setDebugData(null);
     } finally {
@@ -84,7 +84,7 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { se
       setIsDeleting(true);
       try {
         await onDeleteServer(server.id);
-      } catch (e) {
+      } catch {
         alert("Failed to delete server.");
         setIsDeleting(false);
       }

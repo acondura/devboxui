@@ -8,6 +8,36 @@ interface AddServerModalProps {
   onAdd: (name: string, serverType: string, location: string, image: string) => Promise<void>;
 }
 
+interface HetznerPrice {
+  location: string;
+  price_monthly: { gross: string };
+  price_hourly: { gross: string };
+}
+
+interface HetznerServerType {
+  id: number;
+  name: string;
+  cores: number;
+  memory: number;
+  disk: number;
+  architecture: string;
+  deprecation: string | null;
+  prices: HetznerPrice[];
+}
+
+interface HetznerLocation {
+  id: number;
+  name: string;
+  city: string;
+}
+
+interface HetznerImage {
+  id: number;
+  name: string;
+  description: string;
+  architecture: string;
+}
+
 export function AddServerModal({ isOpen, onClose, onOpenSettings, onAdd }: AddServerModalProps) {
   const [name, setName] = useState('');
   const [serverType, setServerType] = useState('cpx21');
@@ -18,9 +48,9 @@ export function AddServerModal({ isOpen, onClose, onOpenSettings, onAdd }: AddSe
   const [isCheckingKey, setIsCheckingKey] = useState(true);
   
   const [options, setOptions] = useState<{
-    serverTypes: any[];
-    locations: any[];
-    images: any[];
+    serverTypes: HetznerServerType[];
+    locations: HetznerLocation[];
+    images: HetznerImage[];
   }>({ serverTypes: [], locations: [], images: [] });
   const [isLoadingOptions, setIsLoadingOptions] = useState(true);
 
@@ -35,7 +65,7 @@ export function AddServerModal({ isOpen, onClose, onOpenSettings, onAdd }: AddSe
           getUserSettings()
         ]);
         
-        setOptions(data);
+        setOptions(data as unknown as { serverTypes: HetznerServerType[]; locations: HetznerLocation[]; images: HetznerImage[] });
         setHasSSHKey(!!settings?.sshPublicKey);
         setIsCheckingKey(false);
         
@@ -44,10 +74,10 @@ export function AddServerModal({ isOpen, onClose, onOpenSettings, onAdd }: AddSe
         
         // Set defaults if data available
         if (data.serverTypes.length > 0) {
-          // Sort types locally to find the cheapest for the current location
-          const sorted = [...data.serverTypes].sort((a, b) => {
-            const getPrice = (t: any) => {
-              const p = t.prices.find((p: any) => p.location === location) || t.prices[0];
+          const typedTypes = data.serverTypes as unknown as HetznerServerType[];
+          const sorted = [...typedTypes].sort((a, b) => {
+            const getPrice = (t: HetznerServerType) => {
+              const p = t.prices.find((p) => p.location === location) || t.prices[0];
               return parseFloat(p?.price_monthly?.gross || '0');
             };
             return getPrice(a) - getPrice(b);
@@ -67,7 +97,7 @@ export function AddServerModal({ isOpen, onClose, onOpenSettings, onAdd }: AddSe
       }
       loadOptions();
     }
-  }, [isOpen]);
+  }, [isOpen, location]); // Added location to dependencies
 
   // Find current architecture
   const currentType = options.serverTypes.find(t => t.name === serverType);
@@ -78,15 +108,15 @@ export function AddServerModal({ isOpen, onClose, onOpenSettings, onAdd }: AddSe
 
   // Sort server types by price (for the current location)
   const sortedServerTypes = [...options.serverTypes].sort((a, b) => {
-    const getPrice = (t: any) => {
-      const p = t.prices.find((p: any) => p.location === location) || t.prices[0];
+    const getPrice = (t: HetznerServerType) => {
+      const p = t.prices.find((p) => p.location === location) || t.prices[0];
       return parseFloat(p?.price_monthly?.gross || '0');
     };
     return getPrice(a) - getPrice(b);
   });
 
   // Find price for current selection
-  const selectedPrice = currentType?.prices.find((p: any) => p.location === location) || currentType?.prices[0];
+  const selectedPrice = currentType?.prices.find((p) => p.location === location) || currentType?.prices[0];
   const monthlyPrice = selectedPrice?.price_monthly?.gross;
 
   // Auto-switch image if current image is not in filtered list
@@ -168,7 +198,7 @@ export function AddServerModal({ isOpen, onClose, onOpenSettings, onAdd }: AddSe
                 className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer disabled:opacity-50"
               >
                 {sortedServerTypes.map(t => {
-                  const p = t.prices.find((p: any) => p.location === location) || t.prices[0];
+                  const p = t.prices.find((p) => p.location === location) || t.prices[0];
                   const priceLabel = p ? `€${parseFloat(p.price_monthly.gross).toFixed(2)}` : '';
                   const specs = `${t.cores} vCPU / ${t.memory}GB RAM / ${t.disk}GB / ${t.architecture.toUpperCase()}`;
                   return (
@@ -264,8 +294,8 @@ export function AddServerModal({ isOpen, onClose, onOpenSettings, onAdd }: AddSe
             </div>
           </div>
 
-          <p className="text-xs text-slate-500 italic px-1">
-            We'll automatically create a Hetzner VPS and bootstrap it with Docker and VS Code via Cloud-Init.
+          <p className="text-xs text-slate-500 px-1">
+            We&apos;ll automatically create a Hetzner VPS and bootstrap it with Docker and VS Code via Cloud-Init.
           </p>
           
           <div className="pt-2">

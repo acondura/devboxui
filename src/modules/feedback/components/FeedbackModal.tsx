@@ -69,13 +69,13 @@ export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
                     key={t}
                     type="button"
                     onClick={() => setType(t)}
-                    className={`py-2 px-3 rounded-lg text-[11px] font-bold uppercase tracking-wide border transition-all ${
+                    className={`py-2.5 px-2 rounded-lg text-[10px] font-bold uppercase tracking-wide border transition-all ${
                       type === t 
                         ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-600/20' 
                         : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
                     }`}
                   >
-                    {t}
+                    {t === 'feature' ? 'New Feature' : t === 'improvement' ? 'Existing Feature' : t}
                   </button>
                 ))}
               </div>

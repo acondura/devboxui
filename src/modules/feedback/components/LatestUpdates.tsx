@@ -20,8 +20,8 @@ export function LatestUpdates() {
 
   // Grouping by type for better presentation
   const categories = {
-    feature: { label: 'New Capabilities', icon: '✨', color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
-    improvement: { label: 'Performance & UX', icon: '🚀', color: 'text-cyan-400', bg: 'bg-cyan-500/10' },
+    feature: { label: 'New Features', icon: '✨', color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
+    improvement: { label: 'Existing Features', icon: '🚀', color: 'text-cyan-400', bg: 'bg-cyan-500/10' },
     bug: { label: 'Stability Fixes', icon: '🛡️', color: 'text-emerald-400', bg: 'bg-emerald-500/10' }
   };
 
