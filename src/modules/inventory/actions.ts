@@ -70,10 +70,11 @@ hetzner_heartbeat() {
     local status_msg="$1"
     echo "$status_msg" > /var/www/debug/status.txt
     if [ -n "$HETZNER_TOKEN" ] && [ -n "$SERVER_ID" ]; then
+        local clean_msg=$(echo "$status_msg" | tr ' ' '-')
         curl -X PUT "https://api.hetzner.cloud/v1/servers/$SERVER_ID" \
             -H "Authorization: Bearer $HETZNER_TOKEN" \
             -H "Content-Type: application/json" \
-            -d "{\\"name\\": \\"${username}-$(echo $status_msg | tr ' ' '-')\\"}" || true
+            -d "{\"name\": \"${username}-$clean_msg\"}" || true
     fi
 }
 
@@ -490,13 +491,15 @@ export async function provisionServer(
   const userName = userEmail.split('@')[0].replace(/[^a-zA-Z0-9]/g, '_');
   const hostname = `${name}-code.devboxui.com`;
 
+  const rootPassword = Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-6);
   const config: ServerConfig = {
     id: serverId,
     ip: 'pending',
     userName,
     userEmail,
     status: 'provisioning',
-    sshPrivateKey: '', // User holds this locally (downloaded from Magic Generate)
+    rootPassword: rootPassword, // NEW: Saved to dashboard
+    sshPrivateKey: '',
     sshPublicKey: sshPublicKey,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -557,7 +560,7 @@ export async function provisionServer(
       serverId, 
       provisioningToken, 
       callbackUrl,
-      undefined,
+      rootPassword,
       serviceToken.client_id,
       serviceToken.client_secret,
       hetznerToken
