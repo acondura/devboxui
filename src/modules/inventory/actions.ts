@@ -727,9 +727,24 @@ export async function getServers() {
           // Sync live data
           s.isLocked = hs.protection?.delete || false;
           if (hs.public_net?.ipv4?.ip) s.ip = hs.public_net.ipv4.ip;
+
+          // 2. Check for Heartbeat in name (e.g. "opis-Installing-Docker")
+          // We look for the last part after the dash
+          if (hs.name.includes('-')) {
+            const parts = hs.name.split('-');
+            const statusStr = parts[parts.length - 1];
+            
+            if (statusStr === 'Ready') {
+                s.status = 'ready';
+                s.detailedStatus = 'Ready';
+            } else if (['Booting', 'Installing', 'system', 'Docker', 'DDEV', 'Code'].some(st => statusStr.includes(st))) {
+                s.detailedStatus = 'Installing ' + statusStr;
+            }
+          }
           
-          // ELEGANT PROBING: If provisioning, try a direct "pull" from the IP:8080 exporter
-          if (s.status === 'provisioning') {
+          // ELEGANT PROBING: If in setup phase, try a direct "pull" from the IP:8080 exporter
+          const isSettingUp = s.status === 'provisioning' || s.status === 'Initializing' || s.status === 'initializing';
+          if (isSettingUp) {
             try {
               const controller = new AbortController();
               const id = setTimeout(() => controller.abort(), 800); // Very fast probe
@@ -743,6 +758,9 @@ export async function getServers() {
                 const probeData = await probeResp.json() as { status: string };
                 if (probeData.status) {
                   s.detailedStatus = `(Live) ${probeData.status}`;
+                  if (probeData.status === 'Ready') {
+                    s.status = 'ready';
+                  }
                 }
               }
             } catch {
