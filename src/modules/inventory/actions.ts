@@ -45,10 +45,7 @@ const runRemoteCommand = async (config: {
 /**
  * Generates the full sequence of bash commands to bootstrap the server.
  */
-/**
- * Generates the full sequence of bash commands to bootstrap the server.
- */
-function getBootstrapScript(username: string, tunnelToken: string, managementKey: string, userSSHKey: string, serverId: string, provisioningToken: string, callbackUrl: string, rootPassword?: string, serviceTokenId?: string, serviceTokenSecret?: string) {
+function getBootstrapScript(username: string, userEmail: string, tunnelToken: string, managementKey: string, userSSHKey: string, serverId: string, provisioningToken: string, callbackUrl: string, rootPassword?: string, serviceTokenId?: string, serviceTokenSecret?: string) {
   return `#!/bin/bash
 set -e
 
@@ -58,8 +55,8 @@ ROOT_PASSWORD="${rootPassword || ''}"
 SERVER_ID="${serverId}"
 PROV_TOKEN="${provisioningToken}"
 CALLBACK_URL="${callbackUrl}"
-GIT_USER_NAME="DevBox User"
-GIT_USER_EMAIL="${username}@devboxui.local"
+GIT_USER_NAME="${username}"
+GIT_USER_EMAIL="${userEmail}"
 MANAGEMENT_SSH_KEY="${managementKey}"
 USER_SSH_KEY="${userSSHKey}"
 TUNNEL_TOKEN="${tunnelToken}"
@@ -338,9 +335,6 @@ export async function syncSshKeys(newPublicKey: string) {
 }
 
 /**
- * Executes commands on a remote server via SSH.
- */
-/**
  * Executes commands on a remote server via SSH (Remote Service).
  */
 async function executeSshCommands(ip: string, password: string, script: string, onLog: (log: string) => void) {
@@ -484,6 +478,7 @@ export async function provisionServer(
     
     const bootstrapScript = getBootstrapScript(
       userName, 
+      userEmail,
       tunnelResult.token, 
       managementKey, 
       userSSHKey, 
