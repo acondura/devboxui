@@ -504,11 +504,15 @@ export async function provisionServer(
     // Construct callback URL dynamically
     const requestHost = env.NEXT_PUBLIC_APP_URL || 'https://devboxui.com';
     const callbackUrl = `${requestHost}/api/provisioning/status`; 
+    console.log(`[Provisioning] Callback URL: ${callbackUrl}`);
     
     // 3.5 Setup Service Token for bypassing Cloudflare Access during provisioning
-    console.log("Setting up Cloudflare Access Service Token...");
+    console.log("[Provisioning] Setting up Cloudflare Access Service Token...");
     const serviceToken = await cfApi.getOrCreateServiceToken(kv);
+    console.log(`[Provisioning] Service Token ID: ${serviceToken.id}`);
+    
     await cfApi.authorizeServiceToken(requestHost.replace('https://', ''), serviceToken.id);
+    console.log("[Provisioning] Authorization step complete.");
     
     const bootstrapScript = getBootstrapScript(
       userName, 

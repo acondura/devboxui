@@ -231,6 +231,8 @@ export class CloudflareApiService {
    */
   async authorizeServiceToken(hostname: string, serviceTokenId: string) {
     const apps = await this.request<{ id: string; domain: string }[]>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps`);
+    console.log(`[Access] Found ${apps.length} Access Apps. Looking for match for ${hostname}...`);
+    
     // Find app that matches the hostname, root domain, or a wildcard
     const rootDomain = hostname.split('.').slice(-2).join('.');
     const wildcardDomain = `*.${rootDomain}`;
@@ -244,6 +246,8 @@ export class CloudflareApiService {
       console.warn(`[Access] No matching App found for ${hostname}, ${rootDomain}, or ${wildcardDomain}. If ${hostname} is public, this is fine.`);
       return;
     }
+
+    console.log(`[Access] Matched App: ${app.domain} (${app.id}). Checking policies...`);
 
     const policies = await this.request<{ name: string }[]>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps/${app.id}/policies`);
     const hasPolicy = policies.some(p => p.name === "Allow Service Tokens");
