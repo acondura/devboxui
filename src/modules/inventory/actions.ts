@@ -550,11 +550,12 @@ export async function provisionServer(
     config.logs = [...(config.logs || []), `Hetzner server created at ${ip}`];
 
     // 5. Success! Commit to KV
-    config.status = 'ready'; // In cloud-init flow, we assume it will finish
+    config.status = 'provisioning'; // Stay in provisioning until callback
+    config.detailedStatus = 'Initializing...';
     config.updatedAt = new Date().toISOString();
     config.logs = [...(config.logs || []), 'Server creation triggered. Provisioning will continue in the background.'];
 
-    const kvKey = `servers:${userEmail}:${ip}`;
+    const kvKey = `servers:${userEmail}:${serverId}`; // Use serverId instead of IP to be stable
     await kv.put(kvKey, JSON.stringify(config));
 
     return { success: true, server: config };
@@ -613,32 +614,46 @@ export async function getServers() {
       const hetznerApi = new HetznerApiService(env, hetznerToken);
       const hetznerServers = await hetznerApi.getAllServers();
       
-      const kvIps = new Set(kvServers.map(s => s.ip));
       const hetznerMap = new Map(hetznerServers.map(s => [s.id, s]));
 
-      // Add discovered Hetzner servers not in KV
-      for (const hs of hetznerServers) {
-        if (!hs.public_net?.ipv4?.ip) continue;
-        
-        const ip = hs.public_net.ipv4.ip;
-        if (!kvIps.has(ip)) {
-           kvServers.push({
-             id: `hetzner-${hs.id}`,
-             ip: ip,
-             userName: 'unknown',
-             userEmail: userEmail,
-             status: hs.status === 'running' ? 'ready' : 'provisioning',
-             sshPrivateKey: '',
-             sshPublicKey: '',
-             createdAt: hs.created,
-             updatedAt: hs.created,
-             hetznerServerId: hs.id,
-             isLocked: hs.protection?.delete || false,
-             logs: ['Server discovered from Hetzner API.'],
-             tunnelUrl: `http://${ip}`,
-             projects: []
-           });
+      // 1. Update existing KV servers with live Hetzner data
+      for (const s of kvServers) {
+        if (!s.hetznerServerId) continue;
+        const hs = hetznerMap.get(s.hetznerServerId);
+        if (hs) {
+          // If server was provisioning but Hetzner says it's off, update status
+          if (hs.status !== 'running' && s.status === 'ready') {
+            s.status = 'off';
+          }
+          s.isLocked = hs.protection?.delete || false;
+          if (hs.public_net?.ipv4?.ip) s.ip = hs.public_net.ipv4.ip;
+          
+          // Remove from map so we don't add it as "discovered" later
+          hetznerMap.delete(s.hetznerServerId);
         }
+      }
+
+      // 2. Add discovered Hetzner servers not in KV
+      for (const [, hs] of hetznerMap) {
+        if (!hs.public_net?.ipv4?.ip) continue;
+        const ip = hs.public_net.ipv4.ip;
+        
+        kvServers.push({
+          id: `hetzner-${hs.id}`,
+          ip: ip,
+          userName: 'unknown',
+          userEmail: userEmail,
+          status: hs.status === 'running' ? 'ready' : 'off',
+          sshPrivateKey: '',
+          sshPublicKey: '',
+          createdAt: hs.created,
+          updatedAt: hs.created,
+          hetznerServerId: hs.id,
+          isLocked: hs.protection?.delete || false,
+          logs: ['Server discovered from Hetzner API.'],
+          tunnelUrl: `http://${ip}`,
+          projects: []
+        });
       }
 
       // Cleanup KV servers that were deleted in Hetzner and update lock status
