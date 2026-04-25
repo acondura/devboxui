@@ -16,8 +16,9 @@ export default async function AdminPage() {
     redirect('/');
   }
 
-  // Logic: Only allow you
-  const isAdmin = userEmail === 'andrei@example.com' || userEmail === 'andrei.condurachi@gmail.com';
+  // Logic: Only allow the admin set in environment
+  const adminEmail = (env as Record<string, unknown>).ADMIN_EMAIL as string;
+  const isAdmin = userEmail === adminEmail;
 
   if (!isAdmin) {
     return (
