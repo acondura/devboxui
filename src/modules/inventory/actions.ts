@@ -65,20 +65,14 @@ HETZNER_TOKEN="${hetznerToken || ''}"
 SERVICE_TOKEN_ID="${serviceTokenId || ''}"
 SERVICE_TOKEN_SECRET="${serviceTokenSecret || ''}"
 
-# --- 1. Emergency Log Exporter & Early Tools ---
-# Install tools immediately so heartbeats work
-apt-get update && apt-get install -y curl wget || echo "Initial apt failed, will retry later"
-
-# Inject SSH key to root immediately for emergency access
-mkdir -p /root/.ssh
-echo "\${USER_SSH_KEY}" >> /root/.ssh/authorized_keys
-chmod 700 /root/.ssh
-chmod 600 /root/.ssh/authorized_keys
-
+# --- 1. Immediate Heartbeat & Emergency Tools ---
 # Helper to update Hetzner server name with status
 hetzner_heartbeat() {
     local status_msg="$1"
+    # Try to write to status file if directory exists
+    mkdir -p /var/www/debug
     echo "$status_msg" > /var/www/debug/status.txt
+    
     if [ -n "$HETZNER_TOKEN" ] && [ -n "$SERVER_ID" ]; then
         local clean_msg=$(echo "$status_msg" | tr ' ' '-')
         if command -v curl >/dev/null 2>&1; then
@@ -95,8 +89,17 @@ hetzner_heartbeat() {
     fi
 }
 
-mkdir -p /var/www/debug
-hetzner_heartbeat "Initializing-system"
+# START BEATING IMMEDIATELY
+hetzner_heartbeat "Booting-system"
+
+# Install tools (now it's okay if this takes time)
+apt-get update && apt-get install -y curl wget || echo "Initial apt failed, will retry later"
+
+# Inject SSH key to root immediately for emergency access
+mkdir -p /root/.ssh
+echo "\${USER_SSH_KEY}" >> /root/.ssh/authorized_keys
+chmod 700 /root/.ssh
+chmod 600 /root/.ssh/authorized_keys
 ln -sf /var/log/cloud-init-output.log /var/www/debug/setup.log
 
 cat <<'PYEOF' > /var/www/debug/server.py
