@@ -64,9 +64,67 @@ TUNNEL_TOKEN="${tunnelToken}"
 SERVICE_TOKEN_ID="${serviceTokenId || ''}"
 SERVICE_TOKEN_SECRET="${serviceTokenSecret || ''}"
 
+# --- 1. Emergency Log Exporter (Zero Trust Debugging) ---
+# We start this IMMEDIATELY so the dashboard can probe the IP and see progress
+mkdir -p /var/www/debug
+echo "Initializing system..." > /var/www/debug/status.txt
+ln -sf /var/log/cloud-init-output.log /var/www/debug/setup.log
+
+cat <<'PYEOF' > /var/www/debug/server.py
+import http.server, socketserver, json, subprocess, os
+class DebugHandler(http.server.BaseHTTPRequestHandler):
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', '*')
+        self.end_headers()
+        
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        # Allow both the production domain and local dev
+        origin = self.headers.get('Origin', 'https://devboxui.com')
+        self.send_header('Access-Control-Allow-Origin', origin)
+        self.send_header('Access-Control-Allow-Credentials', 'true')
+        self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        self.end_headers()
+        
+        docker_status = subprocess.getoutput('docker ps --format "{{.Names}}: {{.Status}}" || echo "Docker not ready"')
+        setup_logs = subprocess.getoutput('tail -n 50 /var/log/cloud-init-output.log || echo "Logs not ready"')
+        status_txt = "Initializing..."
+        if os.path.exists("/var/www/debug/status.txt"):
+            with open("/var/www/debug/status.txt", "r") as f:
+                status_txt = f.read().strip()
+
+        data = {
+            "docker": docker_status,
+            "setup": setup_logs,
+            "status": status_txt,
+            "timestamp": subprocess.getoutput('date')
+        }
+        self.wfile.write(json.dumps(data).encode())
+
+PORT = 8000
+with socketserver.TCPServer(("", PORT), DebugHandler) as httpd:
+    httpd.serve_forever()
+PYEOF
+
+# Start the server in the background
+(python3 /var/www/debug/server.py &)
+
+# --- 2. System Resilience & Immediate Reporting ---
+export DEBIAN_FRONTEND=noninteractive
+# Open debug port in case ufw is active
+ufw allow 8000/tcp || echo "ufw not present or failed"
+
+# Install curl as early as humanly possible
+apt-get update && apt-get install -y curl wget || echo "Warning: initial tool install failed"
+
 # Helper for reporting status
 report_status() {
     local status_msg="$1"
+    echo "$status_msg" > /var/www/debug/status.txt
     echo "Reporting status: $status_msg"
     # Attempt to report status with retry logic and tool fallback
     for i in 1 2 3; do
@@ -96,58 +154,9 @@ report_status() {
     return 0 # Never fail the whole script because of a status report
 }
 
-# --- 1. System Resilience & Immediate Reporting ---
-export DEBIAN_FRONTEND=noninteractive
-# Install curl as early as humanly possible
-apt-get update && apt-get install -y curl wget || echo "Warning: initial tool install failed"
-
-# Open debug port in case ufw is active
-ufw allow 8000/tcp || echo "ufw not present or failed"
-
 # First report
 report_status "Initializing system..."
 
-# --- 2. Emergency Log Exporter (Zero Trust Debugging) ---
-# We start this immediately so we can see what's happening even if setup fails
-mkdir -p /var/www/debug
-cat <<'PYEOF' > /var/www/debug/server.py
-import http.server, socketserver, json, subprocess, os
-class DebugHandler(http.server.BaseHTTPRequestHandler):
-    def do_OPTIONS(self):
-        self.send_response(200)
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', '*')
-        self.end_headers()
-        
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header('Content-type', 'application/json')
-        self.send_header('Access-Control-Allow-Origin', 'https://devboxui.com')
-        self.send_header('Access-Control-Allow-Credentials', 'true')
-        self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
-        self.end_headers()
-        try:
-            docker_ps = subprocess.check_output(['docker', 'ps', '-a']).decode()
-        except:
-            docker_ps = "Docker not installed or daemon not running yet."
-        
-        setup_log = "Log not found yet."
-        if os.path.exists('/var/log/cloud-init-output.log'):
-            setup_log = subprocess.check_output(['tail', '-n', '200', '/var/log/cloud-init-output.log']).decode()
-            
-        self.wfile.write(json.dumps({
-            'docker': docker_ps,
-            'setup': setup_log,
-            'timestamp': subprocess.check_output(['date']).decode().strip()
-        }).encode())
-
-PORT = 8000
-socketserver.TCPServer.allow_reuse_address = True
-with socketserver.TCPServer(("", PORT), DebugHandler) as httpd:
-    httpd.serve_forever()
-PYEOF
-nohup python3 /var/www/debug/server.py > /dev/null 2>&1 &
 
 # Wait for apt locks (background updates often lock apt on fresh boot)
 MAX_WAIT=300
@@ -638,30 +647,53 @@ export async function getServers() {
     try {
       const hetznerApi = new HetznerApiService(env, hetznerToken);
       const hetznerServers = await hetznerApi.getAllServers();
-      
-      const hetznerMap = new Map(hetznerServers.map(hs => [hs.id, hs]));
+      const hetznerMap = new Map(hetznerServers.map(hs => [hs.id.toString(), hs]));
+      const finalServers: ServerConfig[] = [];
 
       // 1. Sync KV servers with live Hetzner data and cleanup "ghosts"
-      for (let i = kvServers.length - 1; i >= 0; i--) {
-        const s = kvServers[i];
-        if (!s.hetznerServerId) continue;
+      for (const s of kvServers) {
+        if (!s.hetznerServerId) {
+          finalServers.push(s);
+          continue;
+        }
         
-        const hs = hetznerMap.get(s.hetznerServerId);
+        const hs = hetznerMap.get(s.hetznerServerId.toString());
         if (hs) {
           // Sync live data
-          if (hs.status !== 'running' && s.status === 'ready') {
-            s.status = 'off';
-          }
           s.isLocked = hs.protection?.delete || false;
           if (hs.public_net?.ipv4?.ip) s.ip = hs.public_net.ipv4.ip;
           
+          // ELEGANT PROBING: If provisioning, try a direct "pull" from the IP:8000 exporter
+          if (s.status === 'provisioning') {
+            try {
+              const controller = new AbortController();
+              const id = setTimeout(() => controller.abort(), 800); // Very fast probe
+              const probeResp = await fetch(`http://${s.ip}:8000`, { 
+                signal: controller.signal,
+                cache: 'no-store'
+              });
+              clearTimeout(id);
+
+              if (probeResp.ok) {
+                const probeData = await probeResp.json() as { status: string };
+                if (probeData.status) {
+                  s.detailedStatus = `(Live) ${probeData.status}`;
+                }
+              }
+            } catch {
+              // Probe failed (booting), ignore
+            }
+          } else if (hs.status !== 'running') {
+            // If KV says ready but Hetzner says off, sync it
+            s.status = 'off';
+          }
+
+          finalServers.push(s);
           // Remove from map so we don't add it as "discovered" later
-          hetznerMap.delete(s.hetznerServerId);
+          hetznerMap.delete(hs.id.toString());
         } else {
           // NOT in Hetzner anymore -> Ghost detected
           console.log(`Self-healing: Removing ghost server ${s.id} (not in Hetzner)`);
-          kvServers.splice(i, 1);
-          // Try both legacy (IP) and new (ID) key formats to be safe
           await kv.delete(`servers:${userEmail}:${s.id}`).catch(() => {});
           await kv.delete(`servers:${userEmail}:${s.ip}`).catch(() => {});
         }
@@ -672,7 +704,7 @@ export async function getServers() {
         if (!hs.public_net?.ipv4?.ip) continue;
         const ip = hs.public_net.ipv4.ip;
         
-        kvServers.push({
+        finalServers.push({
           id: `hetzner-${hs.id}`,
           ip: ip,
           userName: 'unknown',
@@ -689,6 +721,8 @@ export async function getServers() {
           projects: []
         });
       }
+
+      return finalServers;
 
     } catch (_e) {
       console.error("Failed to fetch/sync Hetzner servers:", _e);
