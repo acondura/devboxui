@@ -614,14 +614,16 @@ export async function getServers() {
       const hetznerApi = new HetznerApiService(env, hetznerToken);
       const hetznerServers = await hetznerApi.getAllServers();
       
-      const hetznerMap = new Map(hetznerServers.map(s => [s.id, s]));
+      const hetznerMap = new Map(hetznerServers.map(hs => [hs.id, hs]));
 
-      // 1. Update existing KV servers with live Hetzner data
-      for (const s of kvServers) {
+      // 1. Sync KV servers with live Hetzner data and cleanup "ghosts"
+      for (let i = kvServers.length - 1; i >= 0; i--) {
+        const s = kvServers[i];
         if (!s.hetznerServerId) continue;
+        
         const hs = hetznerMap.get(s.hetznerServerId);
         if (hs) {
-          // If server was provisioning but Hetzner says it's off, update status
+          // Sync live data
           if (hs.status !== 'running' && s.status === 'ready') {
             s.status = 'off';
           }
@@ -630,6 +632,13 @@ export async function getServers() {
           
           // Remove from map so we don't add it as "discovered" later
           hetznerMap.delete(s.hetznerServerId);
+        } else {
+          // NOT in Hetzner anymore -> Ghost detected
+          console.log(`Self-healing: Removing ghost server ${s.id} (not in Hetzner)`);
+          kvServers.splice(i, 1);
+          // Try both legacy (IP) and new (ID) key formats to be safe
+          await kv.delete(`servers:${userEmail}:${s.id}`).catch(() => {});
+          await kv.delete(`servers:${userEmail}:${s.ip}`).catch(() => {});
         }
       }
 
@@ -654,22 +663,6 @@ export async function getServers() {
           tunnelUrl: `http://${ip}`,
           projects: []
         });
-      }
-
-      // Cleanup KV servers that were deleted in Hetzner and update lock status
-      for (let i = kvServers.length - 1; i >= 0; i--) {
-        const s = kvServers[i];
-        if (s.hetznerServerId) {
-          const hs = hetznerMap.get(s.hetznerServerId) as { protection?: { delete?: boolean } } | undefined;
-          if (!hs) {
-            // Deleted in Hetzner
-            kvServers.splice(i, 1);
-            await kv.delete(`servers:${userEmail}:${s.ip}`);
-          } else {
-            // Update lock status
-            s.isLocked = hs.protection?.delete || false;
-          }
-        }
       }
 
     } catch (_e) {
