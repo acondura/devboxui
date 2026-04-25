@@ -68,14 +68,29 @@ SERVICE_TOKEN_SECRET="${serviceTokenSecret || ''}"
 report_status() {
     local status_msg="$1"
     echo "Reporting status: $status_msg"
-    curl -s -X POST "$CALLBACK_URL" \
-      -H "Content-Type: application/json" \
-      -H "CF-Access-Client-Id: $SERVICE_TOKEN_ID" \
-      -H "CF-Access-Client-Secret: $SERVICE_TOKEN_SECRET" \
-      -d "{\\"serverId\\": \\"$SERVER_ID\\", \\"token\\": \\"$PROV_TOKEN\\", \\"status\\": \\"$status_msg\\"}" || true
+    # Attempt to report status with retry logic
+    for i in 1 2 3; do
+      if curl -s -X POST "$CALLBACK_URL" \
+        -H "Content-Type: application/json" \
+        -H "CF-Access-Client-Id: $SERVICE_TOKEN_ID" \
+        -H "CF-Access-Client-Secret: $SERVICE_TOKEN_SECRET" \
+        -d "{\\\"serverId\\\": \\\"$SERVER_ID\\\", \\\"token\\\": \\\"$PROV_TOKEN\\\", \\\"status\\\": \\\"$status_msg\\\"}" > /dev/null; then
+        return 0
+      fi
+      echo "Status report attempt $i failed, retrying..."
+      sleep 2
+    done
 }
 
-# --- 1. Emergency Log Exporter (Zero Trust Debugging) ---
+# --- 1. System Resilience & Immediate Reporting ---
+export DEBIAN_FRONTEND=noninteractive
+# First report as early as possible
+report_status "Initializing system..."
+
+# Install curl immediately as it is our primary communication tool
+apt-get update && apt-get install -y curl || echo "Warning: apt-get update failed, using existing tools"
+
+# --- 2. Emergency Log Exporter (Zero Trust Debugging) ---
 # We start this immediately so we can see what's happening even if setup fails
 mkdir -p /var/www/debug
 cat <<'PYEOF' > /var/www/debug/server.py
@@ -88,13 +103,6 @@ class DebugHandler(http.server.BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Headers', '*')
         self.end_headers()
         
-    def do_OPTIONS(self):
-        self.send_response(200)
-        self.send_header('Access-Control-Allow-Origin', 'https://devboxui.com')
-        self.send_header('Access-Control-Allow-Credentials', 'true')
-        self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
-        self.end_headers()
     def do_GET(self):
         self.send_response(200)
         self.send_header('Content-type', 'application/json')
@@ -123,10 +131,6 @@ with socketserver.TCPServer(("", PORT), DebugHandler) as httpd:
     httpd.serve_forever()
 PYEOF
 nohup python3 /var/www/debug/server.py > /dev/null 2>&1 &
-
-# --- 2. System Update & Passwords ---
-export DEBIAN_FRONTEND=noninteractive
-report_status "Initializing system..."
 
 # Wait for apt locks (background updates often lock apt on fresh boot)
 MAX_WAIT=300

@@ -18,7 +18,7 @@ export class CloudflareApiService {
       },
     });
 
-    const data = await response.json() as any;
+    const data = (await response.json()) as { success: boolean; result: T; errors: unknown[] };
     if (!data.success) {
       throw new Error(`Cloudflare API Error: ${JSON.stringify(data.errors)}`);
     }
@@ -30,7 +30,7 @@ export class CloudflareApiService {
    */
   async createTunnel(name: string) {
     // 1. Create Tunnel
-    const tunnel = await this.request<any>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/cfd_tunnel`, {
+    const tunnel = await this.request<{ id: string }>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/cfd_tunnel`, {
       method: "POST",
       body: JSON.stringify({ name, config_src: "cloudflare" }),
     });
@@ -49,16 +49,17 @@ export class CloudflareApiService {
    */
   async setupHostname(hostname: string, tunnelId: string, service: string = "http://localhost:8443") {
     // 1. Fetch current configuration
-    let currentConfig: any = { ingress: [] };
+    interface IngressRule { hostname?: string; service: string }
+    let currentConfig: { ingress: IngressRule[] } = { ingress: [] };
     try {
-      const result = await this.request<any>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/cfd_tunnel/${tunnelId}/configurations`);
+      const result = await this.request<{ config: { ingress: IngressRule[] } }>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/cfd_tunnel/${tunnelId}/configurations`);
       currentConfig = result?.config || { ingress: [] };
-    } catch (e) {
+    } catch {
       console.warn("Could not fetch existing tunnel config, starting fresh.");
     }
 
     // 2. Filter out existing rules for this hostname (to avoid duplicates)
-    const otherRules = (currentConfig.ingress || []).filter((rule: any) => 
+    const otherRules = (currentConfig.ingress || []).filter((rule: IngressRule) => 
       rule.hostname !== hostname && rule.service !== "http_status:404"
     );
 
@@ -81,7 +82,7 @@ export class CloudflareApiService {
 
     // 5. Manage DNS Record (Idempotent)
     const targetContent = `${tunnelId}.cfargotunnel.com`;
-    const records = await this.request<any[]>(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/dns_records?name=${hostname}&type=CNAME`);
+    const records = await this.request<{ id: string; name: string; content: string }[]>(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/dns_records?name=${hostname}&type=CNAME`);
     const existing = records.find(r => r.name === hostname);
 
     if (existing) {
@@ -115,22 +116,19 @@ export class CloudflareApiService {
    * Protects a hostname with Cloudflare Access (Zero Trust).
    * Creates an Application and an 'Allow' policy for the specified email.
    */
-  async setupAccess(hostname: string, allowedEmail: string) {
-    // 1. Check if application already exists
-    const apps = await this.request<any[]>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps`);
+  async setupAccess(hostname: string, allowedEmail: string): Promise<string> {
+    const apps = await this.request<{ id: string; domain: string }[]>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps`);
     let app = apps.find(a => a.domain === hostname);
 
     if (!app) {
-      console.log(`Creating new Access Application for ${hostname}...`);
-      app = await this.request<any>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps`, {
+      console.log(`Creating Access Application for ${hostname}...`);
+      app = await this.request<{ id: string; domain: string }>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps`, {
         method: "POST",
         body: JSON.stringify({
           name: `DevBox: ${hostname}`,
           domain: hostname,
           type: "self_hosted",
           session_duration: "24h",
-          app_launcher_visible: true,
-          http_only_cookie_attribute: true,
         }),
       });
     } else {
@@ -138,7 +136,7 @@ export class CloudflareApiService {
     }
 
     // 2. Check if "Allow Creator" policy already exists
-    const policies = await this.request<any[]>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps/${app.id}/policies`);
+    const policies = await this.request<{ name: string }[]>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps/${app.id}/policies`);
     const hasPolicy = policies.some(p => p.name === "Allow Creator");
 
     if (!hasPolicy) {
@@ -164,9 +162,9 @@ export class CloudflareApiService {
   /**
    * Removes Cloudflare Access protection for a hostname.
    */
-  async deleteAccess(hostname: string) {
+  async deleteAccess(hostname: string): Promise<void> {
     // 1. Find the application by domain
-    const apps = await this.request<any[]>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps`);
+    const apps = await this.request<{ id: string; domain: string }[]>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps`);
     const app = apps.find(a => a.domain === hostname);
 
     if (app) {
@@ -180,7 +178,7 @@ export class CloudflareApiService {
   /**
    * Deletes a tunnel and all associated configurations.
    */
-  async deleteTunnel(tunnelId: string) {
+  async deleteTunnel(tunnelId: string): Promise<void> {
     await this.request(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/cfd_tunnel/${tunnelId}`, {
       method: "DELETE",
     });
@@ -189,9 +187,9 @@ export class CloudflareApiService {
   /**
    * Searches for a DNS record by name and deletes it.
    */
-  async deleteDnsRecord(name: string) {
+  async deleteDnsRecord(name: string): Promise<void> {
     // 1. Find the record ID
-    const records = await this.request<any[]>(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/dns_records?name=${name}`);
+    const records = await this.request<{ id: string }[]>(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/dns_records?name=${name}`);
     
     // 2. Delete all matches (usually just one)
     for (const record of records) {
@@ -204,16 +202,17 @@ export class CloudflareApiService {
   /**
    * Gets or creates a service token for provisioning heartbeats.
    */
-  async getOrCreateServiceToken(kv: any) {
-    const TOKEN_KEY = "config:provisioning_service_token";
-    const existing = await kv.get(TOKEN_KEY);
-    if (existing) return JSON.parse(existing) as { id: string, client_id: string, client_secret: string };
+  async getOrCreateServiceToken(kv: KVNamespace): Promise<{ id: string; client_id: string; client_secret: string }> {
+    const TOKEN_KEY = 'cloudflare:service_token';
+    const cached = await kv.get(TOKEN_KEY);
+    if (cached) return JSON.parse(cached) as { id: string; client_id: string; client_secret: string };
 
+    // If not in KV, we MUST create a new one because Cloudflare won't give us the secret for an existing token
     console.log("Creating new Cloudflare Access Service Token...");
-    const token = await this.request<any>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/service_tokens`, {
+    const token = await this.request<{ id: string; name: string; client_id: string; client_secret: string }>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/service_tokens`, {
       method: "POST",
       body: JSON.stringify({
-        name: "DevBox Provisioning Heartbeats"
+        name: `DevBox Provisioner (${new Date().toISOString().split('T')[0]})`
       })
     });
 
@@ -231,17 +230,22 @@ export class CloudflareApiService {
    * Authorizes a service token to bypass Access for a specific hostname.
    */
   async authorizeServiceToken(hostname: string, serviceTokenId: string) {
-    const apps = await this.request<any[]>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps`);
-    // Find app that matches the hostname or the root domain
+    const apps = await this.request<{ id: string; domain: string }[]>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps`);
+    // Find app that matches the hostname, root domain, or a wildcard
     const rootDomain = hostname.split('.').slice(-2).join('.');
-    const app = apps.find(a => a.domain === hostname || a.domain === rootDomain);
+    const wildcardDomain = `*.${rootDomain}`;
+    const app = apps.find(a => 
+      a.domain === hostname || 
+      a.domain === rootDomain || 
+      a.domain === wildcardDomain
+    );
     
     if (!app) {
-      console.warn(`Could not find Access App for ${hostname} to authorize service token.`);
+      console.warn(`[Access] No matching App found for ${hostname}, ${rootDomain}, or ${wildcardDomain}. If ${hostname} is public, this is fine.`);
       return;
     }
 
-    const policies = await this.request<any[]>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps/${app.id}/policies`);
+    const policies = await this.request<{ name: string }[]>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps/${app.id}/policies`);
     const hasPolicy = policies.some(p => p.name === "Allow Service Tokens");
 
     if (!hasPolicy) {
