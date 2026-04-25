@@ -1,7 +1,6 @@
 'use server';
 
 import { ServerConfig } from './types';
-import nacl from 'tweetnacl';
 import { getCloudflareEnv, getIdentity } from '@/lib/auth';
 import { CloudflareApiService } from '@/lib/cloudflare-api';
 import { HetznerApiService } from '@/lib/hetzner-api';
@@ -36,7 +35,7 @@ const runRemoteCommand = async (config: {
   if (!response.ok) {
     const errorText = await response.text();
     let errorMessage = response.statusText;
-    try { errorMessage = JSON.parse(errorText).error || errorMessage; } catch (e) { }
+    try { errorMessage = JSON.parse(errorText).error || errorMessage; } catch (_e) { }
     throw new Error(`SSH Service Error: ${errorMessage}`);
   }
 
@@ -49,7 +48,7 @@ const runRemoteCommand = async (config: {
 /**
  * Generates the full sequence of bash commands to bootstrap the server.
  */
-function getBootstrapScript(username: string, publicKey: string, tunnelToken: string, managementKey: string, userSSHKey: string = '', serverId: string, provisioningToken: string, callbackUrl: string, rootPassword?: string, serviceTokenId?: string, serviceTokenSecret?: string) {
+function getBootstrapScript(username: string, tunnelToken: string, managementKey: string, userSSHKey: string, serverId: string, provisioningToken: string, callbackUrl: string, rootPassword?: string, serviceTokenId?: string, serviceTokenSecret?: string) {
   return `#!/bin/bash
 set -e
 
@@ -172,10 +171,7 @@ report_status "Syncing SSH keys..."
 mkdir -p /home/"$DEV_USER"/.ssh
 chmod 700 /home/"$DEV_USER"/.ssh
 
-# Add System Generated Key
-echo "${publicKey}" >> /home/"$DEV_USER"/.ssh/authorized_keys
-
-# Add User Custom Key
+# Add User SSH Key (Magic Key)
 if [ -n "$USER_SSH_KEY" ]; then
     echo "$USER_SSH_KEY" >> /home/"$DEV_USER"/.ssh/authorized_keys
     mkdir -p /root/.ssh
@@ -316,7 +312,7 @@ export async function syncSshKeys(newPublicKey: string) {
   const results = [];
 
   for (const server of servers) {
-    if (server.status !== 'ready') continue;
+    if (server.status !== 'ready' || !server.ip || !server.rootPassword) continue;
     
     try {
       // Use root password to update the user's authorized_keys
@@ -419,8 +415,11 @@ export async function provisionServer(
   const cfApi = new CloudflareApiService(env);
   const hetznerApi = new HetznerApiService(env, hetznerToken);
 
-  // 1. Generate SSH Keys
-  const { publicKey, privateKey } = await generateSSHKeys();
+  // 1. Fetch User SSH Key
+  const sshPublicKey = settings?.sshPublicKey;
+  if (!sshPublicKey) {
+    throw new Error("SSH Public Key is missing. Please set it in Settings before adding a server.");
+  }
 
   // 2. Initialize Server Configuration
   const serverId = crypto.randomUUID();
@@ -435,8 +434,8 @@ export async function provisionServer(
     userName,
     userEmail,
     status: 'provisioning',
-    sshPrivateKey: privateKey,
-    sshPublicKey: publicKey,
+    sshPrivateKey: '', // User holds this locally (downloaded from Magic Generate)
+    sshPublicKey: sshPublicKey,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     logs: [`Starting Cloud-Init provisioning (${serverType} in ${location}) via Hetzner API...`],
@@ -485,7 +484,6 @@ export async function provisionServer(
     
     const bootstrapScript = getBootstrapScript(
       userName, 
-      publicKey, 
       tunnelResult.token, 
       managementKey, 
       userSSHKey, 
@@ -499,7 +497,7 @@ export async function provisionServer(
 
     // 5. Hetzner Automation: Create Server
     console.log(`Checking SSH keys on Hetzner project...`);
-    let sshKeyNames: string[] = [];
+    const sshKeyNames: string[] = [];
     if (settings?.sshPublicKey) {
       try {
         const existingKeys = await hetznerApi.getSSHKeys();
@@ -579,7 +577,7 @@ export async function getServers() {
 
   const list = await kv.list({ prefix: `servers:${userEmail}:` });
   const kvServers = (await Promise.all(
-    list.keys.map(async (key: any) => {
+    list.keys.map(async (key: { name: string }) => {
       const val = await kv.get(key.name);
       if (!val) {
         console.warn(`Self-healing: Deleting ghost key ${key.name}`);
@@ -631,7 +629,7 @@ export async function getServers() {
       for (let i = kvServers.length - 1; i >= 0; i--) {
         const s = kvServers[i];
         if (s.hetznerServerId) {
-          const hs = hetznerMap.get(s.hetznerServerId);
+          const hs = hetznerMap.get(s.hetznerServerId) as { protection?: { delete?: boolean } } | undefined;
           if (!hs) {
             // Deleted in Hetzner
             kvServers.splice(i, 1);
@@ -643,8 +641,8 @@ export async function getServers() {
         }
       }
 
-    } catch (e) {
-      console.error("Failed to fetch/sync Hetzner servers:", e);
+    } catch (_e) {
+      console.error("Failed to fetch/sync Hetzner servers:", _e);
     }
   }
 
@@ -658,8 +656,6 @@ export async function addProject(serverId: string, projectName: string) {
   const userEmail = await getIdentity();
   const env = await getCloudflareEnv();
   const kv = env.KV;
-
-  const settings = await getUserSettings();
 
   const cfApi = new CloudflareApiService(env);
 
@@ -841,7 +837,6 @@ export async function getHetznerOptions() {
  * Returns the secure log URL for the server.
  */
 export async function getServerLogs(serverId: string) {
-  const userEmail = await getIdentity();
   const env = await getCloudflareEnv();
   const kv = env.KV;
   if (!kv) throw new Error("KV database missing.");

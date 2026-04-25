@@ -44,8 +44,8 @@
   },
   "lint-staged": {
     "src/**/*.{ts,tsx}": [
-      "tsc --noEmit",
-      "next lint --fix"
+      "bash -c \"tsc --noEmit\"",
+      "eslint --fix"
     ]
   }
 }
