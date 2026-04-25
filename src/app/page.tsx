@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { LatestUpdates } from '@/modules/feedback/components/LatestUpdates';
 
 export default function HomePage() {
   return (
@@ -34,6 +35,9 @@ export default function HomePage() {
             View Source
           </a>
         </div>
+        
+        {/* Latest Enhancements */}
+        <LatestUpdates />
         
       </div>
     </div>
