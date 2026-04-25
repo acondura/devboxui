@@ -45,7 +45,7 @@ export function SettingsModal({ isOpen, onClose, userEmail }: SettingsModalProps
         setStatus({ type: 'success', message: 'Settings saved successfully!' });
         setTimeout(() => setStatus(null), 3000);
       }
-    } catch (_err) {
+    } catch {
       setStatus({ type: 'error', message: 'Failed to save settings.' });
     } finally {
       setIsSaving(false);
@@ -61,7 +61,7 @@ export function SettingsModal({ isOpen, onClose, userEmail }: SettingsModalProps
       setStatus({ type: 'success', message: 'SSH Key synced to all servers!' });
       setOriginalSshKey(sshPublicKey);
       setTimeout(() => setStatus(null), 3000);
-    } catch (_err) {
+    } catch {
       setStatus({ type: 'error', message: 'Failed to sync SSH keys to some servers.' });
     } finally {
       setIsSyncing(false);
@@ -124,7 +124,7 @@ export function SettingsModal({ isOpen, onClose, userEmail }: SettingsModalProps
                     a.download = 'devbox_id_ed25519';
                     a.click();
                     alert("Key generated! Private key downloaded. Move it to your ~/.ssh folder.");
-                  } catch (_err) {
+                  } catch {
                     alert("Browser doesn't support Ed25519 generation yet.");
                   }
                 }}
@@ -152,10 +152,10 @@ export function SettingsModal({ isOpen, onClose, userEmail }: SettingsModalProps
                 <p className="text-[11px] font-bold uppercase tracking-wider">Why Ed25519?</p>
               </div>
               <p className="text-[11px] text-slate-400 leading-relaxed">
-                Modern standard: faster and more secure than RSA.
+                The modern standard: Ed25519 is faster, more secure, and more resilient than RSA or ECDSA.
               </p>
               <div className="pt-2 border-t border-indigo-500/10 flex items-center space-x-4">
-                <a href="https://goteleport.com/blog/ssh-key-types-comparison-rsa-dsa-ecdsa-ed25519/" target="_blank" className="text-[10px] text-indigo-400 hover:underline">Comparison Guide</a>
+                <a href="https://goteleport.com/blog/comparing-ssh-keys/" target="_blank" className="text-[10px] text-indigo-400 hover:underline">Comparison Guide</a>
                 <a href="https://en.wikipedia.org/wiki/EdDSA#Ed25519" target="_blank" className="text-[10px] text-indigo-400 hover:underline">Specs</a>
               </div>
             </div>
