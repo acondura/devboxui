@@ -743,7 +743,8 @@ export async function getServers() {
           }
           
           // ELEGANT PROBING: If in setup phase, try a direct "pull" from the IP:8080 exporter
-          const isSettingUp = s.status === 'provisioning' || s.status === 'Initializing' || s.status === 'initializing';
+          const setupStatuses: string[] = ['provisioning', 'Initializing', 'initializing'];
+          const isSettingUp = setupStatuses.includes(s.status as string);
           if (isSettingUp) {
             try {
               const controller = new AbortController();
