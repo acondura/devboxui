@@ -65,7 +65,6 @@ SERVICE_TOKEN_ID="${serviceTokenId || ''}"
 SERVICE_TOKEN_SECRET="${serviceTokenSecret || ''}"
 
 # --- 1. Emergency Log Exporter (Zero Trust Debugging) ---
-# We start this IMMEDIATELY so the dashboard can probe the IP and see progress
 mkdir -p /var/www/debug
 echo "Initializing system..." > /var/www/debug/status.txt
 ln -sf /var/log/cloud-init-output.log /var/www/debug/setup.log
@@ -83,7 +82,6 @@ class DebugHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.send_header('Content-type', 'application/json')
-        # Allow both the production domain and local dev
         origin = self.headers.get('Origin', 'https://devboxui.com')
         self.send_header('Access-Control-Allow-Origin', origin)
         self.send_header('Access-Control-Allow-Credentials', 'true')
@@ -91,7 +89,7 @@ class DebugHandler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         
         docker_status = subprocess.getoutput('docker ps --format "{{.Names}}: {{.Status}}" || echo "Docker not ready"')
-        setup_logs = subprocess.getoutput('tail -n 50 /var/log/cloud-init-output.log || echo "Logs not ready"')
+        setup_logs = subprocess.getoutput('tail -n 100 /var/log/cloud-init-output.log || echo "Logs not ready"')
         status_txt = "Initializing..."
         if os.path.exists("/var/www/debug/status.txt"):
             with open("/var/www/debug/status.txt", "r") as f:
@@ -105,7 +103,8 @@ class DebugHandler(http.server.BaseHTTPRequestHandler):
         }
         self.wfile.write(json.dumps(data).encode())
 
-PORT = 8000
+PORT = 8080
+socketserver.TCPServer.allow_reuse_address = True
 with socketserver.TCPServer(("", PORT), DebugHandler) as httpd:
     httpd.serve_forever()
 PYEOF
@@ -115,8 +114,15 @@ PYEOF
 
 # --- 2. System Resilience & Immediate Reporting ---
 export DEBIAN_FRONTEND=noninteractive
-# Open debug port in case ufw is active
-ufw allow 8000/tcp || echo "ufw not present or failed"
+# Open debug port
+ufw allow 8080/tcp || echo "ufw not present or failed"
+
+# CRITICAL: Wait for apt locks (background updates often lock apt on fresh boot)
+echo "Waiting for apt locks..."
+while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || fuser /var/lib/apt/lists/lock >/dev/null 2>&1; do
+    echo "Apt is locked by another process, waiting..."
+    sleep 5
+done
 
 # Install curl as early as humanly possible
 apt-get update && apt-get install -y curl wget || echo "Warning: initial tool install failed"
@@ -663,12 +669,12 @@ export async function getServers() {
           s.isLocked = hs.protection?.delete || false;
           if (hs.public_net?.ipv4?.ip) s.ip = hs.public_net.ipv4.ip;
           
-          // ELEGANT PROBING: If provisioning, try a direct "pull" from the IP:8000 exporter
+          // ELEGANT PROBING: If provisioning, try a direct "pull" from the IP:8080 exporter
           if (s.status === 'provisioning') {
             try {
               const controller = new AbortController();
               const id = setTimeout(() => controller.abort(), 800); // Very fast probe
-              const probeResp = await fetch(`http://${s.ip}:8000`, { 
+              const probeResp = await fetch(`http://${s.ip}:8080`, { 
                 signal: controller.signal,
                 cache: 'no-store'
               });
@@ -692,10 +698,17 @@ export async function getServers() {
           // Remove from map so we don't add it as "discovered" later
           hetznerMap.delete(hs.id.toString());
         } else {
-          // NOT in Hetzner anymore -> Ghost detected
-          console.log(`Self-healing: Removing ghost server ${s.id} (not in Hetzner)`);
-          await kv.delete(`servers:${userEmail}:${s.id}`).catch(() => {});
-          await kv.delete(`servers:${userEmail}:${s.ip}`).catch(() => {});
+          // GHOST DETECTION WITH GRACE PERIOD
+          const serverAgeMinutes = (Date.now() - new Date(s.createdAt).getTime()) / (1000 * 60);
+          
+          if (serverAgeMinutes > 2) {
+            console.log(`Self-healing: Removing ghost server ${s.id} (not in Hetzner after ${Math.round(serverAgeMinutes)}m)`);
+            await kv.delete(`servers:${userEmail}:${s.id}`).catch(() => {});
+            // Skip adding to final list
+          } else {
+            // Give it more time to show up in Hetzner API
+            finalServers.push(s);
+          }
         }
       }
 
