@@ -309,13 +309,36 @@ echo "✅ SETUP FINISHED - Server is ready for use." > /etc/motd
 }
 
 /**
- * Helper to generate SSH keys
+ * Synchronizes the user's SSH public key to all existing servers.
  */
-async function generateSSHKeys() {
-  const keyPair = nacl.sign.keyPair();
-  const publicKey = `ssh-ed25519 ${Buffer.from(keyPair.publicKey).toString('base64')} devbox-generated`;
-  const privateKey = Buffer.from(keyPair.secretKey).toString('base64');
-  return { publicKey, privateKey };
+export async function syncSshKeys(newPublicKey: string) {
+  const servers = await getServers();
+  const results = [];
+
+  for (const server of servers) {
+    if (server.status !== 'ready') continue;
+    
+    try {
+      // Use root password to update the user's authorized_keys
+      const script = `
+        DEV_USER="${server.userName}"
+        mkdir -p /home/\$DEV_USER/.ssh
+        echo "${newPublicKey}" > /home/\$DEV_USER/.ssh/authorized_keys
+        chown -R \$DEV_USER:\$DEV_USER /home/\$DEV_USER/.ssh
+        chmod 700 /home/\$DEV_USER/.ssh
+        chmod 600 /home/\$DEV_USER/.ssh/authorized_keys
+        echo "✅ SSH key updated for \$DEV_USER"
+      `;
+
+      await executeSshCommands(server.ip, server.rootPassword, script, (log) => console.log(`[Sync ${server.ip}] ${log}`));
+      results.push({ id: server.id, success: true });
+    } catch (error) {
+      console.error(`Failed to sync key to ${server.ip}:`, error);
+      results.push({ id: server.id, success: false, error });
+    }
+  }
+
+  return { success: true, results };
 }
 
 /**
