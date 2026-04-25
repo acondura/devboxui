@@ -65,22 +65,38 @@ HETZNER_TOKEN="${hetznerToken || ''}"
 SERVICE_TOKEN_ID="${serviceTokenId || ''}"
 SERVICE_TOKEN_SECRET="${serviceTokenSecret || ''}"
 
+# --- 1. Emergency Log Exporter & Early Tools ---
+# Install tools immediately so heartbeats work
+apt-get update && apt-get install -y curl wget || echo "Initial apt failed, will retry later"
+
+# Inject SSH key to root immediately for emergency access
+mkdir -p /root/.ssh
+echo "\${USER_SSH_KEY}" >> /root/.ssh/authorized_keys
+chmod 700 /root/.ssh
+chmod 600 /root/.ssh/authorized_keys
+
 # Helper to update Hetzner server name with status
 hetzner_heartbeat() {
     local status_msg="$1"
     echo "$status_msg" > /var/www/debug/status.txt
     if [ -n "$HETZNER_TOKEN" ] && [ -n "$SERVER_ID" ]; then
         local clean_msg=$(echo "$status_msg" | tr ' ' '-')
-        curl -X PUT "https://api.hetzner.cloud/v1/servers/$SERVER_ID" \
-            -H "Authorization: Bearer $HETZNER_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d "{\"name\": \"${username}-$clean_msg\"}" || true
+        if command -v curl >/dev/null 2>&1; then
+            curl -s -X PUT "https://api.hetzner.cloud/v1/servers/$SERVER_ID" \
+                -H "Authorization: Bearer $HETZNER_TOKEN" \
+                -H "Content-Type: application/json" \
+                -d "{\"name\": \"${username}-$clean_msg\"}" || true
+        elif command -v wget >/dev/null 2>&1; then
+            wget -qO- --method=PUT --header="Authorization: Bearer $HETZNER_TOKEN" \
+                --header="Content-Type: application/json" \
+                --body-data="{\"name\": \"${username}-$clean_msg\"}" \
+                "https://api.hetzner.cloud/v1/servers/$SERVER_ID" || true
+        fi
     fi
 }
 
-# --- 1. Emergency Log Exporter (Zero Trust Debugging) ---
 mkdir -p /var/www/debug
-hetzner_heartbeat "Initializing system"
+hetzner_heartbeat "Initializing-system"
 ln -sf /var/log/cloud-init-output.log /var/www/debug/setup.log
 
 cat <<'PYEOF' > /var/www/debug/server.py
@@ -144,8 +160,6 @@ for i in {1..20}; do
     fi
 done
 
-# Install tools
-apt-get install -y curl wget || echo "Warning: tool install failed"
 
 # Helper for reporting status
 report_status() {
