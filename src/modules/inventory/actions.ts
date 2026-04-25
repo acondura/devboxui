@@ -376,22 +376,30 @@ docker exec -u root code-server bash -c "
 
     echo \"--- Installing Dependencies ---\"
     apt-get update
-    apt-get install -y gnupg2 curl ca-certificates git sudo vim
+    apt-get install -y gnupg2 curl ca-certificates git sudo vim jq
 
     echo \"--- Installing DDEV ---\"
-    curl -fsSL https://apt.fury.io/ddev/gpg.key | gpg --dearmor | tee /etc/apt/keyrings/ddev.gpg > /dev/null
-    echo \"deb [signed-by=/etc/apt/keyrings/ddev.gpg] https://apt.fury.io/ddev/ * *\" | tee /etc/apt/sources.list.d/ddev.list
-    apt-get update && apt-get install -y ddev
+    # Container-friendly DDEV install
+    curl -fsSL https://ddev.com/install.sh | bash
 
     echo \"--- Installing Oh-My-Bash ---\"
-    # Install for abc user
-    sudo -u abc bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh) --unattended\" || true
-    
-    # Ensure theme is set correctly
-    if [ -f /config/.bashrc ]; then
-        sed -i 's/OSH_THEME=.*/OSH_THEME=\"90210\"/' /config/.bashrc
+    # Install for abc user in their home (/config)
+    if [ ! -d /config/.oh-my-bash ]; then
+        sudo -u abc bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh) --unattended\" || true
     fi
+    
+    # Force theme and PATH for DDEV
+    sudo -u abc bash -c \"
+        sed -i 's/OSH_THEME=.*/OSH_THEME=\\\"90210\\\"/' /config/.bashrc
+        echo 'export PATH=\\\$PATH:/usr/local/bin' >> /config/.bashrc
+        echo 'export DDEV_NONINTERACTIVE=true' >> /config/.bashrc
+    \"
 
+    echo \"--- Workspace Alignment ---\"
+    # Link the container's workspace to the host-mounted workspace
+    mkdir -p /config/workspace
+    ln -sfn /home/${username}/workspace /config/workspace/host || true
+    
     echo \"--- Installing VS Code Extensions ---\"
     sudo -u abc code-server --install-extension xdebug.php-debug --install-extension vscodevim.vim || true
 "
