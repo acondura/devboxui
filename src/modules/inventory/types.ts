@@ -21,6 +21,7 @@ export interface ServerConfig {
   }[];
   detailedStatus?: string;
   provisioningToken?: string;
+  statusLog?: string[];
 }
 
 export interface ProvisioningState {

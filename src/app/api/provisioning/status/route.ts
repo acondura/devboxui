@@ -40,16 +40,21 @@ export async function POST(req: NextRequest) {
     }
 
     const config = JSON.parse(data) as ServerConfig;
+    const now = new Date().toISOString();
 
     // 2. Validate token
     if (config.provisioningToken !== token) {
-      console.error(`Provisioning Status: Invalid token for server ${serverId}.`);
+      const errorMsg = `[${now}] Invalid token attempt: ${token?.slice(0, 8)}...`;
+      console.error(`Provisioning Status: ${errorMsg} for server ${serverId}.`);
+      config.statusLog = [...(config.statusLog || []), errorMsg];
+      await kv.put(serverKey, JSON.stringify(config));
       return NextResponse.json({ error: 'Invalid token' }, { status: 403 });
     }
 
     // 3. Update status
     config.detailedStatus = status;
-    config.updatedAt = new Date().toISOString();
+    config.updatedAt = now;
+    config.statusLog = [...(config.statusLog || []), `[${now}] ${status}`];
     
     if (status === 'Ready') {
       config.status = 'ready';

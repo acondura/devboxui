@@ -38,7 +38,6 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { se
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isTogglingLock, setIsTogglingLock] = useState(false);
-  const [logs, setLogs] = useState<string | null>(null);
   const [isFetchingLogs, setIsFetchingLogs] = useState(false);
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
   const [debugData, setDebugData] = useState<{docker: string, setup: string, timestamp: string} | null>(null);
@@ -55,16 +54,13 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { se
         if (resp.ok) {
           const data = await resp.json() as {docker: string, setup: string, timestamp: string};
           setDebugData(data);
-          setLogs(null);
         } else {
-          setLogs(`Log server unreachable (${resp.status}). The DevBox might still be initializing or the tunnel is not up yet.`);
           setDebugData(null);
         }
       } else {
-        setLogs("Failed to find logs endpoint.");
+        setDebugData(null);
       }
     } catch {
-      setLogs("Connection failed. Make sure you are authenticated with Cloudflare Access.");
       setDebugData(null);
     } finally {
       setIsFetchingLogs(false);
@@ -288,7 +284,7 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { se
                   <section>
                     <h4 className="text-emerald-400 font-bold mb-2 flex items-center space-x-2 uppercase tracking-tighter text-[10px]">
                       <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                      <span>Provisioning Logs</span>
+                      <span>Provisioning Logs (Live)</span>
                     </h4>
                     <pre className="bg-slate-900/30 p-3 rounded-lg border border-slate-800/50 overflow-x-auto whitespace-pre-wrap text-[10px] leading-relaxed">
                       {debugData.setup}
@@ -296,11 +292,32 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { se
                   </section>
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-20 text-center">
-                  <div className="text-amber-500 mb-2">⚠️</div>
-                  <pre className="whitespace-pre-wrap break-all leading-relaxed text-slate-400 max-w-md">
-                    {logs || "No logs available. The server might still be booting."}
-                  </pre>
+                <div className="space-y-6">
+                  {server.statusLog && server.statusLog.length > 0 && (
+                    <section>
+                      <h4 className="text-pink-400 font-bold mb-2 flex items-center space-x-2 uppercase tracking-tighter text-[10px]">
+                        <span className="h-1.5 w-1.5 rounded-full bg-pink-500" />
+                        <span>Heartbeat History (KV)</span>
+                      </h4>
+                      <div className="bg-slate-900/30 p-3 rounded-lg border border-slate-800/50 overflow-x-auto text-[10px] space-y-1 font-mono">
+                        {server.statusLog.map((log, i) => (
+                          <div key={i} className="flex space-x-3">
+                            <span className="text-slate-600 shrink-0">[{i+1}]</span>
+                            <span className={log.includes('Error') || log.includes('Invalid') ? 'text-red-400' : 'text-slate-300'}>
+                              {log}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  )}
+                  
+                  <div className="flex flex-col items-center justify-center py-20 text-center">
+                    <div className="text-amber-500 mb-4 text-2xl">⚠️</div>
+                    <p className="text-slate-400 max-w-xs mx-auto">
+                      Could not reach live log exporter on port 8000. This is normal if the Cloudflare Tunnel is still initializing.
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
