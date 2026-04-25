@@ -11,9 +11,10 @@ import { ServerConfig } from '@/modules/inventory/types';
 
 interface DashboardViewProps {
   userEmail: string;
+  isAdmin: boolean;
 }
 
-export function DashboardView({ userEmail }: DashboardViewProps) {
+export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
@@ -146,6 +147,19 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
           <div className="hidden sm:block text-xs text-slate-400 font-mono bg-slate-800/50 px-3 py-1.5 rounded-md border border-slate-700">
             {userEmail}
           </div>
+
+          {isAdmin && (
+            <Link 
+              href="/admin"
+              className="flex items-center space-x-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-indigo-400 hover:text-indigo-300 text-[10px] font-bold uppercase tracking-wider rounded-md border border-slate-700 transition-all group"
+              title="Admin Roadmap"
+            >
+              <svg className="w-3.5 h-3.5 group-hover:rotate-12 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              <span>Admin</span>
+            </Link>
+          )}
 
           <button 
             onClick={() => setIsSettingsOpen(true)}

@@ -16,5 +16,8 @@ export default async function DashboardPage() {
     redirect('/');
   }
 
-  return <DashboardView userEmail={userEmail} />;
+  const adminEmail = (env as Record<string, unknown>).ADMIN_EMAIL as string || 'andrei@example.com';
+  const isAdmin = userEmail === adminEmail;
+
+  return <DashboardView userEmail={userEmail} isAdmin={isAdmin} />;
 }
