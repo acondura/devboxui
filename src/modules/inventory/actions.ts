@@ -64,26 +64,32 @@ TUNNEL_TOKEN="${tunnelToken}"
 SERVICE_TOKEN_ID="${serviceTokenId || ''}"
 SERVICE_TOKEN_SECRET="${serviceTokenSecret || ''}"
 
+# --- 1. System Resilience & Immediate Reporting ---
+export DEBIAN_FRONTEND=noninteractive
+# Open debug port in case ufw is active
+ufw allow 8000/tcp || echo "ufw not present or failed"
+
 # Helper for reporting status
 report_status() {
     local status_msg="$1"
     echo "Reporting status: $status_msg"
-    # Attempt to report status with retry logic
+    # Attempt to report status with retry logic and verbose logging
     for i in 1 2 3; do
-      if curl -s -X POST "$CALLBACK_URL" \
+      local response_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$CALLBACK_URL" \
         -H "Content-Type: application/json" \
         -H "CF-Access-Client-Id: $SERVICE_TOKEN_ID" \
         -H "CF-Access-Client-Secret: $SERVICE_TOKEN_SECRET" \
-        -d "{\\\"serverId\\\": \\\"$SERVER_ID\\\", \\\"token\\\": \\\"$PROV_TOKEN\\\", \\\"status\\\": \\\"$status_msg\\\"}" > /dev/null; then
+        -d "{\\\"serverId\\\": \\\"$SERVER_ID\\\", \\\"token\\\": \\\"$PROV_TOKEN\\\", \\\"status\\\": \\\"$status_msg\\\"}")
+      
+      echo "Status report attempt $i: HTTP $response_code" >> /var/log/provisioning-heartbeat.log
+      
+      if [ "$response_code" -eq 200 ]; then
         return 0
       fi
-      echo "Status report attempt $i failed, retrying..."
       sleep 2
     done
 }
 
-# --- 1. System Resilience & Immediate Reporting ---
-export DEBIAN_FRONTEND=noninteractive
 # First report as early as possible
 report_status "Initializing system..."
 

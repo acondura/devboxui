@@ -4,12 +4,20 @@ import { ServerConfig } from '@/modules/inventory/types';
 
 
 export async function POST(req: NextRequest) {
+  const url = new URL(req.url);
+  console.log(`[Provisioning API] Incoming request to ${url.pathname}`);
+  
   try {
-    const { serverId, token, status } = await req.json() as { serverId: string; token: string; status: string };
+    const body = await req.json();
+    const { serverId, token, status } = body as { serverId: string; token: string; status: string };
+    
+    console.log(`[Provisioning API] Server: ${serverId}, Status: ${status}, Token: ${token ? 'PRESENT' : 'MISSING'}`);
+    
     const env = await getCloudflareEnv();
     const kv = env.KV;
 
     if (!kv) {
+      console.error('[Provisioning API] KV Namespace is missing!');
       return NextResponse.json({ error: 'KV not configured' }, { status: 500 });
     }
 
