@@ -12,9 +12,11 @@ interface SettingsModalProps {
 export function SettingsModal({ isOpen, onClose, userEmail }: SettingsModalProps) {
   const [hetznerToken, setHetznerToken] = useState('');
   const [sshPublicKey, setSshPublicKey] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [showSyncPrompt, setShowSyncPrompt] = useState(false);
   const [originalSshKey, setOriginalSshKey] = useState('');
+  const [status, setStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
   useEffect(() => {
     if (isOpen) {
