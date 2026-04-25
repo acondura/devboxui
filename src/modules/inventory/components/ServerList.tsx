@@ -236,16 +236,31 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { se
           </div>
         </div>
         
-        {server.status === 'ready' && server.tunnelUrl ? (
-          <a 
-            href={server.tunnelUrl} 
-            target="_blank" 
-            rel="noreferrer"
-            className="block w-full text-center bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-lg shadow-lg shadow-indigo-600/20 transition-all text-sm active:scale-95"
-          >
-            Launch VS Code
-          </a>
-        ) : server.status === 'provisioning' ? (
+        {/* Primary Action Button */}
+        {server.tunnelUrl && (
+          <div className="space-y-3">
+            <a 
+              href={server.tunnelUrl} 
+              target="_blank" 
+              rel="noreferrer"
+              className="block w-full text-center bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-lg shadow-lg shadow-indigo-600/20 transition-all text-sm active:scale-95"
+            >
+              Launch VS Code
+            </a>
+            
+            {/* Setup Warning for provisioning servers */}
+            {(server.status === 'provisioning' || server.status === 'Initializing' || server.status === 'initializing') && (
+              <div className="flex items-center space-x-2 p-2 rounded bg-indigo-500/10 border border-indigo-500/20">
+                <span className="animate-pulse">⏳</span>
+                <p className="text-[10px] text-indigo-400 font-medium leading-relaxed">
+                  Initializing... Setup takes 2-5 mins. Refresh in a moment if page doesn&apos;t load.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+        
+        {!server.tunnelUrl && server.status === 'provisioning' && (
           <div className="space-y-2">
             <div className="flex justify-between text-[10px] uppercase font-bold text-slate-500 tracking-widest">
               <span>{server.detailedStatus || 'Provisioning'}</span>
@@ -255,7 +270,7 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { se
               <div className="bg-indigo-500 h-full w-1/2 animate-[shimmer_2s_infinite]" />
             </div>
           </div>
-        ) : null}
+        )}
       </div>
       {/* Debug Logs Modal */}
       {isLogsModalOpen && (
