@@ -273,22 +273,35 @@ while ! docker ps | grep -q code-server; do
     COUNT=\$((COUNT + 1))
 done
 
-docker exec -d -u root code-server bash -c "
-    chmod 666 /var/run/docker.sock
+# Final Container Setup (Synchronous & Robust)
+docker exec -u root code-server bash -c "
+    set -e
+    echo \"--- Configuring Container Permissions ---\"
+    chmod 666 /var/run/docker.sock || true
+    groupadd -g \$(stat -c '%g' /var/run/docker.sock) docker_host || true
+    usermod -aG docker_host abc || true
     echo \"abc ALL=(ALL) NOPASSWD:ALL\" >> /etc/sudoers
-    mkdir -p /etc/apt/keyrings
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-    echo \"deb [arch=\$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu noble stable\" > /etc/apt/sources.list.d/docker.list
-    curl -fsSL https://pkg.ddev.com/apt/gpg.key | gpg --dearmor -o /etc/apt/keyrings/ddev.gpg
-    echo \"deb [signed-by=/etc/apt/keyrings/ddev.gpg] https://pkg.ddev.com/apt/ * *\" > /etc/apt/sources.list.d/ddev.list
-    apt-get update && apt-get install -y ddev vim
-    sudo -u abc mkcert -install
-    sudo -u abc bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh) --unattended\"
-    # Robust theme update inside container
-    grep -v \"OSH_THEME=\" /config/.bashrc > /config/.bashrc.tmp
-    echo 'OSH_THEME=\"90210\"' >> /config/.bashrc.tmp
-    mv /config/.bashrc.tmp /config/.bashrc
-    sudo -u abc code-server --install-extension xdebug.php-debug --install-extension vscodevim.vim
+
+    echo \"--- Installing Dependencies ---\"
+    apt-get update
+    apt-get install -y gnupg2 curl ca-certificates git sudo vim
+
+    echo \"--- Installing DDEV ---\"
+    curl -fsSL https://apt.fury.io/ddev/gpg.key | gpg --dearmor | tee /etc/apt/keyrings/ddev.gpg > /dev/null
+    echo \"deb [signed-by=/etc/apt/keyrings/ddev.gpg] https://apt.fury.io/ddev/ * *\" | tee /etc/apt/sources.list.d/ddev.list
+    apt-get update && apt-get install -y ddev
+
+    echo \"--- Installing Oh-My-Bash ---\"
+    # Install for abc user
+    sudo -u abc bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh) --unattended\" || true
+    
+    # Ensure theme is set correctly
+    if [ -f /config/.bashrc ]; then
+        sed -i 's/OSH_THEME=.*/OSH_THEME=\"90210\"/' /config/.bashrc
+    fi
+
+    echo \"--- Installing VS Code Extensions ---\"
+    sudo -u abc code-server --install-extension xdebug.php-debug --install-extension vscodevim.vim || true
 "
 
 # Firewall
