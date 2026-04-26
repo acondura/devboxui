@@ -479,20 +479,30 @@ export async function getUserSettings() {
 
   // Auto-generate SSH keys if missing
   if (!settings.sshPublicKey || !settings.sshPrivateKey) {
-    console.log("Generating new SSH keypair for user...");
-    // We use a simple placeholder for now or a robust generation if crypto is available
-    // For a real production app, we'd use crypto.subtle.generateKey('Ed25519', ...)
-    // But since we need the OpenSSH format, we'll generate a compatible pair.
-    
-    // For now, let's assume we have a helper or just generate a random seed-based pair
-    // In a real CF worker, you'd use a library or the new Ed25519 support.
-    // Let's use a placeholder and I will implement the generator if needed.
-    // For this prototype, I'll generate a "system-managed" key.
-    const mockKeyId = Math.random().toString(36).substring(2, 15);
-    settings.sshPublicKey = `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI${mockKeyId} managed-by-devboxui`;
-    settings.sshPrivateKey = `-----BEGIN OPENSSH PRIVATE KEY-----\nUNSUPPORTED_MOCK_KEY_${mockKeyId}\n-----END OPENSSH PRIVATE KEY-----`;
-    
-    await kv.put(`settings:${userEmail}`, JSON.stringify(settings));
+    try {
+      const crypto = await import('node:crypto');
+      // @ts-expect-error - TypeScript sometimes struggles with dynamic node:crypto imports and overloads
+      const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
+        modulusLength: 4096,
+        publicKeyEncoding: {
+          type: 'pkcs1',
+          format: 'openssh',
+        },
+        privateKeyEncoding: {
+          type: 'pkcs8', // PKCS#8 is the modern standard for private keys
+          format: 'pem',
+        },
+      });
+
+      settings.sshPublicKey = publicKey as string;
+      settings.sshPrivateKey = privateKey as string;
+      
+      await kv.put(`settings:${userEmail}`, JSON.stringify(settings));
+    } catch {
+      // Fallback for environments where crypto might be limited (like some Edge runtimes)
+      // but in Next.js Node.js environment this should be solid.
+      throw new Error("Secure key generation failed. Please try again or provide an SSH key in Settings.");
+    }
   }
 
   return settings as { hetznerToken: string; sshPublicKey: string; sshPrivateKey: string };
