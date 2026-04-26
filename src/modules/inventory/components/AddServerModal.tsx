@@ -171,7 +171,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
                 key={p.id}
                 type="button"
                 onClick={() => p.active && setProvider(p.id)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border flex flex-col items-center min-w-[90px] relative overflow-hidden group ${
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border flex flex-col items-center justify-center min-w-[100px] h-12 relative overflow-hidden group ${
                   provider === p.id 
                     ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-600/20' 
                     : p.active 
