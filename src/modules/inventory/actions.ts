@@ -480,27 +480,29 @@ export async function getUserSettings() {
   // Auto-generate SSH keys if missing
   if (!settings.sshPublicKey || !settings.sshPrivateKey) {
     try {
-      const crypto = await import('node:crypto');
-      // @ts-expect-error - TypeScript sometimes struggles with dynamic node:crypto imports and overloads
-      const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
-        modulusLength: 4096,
-        publicKeyEncoding: {
-          type: 'pkcs1',
-          format: 'openssh',
+      const keyPair = await crypto.subtle.generateKey(
+        {
+          name: "RSASSA-PKCS1-v1_5",
+          modulusLength: 2048,
+          publicExponent: new Uint8Array([1, 0, 1]),
+          hash: "SHA-256",
         },
-        privateKeyEncoding: {
-          type: 'pkcs8', // PKCS#8 is the modern standard for private keys
-          format: 'pem',
-        },
-      });
+        true,
+        ["sign", "verify"]
+      );
 
-      settings.sshPublicKey = publicKey as string;
-      settings.sshPrivateKey = privateKey as string;
+      const privateKeyExported = await crypto.subtle.exportKey('pkcs8', keyPair.privateKey);
+      const publicKeyExported = await crypto.subtle.exportKey('spki', keyPair.publicKey);
+
+      // Helper to convert ArrayBuffer to Base64 (inline for Edge safety)
+      const toBase64 = (buf: ArrayBuffer) => btoa(String.fromCharCode(...new Uint8Array(buf)));
+      const toPem = (b64: string, t: string) => `-----BEGIN ${t}-----\n${b64.match(/.{1,64}/g)?.join('\n')}\n-----END ${t}-----`;
+
+      settings.sshPrivateKey = toPem(toBase64(privateKeyExported), 'RSA PRIVATE KEY');
+      settings.sshPublicKey = toPem(toBase64(publicKeyExported), 'PUBLIC KEY');
       
       await kv.put(`settings:${userEmail}`, JSON.stringify(settings));
     } catch {
-      // Fallback for environments where crypto might be limited (like some Edge runtimes)
-      // but in Next.js Node.js environment this should be solid.
       throw new Error("Secure key generation failed. Please try again or provide an SSH key in Settings.");
     }
   }

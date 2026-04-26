@@ -176,6 +176,21 @@ export class CloudflareApiService {
   }
 
   /**
+   * Lists all tunnels in the account.
+   */
+  async listTunnels(): Promise<{ id: string; name: string; status: string }[]> {
+    return this.request<{ id: string; name: string; status: string }[]>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/cfd_tunnel`);
+  }
+
+  /**
+   * Finds a tunnel by name.
+   */
+  async getTunnelByName(name: string) {
+    const tunnels = await this.listTunnels();
+    return tunnels.find(t => t.name === name);
+  }
+
+  /**
    * Deletes a tunnel and all associated configurations.
    */
   async deleteTunnel(tunnelId: string): Promise<void> {
