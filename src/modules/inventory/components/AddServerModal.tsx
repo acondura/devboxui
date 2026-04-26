@@ -297,7 +297,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
 
           <div className="bg-slate-950/50 border border-slate-800/50 rounded-xl p-4 flex justify-between items-center group relative">
             <div>
-              <p className="text-xs uppercase tracking-wider text-slate-500 font-bold">Estimated Cost</p>
+              <p className="text-xs uppercase tracking-wider text-slate-500 font-bold">Cost</p>
               <p className="text-2xl font-black text-white">
                 {monthlyPrice ? `€${parseFloat(monthlyPrice).toFixed(2)}` : '--'}
                 <span className="text-sm text-slate-400 font-normal ml-1">/ month</span>
