@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
-import { getHetznerOptions, getUserSettings } from '@/modules/inventory/actions';
+import { getHetznerOptions } from '@/modules/inventory/actions';
 
 interface AddServerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onOpenSettings: () => void;
   onAdd: (name: string, serverType: string, location: string, image: string) => Promise<void>;
 }
 
@@ -38,7 +37,7 @@ interface HetznerImage {
   architecture: string;
 }
 
-export function AddServerModal({ isOpen, onClose, onOpenSettings, onAdd }: AddServerModalProps) {
+export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) {
   const [name, setName] = useState('');
   const [serverType, setServerType] = useState('cpx21');
   const [location, setLocation] = useState('nbg1');
@@ -137,7 +136,10 @@ export function AddServerModal({ isOpen, onClose, onOpenSettings, onAdd }: AddSe
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
       <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden transform transition-all animate-in fade-in zoom-in duration-200">
         <div className="px-6 py-5 border-b border-slate-800 flex justify-between items-center">
-          <h3 className="text-xl font-bold text-white">Launch New DevBox</h3>
+          <div>
+            <h3 className="text-xl font-bold text-white">Launch New DevBox</h3>
+            <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mt-1">Hetzner Cloud Provisioning</p>
+          </div>
           <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -156,6 +158,7 @@ export function AddServerModal({ isOpen, onClose, onOpenSettings, onAdd }: AddSe
               required
               className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
             />
+            <p className="mt-2 text-[10px] text-slate-500 italic">This will be used as the server name in your Hetzner console.</p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -199,34 +202,34 @@ export function AddServerModal({ isOpen, onClose, onOpenSettings, onAdd }: AddSe
           {/* Specs Summary */}
           {!isLoadingOptions && currentType && (
             <div className="grid grid-cols-4 gap-2">
-              <div className="bg-slate-950/40 border border-slate-800/50 rounded-xl p-2.5 text-center">
+              <div className="bg-slate-950/40 border border-slate-800/50 rounded-xl p-2.5 text-center group relative cursor-help">
                 <p className="text-[9px] uppercase tracking-wider text-slate-500 font-bold mb-0.5">Cores</p>
                 <p className="text-xs font-bold text-slate-200">{currentType.cores} vCPU</p>
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-slate-300 text-[8px] p-2 rounded shadow-xl w-32 pointer-events-none z-50">
+                  Virtual CPU cores allocated to your instance.
+                </div>
               </div>
-              <div className="bg-slate-950/40 border border-slate-800/50 rounded-xl p-2.5 text-center">
+              <div className="bg-slate-950/40 border border-slate-800/50 rounded-xl p-2.5 text-center group relative cursor-help">
                 <p className="text-[9px] uppercase tracking-wider text-slate-500 font-bold mb-0.5">RAM</p>
                 <p className="text-xs font-bold text-slate-200">{currentType.memory} GB</p>
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-slate-300 text-[8px] p-2 rounded shadow-xl w-32 pointer-events-none z-50">
+                  Total system memory available.
+                </div>
               </div>
-              <div className="bg-slate-950/40 border border-slate-800/50 rounded-xl p-2.5 text-center">
+              <div className="bg-slate-950/40 border border-slate-800/50 rounded-xl p-2.5 text-center group relative cursor-help">
                 <p className="text-[9px] uppercase tracking-wider text-slate-500 font-bold mb-0.5">Disk</p>
                 <p className="text-xs font-bold text-slate-200">{currentType.disk} GB</p>
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-slate-300 text-[8px] p-2 rounded shadow-xl w-32 pointer-events-none z-50">
+                  SSD-backed storage capacity.
+                </div>
               </div>
-              <div className="bg-slate-950/40 border border-slate-800/50 rounded-xl p-2.5 text-center">
+              <div className="bg-slate-950/40 border border-slate-800/50 rounded-xl p-2.5 text-center group relative cursor-help">
                 <p className="text-[9px] uppercase tracking-wider text-slate-500 font-bold mb-0.5">Arch</p>
                 <p className="text-xs font-bold text-slate-200 uppercase">{currentType.architecture}</p>
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-slate-300 text-[8px] p-2 rounded shadow-xl w-32 pointer-events-none z-50">
+                  Processor architecture (x86_64 or ARM64).
+                </div>
               </div>
-            </div>
-          )}
-
-          {/* Deprecation Warning */}
-          {currentType?.deprecation && (
-            <div className="bg-amber-900/20 border border-amber-900/30 rounded-xl p-3 flex items-start space-x-3">
-              <svg className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <p className="text-xs text-amber-200/70 leading-relaxed">
-                Scheduled for deprecation on <strong className="text-amber-400">{new Date(currentType.deprecation).toLocaleDateString()}</strong>.
-              </p>
             </div>
           )}
 
@@ -248,7 +251,7 @@ export function AddServerModal({ isOpen, onClose, onOpenSettings, onAdd }: AddSe
             </select>
           </div>
 
-          <div className="bg-slate-950/50 border border-slate-800/50 rounded-xl p-4 flex justify-between items-center">
+          <div className="bg-slate-950/50 border border-slate-800/50 rounded-xl p-4 flex justify-between items-center group relative">
             <div>
               <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Estimated Cost</p>
               <p className="text-xl font-black text-white">
@@ -257,16 +260,25 @@ export function AddServerModal({ isOpen, onClose, onOpenSettings, onAdd }: AddSe
               </p>
             </div>
             <div className="text-right">
-              <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Hourly</p>
+              <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Hourly Rate</p>
               <p className="text-sm font-mono text-indigo-400">
                 {selectedPrice?.price_hourly?.gross ? `€${parseFloat(selectedPrice.price_hourly.gross).toFixed(4)}` : '--'}
               </p>
             </div>
+            <div className="absolute inset-0 bg-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl pointer-events-none" />
           </div>
 
-          <p className="text-xs text-slate-500 px-1">
-            We&apos;ll automatically create a Hetzner VPS and bootstrap it with Docker and VS Code via Cloud-Init.
-          </p>
+          <div className="p-3 bg-slate-950/40 border border-slate-800/50 rounded-xl space-y-2">
+            <div className="flex items-center space-x-2 text-indigo-400">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-[10px] font-bold uppercase tracking-wider">How it works</p>
+            </div>
+            <p className="text-[10px] text-slate-500 leading-relaxed">
+              We&apos;ll create a Hetzner VPS and run a Cloud-Init script to install Docker, configure your secure tunnel, and deploy your VS Code environment. No manual setup required.
+            </p>
+          </div>
           
           <div className="pt-2">
             <button
@@ -280,7 +292,7 @@ export function AddServerModal({ isOpen, onClose, onOpenSettings, onAdd }: AddSe
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span>Launching...</span>
+                  <span>Requesting Instance...</span>
                 </>
               ) : (
                 <span>Launch DevBox ✨</span>

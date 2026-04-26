@@ -6,10 +6,9 @@ import { getUserSettings, saveUserSettings } from '@/modules/inventory/actions';
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  userEmail: string;
 }
 
-export function SettingsModal({ isOpen, onClose, userEmail }: SettingsModalProps) {
+export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [hetznerToken, setHetznerToken] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);

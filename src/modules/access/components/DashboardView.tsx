@@ -116,14 +116,12 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
       <AddServerModal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
-        onOpenSettings={() => setIsSettingsOpen(true)}
         onAdd={handleAddServer} 
       />
 
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
-        userEmail={userEmail}
       />
 
       <FeedbackModal
