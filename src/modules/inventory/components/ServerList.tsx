@@ -100,24 +100,24 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { se
           <div className="flex items-center space-x-2">
             {server.status !== 'provisioning' && server.status !== 'Initializing' && server.status !== 'initializing' && (
               <>
-                <span className={`h-2 w-2 rounded-full ${server.status === 'ready' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-slate-600'}`} />
-                <h4 className="font-bold text-white uppercase tracking-wider text-[10px]">
+                <span className={`h-2.5 w-2.5 rounded-full ${server.status === 'ready' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-slate-600'}`} />
+                <h4 className="font-bold text-white uppercase tracking-wider text-xs">
                   {server.status}
                 </h4>
               </>
             )}
           </div>
-          <div className="flex items-center space-x-2 mt-1 group/ip">
-            <p className="text-lg font-mono text-indigo-400" title="Public IP address of your DevBox">{server.ip}</p>
+          <div className="flex items-center space-x-2 mt-1.5 group/ip">
+            <p className="text-xl font-mono text-indigo-400" title="Public IP address of your DevBox">{server.ip}</p>
             <CopyButton value={server.ip} />
           </div>
           {server.tunnelUrl && (
-            <p className="text-[10px] font-mono text-slate-500 mt-0.5 truncate max-w-[150px]" title="Cloudflare Tunnel Endpoint">
+            <p className="text-xs font-mono text-slate-500 mt-1 truncate max-w-[180px]" title="Cloudflare Tunnel Endpoint">
               {server.tunnelUrl.replace('https://', '')}
             </p>
           )}
         </div>
-        <div className="flex items-center space-x-1">
+        <div className="flex items-center space-x-1.5">
           <div className="bg-slate-800 px-2 py-1 rounded text-[10px] font-bold text-slate-400 uppercase mr-1">
             Ubuntu 24.04
           </div>
@@ -125,10 +125,10 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { se
             onClick={handleFetchLogs}
             className="p-1.5 text-slate-500 hover:text-indigo-400 hover:bg-slate-800 rounded transition-colors group/logs relative"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover/logs:opacity-100 transition-opacity bg-slate-700 text-white text-[9px] py-1 px-2 rounded pointer-events-none whitespace-nowrap z-50">
+            <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover/logs:opacity-100 transition-opacity bg-slate-700 text-white text-[10px] py-1 px-2 rounded pointer-events-none whitespace-nowrap z-50">
               View live provisioning logs
             </div>
           </button>
@@ -139,17 +139,17 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { se
               className={`p-1.5 rounded transition-colors group/lock relative ${server.isLocked ? 'text-indigo-400 hover:bg-indigo-500/10' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-300'}`}
             >
               {isTogglingLock ? (
-                <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                <div className="h-5 w-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
               ) : server.isLocked ? (
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
                 </svg>
               ) : (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
                 </svg>
               )}
-              <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover/lock:opacity-100 transition-opacity bg-slate-700 text-white text-[9px] py-1 px-2 rounded pointer-events-none whitespace-nowrap z-50">
+              <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover/lock:opacity-100 transition-opacity bg-slate-700 text-white text-[10px] py-1 px-2 rounded pointer-events-none whitespace-nowrap z-50">
                 {server.isLocked ? 'Unlock to allow deletion' : 'Lock to prevent accidental deletion'}
               </div>
             </button>
@@ -164,10 +164,10 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { se
               }}
               className="p-1.5 text-slate-500 hover:text-emerald-500 hover:bg-slate-800 rounded transition-colors group/ready relative"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
-              <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover/ready:opacity-100 transition-opacity bg-slate-700 text-white text-[9px] py-1 px-2 rounded pointer-events-none whitespace-nowrap z-50">
+              <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover/ready:opacity-100 transition-opacity bg-slate-700 text-white text-[10px] py-1 px-2 rounded pointer-events-none whitespace-nowrap z-50">
                 Force server to &apos;Ready&apos; state
               </div>
             </button>
@@ -178,28 +178,28 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { se
             className={`p-1.5 transition-colors rounded group/delete relative ${server.isLocked ? 'text-slate-700 cursor-not-allowed' : 'text-slate-500 hover:text-red-500 hover:bg-slate-800'}`}
           >
             {isDeleting ? (
-              <div className="h-4 w-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+              <div className="h-5 w-5 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
             ) : (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
             )}
-            <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover/delete:opacity-100 transition-opacity bg-slate-700 text-white text-[9px] py-1 px-2 rounded pointer-events-none whitespace-nowrap z-50">
+            <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover/delete:opacity-100 transition-opacity bg-slate-700 text-white text-[10px] py-1 px-2 rounded pointer-events-none whitespace-nowrap z-50">
               {server.isLocked ? 'Unlock first' : 'Destroy server and DNS'}
             </div>
           </button>
         </div>
       </div>
       
-      <div className="p-5 space-y-4">
+      <div className="p-5 space-y-5">
         {server.rootPassword && (
           <div className="flex justify-between text-sm items-center">
-            <div className="flex items-center space-x-1 group/info relative">
+            <div className="flex items-center space-x-1.5 group/info relative">
               <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Root Access</span>
-              <svg className="w-3 h-3 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3.5 h-3.5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <div className="absolute bottom-full left-0 mb-2 opacity-0 group-hover/info:opacity-100 transition-opacity bg-slate-800 border border-slate-700 text-slate-300 text-[9px] p-2 rounded shadow-xl w-48 pointer-events-none z-50">
+              <div className="absolute bottom-full left-0 mb-2 opacity-0 group-hover/info:opacity-100 transition-opacity bg-slate-800 border border-slate-700 text-slate-300 text-[10px] p-2 rounded shadow-xl w-56 pointer-events-none z-50">
                 Emergency SSH access for the &apos;root&apos; user. Not needed for web-based development.
               </div>
             </div>
@@ -208,26 +208,26 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { se
         )}
 
         {/* Domains List */}
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-1 group/dinfo relative">
-              <span className="text-[10px] uppercase font-bold text-slate-500 tracking-widest">Service Domains</span>
-              <svg className="w-3 h-3 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex items-center space-x-1.5 group/dinfo relative">
+              <span className="text-xs uppercase font-bold text-slate-500 tracking-widest">Service Domains</span>
+              <svg className="w-3.5 h-3.5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <div className="absolute bottom-full left-0 mb-2 opacity-0 group-hover/dinfo:opacity-100 transition-opacity bg-slate-800 border border-slate-700 text-slate-300 text-[9px] p-2 rounded shadow-xl w-56 pointer-events-none z-50">
+              <div className="absolute bottom-full left-0 mb-2 opacity-0 group-hover/dinfo:opacity-100 transition-opacity bg-slate-800 border border-slate-700 text-slate-300 text-[10px] p-2.5 rounded shadow-xl w-64 pointer-events-none z-50">
                 Custom subdomains that route directly to web services (like DDEV) running inside your DevBox.
               </div>
             </div>
             <button 
               onClick={() => setIsProjectModalOpen(true)}
-              className="text-[10px] font-bold text-indigo-500 hover:text-indigo-400 transition-colors"
+              className="text-xs font-bold text-indigo-500 hover:text-indigo-400 transition-colors"
             >
               + Add Domain
             </button>
           </div>
           
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             {server.projects && server.projects.length > 0 ? (
               server.projects.map((project, idx) => (
                 <a 
@@ -235,50 +235,50 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { se
                   href={`https://${project.domain}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center justify-between p-2 rounded bg-slate-950 border border-slate-800 hover:border-indigo-500/30 transition-all group/project"
+                  className="flex items-center justify-between p-2.5 rounded bg-slate-950 border border-slate-800 hover:border-indigo-500/30 transition-all group/project"
                 >
-                  <span className="text-xs text-slate-300 font-medium">{project.domain.split('.')[0]}</span>
+                  <span className="text-sm text-slate-300 font-medium">{project.domain.split('.')[0]}</span>
                   <div className="flex items-center space-x-2">
-                    <span className="text-[9px] text-slate-600 font-mono hidden group-hover/project:block">
+                    <span className="text-[10px] text-slate-600 font-mono hidden group-hover/project:block">
                       {project.domain}
                     </span>
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.3)]" />
+                    <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.3)]" />
                   </div>
                 </a>
               ))
             ) : (
-              <p className="text-[10px] text-slate-600 italic">No custom domains yet.</p>
+              <p className="text-xs text-slate-600 italic">No custom domains yet.</p>
             )}
           </div>
         </div>
         
         {/* Primary Action Button */}
         {server.tunnelUrl && (
-          <div className="space-y-3 pt-2">
+          <div className="space-y-3.5 pt-2">
             <a 
               href={server.tunnelUrl} 
               target="_blank" 
               rel="noreferrer"
-              className="block w-full text-center bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-lg shadow-lg shadow-indigo-600/20 transition-all text-sm active:scale-95"
+              className="block w-full text-center bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-600/20 transition-all text-sm active:scale-95"
             >
               Launch VS Code
             </a>
-            <p className="text-[10px] text-slate-500 text-center px-4 italic leading-relaxed">
+            <p className="text-xs text-slate-500 text-center px-4 italic leading-relaxed">
               Opens your secure VS Code web interface via Cloudflare Access.
             </p>
           </div>
         )}
         
         {!server.tunnelUrl && server.status === 'provisioning' && (
-          <div className="space-y-2">
-            <div className="flex justify-between text-[10px] uppercase font-bold text-slate-500 tracking-widest">
+          <div className="space-y-3">
+            <div className="flex justify-between text-xs uppercase font-bold text-slate-500 tracking-widest">
               <span>{server.detailedStatus || 'Provisioning'}</span>
               <span className="animate-pulse">Building Environment...</span>
             </div>
-            <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+            <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
               <div className="bg-indigo-500 h-full w-1/2 animate-[shimmer_2s_infinite]" />
             </div>
-            <p className="text-[9px] text-slate-500 italic text-center">
+            <p className="text-xs text-slate-500 italic text-center">
               Initial setup usually takes 2-4 minutes.
             </p>
           </div>
@@ -291,13 +291,13 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { se
           <div className="w-full max-w-4xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-200">
             <div className="px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
               <h3 className="text-lg font-bold text-white flex items-center space-x-2">
-                <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 <span>Live Provisioning Status: {server.ip}</span>
               </h3>
               <button onClick={() => setIsLogsModalOpen(false)} className="text-slate-400 hover:text-white transition-colors">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -305,32 +305,32 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { se
             <div className="p-6 overflow-auto bg-slate-950 font-mono text-xs text-slate-300 flex-1 min-h-0">
               {isFetchingLogs ? (
                 <div className="flex flex-col items-center justify-center py-20 space-y-4">
-                  <div className="h-10 w-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                  <div className="h-12 w-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
                   <p className="text-slate-500 animate-pulse text-sm font-bold tracking-widest uppercase">Connecting to DevBox...</p>
                 </div>
               ) : debugData ? (
-                <div className="space-y-6">
-                  <div className="flex justify-between items-center text-slate-500 border-b border-slate-800 pb-2 mb-4">
-                    <span className="text-[10px] uppercase font-bold tracking-widest text-slate-600">Last Updated</span>
-                    <span className="text-[10px]">{debugData.timestamp}</span>
+                <div className="space-y-8">
+                  <div className="flex justify-between items-center text-slate-500 border-b border-slate-800 pb-3 mb-6">
+                    <span className="text-xs uppercase font-bold tracking-widest text-slate-600">Last Updated</span>
+                    <span className="text-xs">{debugData.timestamp}</span>
                   </div>
                   
                   <section>
-                    <h4 className="text-indigo-400 font-bold mb-2 flex items-center space-x-2 uppercase tracking-tighter text-[10px]">
-                      <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
+                    <h4 className="text-indigo-400 font-bold mb-3 flex items-center space-x-2 uppercase tracking-tighter text-xs">
+                      <span className="h-2 w-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
                       <span>Docker Container Engine</span>
                     </h4>
-                    <pre className="bg-slate-900/30 p-3 rounded-lg border border-slate-800/50 overflow-x-auto text-[10px] leading-tight">
+                    <pre className="bg-slate-900/30 p-4 rounded-lg border border-slate-800/50 overflow-x-auto text-xs leading-tight">
                       {debugData.docker}
                     </pre>
                   </section>
 
                   <section>
-                    <h4 className="text-emerald-400 font-bold mb-2 flex items-center space-x-2 uppercase tracking-tighter text-[10px]">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                    <h4 className="text-emerald-400 font-bold mb-3 flex items-center space-x-2 uppercase tracking-tighter text-xs">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
                       <span>Cloud-Init Setup (Detailed)</span>
                     </h4>
-                    <pre className="bg-slate-900/30 p-3 rounded-lg border border-slate-800/50 overflow-x-auto whitespace-pre-wrap text-[10px] leading-relaxed">
+                    <pre className="bg-slate-900/30 p-4 rounded-lg border border-slate-800/50 overflow-x-auto whitespace-pre-wrap text-xs leading-relaxed">
                       {debugData.setup}
                     </pre>
                   </section>
@@ -338,10 +338,10 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { se
               ) : (
                 <div className="space-y-6">
                   <div className="flex flex-col items-center justify-center py-20 text-center">
-                    <div className="text-amber-500 mb-4 text-2xl">⚠️</div>
-                    <p className="text-slate-400 max-w-xs mx-auto text-sm leading-relaxed">
+                    <div className="text-amber-500 mb-4 text-3xl">⚠️</div>
+                    <p className="text-slate-400 max-w-sm mx-auto text-base leading-relaxed font-medium">
                       Could not reach live log exporter on port 8000. <br/>
-                      <span className="text-xs text-slate-500 mt-2 block">
+                      <span className="text-sm text-slate-500 mt-3 block font-normal">
                         This is expected if the server is still doing initial Ubuntu system updates.
                       </span>
                     </p>
@@ -353,16 +353,16 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { se
               <button 
                 onClick={handleFetchLogs}
                 disabled={isFetchingLogs}
-                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 text-white rounded-xl text-sm font-bold transition-all flex items-center space-x-2"
+                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 text-white rounded-xl text-sm font-bold transition-all flex items-center space-x-2"
               >
-                <svg className={`w-4 h-4 ${isFetchingLogs ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className={`w-5 h-5 ${isFetchingLogs ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
                 <span>Sync Latest Logs</span>
               </button>
               <button 
                 onClick={() => setIsLogsModalOpen(false)}
-                className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-sm font-bold transition-all"
+                className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-sm font-bold transition-all"
               >
                 Done
               </button>
@@ -385,45 +385,45 @@ function PasswordField({ value }: { value: string }) {
   };
 
   return (
-    <div className="flex items-center space-x-2 group/pass">
+    <div className="flex items-center space-x-2.5 group/pass">
       <div className="relative">
-        <span className={`text-[11px] font-mono transition-all duration-200 ${show ? 'text-indigo-300' : 'text-slate-600 blur-[3px] select-none'}`}>
+        <span className={`text-xs font-mono transition-all duration-200 ${show ? 'text-indigo-300' : 'text-slate-600 blur-[4px] select-none'}`}>
           {show ? value : '••••••••••••••••'}
         </span>
       </div>
-      <div className="flex items-center space-x-1 opacity-0 group-hover/pass:opacity-100 transition-opacity">
+      <div className="flex items-center space-x-1.5 opacity-0 group-hover/pass:opacity-100 transition-opacity">
         <button 
           onClick={() => setShow(!show)} 
-          className="p-1 text-slate-500 hover:text-indigo-400 transition-colors group/view relative"
+          className="p-1.5 text-slate-500 hover:text-indigo-400 transition-colors group/view relative"
         >
           {show ? (
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88L4.242 4.243m11.515 11.515L21.364 21" />
             </svg>
           ) : (
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
             </svg>
           )}
-          <div className="absolute -top-7 left-1/2 -translate-x-1/2 opacity-0 group-hover/view:opacity-100 transition-opacity bg-slate-700 text-white text-[8px] py-1 px-1.5 rounded pointer-events-none whitespace-nowrap z-50">
+          <div className="absolute -top-7 left-1/2 -translate-x-1/2 opacity-0 group-hover/view:opacity-100 transition-opacity bg-slate-700 text-white text-[10px] py-1 px-2 rounded pointer-events-none whitespace-nowrap z-50">
             {show ? 'Hide' : 'Show'}
           </div>
         </button>
         <button 
           onClick={handleCopy} 
-          className={`p-1 transition-colors group/copy relative ${copied ? 'text-emerald-500' : 'text-slate-500 hover:text-indigo-400'}`}
+          className={`p-1.5 transition-colors group/copy relative ${copied ? 'text-emerald-500' : 'text-slate-500 hover:text-indigo-400'}`}
         >
           {copied ? (
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           ) : (
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
             </svg>
           )}
-          <div className="absolute -top-7 left-1/2 -translate-x-1/2 opacity-0 group-hover/copy:opacity-100 transition-opacity bg-slate-700 text-white text-[8px] py-1 px-1.5 rounded pointer-events-none whitespace-nowrap z-50">
+          <div className="absolute -top-7 left-1/2 -translate-x-1/2 opacity-0 group-hover/copy:opacity-100 transition-opacity bg-slate-700 text-white text-[10px] py-1 px-2 rounded pointer-events-none whitespace-nowrap z-50">
             {copied ? 'Copied!' : 'Copy'}
           </div>
         </button>
@@ -455,7 +455,7 @@ function CopyButton({ value }: { value: string }) {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
         </svg>
       )}
-      <div className="absolute -top-7 left-1/2 -translate-x-1/2 opacity-0 group-hover/cb:opacity-100 transition-opacity bg-slate-700 text-white text-[8px] py-1 px-1.5 rounded pointer-events-none whitespace-nowrap z-50">
+      <div className="absolute -top-7 left-1/2 -translate-x-1/2 opacity-0 group-hover/cb:opacity-100 transition-opacity bg-slate-700 text-white text-[10px] py-1 px-2 rounded pointer-events-none whitespace-nowrap z-50">
         Copy IP
       </div>
     </button>

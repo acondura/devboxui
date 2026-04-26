@@ -138,7 +138,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
         <div className="px-6 py-5 border-b border-slate-800 flex justify-between items-center">
           <div>
             <h3 className="text-xl font-bold text-white">Launch New DevBox</h3>
-            <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mt-1">Hetzner Cloud Provisioning</p>
+            <p className="text-xs text-slate-500 uppercase tracking-widest font-bold mt-1">Hetzner Cloud Provisioning</p>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -158,7 +158,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
               required
               className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
             />
-            <p className="mt-2 text-[10px] text-slate-500 italic">This will be used as the server name in your Hetzner console.</p>
+            <p className="mt-2 text-xs text-slate-500 italic">This will be used as the server name in your Hetzner console.</p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -168,7 +168,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
                 value={serverType}
                 onChange={(e) => setServerType(e.target.value)}
                 disabled={isLoadingOptions}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer disabled:opacity-50"
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer disabled:opacity-50 text-sm"
               >
                 {sortedServerTypes.map(t => {
                   const p = t.prices.find((p) => p.location === location) || t.prices[0];
@@ -189,7 +189,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 disabled={isLoadingOptions}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer disabled:opacity-50"
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer disabled:opacity-50 text-sm"
               >
                 {options.locations.map(l => (
                   <option key={l.id} value={l.name}>{l.city} ({l.name.toUpperCase()})</option>
@@ -203,30 +203,30 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
           {!isLoadingOptions && currentType && (
             <div className="grid grid-cols-4 gap-2">
               <div className="bg-slate-950/40 border border-slate-800/50 rounded-xl p-2.5 text-center group relative cursor-help">
-                <p className="text-[9px] uppercase tracking-wider text-slate-500 font-bold mb-0.5">Cores</p>
-                <p className="text-xs font-bold text-slate-200">{currentType.cores} vCPU</p>
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-slate-300 text-[8px] p-2 rounded shadow-xl w-32 pointer-events-none z-50">
+                <p className="text-[11px] uppercase tracking-wider text-slate-500 font-bold mb-0.5">Cores</p>
+                <p className="text-sm font-bold text-slate-200">{currentType.cores} vCPU</p>
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-slate-300 text-[10px] p-2 rounded shadow-xl w-36 pointer-events-none z-50">
                   Virtual CPU cores allocated to your instance.
                 </div>
               </div>
               <div className="bg-slate-950/40 border border-slate-800/50 rounded-xl p-2.5 text-center group relative cursor-help">
-                <p className="text-[9px] uppercase tracking-wider text-slate-500 font-bold mb-0.5">RAM</p>
-                <p className="text-xs font-bold text-slate-200">{currentType.memory} GB</p>
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-slate-300 text-[8px] p-2 rounded shadow-xl w-32 pointer-events-none z-50">
+                <p className="text-[11px] uppercase tracking-wider text-slate-500 font-bold mb-0.5">RAM</p>
+                <p className="text-sm font-bold text-slate-200">{currentType.memory} GB</p>
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-slate-300 text-[10px] p-2 rounded shadow-xl w-36 pointer-events-none z-50">
                   Total system memory available.
                 </div>
               </div>
               <div className="bg-slate-950/40 border border-slate-800/50 rounded-xl p-2.5 text-center group relative cursor-help">
-                <p className="text-[9px] uppercase tracking-wider text-slate-500 font-bold mb-0.5">Disk</p>
-                <p className="text-xs font-bold text-slate-200">{currentType.disk} GB</p>
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-slate-300 text-[8px] p-2 rounded shadow-xl w-32 pointer-events-none z-50">
+                <p className="text-[11px] uppercase tracking-wider text-slate-500 font-bold mb-0.5">Disk</p>
+                <p className="text-sm font-bold text-slate-200">{currentType.disk} GB</p>
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-slate-300 text-[10px] p-2 rounded shadow-xl w-36 pointer-events-none z-50">
                   SSD-backed storage capacity.
                 </div>
               </div>
               <div className="bg-slate-950/40 border border-slate-800/50 rounded-xl p-2.5 text-center group relative cursor-help">
-                <p className="text-[9px] uppercase tracking-wider text-slate-500 font-bold mb-0.5">Arch</p>
-                <p className="text-xs font-bold text-slate-200 uppercase">{currentType.architecture}</p>
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-slate-300 text-[8px] p-2 rounded shadow-xl w-32 pointer-events-none z-50">
+                <p className="text-[11px] uppercase tracking-wider text-slate-500 font-bold mb-0.5">Arch</p>
+                <p className="text-sm font-bold text-slate-200 uppercase">{currentType.architecture}</p>
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-slate-300 text-[10px] p-2 rounded shadow-xl w-36 pointer-events-none z-50">
                   Processor architecture (x86_64 or ARM64).
                 </div>
               </div>
@@ -239,7 +239,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
               value={image}
               onChange={(e) => setImage(e.target.value)}
               disabled={isLoadingOptions}
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer disabled:opacity-50"
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer disabled:opacity-50 text-sm"
             >
               {filteredImages.map(i => (
                 <option key={i.id} value={i.name}>
@@ -253,29 +253,29 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
 
           <div className="bg-slate-950/50 border border-slate-800/50 rounded-xl p-4 flex justify-between items-center group relative">
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Estimated Cost</p>
-              <p className="text-xl font-black text-white">
+              <p className="text-xs uppercase tracking-wider text-slate-500 font-bold">Estimated Cost</p>
+              <p className="text-2xl font-black text-white">
                 {monthlyPrice ? `€${parseFloat(monthlyPrice).toFixed(2)}` : '--'}
-                <span className="text-xs text-slate-400 font-normal ml-1">/ month</span>
+                <span className="text-sm text-slate-400 font-normal ml-1">/ month</span>
               </p>
             </div>
             <div className="text-right">
-              <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Hourly Rate</p>
-              <p className="text-sm font-mono text-indigo-400">
+              <p className="text-xs uppercase tracking-wider text-slate-500 font-bold">Hourly Rate</p>
+              <p className="text-base font-mono text-indigo-400">
                 {selectedPrice?.price_hourly?.gross ? `€${parseFloat(selectedPrice.price_hourly.gross).toFixed(4)}` : '--'}
               </p>
             </div>
             <div className="absolute inset-0 bg-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl pointer-events-none" />
           </div>
 
-          <div className="p-3 bg-slate-950/40 border border-slate-800/50 rounded-xl space-y-2">
+          <div className="p-4 bg-slate-950/40 border border-slate-800/50 rounded-xl space-y-2.5">
             <div className="flex items-center space-x-2 text-indigo-400">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <p className="text-[10px] font-bold uppercase tracking-wider">How it works</p>
+              <p className="text-xs font-bold uppercase tracking-wider">How it works</p>
             </div>
-            <p className="text-[10px] text-slate-500 leading-relaxed">
+            <p className="text-xs text-slate-400 leading-relaxed">
               We&apos;ll create a Hetzner VPS and run a Cloud-Init script to install Docker, configure your secure tunnel, and deploy your VS Code environment. No manual setup required.
             </p>
           </div>
@@ -284,7 +284,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
             <button
               type="submit"
               disabled={isSubmitting || isLoadingOptions}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 text-white font-semibold py-3 rounded-lg transition-all shadow-lg shadow-indigo-500/20 flex items-center justify-center space-x-2"
+              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-indigo-500/20 flex items-center justify-center space-x-2"
             >
               {isSubmitting ? (
                 <>
@@ -292,10 +292,10 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span>Requesting Instance...</span>
+                  <span className="text-sm">Requesting Instance...</span>
                 </>
               ) : (
-                <span>Launch DevBox ✨</span>
+                <span className="text-sm">Launch DevBox ✨</span>
               )}
             </button>
           </div>
