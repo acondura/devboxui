@@ -330,18 +330,6 @@ mkdir -p "\$C_WORKSPACE" "\$C_CONFIG/data/User"
 # Ensure user owns their home before we try to install things as them
 chown -R "\$DEV_USER":"\$DEV_USER" "\$C_HOME"
 
-# Pre-configure (Host-side) - Install Oh My Bash into the persistent config dir
-report_status "Installing Oh My Bash..."
-sudo -u "\$DEV_USER" bash -c "export HOME=\$C_CONFIG; curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh | bash -s -- --unattended" || echo "Oh My Bash install failed, continuing..."
-
-# Robust theme update (into the persistent config)
-if [ -f "\$C_CONFIG/.bashrc" ]; then
-    # Replace any OSH_THEME assignment with 90210
-    sed -i 's/OSH_THEME="[^"]*"/OSH_THEME="90210"/' "\$C_CONFIG/.bashrc"
-    # Ensure it's not commented out
-    sed -i 's/^#\\(OSH_THEME="90210"\\)/\\1/' "\$C_CONFIG/.bashrc"
-fi
-
 # Base64 encoded configs to survive all shells
 echo 'W3VzZXJdCiAgICBuYW1lID0gR2l0SHViIFVzZXIKICAgIGVtYWlsID0gZGV2Ym94QHVzZXIubG9jYWwK' | base64 -d > "\$C_CONFIG/.gitconfig"
 echo 'YmluZC1hZGRyOiAwLjAuMC4wOjg0NDMKYXV0aDogbm9uZQpjZXJ0OiBmYWxzZQo=' | base64 -d > "\$C_CONFIG/config.yaml"
@@ -402,15 +390,15 @@ docker exec -u root code-server bash -c "
     echo \"--- Installing Oh-My-Bash ---\"
     # Install for abc user in their home (/config)
     if [ ! -d /config/.oh-my-bash ]; then
-        sudo -u abc bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh) --unattended\" || true
+        sudo -u abc bash -c "curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh | bash -s -- --unattended" || true
     fi
     
     # Force theme and PATH for DDEV
-    sudo -u abc bash -c \"
-        sed -i 's/OSH_THEME=.*/OSH_THEME=\\\"90210\\\"/' /config/.bashrc
-        echo 'export PATH=\\\$PATH:/usr/local/bin' >> /config/.bashrc
+    sudo -u abc bash -c "
+        sed -i 's/OSH_THEME=.*/OSH_THEME=\"90210\"/' /config/.bashrc
+        echo 'export PATH=\$PATH:/usr/local/bin' >> /config/.bashrc
         echo 'export DDEV_NONINTERACTIVE=true' >> /config/.bashrc
-    \"
+    "
 
     echo \"--- Workspace Alignment ---\"
     # Link the container's workspace to the host-mounted workspace
