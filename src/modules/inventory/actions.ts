@@ -365,43 +365,44 @@ while ! docker ps | grep -q code-server; do
 done
 
 # Final Container Setup (Synchronous & Robust)
-docker exec -u root code-server bash -c "
+# Final Container Setup (Synchronous & Robust)
+docker exec -u root code-server bash -c '
     set -e
-    echo \"--- Configuring Container Permissions ---\"
+    echo "--- Configuring Container Permissions ---"
     chmod 666 /var/run/docker.sock || true
-    groupadd -g \$(stat -c '%g' /var/run/docker.sock) docker_host || true
+    groupadd -g $(stat -c "%g" /var/run/docker.sock) docker_host || true
     usermod -aG docker_host abc || true
-    echo \"abc ALL=(ALL) NOPASSWD:ALL\" >> /etc/sudoers
+    echo "abc ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
-    echo \"--- Installing Dependencies ---\"
+    echo "--- Installing Dependencies ---"
     apt-get update
     apt-get install -y gnupg2 curl ca-certificates git sudo vim jq
 
-    echo \"--- Installing DDEV ---\"
+    echo "--- Installing DDEV ---"
     # Container-friendly DDEV install
     curl -fsSL https://ddev.com/install.sh | bash
 
-    echo \"--- Installing Oh-My-Bash ---\"
+    echo "--- Installing Oh-My-Bash ---"
     # Install for abc user in their home (/config)
     if [ ! -d /config/.oh-my-bash ]; then
         sudo -u abc bash -c "curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh | bash -s -- --unattended" || true
     fi
     
     # Force theme and PATH for DDEV
-    sudo -u abc bash -c '
-        sed -i "s/OSH_THEME=.*/OSH_THEME=\"90210\"/" /config/.bashrc
-        echo "export PATH=\$PATH:/usr/local/bin" >> /config/.bashrc
-        echo "export DDEV_NONINTERACTIVE=true" >> /config/.bashrc
-    '
+    sudo -u abc bash -c "
+        sed -i '\''s/OSH_THEME=.*/OSH_THEME=\"90210\"/'\'' /config/.bashrc
+        echo '\''export PATH=$PATH:/usr/local/bin'\'' >> /config/.bashrc
+        echo '\''export DDEV_NONINTERACTIVE=true'\'' >> /config/.bashrc
+    "
 
-    echo \"--- Workspace Alignment ---\"
-    # Link the container's workspace to the host-mounted workspace
+    echo "--- Workspace Alignment ---"
+    # Link the container s workspace to the host-mounted workspace
     mkdir -p /config/workspace
-    ln -sfn /home/${username}/workspace /config/workspace/host || true
+    ln -sfn /home/'"${username}"'/workspace /config/workspace/host || true
     
-    echo \"--- Installing VS Code Extensions ---\"
+    echo "--- Installing VS Code Extensions ---"
     sudo -u abc code-server --install-extension xdebug.php-debug --install-extension vscodevim.vim || true
-"
+'
 
 # Firewall
 ufw allow 22/tcp
