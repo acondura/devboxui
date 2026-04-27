@@ -52,6 +52,7 @@ function getBootstrapScript(username: string, userEmail: string, tunnelToken: st
 
   return `#!/bin/bash
 set -e
+# Script Version: 2026-04-27-v3
 
 # --- 0. Configuration ---
 DEV_USER="${username}"
@@ -105,7 +106,7 @@ hetzner_heartbeat() {
             curl -s -X PUT "https://api.hetzner.cloud/v1/servers/$HETZNER_SERVER_ID" \
                 -H "Authorization: Bearer $HETZNER_TOKEN" \
                 -H "Content-Type: application/json" \
-                -d "{\"name\": \"${username}-\$clean_msg\"}" || true
+                -d "{\\\"name\\\": \\\"${username}-\$clean_msg\\\"}" || true
         elif command -v wget >/dev/null 2>&1; then
             wget -qO- --method=PUT --header="Authorization: Bearer $HETZNER_TOKEN" \
                 --header="Content-Type: application/json" \

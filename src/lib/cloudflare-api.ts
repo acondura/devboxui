@@ -264,15 +264,16 @@ export class CloudflareApiService {
 
     console.log(`[Access] Matched App: ${app.domain} (${app.id}). Checking policies...`);
 
-    const policies = await this.request<{ name: string }[]>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps/${app.id}/policies`);
-    const hasPolicy = policies.some(p => p.name === "Allow Service Tokens");
+    const policyName = `Service Token: ${serviceTokenId.slice(0, 8)}`;
+    const policies = await this.request<{ id: string; name: string; include: { service_token?: { token_id: string } }[] }[]>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps/${app.id}/policies`);
+    const existingPolicy = policies.find(p => p.name === policyName || (p.include || []).some(inc => inc.service_token?.token_id === serviceTokenId));
 
-    if (!hasPolicy) {
-      console.log(`Authorizing Service Token for ${app.domain}...`);
+    if (!existingPolicy) {
+      console.log(`Authorizing Service Token ${serviceTokenId} for ${app.domain}...`);
       await this.request(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps/${app.id}/policies`, {
         method: "POST",
         body: JSON.stringify({
-          name: "Allow Service Tokens",
+          name: policyName,
           decision: "non_identity",
           precedence: 1,
           include: [
@@ -280,6 +281,8 @@ export class CloudflareApiService {
           ]
         })
       });
+    } else {
+      console.log(`Service Token ${serviceTokenId} already authorized for ${app.domain}.`);
     }
   }
 }
