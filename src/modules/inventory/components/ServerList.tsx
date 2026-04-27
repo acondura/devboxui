@@ -107,7 +107,18 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { se
               </>
             )}
           </div>
-          <div className="flex items-center space-x-2 mt-1.5 group/ip">
+          <div className="flex items-center space-x-2 mt-2">
+            {server.hetznerStatus && (
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-tighter ${
+                server.hetznerStatus === 'running' ? 'bg-emerald-500/10 text-emerald-500' : 
+                server.hetznerStatus === 'off' ? 'bg-red-500/10 text-red-500' :
+                'bg-amber-500/10 text-amber-500'
+              }`}>
+                {server.hetznerStatus}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center space-x-2 mt-0.5 group/ip">
             <p className="text-xl font-mono text-indigo-400" title="Public IP address of your DevBox">{server.ip}</p>
             <CopyButton value={server.ip} />
           </div>

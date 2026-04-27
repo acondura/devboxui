@@ -769,6 +769,7 @@ export async function getServers() {
         if (hs) {
           // Sync live data
           s.isLocked = hs.protection?.delete || false;
+          s.hetznerStatus = hs.status;
           if (hs.public_net?.ipv4?.ip) s.ip = hs.public_net.ipv4.ip;
 
           // 2. Check for Heartbeat in name (e.g. "opis-Installing-Docker")
@@ -849,6 +850,7 @@ export async function getServers() {
           createdAt: hs.created,
           updatedAt: hs.created,
           hetznerServerId: hs.id,
+          hetznerStatus: hs.status,
           isLocked: hs.protection?.delete || false,
           logs: ['Server discovered from Hetzner API.'],
           tunnelUrl: `http://${ip}`,
