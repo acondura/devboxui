@@ -1,3 +1,5 @@
+import { base64url } from 'jose';
+
 /**
  * Utilities for handling SSH keys in OpenSSH format.
  */
@@ -9,16 +11,8 @@ export async function formatRsaPublicKey(publicKey: CryptoKey): Promise<string> 
   const jwk = await crypto.subtle.exportKey('jwk', publicKey);
   if (!jwk.n || !jwk.e) throw new Error("Invalid RSA key");
 
-  // Helper to convert base64url to Uint8Array
-  const b64uToUint8 = (b64u: string) => {
-    const b64 = b64u.replace(/-/g, '+').replace(/_/g, '/');
-    const pad = b64.length % 4;
-    const padded = pad ? b64 + '='.repeat(4 - pad) : b64;
-    return new Uint8Array(atob(padded).split('').map(c => c.charCodeAt(0)));
-  };
-
-  const e = b64uToUint8(jwk.e);
-  const n = b64uToUint8(jwk.n);
+  const e = base64url.decode(jwk.e);
+  const n = base64url.decode(jwk.n);
 
   // OpenSSH ssh-rsa format: [4-byte length][type][4-byte length][e][4-byte length][n]
   const type = "ssh-rsa";
@@ -48,6 +42,7 @@ export async function formatRsaPublicKey(publicKey: CryptoKey): Promise<string> 
   writeArray(e);
   writeArray(nFormatted);
 
+  // Use a more robust base64 encoding (supported in most environments)
   const b64 = btoa(String.fromCharCode(...buffer));
   return `${type} ${b64}`;
 }

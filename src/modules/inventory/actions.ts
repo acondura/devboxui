@@ -478,8 +478,9 @@ export async function getUserSettings() {
   const data = await kv.get(`settings:${userEmail}`);
   const settings = data ? JSON.parse(data) : { hetznerToken: '', sshPublicKey: '', sshPrivateKey: '' };
 
-  // Auto-generate SSH keys if missing or in old invalid format
-  const isOldFormat = settings.sshPublicKey && !settings.sshPublicKey.startsWith('ssh-rsa');
+  // Auto-generate SSH keys if missing or in old/invalid format
+  // We check for 'ssh-rsa' prefix AND a version flag to ensure everyone gets the fixed format
+  const isOldFormat = settings.sshPublicKey && (!settings.sshPublicKey.startsWith('ssh-rsa') || settings.sshKeyVersion !== 'v2');
   
   if (!settings.sshPublicKey || !settings.sshPrivateKey || isOldFormat) {
     try {
@@ -499,6 +500,7 @@ export async function getUserSettings() {
 
       settings.sshPrivateKey = await formatPrivateKey(keyPair.privateKey);
       settings.sshPublicKey = await formatRsaPublicKey(keyPair.publicKey);
+      settings.sshKeyVersion = 'v2';
       
       await kv.put(`settings:${userEmail}`, JSON.stringify(settings));
     } catch {
@@ -646,11 +648,17 @@ export async function provisionServer(
         const foundKey = existingKeys.find(ex => ex.public_key.trim().includes(cleanedKey));
         
         if (foundKey) {
+          console.log(`Key '${k.name}' already exists on Hetzner (ID: ${foundKey.id})`);
           sshKeyIds.push(foundKey.id);
         } else {
-          console.log(`Registering key '${k.name}' with Hetzner...`);
+          console.log(`Registering key '${k.name}' with Hetzner... Content start: ${k.key.substring(0, 30)}...`);
           const created = await hetznerApi.createSSHKey(k.name, k.key);
-          if (created) sshKeyIds.push(created.id);
+          if (created) {
+            console.log(`Successfully registered key '${k.name}' (ID: ${created.id})`);
+            sshKeyIds.push(created.id);
+          } else {
+            console.warn(`Key '${k.name}' registration returned null (likely conflict).`);
+          }
         }
       } catch (e) {
         console.error(`Warning: Failed to register SSH key ${k.name}:`, e);

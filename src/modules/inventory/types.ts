@@ -22,6 +22,7 @@ export interface ServerConfig {
   detailedStatus?: string;
   provisioningToken?: string;
   statusLog?: string[];
+  sshKeyVersion?: string;
 }
 
 export interface ProvisioningState {
