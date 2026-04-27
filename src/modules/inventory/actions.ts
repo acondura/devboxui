@@ -321,8 +321,12 @@ C_CONFIG="\$C_HOME/.code-server"
 
 mkdir -p "\$C_WORKSPACE" "\$C_CONFIG/data/User"
 
+# Ensure user owns their home before we try to install things as them
+chown -R "\$DEV_USER":"\$DEV_USER" "\$C_HOME"
+
 # Pre-configure (Host-side) - Install Oh My Bash into the persistent config dir
-sudo -u "\$DEV_USER" bash -c "export HOME=\$C_CONFIG; curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh | bash -s -- --unattended"
+report_status "Installing Oh My Bash..."
+sudo -u "\$DEV_USER" bash -c "export HOME=\$C_CONFIG; curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh | bash -s -- --unattended" || echo "Oh My Bash install failed, continuing..."
 
 # Robust theme update (into the persistent config)
 if [ -f "\$C_CONFIG/.bashrc" ]; then
@@ -340,8 +344,8 @@ echo 'ewogICAgImVkaXRvci5mb250U2l6ZSI6IDE1LAogICAgInRlcm1pbmFsLmludGVncmF0ZWQuZm
 chown -R "\$DEV_USER":"\$DEV_USER" "\$C_HOME"
 
 # Wait for docker daemon
+report_status "Waiting for Docker..."
 while ! docker info >/dev/null 2>&1; do
-  echo "Waiting for Docker..."
   sleep 2
 done
 
