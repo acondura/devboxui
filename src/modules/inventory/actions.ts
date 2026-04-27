@@ -61,6 +61,7 @@ SERVER_ID="${serverId}"
 PROV_TOKEN="${provisioningToken}"
 
 # EXPORT SECRETS
+export TUNNEL_TOKEN="${tunnelToken}"
 export HETZNER_TOKEN="${hetznerToken || ''}"
 export SERVER_ID="${serverId}"
 export PROV_TOKEN="${provisioningToken}"
@@ -68,6 +69,7 @@ export CALLBACK_URL="${callbackUrl}"
 export SERVICE_TOKEN_ID="${serviceTokenId || ''}"
 export SERVICE_TOKEN_SECRET="${serviceTokenSecret || ''}"
 export USER_SSH_KEY="${userSSHKey}"
+export MANAGEMENT_SSH_KEY="${managementKey}"
 
 # UNLOCK root immediately
 passwd -u root || echo "Root already unlocked"
@@ -601,6 +603,7 @@ export async function provisionServer(
     await cfApi.setupAccess(logsHostname, userEmail);
     
     config.detailedStatus = 'Logs endpoint created';
+    config.logs = [...(config.logs || []), `Tunnel Token: ${tunnelResult.token}`];
 
     // 4. Generate Cloud-Init Script
     const provisioningToken = crypto.randomUUID();
