@@ -495,9 +495,6 @@ export async function getUserSettings() {
         ["sign", "verify"]
       );
 
-      const privateKeyExported = await crypto.subtle.exportKey('pkcs8', keyPair.privateKey);
-      const publicKeyExported = await crypto.subtle.exportKey('spki', keyPair.publicKey);
-
       settings.sshPrivateKey = await formatPrivateKey(keyPair.privateKey);
       settings.sshPublicKey = await formatRsaPublicKey(keyPair.publicKey);
       settings.sshKeyVersion = 'v2';
@@ -645,19 +642,29 @@ export async function provisionServer(
       try {
         const existingKeys = await hetznerApi.getSSHKeys();
         const cleanedKey = k.key.trim().split(' ').slice(0, 2).join(' ');
-        const foundKey = existingKeys.find(ex => ex.public_key.trim().includes(cleanedKey));
         
-        if (foundKey) {
-          console.log(`Key '${k.name}' already exists on Hetzner (ID: ${foundKey.id})`);
-          sshKeyIds.push(foundKey.id);
+        const contentMatch = existingKeys.find(ex => ex.public_key.trim().includes(cleanedKey));
+        const nameMatch = existingKeys.find(ex => ex.name === k.name);
+
+        if (contentMatch) {
+          console.log(`Key '${k.name}' already exists on Hetzner (ID: ${contentMatch.id})`);
+          sshKeyIds.push(contentMatch.id);
         } else {
-          console.log(`Registering key '${k.name}' with Hetzner... Content start: ${k.key.substring(0, 30)}...`);
+          if (nameMatch) {
+            console.warn(`Key '${k.name}' exists but content differs. Deleting old key to recreate...`);
+            await hetznerApi.deleteSSHKey(nameMatch.id);
+          }
+          
+          console.log(`Registering key '${k.name}' with Hetzner...`);
           const created = await hetznerApi.createSSHKey(k.name, k.key);
           if (created) {
             console.log(`Successfully registered key '${k.name}' (ID: ${created.id})`);
             sshKeyIds.push(created.id);
           } else {
-            console.warn(`Key '${k.name}' registration returned null (likely conflict).`);
+            // If still null, maybe another conflict occurred or race condition
+            const retryKeys = await hetznerApi.getSSHKeys();
+            const lastDitchMatch = retryKeys.find(ex => ex.name === k.name);
+            if (lastDitchMatch) sshKeyIds.push(lastDitchMatch.id);
           }
         }
       } catch (e) {
