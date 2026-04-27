@@ -1,47 +1,91 @@
-# OpenNext Starter
+# 🚀 DevBox UI
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+**DevBox UI** is a powerful, modern platform designed for the programmatic provisioning and management of high-performance remote development environments on **VPS providers**. 
 
-## Getting Started
+Currently optimized for **Hetzner Cloud** (with more providers to come), DevBox UI transforms raw infrastructure into a fully-configured, secure developer workspace in minutes.
 
-Read the documentation at https://opennext.js.org/cloudflare.
+---
 
-## Develop
+## ✨ Core Features
 
-Run the Next.js development server:
+### 🏗 Automated Infrastructure
+- **Hetzner Cloud Integration**: Full lifecycle management including rapid instance provisioning, configuration, and state tracking.
+- **Dynamic Heartbeats**: Real-time status reporting (e.g., `Installing-Docker`, `Finalizing-Container`) directly to the dashboard.
+- **Smart User Management**: Automated user creation, SSH key synchronization, and tailored sudo access.
 
-```bash
-npm run dev
-# or similar package manager command
-```
+### 💻 Ready-to-Use Web IDE
+- **code-server (VS Code)**: Instant deployment of a containerized IDE, pre-configured with Xdebug and Vim extensions.
+- **Modern Developer Shell**:
+    - **Oh My Bash**: Pre-configured with the premium `90210` theme.
+    - **DDEV & Docker**: Automated setup for container-based development, including optimized PATHs and dependencies.
+- **Persistent Configuration**: Consolidated host-side directory structure under `/home/{user}/.code-server` for settings, extensions, and workspaces.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 🔒 Zero-Trust Security & Connectivity
+- **Cloudflare Tunnel**: Secure internet exposure without opening any public ports.
+- **Cloudflare Access**: Integrated identity-based authentication policies for every instance.
+- **Non-Interactive Sudo**: Secure passwordless sudo specifically for the container environment (`abc` user) for a seamless terminal experience.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-## Preview
+## 🛠 Technical Specifications
 
-Preview the application locally on the Cloudflare runtime:
+- **Frontend/Backend**: [Next.js 15.5](https://nextjs.org/) (utilizing **App Router**)
+- **UI/UX**: [React 19](https://react.dev/) & [Tailwind CSS 4.0](https://tailwindcss.com/)
+- **Environment**: [TypeScript 5.7](https://www.typescriptlang.org/)
+- **Deployment**: [Cloudflare Pages](https://pages.cloudflare.com/) (via `@opennextjs/cloudflare`)
+- **Infrastructure**: Hetzner Cloud API & Cloudflare Zero Trust (Tunnels & Access)
 
-```bash
-npm run preview
-# or similar package manager command
-```
+---
 
-## Deploy
+## 📦 Getting Started
 
-Deploy the application to Cloudflare:
+### Prerequisites
 
+You will need the following API tokens:
+- **Hetzner Cloud**: A Read/Write API token.
+- **Cloudflare**: API token with `Cloudflare Tunnel` and `Access Policy` permissions.
+
+### Installation & Development
+
+1. **Install Dependencies**:
+   ```bash
+   npm install
+   ```
+
+2. **Run Local Development**:
+   ```bash
+   npm run dev
+   ```
+
+3. **Build & Preview (Cloudflare Runtime)**:
+   ```bash
+   npm run pages-build
+   npm run preview
+   ```
+
+### Deployment
+
+Deploy to Cloudflare Pages using the integrated OpenNext adapter:
 ```bash
 npm run deploy
-# or similar package manager command
 ```
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## 🏗 Architecture Overview
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+DevBox UI acts as an orchestrator between your cloud provider and security layer:
+1. **Infrastructure**: Creates a VPS and injects a specialized `cloud-init` bootstrap script.
+2. **Security**: Programmatically creates Cloudflare Access policies and authorizes service tokens.
+3. **Provisioning**: The bootstrap script installs Docker, deploys the `code-server` container, and configures the environment.
+4. **Connectivity**: An integrated `cloudflared` agent connects the server to your secure tunnel.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
+
+## 📜 License
+
+This project is intended for personal/internal use.
+
+---
+
+*Built for speed, security, and developer happiness.*
