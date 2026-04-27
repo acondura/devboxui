@@ -4,6 +4,7 @@ import { ServerConfig } from './types';
 import { getCloudflareEnv, getIdentity } from '@/lib/auth';
 import { CloudflareApiService } from '@/lib/cloudflare-api';
 import { HetznerApiService } from '@/lib/hetzner-api';
+import { formatRsaPublicKey, formatPrivateKey } from '@/lib/ssh-utils';
 
 /**
  * Executes a command on a remote server via the SSH-as-a-Service Worker.
@@ -477,8 +478,10 @@ export async function getUserSettings() {
   const data = await kv.get(`settings:${userEmail}`);
   const settings = data ? JSON.parse(data) : { hetznerToken: '', sshPublicKey: '', sshPrivateKey: '' };
 
-  // Auto-generate SSH keys if missing
-  if (!settings.sshPublicKey || !settings.sshPrivateKey) {
+  // Auto-generate SSH keys if missing or in old invalid format
+  const isOldFormat = settings.sshPublicKey && !settings.sshPublicKey.startsWith('ssh-rsa');
+  
+  if (!settings.sshPublicKey || !settings.sshPrivateKey || isOldFormat) {
     try {
       const keyPair = await crypto.subtle.generateKey(
         {
@@ -494,12 +497,8 @@ export async function getUserSettings() {
       const privateKeyExported = await crypto.subtle.exportKey('pkcs8', keyPair.privateKey);
       const publicKeyExported = await crypto.subtle.exportKey('spki', keyPair.publicKey);
 
-      // Helper to convert ArrayBuffer to Base64 (inline for Edge safety)
-      const toBase64 = (buf: ArrayBuffer) => btoa(String.fromCharCode(...new Uint8Array(buf)));
-      const toPem = (b64: string, t: string) => `-----BEGIN ${t}-----\n${b64.match(/.{1,64}/g)?.join('\n')}\n-----END ${t}-----`;
-
-      settings.sshPrivateKey = toPem(toBase64(privateKeyExported), 'RSA PRIVATE KEY');
-      settings.sshPublicKey = toPem(toBase64(publicKeyExported), 'PUBLIC KEY');
+      settings.sshPrivateKey = await formatPrivateKey(keyPair.privateKey);
+      settings.sshPublicKey = await formatRsaPublicKey(keyPair.publicKey);
       
       await kv.put(`settings:${userEmail}`, JSON.stringify(settings));
     } catch {
