@@ -314,25 +314,27 @@ if [ -n "$TUNNEL_TOKEN" ]; then
 fi
 
 # --- 5. Deploy Code-Server ---
-C_ROOT="/home/\$DEV_USER"
-mkdir -p "\$C_ROOT/workspace" "\$C_ROOT/config/data/User"
+# --- 5. Deploy Code-Server ---
+C_HOME="/home/\$DEV_USER"
+C_WORKSPACE="\$C_HOME/workspace"
+C_CONFIG="\$C_HOME/.code-server"
 
-# Pre-configure (Host-side)
-sudo -u "\$DEV_USER" bash -c "export HOME=\$C_ROOT; curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh | bash -s -- --unattended"
+mkdir -p "\$C_WORKSPACE" "\$C_CONFIG/data/User"
 
-# Robust theme update (Host)
-if [ -f "\$C_ROOT/.bashrc" ]; then
-    grep -v "OSH_THEME=" "\$C_ROOT/.bashrc" > "\$C_ROOT/.bashrc.tmp"
-    echo 'OSH_THEME="90210"' >> "\$C_ROOT/.bashrc.tmp"
-    mv "\$C_ROOT/.bashrc.tmp" "\$C_ROOT/.bashrc"
+# Pre-configure (Host-side) - Install Oh My Bash into the persistent config dir
+sudo -u "\$DEV_USER" bash -c "export HOME=\$C_CONFIG; curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh | bash -s -- --unattended"
+
+# Robust theme update (into the persistent config)
+if [ -f "\$C_CONFIG/.bashrc" ]; then
+    sed -i 's/OSH_THEME=.*/OSH_THEME="90210"/' "\$C_CONFIG/.bashrc"
 fi
 
 # Base64 encoded configs to survive all shells
-echo 'W3VzZXJdCiAgICBuYW1lID0gR2l0SHViIFVzZXIKICAgIGVtYWlsID0gZGV2Ym94QHVzZXIubG9jYWwK' | base64 -d > "\$C_ROOT/.gitconfig"
-echo 'YmluZC1hZGRyOiAwLjAuMC4wOjg0NDMKYXV0aDogbm9uZQpjZXJ0OiBmYWxzZQo=' | base64 -d > "\$C_ROOT/config/config.yaml"
-echo 'ewogICAgImVkaXRvci5mb250U2l6ZSI6IDE1LAogICAgInRlcm1pbmFsLmludGVncmF0ZWQuZm9udFNpemUiOiAxNSwKICAgICJ3b3JrYmVuY2guY29sb3JUaGVtZSI6ICJEYXJrKyIKfQo=' | base64 -d > "\$C_ROOT/config/data/User/settings.json"
+echo 'W3VzZXJdCiAgICBuYW1lID0gR2l0SHViIFVzZXIKICAgIGVtYWlsID0gZGV2Ym94QHVzZXIubG9jYWwK' | base64 -d > "\$C_CONFIG/.gitconfig"
+echo 'YmluZC1hZGRyOiAwLjAuMC4wOjg0NDMKYXV0aDogbm9uZQpjZXJ0OiBmYWxzZQo=' | base64 -d > "\$C_CONFIG/config.yaml"
+echo 'ewogICAgImVkaXRvci5mb250U2l6ZSI6IDE1LAogICAgInRlcm1pbmFsLmludGVncmF0ZWQuZm9udFNpemUiOiAxNSwKICAgICJ3b3JrYmVuY2guY29sb3JUaGVtZSI6ICJEYXJrKyIKfQo=' | base64 -d > "\$C_CONFIG/data/User/settings.json"
 
-chown -R "\$DEV_USER":"\$DEV_USER" "\$C_ROOT"
+chown -R "\$DEV_USER":"\$DEV_USER" "\$C_HOME"
 
 # Wait for docker daemon
 while ! docker info >/dev/null 2>&1; do
@@ -346,9 +348,9 @@ docker run -d \\
   --name=code-server \\
   -e PUID=1000 -e PGID=1000 \\
   -e SUDO_PASSWORD= \\
-  -e DEFAULT_WORKSPACE=/home/\$DEV_USER/workspace \\
-  -v /home/\$DEV_USER/config:/config \\
-  -v /home/\$DEV_USER:/home/\$DEV_USER \\
+  -e DEFAULT_WORKSPACE=/config/workspace \\
+  -v "\$C_CONFIG:/config" \\
+  -v "\$C_WORKSPACE:/config/workspace" \\
   -v /var/run/docker.sock:/var/run/docker.sock \\
   -v /usr/bin/docker:/usr/bin/docker \\
   -v /usr/libexec/docker/cli-plugins:/usr/libexec/docker/cli-plugins \\
