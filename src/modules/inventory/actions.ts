@@ -255,7 +255,6 @@ if ! id "$DEV_USER" &>/dev/null; then
         chage -d $(date +%Y-%m-%d) "$DEV_USER"
     fi
     usermod -aG sudo "$DEV_USER"
-    echo "$DEV_USER ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/"$DEV_USER"
 fi
 
 # --- 2. SSH Key Synchronization ---
@@ -389,6 +388,8 @@ docker exec -d -u root code-server bash -c "
     
     # Permissions & Initializations
     echo 'abc ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/abc
+    chmod 0440 /etc/sudoers.d/abc
+    echo 'abc ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
     sudo -u abc mkcert -install || true
     
     # Extensions
