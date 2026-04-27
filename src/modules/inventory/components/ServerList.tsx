@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ServerConfig } from '../types';
 import { AddDomainModal } from './AddDomainModal';
-import { getServerLogs, forceReadyServer } from '../actions';
+import { getServerLogs } from '../actions';
 
 interface ServerListProps {
   servers: ServerConfig[];
@@ -151,24 +151,6 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { se
               )}
               <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover/lock:opacity-100 transition-opacity bg-slate-700 text-white text-[10px] py-1 px-2 rounded pointer-events-none whitespace-nowrap z-50">
                 {server.isLocked ? 'Unlock to allow deletion' : 'Lock to prevent accidental deletion'}
-              </div>
-            </button>
-          )}
-          {server.status === 'provisioning' && (
-            <button 
-              onClick={async () => {
-                if (confirm('Manually mark this server as READY? This skips waiting for the setup status but does NOT stop the setup script.')) {
-                  await forceReadyServer(server.id);
-                  window.location.reload();
-                }
-              }}
-              className="p-1.5 text-slate-500 hover:text-emerald-500 hover:bg-slate-800 rounded transition-colors group/ready relative"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover/ready:opacity-100 transition-opacity bg-slate-700 text-white text-[10px] py-1 px-2 rounded pointer-events-none whitespace-nowrap z-50">
-                Force server to &apos;Ready&apos; state
               </div>
             </button>
           )}

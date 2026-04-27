@@ -1074,37 +1074,3 @@ export async function getServerLogs(serverId: string) {
   }
 }
 
-/**
- * Manually forces a server's status to 'ready'.
- */
-export async function forceReadyServer(serverId: string) {
-  const userEmail = await getIdentity();
-  const env = await getCloudflareEnv();
-  const kv = env.KV;
-
-  if (!kv) throw new Error("KV database missing.");
-
-  const list = await kv.list({ prefix: `servers:${userEmail}:` });
-  let serverKey = "";
-  let config: ServerConfig | null = null;
-
-  for (const key of list.keys) {
-    const val = await kv.get(key.name);
-    if (!val) continue;
-    const c = JSON.parse(val) as ServerConfig;
-    if (c.id === serverId) {
-      serverKey = key.name;
-      config = c;
-      break;
-    }
-  }
-
-  if (!config || !serverKey) throw new Error("Server not found.");
-
-  config.status = 'ready';
-  config.detailedStatus = 'Manually forced to ready';
-  config.updatedAt = new Date().toISOString();
-
-  await kv.put(serverKey, JSON.stringify(config));
-  return config;
-}
