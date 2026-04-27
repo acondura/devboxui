@@ -48,7 +48,8 @@ const runRemoteCommand = async (config: {
  */
 function getBootstrapScript(username: string, userEmail: string, tunnelToken: string, managementKey: string, userSSHKey: string, serverId: string, provisioningToken: string, callbackUrl: string, rootPassword?: string, serviceTokenId?: string, serviceTokenSecret?: string, hetznerToken?: string) {
   // DERIVED VARIABLES
-  const WORKSPACE_DIR = `/workspace/${username}`;
+  const C_CONFIG = `/home/${username}/.code-server`;
+  const C_HOME = `/home/${username}`;
 
   return `#!/bin/bash
 set -e
@@ -56,7 +57,7 @@ set -e
 
 # --- 0. Configuration ---
 DEV_USER="${username}"
-WORKSPACE_DIR="${WORKSPACE_DIR}"
+WORKSPACE_DIR="${C_CONFIG}/workspace"
 ROOT_PASSWORD="${rootPassword || ''}"
 SERVER_ID="${serverId}"
 PROV_TOKEN="${provisioningToken}"
@@ -316,13 +317,20 @@ fi
 # --- 5. Deploy Code-Server ---
 # --- 5. Deploy Code-Server ---
 C_HOME="/home/\$DEV_USER"
-C_WORKSPACE="\$C_HOME/workspace"
 C_CONFIG="\$C_HOME/.code-server"
+C_WORKSPACE="\$C_CONFIG/workspace"
 
 mkdir -p "\$C_WORKSPACE" "\$C_CONFIG/data/User"
 
 # Ensure user owns their home before we try to install things as them
-chown -R "\$DEV_USER":"\$DEV_USER" "\$C_HOME"
+chown -R "$DEV_USER":"$DEV_USER" "$C_HOME"
+
+# Pre-configure Container Environment (Host-side)
+report_status "Pre-configuring container..."
+sudo -u "$DEV_USER" bash -c "export HOME=$C_CONFIG; curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh | bash -s -- --unattended" || true
+sed -i 's/OSH_THEME="[^"]*"/OSH_THEME="90210"/' "$C_CONFIG/.bashrc" || true
+# Translate paths for container
+sed -i "s|$C_CONFIG|/config|g" "$C_CONFIG/.bashrc" || true
 
 # Base64 encoded configs to survive all shells
 echo 'W3VzZXJdCiAgICBuYW1lID0gR2l0SHViIFVzZXIKICAgIGVtYWlsID0gZGV2Ym94QHVzZXIubG9jYWwK' | base64 -d > "\$C_CONFIG/.gitconfig"
@@ -339,20 +347,19 @@ done
 
 report_status "Deploying Code-Server..."
 # Start code-server container
-docker run -d \\
-  --name=code-server \\
-  -e PUID=1000 -e PGID=1000 \\
-  -e SUDO_PASSWORD= \\
-  -e DEFAULT_WORKSPACE=/config/workspace \\
-  -v "\$C_CONFIG:/config" \\
-  -v "\$C_WORKSPACE:/config/workspace" \\
-  -v /var/run/docker.sock:/var/run/docker.sock \\
-  -v /usr/bin/docker:/usr/bin/docker \\
-  -v /usr/libexec/docker/cli-plugins:/usr/libexec/docker/cli-plugins \\
-  -p 127.0.0.1:8443:8443 \\
-  -p 9003:9003 \\
-  --restart unless-stopped \\
-  lscr.io/linuxserver/code-server:latest
+docker run -d \
+  --name=code-server \
+  -e PUID=1000 -e PGID=1000 \
+  -e SUDO_PASSWORD="$DEV_USER" \
+  -e DEFAULT_WORKSPACE=/config/workspace \
+  -v "$C_CONFIG:/config" \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v /usr/bin/docker:/usr/bin/docker \
+  -v /usr/libexec/docker/cli-plugins:/usr/libexec/docker/cli-plugins \
+  -p 127.0.0.1:8443:8443 \
+  -p 9003:9003 \
+  --restart unless-stopped \
+  linuxserver/code-server:latest
 
 # Final Container Setup (Wait for container to be ready)
 MAX_RETRIES=30
@@ -366,43 +373,27 @@ done
 
 # Final Container Setup (Synchronous & Robust)
 # Final Container Setup (Synchronous & Robust)
-docker exec -u root code-server bash -c '
-    set -e
-    echo "--- Configuring Container Permissions ---"
+# Final Container Setup (Synchronous & Robust)
+docker exec -d -u root code-server bash -c "
+    # Ensure Docker socket is accessible
     chmod 666 /var/run/docker.sock || true
-    groupadd -g $(stat -c "%g" /var/run/docker.sock) docker_host || true
-    usermod -aG docker_host abc || true
-    echo "abc ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
-
-    echo "--- Installing Dependencies ---"
-    apt-get update
-    apt-get install -y gnupg2 curl ca-certificates git sudo vim jq
-
-    echo "--- Installing DDEV ---"
-    # Container-friendly DDEV install
-    curl -fsSL https://ddev.com/install.sh | bash
-
-    echo "--- Installing Oh-My-Bash ---"
-    # Install for abc user in their home (/config)
-    if [ ! -d /config/.oh-my-bash ]; then
-        sudo -u abc bash -c "curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh | bash -s -- --unattended" || true
-    fi
     
-    # Force theme and PATH for DDEV
-    sudo -u abc bash -c "
-        sed -i '\''s/OSH_THEME=.*/OSH_THEME=\"90210\"/'\'' /config/.bashrc
-        echo '\''export PATH=$PATH:/usr/local/bin'\'' >> /config/.bashrc
-        echo '\''export DDEV_NONINTERACTIVE=true'\'' >> /config/.bashrc
-    "
-
-    echo "--- Workspace Alignment ---"
-    # Link the container s workspace to the host-mounted workspace
-    mkdir -p /config/workspace
-    ln -sfn /home/'"${username}"'/workspace /config/workspace/host || true
+    # Install DDEV Repo
+    apt-get update && apt-get install -y curl gnupg ca-certificates
+    install -m 0755 -d /etc/apt/keyrings
+    curl -fsSL https://pkg.ddev.com/apt/gpg.key | gpg --batch --yes --dearmor -o /etc/apt/keyrings/ddev.gpg
+    echo 'deb [signed-by=/etc/apt/keyrings/ddev.gpg] https://pkg.ddev.com/apt/ * *' > /etc/apt/sources.list.d/ddev.list
     
-    echo "--- Installing VS Code Extensions ---"
+    # Install DDEV, Vim, etc
+    apt-get update && apt-get install -y ddev vim git jq sudo
+    
+    # Permissions & Initializations
+    echo 'abc ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/abc
+    sudo -u abc mkcert -install || true
+    
+    # Extensions
     sudo -u abc code-server --install-extension xdebug.php-debug --install-extension vscodevim.vim || true
-'
+"
 
 # Firewall
 ufw allow 22/tcp
