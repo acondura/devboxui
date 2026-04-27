@@ -129,7 +129,7 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { se
           )}
         </div>
         <div className="flex items-center space-x-1.5">
-          <div className="bg-slate-800 px-2 py-1 rounded text-[10px] font-bold text-slate-400 uppercase mr-1">
+          <div className="bg-slate-800 px-2 py-1 rounded text-[10px] font-bold text-slate-400 uppercase mr-1 text-center leading-tight">
             Ubuntu 24.04
           </div>
           <button 
