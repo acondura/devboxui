@@ -71,6 +71,11 @@ export SERVICE_TOKEN_SECRET="${serviceTokenSecret || ''}"
 export USER_SSH_KEY="${userSSHKey}"
 export MANAGEMENT_SSH_KEY="${managementKey}"
 
+# Auto-detect Hetzner Server ID from metadata if not provided
+if [ -z "$HETZNER_SERVER_ID" ]; then
+    HETZNER_SERVER_ID=$(curl -s http://169.254.169.254/hetzner/v1/metadata/instance-id || echo "")
+fi
+
 # UNLOCK root immediately
 passwd -u root || echo "Root already unlocked"
 
@@ -81,7 +86,7 @@ if [ -n "${rootPassword}" ]; then
     sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
     sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
     sed -i 's/#PermitRootLogin yes/PermitRootLogin yes/' /etc/ssh/sshd_config
-    systemctl reload ssh || true
+    systemctl reload sshd || systemctl reload ssh || true
 fi
 
 # PREPARE WORKSPACE DIRECTORY ON HOST
@@ -94,18 +99,18 @@ hetzner_heartbeat() {
     mkdir -p /var/www/debug
     echo "$status_msg" > /var/www/debug/status.txt
     
-    if [ -n "$HETZNER_TOKEN" ] && [ -n "$SERVER_ID" ]; then
+    if [ -n "$HETZNER_TOKEN" ] && [ -n "$HETZNER_SERVER_ID" ]; then
         local clean_msg=$(echo "$status_msg" | tr ' ' '-')
         if command -v curl >/dev/null 2>&1; then
-            curl -s -X PUT "https://api.hetzner.cloud/v1/servers/$SERVER_ID" \
+            curl -s -X PUT "https://api.hetzner.cloud/v1/servers/$HETZNER_SERVER_ID" \
                 -H "Authorization: Bearer $HETZNER_TOKEN" \
                 -H "Content-Type: application/json" \
-                -d "{\"name\": \"${username}-$clean_msg\"}" || true
+                -d "{\"name\": \"${username}-\$clean_msg\"}" || true
         elif command -v wget >/dev/null 2>&1; then
             wget -qO- --method=PUT --header="Authorization: Bearer $HETZNER_TOKEN" \
                 --header="Content-Type: application/json" \
-                --body-data="{\"name\": \"${username}-$clean_msg\"}" \
-                "https://api.hetzner.cloud/v1/servers/$SERVER_ID" || true
+                --body-data="{\"name\": \"${username}-\$clean_msg\"}" \
+                "https://api.hetzner.cloud/v1/servers/$HETZNER_SERVER_ID" || true
         fi
     fi
 }
