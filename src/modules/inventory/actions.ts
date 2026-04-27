@@ -326,7 +326,10 @@ sudo -u "\$DEV_USER" bash -c "export HOME=\$C_CONFIG; curl -fsSL https://raw.git
 
 # Robust theme update (into the persistent config)
 if [ -f "\$C_CONFIG/.bashrc" ]; then
-    sed -i 's/OSH_THEME=.*/OSH_THEME="90210"/' "\$C_CONFIG/.bashrc"
+    # Replace any OSH_THEME assignment with 90210
+    sed -i 's/OSH_THEME="[^"]*"/OSH_THEME="90210"/' "\$C_CONFIG/.bashrc"
+    # Ensure it's not commented out
+    sed -i 's/^#\\(OSH_THEME="90210"\\)/\\1/' "\$C_CONFIG/.bashrc"
 fi
 
 # Base64 encoded configs to survive all shells
