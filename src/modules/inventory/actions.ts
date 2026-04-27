@@ -103,15 +103,9 @@ hetzner_heartbeat() {
     if [ -n "$HETZNER_TOKEN" ] && [ -n "$HETZNER_SERVER_ID" ]; then
         local clean_msg=$(echo "$status_msg" | tr ' ' '-')
         if command -v curl >/dev/null 2>&1; then
-            curl -s -X PUT "https://api.hetzner.cloud/v1/servers/$HETZNER_SERVER_ID" \
-                -H "Authorization: Bearer $HETZNER_TOKEN" \
-                -H "Content-Type: application/json" \
-                -d "{\\\"name\\\": \\\"${username}-\$clean_msg\\\"}" || true
+            curl -s -X PUT "https://api.hetzner.cloud/v1/servers/$HETZNER_SERVER_ID" -H "Authorization: Bearer $HETZNER_TOKEN" -H "Content-Type: application/json" -d '{"name": "'"${username}-\$clean_msg"'"}' || true
         elif command -v wget >/dev/null 2>&1; then
-            wget -qO- --method=PUT --header="Authorization: Bearer $HETZNER_TOKEN" \
-                --header="Content-Type: application/json" \
-                --body-data="{\"name\": \"${username}-\$clean_msg\"}" \
-                "https://api.hetzner.cloud/v1/servers/$HETZNER_SERVER_ID" || true
+            wget -qO- --method=PUT --header="Authorization: Bearer $HETZNER_TOKEN" --header="Content-Type: application/json" --body-data='{"name": "'"${username}-\$clean_msg"'"}' "https://api.hetzner.cloud/v1/servers/$HETZNER_SERVER_ID" || true
         fi
     fi
 }
@@ -394,11 +388,11 @@ docker exec -u root code-server bash -c "
     fi
     
     # Force theme and PATH for DDEV
-    sudo -u abc bash -c "
-        sed -i 's/OSH_THEME=.*/OSH_THEME=\"90210\"/' /config/.bashrc
-        echo 'export PATH=\$PATH:/usr/local/bin' >> /config/.bashrc
-        echo 'export DDEV_NONINTERACTIVE=true' >> /config/.bashrc
-    "
+    sudo -u abc bash -c '
+        sed -i "s/OSH_THEME=.*/OSH_THEME=\"90210\"/" /config/.bashrc
+        echo "export PATH=\$PATH:/usr/local/bin" >> /config/.bashrc
+        echo "export DDEV_NONINTERACTIVE=true" >> /config/.bashrc
+    '
 
     echo \"--- Workspace Alignment ---\"
     # Link the container's workspace to the host-mounted workspace
