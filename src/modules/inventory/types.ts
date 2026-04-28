@@ -3,7 +3,7 @@ export interface ServerConfig {
   ip: string;
   userName: string;
   userEmail: string;
-  status: 'provisioning' | 'Initializing' | 'initializing' | 'ready' | 'error' | 'off';
+  status: 'provisioning' | 'Initializing' | 'initializing' | 'ready' | 'error' | 'off' | 'waiting-for-bootstrap';
   sshPrivateKey: string;
   sshPublicKey: string;
   rootPassword?: string;
@@ -24,6 +24,10 @@ export interface ServerConfig {
   statusLog?: string[];
   sshKeyVersion?: string;
   hetznerStatus?: string;
+  provider?: 'hetzner' | 'contabo' | 'digitalocean' | 'linode' | 'vultr' | 'custom';
+  bootstrapCommand?: string;
+  contaboInstanceId?: number;
+  contaboSecretId?: unknown;
 }
 
 export interface ProvisioningState {

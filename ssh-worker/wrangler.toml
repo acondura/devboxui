@@ -1,0 +1,7 @@
+name = "devbox-ssh-bridge"
+main = "src/index.ts"
+compatibility_date = "2024-10-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+# SSH_SERVICE_SECRET should be set via wrangler secret put

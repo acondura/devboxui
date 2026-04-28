@@ -98,13 +98,21 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { se
       <div className="p-5 border-b border-slate-800 bg-slate-950/50 rounded-t-xl flex justify-between items-start">
         <div>
           <div className="flex items-center space-x-2">
-            {server.status !== 'provisioning' && server.status !== 'Initializing' && server.status !== 'initializing' && (
+            {server.status !== 'provisioning' && server.status !== 'Initializing' && server.status !== 'initializing' && server.status !== 'waiting-for-bootstrap' && (
               <>
                 <span className={`h-2.5 w-2.5 rounded-full ${server.status === 'ready' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-slate-600'}`} />
                 <h4 className="font-bold text-white uppercase tracking-wider text-xs">
                   {server.status}
                 </h4>
               </>
+            )}
+            {server.status === 'waiting-for-bootstrap' && (
+              <div className="flex items-center space-x-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-amber-500 animate-pulse shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
+                <h4 className="font-bold text-amber-500 uppercase tracking-wider text-xs">
+                  Awaiting Setup
+                </h4>
+              </div>
             )}
           </div>
           <div className="flex items-center space-x-2 mt-2">
@@ -119,8 +127,8 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { se
             )}
           </div>
           <div className="flex items-center space-x-2 mt-0.5 group/ip">
-            <p className="text-xl font-mono text-indigo-400" title="Public IP address of your DevBox">{server.ip}</p>
-            <CopyButton value={server.ip} />
+            <p className="text-xl font-mono text-indigo-400" title="Public IP address of your DevBox">{server.ip === 'manual-setup' ? 'MANUAL' : server.ip}</p>
+            {server.ip !== 'manual-setup' && <CopyButton value={server.ip} />}
           </div>
           {server.tunnelUrl && (
             <p className="text-xs font-mono text-slate-500 mt-1 truncate max-w-[180px]" title="Cloudflare Tunnel Endpoint">
@@ -273,6 +281,32 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { se
             </div>
             <p className="text-xs text-slate-500 italic text-center">
               Initial setup usually takes 2-4 minutes.
+            </p>
+          </div>
+        )}
+
+        {server.status === 'waiting-for-bootstrap' && (
+          <div className="space-y-4 pt-2">
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
+              <p className="text-[11px] text-amber-200 font-medium leading-relaxed">
+                Connect via SSH to your fresh Ubuntu server and run this command as root to finish setup:
+              </p>
+            </div>
+            <div className="relative group/cmd">
+               <pre className="bg-slate-950 border border-slate-800 rounded-lg p-3 text-[9px] font-mono text-indigo-300 break-all whitespace-pre-wrap leading-tight shadow-inner max-h-[120px] overflow-auto">
+                 {server.bootstrapCommand}
+               </pre>
+               <button 
+                onClick={() => navigator.clipboard.writeText(server.bootstrapCommand || '')}
+                className="absolute top-2 right-2 p-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded transition-all opacity-0 group-hover/cmd:opacity-100 shadow-lg"
+               >
+                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m-3 8h4m-2-2v4" />
+                 </svg>
+               </button>
+            </div>
+            <p className="text-[10px] text-slate-500 text-center animate-pulse">
+              Dashboard will update automatically after execution.
             </p>
           </div>
         )}

@@ -1,5 +1,5 @@
 import { headers } from 'next/headers';
-import { importJWK, jwtVerify, JWTPayload } from 'jose';
+import { importJWK, jwtVerify } from 'jose';
 import { z } from 'zod';
 
 /**
@@ -16,6 +16,10 @@ export const CloudflareEnvSchema = z.object({
   MANAGEMENT_SSH_PUBLIC_KEY: z.string().optional(),
   MANAGEMENT_SSH_PRIVATE_KEY: z.string().optional(),
   HETZNER_API_TOKEN: z.string().optional(),
+  CONTABO_CLIENT_ID: z.string().optional(),
+  CONTABO_CLIENT_SECRET: z.string().optional(),
+  CONTABO_API_USERNAME: z.string().optional(),
+  CONTABO_API_PASSWORD: z.string().optional(),
   NEXT_PUBLIC_APP_URL: z.string().optional(),
 });
 
@@ -37,7 +41,7 @@ interface JWK {
  * Safely retrieves the Cloudflare environment.
  */
 export async function getCloudflareEnv(): Promise<CloudflareEnv> {
-  let env: any = {};
+  let env: Record<string, unknown> = {};
   
   try {
     const { getCloudflareContext } = await import('@opennextjs/cloudflare');
@@ -50,7 +54,7 @@ export async function getCloudflareEnv(): Promise<CloudflareEnv> {
   // Merge sources: open-next context > global worker env > process.env
   const mergedEnv = {
     ...process.env,
-    ...(globalThis as any),
+    ...(globalThis as unknown as Record<string, unknown>),
     ...env
   };
 
@@ -160,6 +164,7 @@ export async function getIdentity(passedEnv?: CloudflareEnv): Promise<string> {
           }
         } catch (err) {
           // If this key fails, try the next one
+          console.debug("Key verification failed:", err);
           continue;
         }
       }

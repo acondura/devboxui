@@ -4,6 +4,7 @@ import { ServerConfig } from './types';
 import { getCloudflareEnv, getIdentity } from '@/lib/auth';
 import { CloudflareApiService } from '@/lib/cloudflare-api';
 import { HetznerApiService } from '@/lib/hetzner-api';
+import { ContaboApiService } from '@/lib/contabo-api';
 import { formatRsaPublicKey, formatPrivateKey } from '@/lib/ssh-utils';
 
 /**
@@ -49,7 +50,6 @@ const runRemoteCommand = async (config: {
 function getBootstrapScript(username: string, userEmail: string, tunnelToken: string, managementKey: string, userSSHKey: string, serverId: string, provisioningToken: string, callbackUrl: string, rootPassword?: string, serviceTokenId?: string, serviceTokenSecret?: string, hetznerToken?: string) {
   // DERIVED VARIABLES
   const C_CONFIG = `/home/${username}/.code-server`;
-  const C_HOME = `/home/${username}`;
 
   return `#!/bin/bash
 set -e
@@ -473,10 +473,17 @@ export async function getUserSettings() {
   if (!kv) return null;
 
   const data = await kv.get(`settings:${userEmail}`);
-  const settings = data ? JSON.parse(data) : { hetznerToken: '', sshPublicKey: '', sshPrivateKey: '' };
+  const settings = data ? JSON.parse(data) : { 
+    hetznerToken: '', 
+    sshPublicKey: '', 
+    sshPrivateKey: '',
+    contaboClientId: '',
+    contaboClientSecret: '',
+    contaboUsername: '',
+    contaboPassword: ''
+  };
 
   // Auto-generate SSH keys if missing or in old/invalid format
-  // We check for 'ssh-rsa' prefix AND a version flag to ensure everyone gets the fixed format
   const isOldFormat = settings.sshPublicKey && (!settings.sshPublicKey.startsWith('ssh-rsa') || settings.sshKeyVersion !== 'v2');
   
   if (!settings.sshPublicKey || !settings.sshPrivateKey || isOldFormat) {
@@ -502,13 +509,30 @@ export async function getUserSettings() {
     }
   }
 
-  return settings as { hetznerToken: string; sshPublicKey: string; sshPrivateKey: string };
+  return settings as { 
+    hetznerToken: string; 
+    sshPublicKey: string; 
+    sshPrivateKey: string;
+    contaboClientId?: string;
+    contaboClientSecret?: string;
+    contaboUsername?: string;
+    contaboPassword?: string;
+    sshKeyVersion?: string;
+  };
 }
 
 /**
  * Saves per-user settings to KV.
  */
-export async function saveUserSettings(settings: { hetznerToken: string; sshPublicKey?: string; sshPrivateKey?: string }) {
+export async function saveUserSettings(settings: { 
+  hetznerToken?: string; 
+  sshPublicKey?: string; 
+  sshPrivateKey?: string;
+  contaboClientId?: string;
+  contaboClientSecret?: string;
+  contaboUsername?: string;
+  contaboPassword?: string;
+}) {
   const userEmail = await getIdentity();
   const env = await getCloudflareEnv();
   const kv = env.KV;
@@ -523,14 +547,18 @@ export async function saveUserSettings(settings: { hetznerToken: string; sshPubl
 }
 
 /**
- * Provisions a new server automatically via Hetzner API and Cloud-Init.
+ * Provisions a new server automatically via Cloud-Init.
  */
 export async function provisionServer(
-  customName?: string,
-  serverType: string = 'cpx21',
-  location: string = 'nbg1',
-  image: string = 'ubuntu-24.04'
+  customName: string,
+  serverType: string,
+  location: string,
+  image: string,
+  provider: 'hetzner' | 'contabo' = 'hetzner'
 ) {
+  if (provider === 'contabo') {
+    return provisionContaboServer(customName, serverType, location, image);
+  }
   const userEmail = await getIdentity();
   const env = await getCloudflareEnv();
   const kv = env.KV;
@@ -1074,3 +1102,262 @@ export async function getServerLogs(serverId: string) {
   }
 }
 
+/**
+ * Provisions a new server configuration for manual setup (e.g. Contabo).
+ * Sets up Cloudflare resources and optionally bootstraps via SSH if credentials are provided.
+ */
+export async function provisionManualServer(customName: string, provider: string = 'contabo', manualIp?: string, manualPassword?: string) {
+  const userEmail = await getIdentity();
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+  if (!kv) throw new Error("KV database missing.");
+
+  const settings = await getUserSettings();
+  if (!settings) throw new Error("Settings missing.");
+
+  const cfApi = new CloudflareApiService(env);
+
+  const serverId = crypto.randomUUID();
+  const shortId = serverId.slice(0, 8);
+  const name = customName || `devbox-${shortId}`;
+  const userName = userEmail.split('@')[0].replace(/[^a-zA-Z0-9]/g, '_');
+  const hostname = `${name}-code.devboxui.com`;
+
+  const rootPassword = manualPassword || Math.random().toString(36).slice(-10);
+  const config: ServerConfig = {
+    id: serverId,
+    ip: manualIp || 'manual-setup',
+    userName,
+    userEmail,
+    status: manualIp ? 'provisioning' : 'waiting-for-bootstrap',
+    detailedStatus: manualIp ? 'Starting automated SSH bootstrap...' : 'Waiting for manual bootstrap...',
+    rootPassword,
+    sshPrivateKey: settings.sshPrivateKey,
+    sshPublicKey: settings.sshPublicKey,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    tunnelUrl: `https://${hostname}`,
+    projects: [],
+    provider: provider as 'hetzner' | 'contabo' | 'custom',
+    logs: [manualIp ? `Automated SSH provisioning started for ${manualIp}` : 'Manual provisioning initiated. Waiting for bootstrap script.']
+  };
+
+  try {
+    // 1. Cloudflare Automation
+    const tunnelResult = await cfApi.createTunnel(`tunnel-${serverId}`);
+    config.tunnelId = tunnelResult.id;
+    await cfApi.setupHostname(hostname, tunnelResult.id);
+    await cfApi.setupAccess(hostname, userEmail);
+
+    const logsHostname = `${name}-logs.devboxui.com`;
+    await cfApi.setupHostname(logsHostname, tunnelResult.id, "http://localhost:8000");
+    await cfApi.setupAccess(logsHostname, userEmail);
+
+    const provisioningToken = crypto.randomUUID();
+    config.provisioningToken = provisioningToken;
+    
+    const requestHost = env.NEXT_PUBLIC_APP_URL || 'https://devboxui.com';
+    const callbackUrl = `${requestHost}/api/provisioning/status`;
+    const serviceToken = await cfApi.getOrCreateServiceToken(kv);
+    await cfApi.authorizeServiceToken(requestHost.replace('https://', ''), serviceToken.id);
+
+    // 2. Generate Bootstrap Script
+    const bootstrapScript = getBootstrapScript(
+      userName,
+      userEmail,
+      tunnelResult.token,
+      env.MANAGEMENT_SSH_PUBLIC_KEY || '',
+      settings.sshPublicKey,
+      serverId,
+      provisioningToken,
+      callbackUrl,
+      rootPassword,
+      serviceToken.id,
+      serviceToken.client_secret
+    );
+
+    // 3. Generate One-Liner (Base64 to survive all shells)
+    const base64Script = Buffer.from(bootstrapScript).toString('base64');
+    const command = `echo "${base64Script}" | base64 -d | sudo bash`;
+    config.bootstrapCommand = command;
+
+    // 4. Save to KV
+    await kv.put(`servers:${userEmail}:${serverId}`, JSON.stringify(config));
+
+    // 5. If IP and Password provided, trigger SSH bootstrap in background (Option 4 / WASM)
+    if (manualIp && manualPassword) {
+      // Use nohup to ensure the script continues even if the SSH connection closes/timeouts
+      const nohupCommand = `nohup bash -c 'echo "${base64Script}" | base64 -d | sudo bash' > /var/log/devbox-setup.log 2>&1 &`;
+      
+      try {
+        // We fire it off but don't strictly await the FULL setup (which takes minutes)
+        // just await the successful START of the nohup process.
+        executeSshCommands(manualIp, manualPassword, nohupCommand, (log) => {
+          console.log(`[Manual SSH] ${log}`);
+        }).catch((e: unknown) => {
+          const error = e as Error;
+          console.error("Background SSH bootstrap failed to START:", error);
+        });
+        
+        if (!config.logs) config.logs = [];
+        config.logs.push("Triggered background setup via SSH Worker.");
+        await kv.put(`servers:${userEmail}:${serverId}`, JSON.stringify(config));
+      } catch (e: unknown) {
+        const error = e as Error;
+        console.error("Failed to start SSH setup:", error);
+        if (!config.logs) config.logs = [];
+        config.logs.push(`Failed to start background setup: ${error.message}`);
+        await kv.put(`servers:${userEmail}:${serverId}`, JSON.stringify(config));
+      }
+    }
+
+    return { success: true, server: config, command };
+  } catch (error) {
+    console.error("Manual provisioning setup failed:", error);
+    throw error;
+  }
+}
+
+/**
+ * Provisions a new server automatically via Contabo API and Cloud-Init.
+ */
+export async function provisionContaboServer(
+  customName: string,
+  productId: string = 'V1', // Standard VPS S
+  region: string = 'EU',
+  imageId: string = 'ubuntu-24.04'
+) {
+  const userEmail = await getIdentity();
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+
+  // 1. Fetch User Settings
+  const settings = await getUserSettings();
+  if (!settings) throw new Error("Could not retrieve user settings.");
+
+  const credentials = {
+    clientId: settings.contaboClientId || env.CONTABO_CLIENT_ID || '',
+    clientSecret: settings.contaboClientSecret || env.CONTABO_CLIENT_SECRET || '',
+    apiUsername: settings.contaboUsername || env.CONTABO_API_USERNAME || '',
+    apiPassword: settings.contaboPassword || env.CONTABO_API_PASSWORD || ''
+  };
+
+  if (!credentials.clientId || !credentials.clientSecret || !credentials.apiUsername || !credentials.apiPassword) {
+    throw new Error("Contabo API credentials missing. Please set them in Settings.");
+  }
+
+  const cfApi = new CloudflareApiService(env);
+  const contaboApi = new ContaboApiService(env, credentials);
+
+  // 2. Initialize Server Configuration
+  const serverId = crypto.randomUUID();
+  const shortId = serverId.slice(0, 8);
+  const name = customName || `devbox-${shortId}`;
+  const userName = userEmail.split('@')[0].replace(/[^a-zA-Z0-9]/g, '_');
+  const hostname = `${name}-code.devboxui.com`;
+
+  const rootPassword = Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-6);
+  const config: ServerConfig = {
+    id: serverId,
+    ip: 'pending',
+    userName,
+    userEmail,
+    status: 'provisioning',
+    rootPassword: rootPassword,
+    sshPrivateKey: settings.sshPrivateKey,
+    sshPublicKey: settings.sshPublicKey,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    logs: [`Starting Cloud-Init provisioning (${productId} in ${region}) via Contabo API...`],
+    tunnelUrl: `https://${hostname}`,
+    projects: [],
+    provider: 'contabo'
+  };
+
+  try {
+    // 3. Setup Networking (Cloudflare)
+    const tunnelResult = await cfApi.createTunnel(`tunnel-${serverId}`);
+    config.tunnelId = tunnelResult.id;
+    await cfApi.setupHostname(hostname, tunnelResult.id);
+    await cfApi.setupAccess(hostname, userEmail);
+
+    const provisioningToken = crypto.randomUUID();
+    config.provisioningToken = provisioningToken;
+    
+    const requestHost = env.NEXT_PUBLIC_APP_URL || 'https://devboxui.com';
+    const callbackUrl = `${requestHost}/api/provisioning/status`;
+    const serviceToken = await cfApi.getOrCreateServiceToken(kv);
+    await cfApi.authorizeServiceToken(requestHost.replace('https://', ''), serviceToken.id);
+
+    // 4. Register SSH Key as Secret in Contabo
+    const secretName = `key-${shortId}`;
+    const secretId = await contaboApi.createSecret(secretName, settings.sshPublicKey);
+    
+    // 5. Generate Cloud-Init
+    const bootstrapScript = getBootstrapScript(
+      userName,
+      userEmail,
+      tunnelResult.token,
+      env.MANAGEMENT_SSH_PUBLIC_KEY || '',
+      settings.sshPublicKey,
+      serverId,
+      provisioningToken,
+      callbackUrl,
+      rootPassword,
+      serviceToken.id,
+      serviceToken.client_secret
+    );
+
+    // 6. Launch Instance
+    const instance = await contaboApi.createInstance({
+      productId,
+      region,
+      imageId,
+      name,
+      userData: bootstrapScript,
+      sshKeys: [secretId.id]
+    });
+
+    config.ip = instance.ipAddress;
+    config.contaboInstanceId = instance.instanceId;
+    config.contaboSecretId = secretId;
+
+    // 7. Save to KV
+    await kv.put(`servers:${userEmail}:${serverId}`, JSON.stringify(config));
+    
+    return { success: true, server: config };
+  } catch (e: unknown) {
+    const error = e as Error;
+    console.error("Contabo provisioning failed:", error);
+    config.status = 'error';
+    if (!config.logs) config.logs = [];
+    config.logs.push(`Error: ${error.message}`);
+    await kv.put(`servers:${userEmail}:${serverId}`, JSON.stringify(config));
+    throw error;
+  }
+}
+
+/**
+ * Returns available Contabo regions and products for the UI.
+ */
+export async function getContaboOptions() {
+  return {
+    serverTypes: [
+      { id: 'V1', name: 'VPS S', cores: 4, memory: 8, disk: 50, price_monthly: '4.50', architecture: 'x86' },
+      { id: 'V2', name: 'VPS M', cores: 6, memory: 16, disk: 100, price_monthly: '8.50', architecture: 'x86' },
+      { id: 'V3', name: 'VPS L', cores: 8, memory: 30, disk: 200, price_monthly: '13.50', architecture: 'x86' },
+      { id: 'V4', name: 'VPS XL', cores: 10, memory: 60, disk: 400, price_monthly: '24.50', architecture: 'x86' },
+    ],
+    locations: [
+      { id: 'EU', name: 'EU', city: 'Germany' },
+      { id: 'US-C', name: 'US-C', city: 'United States' },
+      { id: 'ASIA', name: 'ASIA', city: 'Singapore' },
+      { id: 'AU', name: 'AU', city: 'Australia' },
+    ],
+    images: [
+      { id: 'ubuntu-24.04', name: 'ubuntu-24.04', description: 'Ubuntu 24.04', architecture: 'x86' },
+      { id: 'ubuntu-22.04', name: 'ubuntu-22.04', description: 'Ubuntu 22.04', architecture: 'x86' },
+      { id: 'debian-12', name: 'debian-12', description: 'Debian 12', architecture: 'x86' },
+    ]
+  };
+}
