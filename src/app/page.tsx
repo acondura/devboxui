@@ -39,10 +39,6 @@ export default function HomePage() {
 
         <div className="max-w-6xl w-full grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <div className="space-y-8 text-center lg:text-left">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-bold tracking-wider uppercase">
-              <span className="flex h-2 w-2 rounded-full bg-indigo-500 animate-pulse" />
-              v1.0 is officially live
-            </div>
             
             <h1 className="text-6xl md:text-8xl font-black tracking-tighter text-white leading-[0.9]">
               The Next Gen <br />
@@ -73,38 +69,24 @@ export default function HomePage() {
               </a>
             </div>
 
-            <div className="flex items-center justify-center lg:justify-start gap-6 pt-4 text-slate-500 font-medium">
-              <div className="flex -space-x-3">
-                {[1, 2, 3, 4].map(i => (
-                  <div key={i} className="w-10 h-10 rounded-full border-2 border-[#020617] bg-slate-800 flex items-center justify-center text-[10px] text-slate-300 font-bold overflow-hidden">
-                    <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${i + 10}`} alt="User avatar" />
-                  </div>
-                ))}
-              </div>
-              <p className="text-sm">Trusted by <span className="text-white font-bold">500+</span> cloud engineers</p>
-            </div>
           </div>
 
           <div className="relative group">
             <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-cyan-500 rounded-[2.5rem] blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
             <div className="relative bg-slate-900/50 rounded-[2rem] border border-white/10 overflow-hidden shadow-2xl backdrop-blur-2xl">
               <img 
-                src="/devboxui_hero_dashboard_1777353892839.png" 
+                src="/hero-dashboard.png" 
                 alt="DevBox UI Dashboard Preview" 
                 className="w-full h-auto scale-105 group-hover:scale-100 transition-transform duration-700"
               />
               
-              {/* Overlay elements for "Wow" factor */}
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 bg-indigo-600/80 rounded-full flex items-center justify-center cursor-pointer hover:scale-110 transition-transform shadow-2xl shadow-indigo-600/50">
-                <svg className="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
-              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-32 px-6 md:px-12 relative overflow-hidden">
+      <section id="features" className="pt-32 pb-6 px-6 md:px-12 relative overflow-hidden">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-24">
             <h2 className="text-indigo-500 font-black uppercase tracking-[0.3em] text-xs mb-4">Core Engine</h2>
@@ -154,6 +136,22 @@ export default function HomePage() {
                 </p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* IDE Preview Section */}
+      <section className="py-12 px-6 md:px-12">
+        <div className="max-w-6xl mx-auto">
+          <div className="relative group">
+            <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500/20 to-cyan-500/20 rounded-[0.5rem] blur-2xl opacity-50"></div>
+            <div className="relative rounded-[0.5rem] border border-white/10 overflow-hidden shadow-2xl">
+              <img 
+                src="/code-development-environment.png" 
+                alt="Cloud IDE Development Environment" 
+                className="w-full h-auto"
+              />
+            </div>
           </div>
         </div>
       </section>

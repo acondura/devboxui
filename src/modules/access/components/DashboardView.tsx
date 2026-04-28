@@ -139,9 +139,6 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
         </Link>
         
         <div className="flex items-center space-x-3">
-          <div className="h-8 w-8 rounded-full bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center font-bold text-xs text-indigo-400">
-            {userEmail.charAt(0).toUpperCase()}
-          </div>
           <div className="hidden sm:block text-xs text-slate-400 font-mono bg-slate-800/50 px-3 py-1.5 rounded-md border border-slate-700">
             {userEmail}
           </div>
