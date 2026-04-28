@@ -72,12 +72,12 @@ export default function HomePage() {
           </div>
 
           <div className="relative group">
-            <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-cyan-500 rounded-[2.5rem] blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
-            <div className="relative bg-slate-900/50 rounded-[2rem] border border-white/10 overflow-hidden shadow-2xl backdrop-blur-2xl">
+            <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-cyan-500 rounded-[0.5rem] blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
+            <div className="relative bg-slate-900/50 rounded-[0.5rem] border border-white/10 overflow-hidden shadow-2xl backdrop-blur-2xl">
               <img 
                 src="/hero-dashboard.png" 
                 alt="DevBox UI Dashboard Preview" 
-                className="w-full h-auto scale-105 group-hover:scale-100 transition-transform duration-700"
+                className="w-full h-auto transition-transform duration-700"
               />
               
             </div>
