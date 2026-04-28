@@ -16,7 +16,7 @@ export default function HomePage() {
         </div>
         
         <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-400">
-          <a href="#features" className="hover:text-white transition-colors">Features</a>
+          <a href="#infrastructure" className="hover:text-white transition-colors">Cloud</a>
           <a href="#security" className="hover:text-white transition-colors">Security</a>
           <a href="#stack" className="hover:text-white transition-colors">Stack</a>
         </div>
@@ -152,6 +152,42 @@ export default function HomePage() {
                 className="w-full h-auto"
               />
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Cloud Infrastructure Section */}
+      <section id="infrastructure" className="py-24 px-6 md:px-12 bg-[#020617]">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-indigo-500 font-black uppercase tracking-[0.3em] text-xs mb-4">Cloud Ecosystem</h2>
+            <h3 className="text-4xl md:text-5xl font-black text-white tracking-tighter">Choose your infrastructure.</h3>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+            {[
+              { name: "Hetzner", status: "Active" },
+              { name: "Contabo", status: "Coming Soon" },
+              { name: "DigitalOcean", status: "Coming Soon" },
+              { name: "Vultr", status: "Coming Soon" },
+              { name: "Linode", status: "Coming Soon" }
+            ].map((vps, idx) => (
+              <div key={idx} className="relative group p-8 rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 transition-all flex flex-col items-center text-center">
+                {vps.status === "Active" ? (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-emerald-500 text-[10px] font-black text-white uppercase tracking-widest shadow-lg shadow-emerald-500/40 whitespace-nowrap">
+                    {vps.status}
+                  </div>
+                ) : (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-slate-800 border border-white/10 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">
+                    {vps.status}
+                  </div>
+                )}
+                
+                <div className={`text-2xl font-black ${vps.status === "Active" ? "text-white" : "text-slate-500"}`}>
+                  {vps.name}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
