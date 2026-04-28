@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "pages-build": "printf \"name = \\\"devboxui\\\"\\npages_build_output_dir = \\\"dist\\\"\\ncompatibility_date = \\\"2024-09-23\\\"\\ncompatibility_flags = [\\\"nodejs_compat\\\"]\\n\\n[[kv_namespaces]]\\nbinding = \\\"KV\\\"\\nid = \\\"${KV_ID}\\\"\\n\" > wrangler.toml && echo 'n' | opennextjs-cloudflare build && rm -rf dist && cp -r .open-next dist && cp -r dist/assets/* dist/ && mv dist/worker.js dist/_worker.js && echo '{\"version\":1,\"include\":[\"/*\"],\"exclude\":[\"/_next/static/*\",\"/favicon.ico\"]}' > dist/_routes.json",
+    "pages-build": "printf \"name = \\\"devboxui\\\"\\npages_build_output_dir = \\\"dist\\\"\\ncompatibility_date = \\\"2024-09-23\\\"\\ncompatibility_flags = [\\\"nodejs_compat\\\"]\\n\\n[[kv_namespaces]]\\nbinding = \\\"KV\\\"\\nid = \\\"${KV_ID}\\\"\\n\" > wrangler.toml && echo 'n' | opennextjs-cloudflare build && rm -rf dist && cp -r .open-next dist && cp -r dist/assets/* dist/ && mv dist/worker.js dist/_worker.js && echo '{\"version\":1,\"include\":[\"/*\"],\"exclude\":[\"/_next/static/*\",\"/favicon.ico\",\"/*.png\",\"/*.svg\",\"/*.ico\"]}' > dist/_routes.json",
     "start": "next start",
     "lint": "next lint",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
