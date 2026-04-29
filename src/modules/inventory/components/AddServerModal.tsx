@@ -155,10 +155,10 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
 
   const providers: {id: CloudProvider, name: string, active: boolean, info?: string}[] = [
     { id: 'hetzner', name: 'Hetzner', active: true },
-    { id: 'contabo', name: 'Contabo', active: true, info: 'Manual Provision' },
     { id: 'digitalocean', name: 'DigitalOcean', active: false },
     { id: 'linode', name: 'Linode', active: false },
     { id: 'vultr', name: 'Vultr', active: false },
+    { id: 'contabo', name: 'Custom', active: true, info: 'Manual Provision' },
   ];
 
   if (bootstrapCommand) {
@@ -244,30 +244,27 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
 
         {/* Provider Selector */}
         <div className="px-6 py-4 bg-slate-950/30 border-b border-slate-800/50">
-          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Select Cloud Provider</label>
-          <div className="flex flex-wrap gap-2">
-            {providers.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => p.active && setProvider(p.id)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border flex flex-col items-center justify-center min-w-[100px] h-12 relative overflow-hidden group ${
-                  provider === p.id 
-                    ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-600/20' 
-                    : p.active 
-                      ? 'bg-slate-800 border-slate-700 text-slate-400 hover:border-indigo-500/50 hover:text-slate-300' 
-                      : 'bg-slate-900/50 border-slate-800 text-slate-600 cursor-not-allowed grayscale'
-                }`}
-              >
-                <span>{p.name}</span>
-                {p.info && <span className="text-[8px] opacity-60 font-normal">{p.info}</span>}
-                {!p.active && (
-                  <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-[1px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <span className="text-[8px] uppercase tracking-tighter text-white font-black bg-indigo-500 px-1.5 py-0.5 rounded shadow-lg">Coming Soon</span>
-                  </div>
-                )}
-              </button>
-            ))}
+          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2.5">Select Cloud Provider</label>
+          <div className="relative">
+            <select
+              value={provider}
+              onChange={(e) => {
+                const selected = providers.find(p => p.id === e.target.value);
+                if (selected?.active) setProvider(e.target.value as CloudProvider);
+              }}
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer text-sm font-medium"
+            >
+              {providers.map((p) => (
+                <option key={p.id} value={p.id} disabled={!p.active}>
+                  {p.name} {p.info ? `(${p.info})` : ''} {!p.active ? '— Coming Soon' : ''}
+                </option>
+              ))}
+            </select>
+            <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-500">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
           </div>
         </div>
         
@@ -285,42 +282,46 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
               />
             </div>
             
-            <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1.5">Server Type</label>
-              <select
-                value={serverType}
-                onChange={(e) => setServerType(e.target.value)}
-                disabled={isLoadingOptions || provider !== 'hetzner'}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer disabled:opacity-50 text-sm"
-              >
-                {sortedServerTypes.map(t => {
-                  const p = t.prices.find((p) => p.location === location) || t.prices[0];
-                  const priceLabel = p ? `€${parseFloat(p.price_monthly.gross).toFixed(2)}` : '';
-                  const specs = `${t.cores} vCPU / ${t.memory}GB RAM / ${t.disk}GB / ${t.architecture.toUpperCase()}`;
-                  return (
-                    <option key={t.id} value={t.name}>
-                      {t.name.toUpperCase()} - ({priceLabel}) - {specs}
-                    </option>
-                  );
-                })}
-                {isLoadingOptions && <option>Loading types...</option>}
-              </select>
-            </div>
+            {provider === 'hetzner' && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-slate-400 mb-1.5">Server Type</label>
+                  <select
+                    value={serverType}
+                    onChange={(e) => setServerType(e.target.value)}
+                    disabled={isLoadingOptions}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer disabled:opacity-50 text-sm"
+                  >
+                    {sortedServerTypes.map(t => {
+                      const p = t.prices.find((p) => p.location === location) || t.prices[0];
+                      const priceLabel = p ? `€${parseFloat(p.price_monthly.gross).toFixed(2)}` : '';
+                      const specs = `${t.cores} vCPU / ${t.memory}GB RAM / ${t.disk}GB / ${t.architecture.toUpperCase()}`;
+                      return (
+                        <option key={t.id} value={t.name}>
+                          {t.name.toUpperCase()} - ({priceLabel}) - {specs}
+                        </option>
+                      );
+                    })}
+                    {isLoadingOptions && <option>Loading types...</option>}
+                  </select>
+                </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1.5">Location</label>
-              <select
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                disabled={isLoadingOptions || provider !== 'hetzner'}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer disabled:opacity-50 text-sm"
-              >
-                {options.locations.map(l => (
-                  <option key={l.id} value={l.name}>{l.city} ({l.name.toUpperCase()})</option>
-                ))}
-                {isLoadingOptions && <option>Loading locations...</option>}
-              </select>
-            </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-400 mb-1.5">Location</label>
+                  <select
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    disabled={isLoadingOptions}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer disabled:opacity-50 text-sm"
+                  >
+                    {options.locations.map(l => (
+                      <option key={l.id} value={l.name}>{l.city} ({l.name.toUpperCase()})</option>
+                    ))}
+                    {isLoadingOptions && <option>Loading locations...</option>}
+                  </select>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Specs Summary */}
@@ -431,7 +432,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
               <p className="text-xs font-bold uppercase tracking-wider">How it works</p>
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">
-              We&apos;ll create a <strong className="text-slate-200 capitalize">{provider}</strong> instance and run our custom DevBox bootstrap. This installs Docker, sets up your secure tunnel, and deploys your VS Code environment.
+              We&apos;ll create a <strong className="text-slate-200 capitalize">{providers.find(p => p.id === provider)?.name}</strong> instance and run our custom DevBox bootstrap. This installs Docker, sets up your secure tunnel, and deploys your VS Code environment.
             </p>
           </div>
           
@@ -447,7 +448,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span className="text-sm">Provisioning on {provider}...</span>
+                  <span className="text-sm">Provisioning on {providers.find(p => p.id === provider)?.name}...</span>
                 </>
               ) : (
                 <span className="text-sm">Launch DevBox ✨</span>
