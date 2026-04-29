@@ -110,4 +110,36 @@ export class ContaboApiService {
     const result = await response.json() as { data: ContaboInstance[] };
     return result.data[0];
   }
+
+  async deleteInstance(instanceId: number): Promise<void> {
+    const token = await this.getAccessToken();
+    const response = await fetch(`https://api.contabo.com/v1/compute/instances/${instanceId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'x-request-id': crypto.randomUUID()
+      }
+    });
+
+    if (!response.ok && response.status !== 404) {
+      const err = await response.text();
+      throw new Error(`Failed to delete Contabo instance: ${err}`);
+    }
+  }
+
+  async deleteSecret(secretId: number): Promise<void> {
+    const token = await this.getAccessToken();
+    const response = await fetch(`https://api.contabo.com/v1/compute/secrets/${secretId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'x-request-id': crypto.randomUUID()
+      }
+    });
+
+    if (!response.ok && response.status !== 404) {
+      const err = await response.text();
+      throw new Error(`Failed to delete Contabo secret: ${err}`);
+    }
+  }
 }

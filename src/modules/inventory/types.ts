@@ -27,7 +27,7 @@ export interface ServerConfig {
   provider?: 'hetzner' | 'contabo' | 'digitalocean' | 'linode' | 'vultr' | 'custom';
   bootstrapCommand?: string;
   contaboInstanceId?: number;
-  contaboSecretId?: unknown;
+  contaboSecretId?: number;
 }
 
 export interface ProvisioningState {

@@ -960,6 +960,12 @@ export async function deleteServer(serverId: string) {
 
   const cfApi = new CloudflareApiService(env);
   const hetznerApi = new HetznerApiService(env, settings?.hetznerToken);
+  const contaboApi = new ContaboApiService(env, {
+    clientId: settings?.contaboClientId || env.CONTABO_CLIENT_ID || '',
+    clientSecret: settings?.contaboClientSecret || env.CONTABO_CLIENT_SECRET || '',
+    apiUsername: settings?.contaboUsername || env.CONTABO_API_USERNAME || '',
+    apiPassword: settings?.contaboPassword || env.CONTABO_API_PASSWORD || ''
+  });
 
   if (!kv) throw new Error("KV database missing.");
 
@@ -1005,6 +1011,17 @@ export async function deleteServer(serverId: string) {
     if (config.hetznerServerId) {
       console.log(`Deleting Hetzner server ${config.hetznerServerId}...`);
       await hetznerApi.deleteServer(config.hetznerServerId).catch(e => console.error("Hetzner deletion failed:", e));
+    }
+
+    // Delete Contabo Instance and Secret
+    if (config.contaboInstanceId) {
+      console.log(`Deleting Contabo instance ${config.contaboInstanceId}...`);
+      await contaboApi.deleteInstance(config.contaboInstanceId).catch(e => console.error("Contabo instance deletion failed:", e));
+    }
+
+    if (config.contaboSecretId) {
+      console.log(`Deleting Contabo secret ${config.contaboSecretId}...`);
+      await contaboApi.deleteSecret(config.contaboSecretId).catch(e => console.error("Contabo secret deletion failed:", e));
     }
   } catch (e) {
     console.error("Cleanup process encountered errors, proceeding with KV removal:", e);
@@ -1320,7 +1337,7 @@ export async function provisionContaboServer(
 
     config.ip = instance.ipAddress;
     config.contaboInstanceId = instance.instanceId;
-    config.contaboSecretId = secretId;
+    config.contaboSecretId = secretId.id;
 
     // 7. Save to KV
     await kv.put(`servers:${userEmail}:${serverId}`, JSON.stringify(config));
