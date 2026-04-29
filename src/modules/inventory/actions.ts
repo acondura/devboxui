@@ -7,42 +7,6 @@ import { HetznerApiService } from '@/lib/hetzner-api';
 import { ContaboApiService } from '@/lib/contabo-api';
 import { formatRsaPublicKey, formatPrivateKey } from '@/lib/ssh-utils';
 
-/**
- * Executes a command on a remote server via the SSH-as-a-Service Worker.
- */
-const runRemoteCommand = async (config: {
-  host: string;
-  username: string;
-  password?: string;
-  privateKey?: string;
-  command: string;
-}) => {
-  const env = await getCloudflareEnv();
-  const serviceUrl = env.SSH_SERVICE_URL;
-  const secret = env.SSH_SERVICE_SECRET;
-
-  if (!serviceUrl || !secret) {
-    throw new Error("SSH Service configuration missing (SSH_SERVICE_URL or SSH_SERVICE_SECRET).");
-  }
-
-  const response = await fetch(serviceUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${secret}`
-    },
-    body: JSON.stringify(config)
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    let errorMessage = response.statusText;
-    try { errorMessage = JSON.parse(errorText).error || errorMessage; } catch { }
-    throw new Error(`SSH Service Error: ${errorMessage}`);
-  }
-
-  return await response.json() as { success: boolean; stdout: string; stderr: string; code: number };
-};
 
 /**
  * Generates the full sequence of bash commands to bootstrap the server.
@@ -428,8 +392,7 @@ export async function syncSshKeys(newPublicKey: string) {
         echo "✅ SSH key updated for \$DEV_USER"
       `;
 
-      await executeSshCommands(server.ip, server.rootPassword, script, (log) => console.log(`[Sync ${server.ip}] ${log}`));
-      results.push({ id: server.id, success: true });
+      results.push({ id: server.id, success: false, error: new Error("SSH sync not available for manual servers.") });
     } catch (error) {
       console.error(`Failed to sync key to ${server.ip}:`, error);
       results.push({ id: server.id, success: false, error });
@@ -439,28 +402,6 @@ export async function syncSshKeys(newPublicKey: string) {
   return { success: true, results };
 }
 
-/**
- * Executes commands on a remote server via SSH (Remote Service).
- */
-async function executeSshCommands(ip: string, password: string, script: string, onLog: (log: string) => void) {
-  onLog(`Sending bootstrap script to remote SSH service for ${ip}...`);
-
-  const result = await runRemoteCommand({
-    host: ip,
-    username: 'root',
-    password: password,
-    command: script
-  });
-
-  if (result.stdout) onLog(result.stdout);
-  if (result.stderr) onLog(`[STDERR] ${result.stderr}`);
-
-  if (!result.success || result.code !== 0) {
-    throw new Error(`SSH Command failed with code ${result.code}`);
-  }
-
-  return true;
-}
 
 /**
  * Retrieves per-user settings (like Hetzner API Token) from KV.
@@ -1201,32 +1142,8 @@ export async function provisionManualServer(customName: string, provider: string
     // 4. Save to KV
     await kv.put(`servers:${userEmail}:${serverId}`, JSON.stringify(config));
 
-    // 5. If IP and Password provided, trigger SSH bootstrap in background (Option 4 / WASM)
-    if (manualIp && manualPassword) {
-      // Use nohup to ensure the script continues even if the SSH connection closes/timeouts
-      const nohupCommand = `nohup bash -c 'echo "${base64Script}" | base64 -d | sudo bash' > /var/log/devbox-setup.log 2>&1 &`;
-      
-      try {
-        // We fire it off but don't strictly await the FULL setup (which takes minutes)
-        // just await the successful START of the nohup process.
-        executeSshCommands(manualIp, manualPassword, nohupCommand, (log) => {
-          console.log(`[Manual SSH] ${log}`);
-        }).catch((e: unknown) => {
-          const error = e as Error;
-          console.error("Background SSH bootstrap failed to START:", error);
-        });
-        
-        if (!config.logs) config.logs = [];
-        config.logs.push("Triggered background setup via SSH Worker.");
-        await kv.put(`servers:${userEmail}:${serverId}`, JSON.stringify(config));
-      } catch (e: unknown) {
-        const error = e as Error;
-        console.error("Failed to start SSH setup:", error);
-        if (!config.logs) config.logs = [];
-        config.logs.push(`Failed to start background setup: ${error.message}`);
-        await kv.put(`servers:${userEmail}:${serverId}`, JSON.stringify(config));
-      }
-    }
+    // 5. Save to KV
+    await kv.put(`servers:${userEmail}:${serverId}`, JSON.stringify(config));
 
     return { success: true, server: config, command };
   } catch (error) {

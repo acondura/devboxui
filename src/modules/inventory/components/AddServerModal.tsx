@@ -138,12 +138,8 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
       } else {
         const result = await provisionManualServer(name, provider, ip, password);
         if (result.success) {
-          if (!ip || !password) {
-            setBootstrapCommand(result.command || null);
-          } else {
-            // If automated, show the victory card
-            setShowSuccess(true);
-          }
+          setBootstrapCommand(result.command || null);
+          setShowSuccess(true);
           setCreatedServerName(name);
         }
       }
@@ -239,28 +235,58 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
              </svg>
           </div>
           <div className="mt-8 space-y-4">
-            <h3 className="text-2xl font-black text-white italic">VICTORY! 🚀</h3>
+            <h3 className="text-2xl font-black text-white italic">{bootstrapCommand ? 'READY TO LAUNCH! 🚀' : 'VICTORY! 🚀'}</h3>
             <p className="text-slate-400 text-sm leading-relaxed">
-              Your DevBox is live. You just saved yourself roughly <span className="text-indigo-400 font-bold">2 hours</span> of manual configuration.
+              {bootstrapCommand 
+                ? "Your Cloudflare infrastructure is ready. Now just paste this command on your VPS to link it."
+                : "Your DevBox is live. You just saved yourself roughly 2 hours of manual configuration."}
             </p>
             
-            <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 mt-6 text-left group">
-              <p className="text-[10px] uppercase font-black text-slate-500 mb-2 tracking-widest">Share your expert setup</p>
-              <p className="text-xs text-indigo-300 italic font-medium leading-relaxed">
-                &quot;Just provisioned a full Docker/VS Code dev environment in under 60 seconds with @DevBoxUI. My infra is finally automated. ⚡️&quot;
-              </p>
-            </div>
+            {bootstrapCommand && (
+              <div className="bg-slate-950 border border-indigo-500/30 rounded-2xl p-4 mt-6 text-left group relative overflow-hidden">
+                <div className="absolute inset-0 bg-indigo-500/5 animate-pulse"></div>
+                <p className="text-[10px] uppercase font-black text-indigo-400 mb-2 tracking-widest flex items-center">
+                  <span className="w-2 h-2 bg-indigo-500 rounded-full mr-2 animate-ping"></span>
+                  Paste this on your server
+                </p>
+                <code className="text-xs text-slate-300 font-mono break-all leading-relaxed block pr-8">
+                  {bootstrapCommand}
+                </code>
+                <button 
+                  onClick={() => {
+                    navigator.clipboard.writeText(bootstrapCommand);
+                    setCopyStatus('Copied!');
+                    setTimeout(() => setCopyStatus(null), 2000);
+                  }}
+                  className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                  </svg>
+                </button>
+              </div>
+            )}
+
+            {!bootstrapCommand && (
+              <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 mt-6 text-left group">
+                <p className="text-[10px] uppercase font-black text-slate-500 mb-2 tracking-widest">Share your expert setup</p>
+                <p className="text-xs text-indigo-300 italic font-medium leading-relaxed">
+                  &quot;Just provisioned a full Docker/VS Code dev environment in under 60 seconds with @DevBoxUI. My infra is finally automated. ⚡️&quot;
+                </p>
+              </div>
+            )}
 
             <div className="flex gap-3 pt-4">
               <button 
                 onClick={() => {
-                  navigator.clipboard.writeText(`Just provisioned a full Docker/VS Code dev environment in under 60 seconds with DevBoxUI. My infra is finally automated. ⚡️`);
+                  const text = bootstrapCommand || `Just provisioned a full Docker/VS Code dev environment in under 60 seconds with DevBoxUI. My infra is finally automated. ⚡️`;
+                  navigator.clipboard.writeText(text);
                   setCopyStatus('Copied!');
                   setTimeout(() => setCopyStatus(null), 2000);
                 }}
                 className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-xl transition-all text-sm border border-slate-700"
               >
-                {copyStatus || 'Copy Post'}
+                {copyStatus || (bootstrapCommand ? 'Copy Command' : 'Copy Post')}
               </button>
               <button 
                 onClick={onClose}
