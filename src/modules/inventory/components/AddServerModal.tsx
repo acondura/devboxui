@@ -432,7 +432,11 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
               <p className="text-xs font-bold uppercase tracking-wider">How it works</p>
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">
-              We&apos;ll create a <strong className="text-slate-200 capitalize">{providers.find(p => p.id === provider)?.name}</strong> instance and run our custom DevBox bootstrap. This installs Docker, sets up your secure tunnel, and deploys your VS Code environment.
+              {provider === 'hetzner' ? (
+                <>We&apos;ll create a <strong className="text-slate-200">Hetzner</strong> instance and run our custom DevBox bootstrap.</>
+              ) : (
+                <>We&apos;ll connect to your <strong className="text-slate-200">existing server</strong> and run our custom DevBox bootstrap.</>
+              )} This installs Docker, sets up your secure tunnel, and deploys your VS Code environment.
             </p>
           </div>
           
