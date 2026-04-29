@@ -57,6 +57,8 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
   const [password, setPassword] = useState('');
   const [bootstrapCommand, setBootstrapCommand] = useState<string | null>(null);
   const [createdServerName, setCreatedServerName] = useState<string | null>(null);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen && provider === 'hetzner') {
@@ -133,16 +135,16 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
       if (provider === 'hetzner') {
         await onAdd(name, serverType, location, image);
         onClose();
-      } else if (provider === 'contabo') {
+      } else {
         const result = await provisionManualServer(name, provider, ip, password);
         if (result.success) {
           if (!ip || !password) {
             setBootstrapCommand(result.command || null);
+          } else {
+            // If automated, show the victory card
+            setShowSuccess(true);
           }
           setCreatedServerName(name);
-          if (ip && password) {
-            onClose(); // Auto-close if we're doing automated SSH
-          }
         }
       }
     } catch (err) {
@@ -219,6 +221,52 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
                 className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3.5 rounded-xl transition-all"
               >
                 Close and wait for server
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (showSuccess) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md">
+        <div className="w-full max-w-md bg-slate-900 border border-indigo-500/30 rounded-3xl shadow-2xl overflow-hidden text-center p-8 relative">
+          <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-24 h-24 bg-indigo-600 rounded-full flex items-center justify-center shadow-xl shadow-indigo-600/40">
+             <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+             </svg>
+          </div>
+          <div className="mt-8 space-y-4">
+            <h3 className="text-2xl font-black text-white italic">VICTORY! 🚀</h3>
+            <p className="text-slate-400 text-sm leading-relaxed">
+              Your DevBox is live. You just saved yourself roughly <span className="text-indigo-400 font-bold">2 hours</span> of manual configuration.
+            </p>
+            
+            <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 mt-6 text-left group">
+              <p className="text-[10px] uppercase font-black text-slate-500 mb-2 tracking-widest">Share your expert setup</p>
+              <p className="text-xs text-indigo-300 italic font-medium leading-relaxed">
+                &quot;Just provisioned a full Docker/VS Code dev environment in under 60 seconds with @DevBoxUI. My infra is finally automated. ⚡️&quot;
+              </p>
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <button 
+                onClick={() => {
+                  navigator.clipboard.writeText(`Just provisioned a full Docker/VS Code dev environment in under 60 seconds with DevBoxUI. My infra is finally automated. ⚡️`);
+                  setCopyStatus('Copied!');
+                  setTimeout(() => setCopyStatus(null), 2000);
+                }}
+                className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-xl transition-all text-sm border border-slate-700"
+              >
+                {copyStatus || 'Copy Post'}
+              </button>
+              <button 
+                onClick={onClose}
+                className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition-all text-sm shadow-lg shadow-indigo-600/20"
+              >
+                Go to Dashboard
               </button>
             </div>
           </div>
