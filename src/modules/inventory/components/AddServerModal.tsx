@@ -249,7 +249,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
                   <span className="w-2 h-2 bg-indigo-500 rounded-full mr-2 animate-ping"></span>
                   Paste this on your server
                 </p>
-                <code className="text-xs text-slate-300 font-mono break-all leading-relaxed block pr-8">
+                <code className="text-xs text-slate-300 font-mono break-all leading-relaxed block pr-8 h-[100px] overflow-y-auto scrollbar-thin scrollbar-thumb-indigo-500/20 scrollbar-track-transparent">
                   {bootstrapCommand}
                 </code>
                 <button 
