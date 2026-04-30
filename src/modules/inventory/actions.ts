@@ -342,8 +342,9 @@ docker run -d \
   --name=code-server \
   -e PUID=1000 -e PGID=1000 \
   -e SUDO_PASSWORD="$DEV_USER" \
-  -e DEFAULT_WORKSPACE=/config/workspace \
+  -e DEFAULT_WORKSPACE="$C_WORKSPACE" \
   -v "$C_CONFIG:/config" \
+  -v "$C_HOME:$C_HOME" \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v /usr/bin/docker:/usr/bin/docker \
   -v /usr/libexec/docker/cli-plugins:/usr/libexec/docker/cli-plugins \
