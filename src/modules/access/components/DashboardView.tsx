@@ -6,7 +6,7 @@ import { AddServerModal } from '@/modules/inventory/components/AddServerModal';
 import { SettingsModal } from '@/modules/access/components/SettingsModal';
 import { FeedbackModal } from '@/modules/feedback/components/FeedbackModal';
 import { ServerList } from '@/modules/inventory/components/ServerList';
-import { provisionServer, getServers, addProject, deleteServer } from '@/modules/inventory/actions';
+import { provisionServer, getServers, addProject, deleteServer, reinstallServer } from '@/modules/inventory/actions';
 import { ServerConfig } from '@/modules/inventory/types';
 
 interface DashboardViewProps {
@@ -111,6 +111,17 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
     }
   };
 
+  const handleReinstall = async (serverId: string) => {
+    try {
+      await reinstallServer(serverId);
+      const data = await getServers();
+      setServers(data || []);
+    } catch (error) {
+      alert("Failed to trigger reinstall. Check console for details.");
+      console.error(error);
+    }
+  };
+
   const handleLogout = () => {
     const returnTo = encodeURIComponent(window.location.origin);
     window.location.href = `/cdn-cgi/access/logout?returnTo=${returnTo}`;
@@ -203,7 +214,7 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
               <div className="animate-spin h-8 w-8 border-4 border-indigo-500 border-t-transparent rounded-full" />
             </div>
           ) : (
-            <ServerList servers={servers} onAddProject={handleAddProject} onDeleteServer={handleDeleteServer} onToggleLock={handleToggleLock} />
+            <ServerList servers={servers} onAddProject={handleAddProject} onDeleteServer={handleDeleteServer} onToggleLock={handleToggleLock} onReinstall={handleReinstall} />
           )}
         </div>
       </main>

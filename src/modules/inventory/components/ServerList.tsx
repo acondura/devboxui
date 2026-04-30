@@ -8,9 +8,10 @@ interface ServerListProps {
   onAddProject: (serverId: string, projectName: string) => Promise<void>;
   onDeleteServer: (serverId: string) => Promise<void>;
   onToggleLock?: (serverId: string, enableLock: boolean) => Promise<void>;
+  onReinstall?: (serverId: string) => Promise<void>;
 }
 
-export function ServerList({ servers, onAddProject, onDeleteServer, onToggleLock }: ServerListProps) {
+export function ServerList({ servers, onAddProject, onDeleteServer, onToggleLock, onReinstall }: ServerListProps) {
   if (servers.length === 0) {
     return (
       <div className="border border-dashed border-slate-700 rounded-xl p-12 text-center bg-slate-800/20">
@@ -28,19 +29,20 @@ export function ServerList({ servers, onAddProject, onDeleteServer, onToggleLock
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {servers.map((server) => (
-        <ServerCard key={server.id} server={server} onAddProject={onAddProject} onDeleteServer={onDeleteServer} onToggleLock={onToggleLock} />
+        <ServerCard key={server.id} server={server} onAddProject={onAddProject} onDeleteServer={onDeleteServer} onToggleLock={onToggleLock} onReinstall={onReinstall} />
       ))}
     </div>
   );
 }
 
-function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { server: ServerConfig, onAddProject: (serverId: string, projectName: string) => Promise<void>, onDeleteServer: (serverId: string) => Promise<void>, onToggleLock?: (serverId: string, enableLock: boolean) => Promise<void> }) {
+function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock, onReinstall }: { server: ServerConfig, onAddProject: (serverId: string, projectName: string) => Promise<void>, onDeleteServer: (serverId: string) => Promise<void>, onToggleLock?: (serverId: string, enableLock: boolean) => Promise<void>, onReinstall?: (serverId: string) => Promise<void> }) {
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isTogglingLock, setIsTogglingLock] = useState(false);
   const [isFetchingLogs, setIsFetchingLogs] = useState(false);
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
   const [showManualSetup, setShowManualSetup] = useState(false);
+  const [isReinstalling, setIsReinstalling] = useState(false);
   const [debugData, setDebugData] = useState<{docker: string, setup: string, timestamp: string} | null>(null);
 
   const handleFetchLogs = async () => {
@@ -184,6 +186,31 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock }: { se
               )}
               <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover/lock:opacity-100 transition-opacity bg-slate-700 text-white text-[10px] py-1 px-2 rounded pointer-events-none whitespace-nowrap z-50">
                 {server.isLocked ? 'Unlock to allow deletion' : 'Lock to prevent accidental deletion'}
+              </div>
+            </button>
+          )}
+          {onReinstall && (server.hetznerServerId || server.contaboInstanceId) && (
+            <button 
+              onClick={async () => {
+                if (confirm("Are you sure you want to REINSTALL the OS on this server? ALL DATA WILL BE LOST. This will trigger a fresh Ubuntu 24.04 install and restart the provisioning process.")) {
+                  setIsReinstalling(true);
+                  try {
+                    await onReinstall(server.id);
+                  } catch {
+                    alert("Failed to trigger reinstall.");
+                  } finally {
+                    setIsReinstalling(false);
+                  }
+                }
+              }}
+              disabled={isReinstalling || server.isLocked}
+              className={`p-1.5 transition-colors rounded group/reinstall relative ${server.isLocked ? 'text-slate-700 cursor-not-allowed' : 'text-slate-500 hover:text-amber-500 hover:bg-slate-800'}`}
+            >
+              <svg className={`w-5 h-5 ${isReinstalling ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover/reinstall:opacity-100 transition-opacity bg-slate-700 text-white text-[10px] py-1 px-2 rounded pointer-events-none whitespace-nowrap z-50">
+                {server.isLocked ? 'Unlock to allow reinstall' : 'Reinstall OS (Full Wipe)'}
               </div>
             </button>
           )}

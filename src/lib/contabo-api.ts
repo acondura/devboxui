@@ -142,4 +142,26 @@ export class ContaboApiService {
       throw new Error(`Failed to delete Contabo secret: ${err}`);
     }
   }
+
+  async reinstallInstance(instanceId: number, config: {
+    imageId: string;
+    userData?: string;
+    sshKeys?: number[];
+  }): Promise<void> {
+    const token = await this.getAccessToken();
+    const response = await fetch(`https://api.contabo.com/v1/compute/instances/${instanceId}/reinstall`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'x-request-id': crypto.randomUUID()
+      },
+      body: JSON.stringify(config)
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(`Failed to reinstall Contabo instance: ${err}`);
+    }
+  }
 }

@@ -28,6 +28,9 @@ export interface ServerConfig {
   bootstrapCommand?: string;
   contaboInstanceId?: number;
   contaboSecretId?: number;
+  tunnelToken?: string;
+  providerName?: string;
+  hostname?: string;
 }
 
 export interface ProvisioningState {

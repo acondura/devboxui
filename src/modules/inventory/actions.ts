@@ -581,6 +581,9 @@ export async function provisionServer(
     const tunnelResult = await cfApi.createTunnel(`tunnel-${serverId}`);
     tunnelId = tunnelResult.id;
     config.tunnelId = tunnelId;
+    config.tunnelToken = tunnelResult.token;
+    config.providerName = 'Hetzner';
+    config.hostname = hostname;
 
     console.log("Setting up DNS and Routing...");
     await cfApi.setupHostname(hostname, tunnelResult.id);
@@ -1010,6 +1013,110 @@ export async function deleteServer(serverId: string) {
 }
 
 /**
+ * Reinstalls the OS on a server (Contabo/Hetzner) and restarts provisioning.
+ */
+export async function reinstallServer(serverId: string) {
+  const userEmail = await getIdentity();
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+  const settings = await getUserSettings();
+
+  const cfApi = new CloudflareApiService(env);
+  const hetznerApi = new HetznerApiService(env, settings?.hetznerToken);
+  const contaboApi = new ContaboApiService(env, {
+    clientId: settings?.contaboClientId || env.CONTABO_CLIENT_ID || '',
+    clientSecret: settings?.contaboClientSecret || env.CONTABO_CLIENT_SECRET || '',
+    apiUsername: settings?.contaboUsername || env.CONTABO_API_USERNAME || '',
+    apiPassword: settings?.contaboPassword || env.CONTABO_API_PASSWORD || ''
+  });
+
+  if (!kv) throw new Error("KV database missing.");
+  if (!settings) throw new Error("User settings not found.");
+
+  // 1. Find the server in KV
+  const servers = await getServers();
+  const config = servers.find(s => s.id === serverId);
+
+  if (!config) {
+    throw new Error("Server not found.");
+  }
+
+  // 2. Reset Status
+  config.status = 'provisioning';
+  config.detailedStatus = 'Triggering Reinstall...';
+  config.updatedAt = new Date().toISOString();
+  config.logs = [`OS Reinstallation triggered at ${config.updatedAt}`];
+  
+  // Clear tunnel URL temporarily to show provisioning state
+  const oldTunnelUrl = config.tunnelUrl;
+  
+  const serverKey = `servers:${userEmail}:${serverId}`;
+  await kv.put(serverKey, JSON.stringify(config));
+
+  try {
+    if (config.contaboInstanceId) {
+      // For Contabo, we can re-inject cloud-init
+      // 1. Re-generate bootstrap script (needs the same token/ids)
+      const tunnelResult = await kv.get(`token:${config.provisioningToken}`);
+      const tunnelToken = config.tunnelToken; // We should have this in config
+
+      const requestHost = env.NEXT_PUBLIC_APP_URL || 'https://devboxui.com';
+      const callbackUrl = `${requestHost}/api/provisioning/status`;
+      const serviceToken = await cfApi.getOrCreateServiceToken(kv);
+
+      const bootstrapScript = getBootstrapScript(
+        config.userName || 'abc',
+        userEmail,
+        config.tunnelToken || '',
+        env.MANAGEMENT_SSH_PUBLIC_KEY || '',
+        settings.sshPublicKey,
+        serverId,
+        config.provisioningToken || '',
+        callbackUrl,
+        config.rootPassword || '',
+        serviceToken.id,
+        serviceToken.client_secret,
+        undefined,
+        config.providerName || 'Custom',
+        config.hostname || 'devbox'
+      );
+
+      console.log(`Triggering Contabo Reinstall for ${config.contaboInstanceId}...`);
+      await contaboApi.reinstallInstance(config.contaboInstanceId, {
+        imageId: 'ubuntu-24.04',
+        userData: bootstrapScript,
+        sshKeys: config.contaboSecretId ? [config.contaboSecretId] : []
+      });
+      
+      config.detailedStatus = 'OS Reinstalling (Contabo)...';
+    } else if (config.hetznerServerId) {
+      console.log(`Triggering Hetzner Rebuild for ${config.hetznerServerId}...`);
+      await hetznerApi.rebuildServer(config.hetznerServerId);
+      config.detailedStatus = 'OS Rebuild in progress (Hetzner)...';
+      
+      // Since Hetzner rebuild doesn't re-run cloud-init easily, 
+      // we'll switch back to waiting-for-bootstrap for manual servers
+      if (config.ip && !config.hetznerServerId) {
+         config.status = 'waiting-for-bootstrap';
+      }
+    } else {
+      // Manual server without provider API
+      throw new Error("Reinstall not supported for this server type.");
+    }
+
+    await kv.put(serverKey, JSON.stringify(config));
+    return { success: true };
+  } catch (error) {
+    console.error("Reinstall failed:", error);
+    // Restore state if failed
+    config.status = 'ready'; // Best guess
+    config.detailedStatus = undefined;
+    await kv.put(serverKey, JSON.stringify(config));
+    throw error;
+  }
+}
+
+/**
  * Toggles the protection status (lock) of a server on Hetzner.
  */
 export async function toggleServerLock(serverId: string, enableLock: boolean) {
@@ -1137,6 +1244,10 @@ export async function provisionManualServer(customName: string, provider: string
     // 1. Cloudflare Automation
     const tunnelResult = await cfApi.createTunnel(`tunnel-${serverId}`);
     config.tunnelId = tunnelResult.id;
+    config.tunnelToken = tunnelResult.token;
+    config.providerName = provider === 'contabo' ? 'Custom' : (provider || 'Custom');
+    config.hostname = hostname;
+
     await cfApi.setupHostname(hostname, tunnelResult.id);
     await cfApi.setupAccess(hostname, userEmail);
 
