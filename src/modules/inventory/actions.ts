@@ -1003,8 +1003,7 @@ export async function deleteServer(serverId: string) {
   }
 
   // 3. Remove from KV
-  // Note: We use the IP in the key, so we need it. If it's still 'pending', we'll need to find the key.
-  const kvKey = `servers:${userEmail}:${config.ip}`;
+  const kvKey = `servers:${userEmail}:${serverId}`;
   await kv.delete(kvKey);
 
   return { success: true };
