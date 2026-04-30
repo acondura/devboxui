@@ -146,7 +146,7 @@ ufw allow 8080/tcp || echo "ufw not present or failed"
 
 # CRITICAL: Wait for apt locks (background updates often lock apt on fresh boot)
 # We use a simple apt-get update retry loop instead of 'fuser' (which might be missing)
-echo "Waiting for apt locks..."
+echo -e "\x1b[33m[Waiting]\x1b[0m Ubuntu is finishing background updates (apt lock)..."
 START_TIME=$(date +%s)
 LOG_FILE="/var/log/devbox-setup.log"
 touch "$LOG_FILE"
@@ -215,7 +215,7 @@ MAX_WAIT=300
 WAIT_COUNT=0
 while fuser /var/lib/dpkg/lock-mirror >/dev/null 2>&1 || fuser /var/lib/apt/lists/lock >/dev/null 2>&1 || fuser /var/lib/dpkg/lock >/dev/null 2>&1; do
    if [ $WAIT_COUNT -gt $MAX_WAIT ]; then echo "Apt lock timeout"; break; fi
-   echo "Waiting for other software managers to finish..."
+   echo -e "\\x1b[33m[Waiting]\\x1b[0m Ubuntu is finishing background updates (apt lock)..." >&3
    sleep 5
    WAIT_COUNT=$((WAIT_COUNT+5))
 done
@@ -393,9 +393,14 @@ report_status "Ready"
 # Restore stdout and show summary
 exec 1>&3
 END_TIME=$(date +%s)
-DURATION=$((END_TIME - START_TIME))
+DIFF=$((END_TIME - START_TIME))
+if [ \$DIFF -ge 60 ]; then
+  DURATION="$((DIFF / 60))m $((DIFF % 60))s"
+else
+  DURATION="\${DIFF}s"
+fi
 
-echo -e "\n\\x1b[1;32m✅ DevBox is live! (Setup took \${DURATION}s)\\x1b[0m"
+echo -e "\n\\x1b[1;32m✅ DevBox is live! (Setup took \${DURATION})\\x1b[0m"
 echo -e "\\x1b[0;36m📄 Full log available at: \$LOG_FILE\\x1b[0m\n"
 
 echo "✅ SETUP FINISHED - Server is ready for use." > /etc/motd

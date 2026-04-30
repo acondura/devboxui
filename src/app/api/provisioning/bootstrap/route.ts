@@ -99,6 +99,13 @@ report_status() {
 
 report_status "Initializing System"
 
+# Wait for apt locks (background updates often lock apt on fresh boot)
+echo -e "\x1b[33m[Waiting]\x1b[0m Ubuntu is finishing background updates (apt lock)..." >&3
+while fuser /var/lib/dpkg/lock-mirror >/dev/null 2>&1 || fuser /var/lib/apt/lists/lock >/dev/null 2>&1 || fuser /var/lib/dpkg/lock >/dev/null 2>&1; do
+   sleep 5
+done
+
+
 # 1. Install Dependencies
 apt-get update -qq
 apt-get install -y -qq curl sudo git jq ca-certificates > /dev/null
@@ -138,9 +145,14 @@ report_status "Ready"
 # Restore stdout and show summary
 exec 1>&3
 END_TIME=$(date +%s)
-DURATION=$((END_TIME - START_TIME))
+DIFF=$((END_TIME - START_TIME))
+if [ \$DIFF -ge 60 ]; then
+  DURATION="$((DIFF / 60))m $((DIFF % 60))s"
+else
+  DURATION="\${DIFF}s"
+fi
 
-echo -e "\n\\x1b[1;32m✅ DevBox is live! (Setup took \${DURATION}s)\\x1b[0m"
+echo -e "\n\\x1b[1;32m✅ DevBox is live! (Setup took \${DURATION})\\x1b[0m"
 echo -e "\\x1b[0;36m📄 Full log available at: \$LOG_FILE\\x1b[0m\n"
 `;
 
