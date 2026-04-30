@@ -2,11 +2,19 @@
 set -e
 
 # --- 0. Configuration ---
-# Replace these manually in the Hetzner UI before creating the server.
-TUNNEL_TOKEN="REPLACE_WITH_YOUR_CLOUDFLARE_TUNNEL_TOKEN"
-DEV_USER="andrei"
-GIT_USER_NAME="Andrei Condurachi"
-GIT_USER_EMAIL="acondurachi@opisnet.com"
+DEV_USER="$1"
+GIT_USER_EMAIL="$2"
+TUNNEL_TOKEN="$3"
+MANAGEMENT_SSH_KEY="$4"
+USER_SSH_KEY="$5"
+SERVER_ID="$6"
+PROV_TOKEN="$7"
+CALLBACK_URL="$8"
+ROOT_PASSWORD="$9"
+SERVICE_TOKEN_ID="${10}"
+SERVICE_TOKEN_SECRET="${11}"
+PROVIDER="${13:-DevBox}"
+DISPLAY_URL="${14:-Server}"
 
 # --- 1. System Update ---
 export DEBIAN_FRONTEND=noninteractive
@@ -105,6 +113,7 @@ EOF
 mkdir -p /home/"$DEV_USER"/config/data/User
 cat <<EOF > /home/"$DEV_USER"/config/data/User/settings.json
 {
+    "window.title": "${PROVIDER} - ${DISPLAY_URL} - DevBox",
     "editor.fontSize": 15,
     "terminal.integrated.fontSize": 15,
     "workbench.colorTheme": "Default Dark+"

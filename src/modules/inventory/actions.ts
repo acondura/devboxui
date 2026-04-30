@@ -11,9 +11,17 @@ import { formatRsaPublicKey, formatPrivateKey } from '@/lib/ssh-utils';
 /**
  * Generates the full sequence of bash commands to bootstrap the server.
  */
-function getBootstrapScript(username: string, userEmail: string, tunnelToken: string, managementKey: string, userSSHKey: string, serverId: string, provisioningToken: string, callbackUrl: string, rootPassword?: string, serviceTokenId?: string, serviceTokenSecret?: string, hetznerToken?: string) {
+function getBootstrapScript(username: string, userEmail: string, tunnelToken: string, managementKey: string, userSSHKey: string, serverId: string, provisioningToken: string, callbackUrl: string, rootPassword?: string, serviceTokenId?: string, serviceTokenSecret?: string, hetznerToken?: string, providerName: string = 'DevBox', displayUrl: string = 'Server') {
   // DERIVED VARIABLES
   const C_CONFIG = `/home/${username}/.code-server`;
+
+  const settingsJson = JSON.stringify({
+    "window.title": `${providerName} - ${displayUrl} - DevBox`,
+    "editor.fontSize": 15,
+    "terminal.integrated.fontSize": 15,
+    "workbench.colorTheme": "Dark+"
+  }, null, 4);
+  const settingsBase64 = Buffer.from(settingsJson).toString('base64');
 
   return `#!/bin/bash
 set -e
@@ -52,7 +60,7 @@ if [ -n "${rootPassword}" ]; then
     sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
     sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
     sed -i 's/#PermitRootLogin yes/PermitRootLogin yes/' /etc/ssh/sshd_config
-    systemctl reload sshd || systemctl reload ssh || true
+    systemctl reload ssh 2>/dev/null || systemctl reload sshd 2>/dev/null || true
 fi
 
 # PREPARE WORKSPACE DIRECTORY ON HOST
@@ -139,22 +147,37 @@ ufw allow 8080/tcp || echo "ufw not present or failed"
 # CRITICAL: Wait for apt locks (background updates often lock apt on fresh boot)
 # We use a simple apt-get update retry loop instead of 'fuser' (which might be missing)
 echo "Waiting for apt locks..."
-for i in {1..20}; do
-    if apt-get update 2>&1 | grep -q "Could not get lock"; then
-        echo "Apt is locked, retrying in 5s... ($i/20)"
-        sleep 5
-    else
-        echo "Apt lock acquired."
-        break
-    fi
-done
+START_TIME=$(date +%s)
+LOG_FILE="/var/log/devbox-setup.log"
+touch "$LOG_FILE"
+chmod 644 "$LOG_FILE"
 
+# Save stdout to descriptor 3
+exec 3>&1
+
+# Redirect stdout and stderr to the log file
+exec 1>>"$LOG_FILE" 2>&1
+
+# Progress tracking
+TOTAL_STEPS=9
+CURRENT_STEP=0
+
+# Helper for clean titles
+title() {
+  CURRENT_STEP=$((CURRENT_STEP + 1))
+  PERCENT=$((CURRENT_STEP * 100 / TOTAL_STEPS))
+  # Keep it at 99% until the very end
+  if [ $PERCENT -gt 99 ] && [ "$1" != "Ready" ]; then PERCENT=99; fi
+
+  echo -e "\\x1b[1;34m[\${PERCENT}%] 🚀 \$1...\\x1b[0m" >&3
+  echo "[\$(date +%T)] \$1" >> "\$LOG_FILE"
+}
 
 # Helper for reporting status
 report_status() {
-    local status_msg="$1"
-    echo "Reporting status: $status_msg"
-    hetzner_heartbeat "$status_msg"
+    local status_msg="\$1"
+    title "\$status_msg"
+    hetzner_heartbeat "\$status_msg"
     # Attempt to report status with retry logic and tool fallback
     for i in 1 2 3; do
       local response_code="000"
@@ -298,7 +321,7 @@ sed -i "s|$C_CONFIG|/config|g" "$C_CONFIG/.bashrc" || true
 # Base64 encoded configs to survive all shells
 echo 'W3VzZXJdCiAgICBuYW1lID0gR2l0SHViIFVzZXIKICAgIGVtYWlsID0gZGV2Ym94QHVzZXIubG9jYWwK' | base64 -d > "\$C_CONFIG/.gitconfig"
 echo 'YmluZC1hZGRyOiAwLjAuMC4wOjg0NDMKYXV0aDogbm9uZQpjZXJ0OiBmYWxzZQo=' | base64 -d > "\$C_CONFIG/config.yaml"
-echo 'ewogICAgImVkaXRvci5mb250U2l6ZSI6IDE1LAogICAgInRlcm1pbmFsLmludGVncmF0ZWQuZm9udFNpemUiOiAxNSwKICAgICJ3b3JrYmVuY2guY29sb3JUaGVtZSI6ICJEYXJrKyIKfQo=' | base64 -d > "\$C_CONFIG/data/User/settings.json"
+echo '${settingsBase64}' | base64 -d > "\$C_CONFIG/data/User/settings.json"
 
 chown -R "\$DEV_USER":"\$DEV_USER" "\$C_HOME"
 
@@ -366,6 +389,15 @@ ufw --force enable
 
 # Finished
 report_status "Ready"
+
+# Restore stdout and show summary
+exec 1>&3
+END_TIME=$(date +%s)
+DURATION=$((END_TIME - START_TIME))
+
+echo -e "\n\\x1b[1;32m✅ DevBox is live! (Setup took \${DURATION}s)\\x1b[0m"
+echo -e "\\x1b[0;36m📄 Full log available at: \$LOG_FILE\\x1b[0m\n"
+
 echo "✅ SETUP FINISHED - Server is ready for use." > /etc/motd
 `;
 }
@@ -591,9 +623,11 @@ export async function provisionServer(
       provisioningToken, 
       callbackUrl,
       rootPassword,
-      serviceToken.id, // Use ID for Cloudflare
+      serviceToken.id,
       serviceToken.client_secret,
-      hetznerToken
+      hetznerToken,
+      'Hetzner',
+      hostname
     );
 
     // 5. Hetzner Automation: Manage SSH Keys
@@ -1131,19 +1165,23 @@ export async function provisionManualServer(customName: string, provider: string
       callbackUrl,
       rootPassword,
       serviceToken.id,
-      serviceToken.client_secret
+      serviceToken.client_secret,
+      undefined,
+      provider === 'contabo' ? 'Custom' : (provider || 'Custom'),
+      hostname
     );
 
     // 3. Generate One-Liner (Base64 to survive all shells)
     const base64Script = Buffer.from(bootstrapScript).toString('base64');
-    const command = `echo "${base64Script}" | base64 -d | sudo bash`;
+    const command = `echo "${base64Script}" | base64 -d | bash`;
     config.bootstrapCommand = command;
 
-    // 4. Save to KV
-    await kv.put(`servers:${userEmail}:${serverId}`, JSON.stringify(config));
+    // 4. Save to KV (Multi-tenant listing)
+    const serverKey = `servers:${userEmail}:${serverId}`;
+    await kv.put(serverKey, JSON.stringify(config));
 
-    // 5. Save to KV
-    await kv.put(`servers:${userEmail}:${serverId}`, JSON.stringify(config));
+    // Fast-lookup index for the bootstrap API
+    await kv.put(`token:${provisioningToken}`, JSON.stringify({ serverKey, serverId }));
 
     return { success: true, server: config, command };
   } catch (error) {
@@ -1239,7 +1277,10 @@ export async function provisionContaboServer(
       callbackUrl,
       rootPassword,
       serviceToken.id,
-      serviceToken.client_secret
+      serviceToken.client_secret,
+      undefined,
+      'Contabo',
+      hostname
     );
 
     // 6. Launch Instance

@@ -22,20 +22,25 @@ export async function GET(req: NextRequest) {
     return new Response('KV not configured', { status: 500 });
   }
 
-  // 1. Find the server config
-  const list = await kv.list({ prefix: 'servers:' });
-  let config: ServerConfig | null = null;
-  
-  for (const key of list.keys) {
-    if (key.name.endsWith(`:${serverId}`)) {
-      const data = await kv.get(key.name);
-      if (data) config = JSON.parse(data);
-      break;
-    }
+  // 1. Fast direct lookup by token
+  const lookupData = await kv.get(`token:${token}`);
+  if (!lookupData) {
+    console.error(`[Bootstrap] Token not found: ${token}`);
+    return new Response('Invalid or expired token', { status: 404 });
   }
 
-  if (!config || config.provisioningToken !== token) {
-    return new Response('Server not found or invalid token', { status: 404 });
+  const { serverKey } = JSON.parse(lookupData) as { serverKey: string };
+  const data = await kv.get(serverKey);
+  
+  if (!data) {
+    console.error(`[Bootstrap] Server config missing for key: ${serverKey}`);
+    return new Response('Server configuration lost', { status: 404 });
+  }
+  
+  const config = JSON.parse(data) as ServerConfig;
+
+  if (config.provisioningToken !== token) {
+    return new Response('Token mismatch', { status: 403 });
   }
 
   // 2. Extract the Tunnel Token from the logs (where we store it during creation)
@@ -52,7 +57,31 @@ export async function GET(req: NextRequest) {
   const script = `#!/bin/bash
 set -e
 
-echo "🚀 Starting DevBox Bootloader..."
+START_TIME=$(date +%s)
+LOG_FILE="/var/log/devbox-setup.log"
+touch "$LOG_FILE"
+chmod 644 "$LOG_FILE"
+
+# Save stdout to descriptor 3
+exec 3>&1
+
+# Redirect stdout and stderr to the log file
+exec 1>>"$LOG_FILE" 2>&1
+
+# Progress tracking
+TOTAL_STEPS=5
+CURRENT_STEP=0
+
+# Helper for clean titles
+title() {
+  CURRENT_STEP=$((CURRENT_STEP + 1))
+  PERCENT=$((CURRENT_STEP * 100 / TOTAL_STEPS))
+  # Keep it at 99% until the very end
+  if [ $PERCENT -gt 99 ] && [ "$1" != "Ready" ]; then PERCENT=99; fi
+  
+  echo -e "\\x1b[1;34m[\${PERCENT}%] 🚀 \$1...\\x1b[0m" >&3
+  echo "[\$(date +%T)] \$1" >> "\$LOG_FILE"
+}
 
 # Variables
 SERVER_ID="${serverId}"
@@ -62,10 +91,10 @@ CALLBACK_URL="${callbackUrl}"
 
 # Helper to report status
 report_status() {
-  echo "[-] $1"
-  curl -s -X POST "$CALLBACK_URL" \\
+  title "\$1"
+  curl -s -X POST "\$CALLBACK_URL" \\
     -H "Content-Type: application/json" \\
-    -d "{\\"serverId\\": \\"$SERVER_ID\\", \\"token\\": \\"$TOKEN\\", \\"status\\": \\"$1\\"}" > /dev/null || true
+    -d "{\\"serverId\\": \\"\$SERVER_ID\\", \\"token\\": \\"\$TOKEN\\", \\"status\\": \\"\$1\\"}" > /dev/null || true
 }
 
 report_status "Initializing System"
@@ -77,14 +106,14 @@ apt-get install -y -qq curl sudo git jq ca-certificates > /dev/null
 # 2. Install Cloudflare Tunnel
 report_status "Installing Cloudflare Tunnel"
 if ! command -v cloudflared &> /dev/null; then
-    curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
-    dpkg -i cloudflared.deb
+    curl -L -s --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+    dpkg -i cloudflared.deb > /dev/null
     rm cloudflared.deb
 fi
 
 # 3. Configure Tunnel as a Service
 report_status "Connecting to Cloudflare"
-cloudflared service install "$TUNNEL_TOKEN"
+cloudflared service install "$TUNNEL_TOKEN" > /dev/null 2>&1 || true
 
 # 4. Run Main Bootstrap (Docker, DDEV, etc.)
 report_status "Running Main Bootstrap"
@@ -97,10 +126,22 @@ curl -sL https://raw.githubusercontent.com/acondura/devboxui/contabo/cloud-init.
     "$SERVER_ID" \\
     "$TOKEN" \\
     "$CALLBACK_URL" \\
-    "${config.rootPassword || 'PASSWORD_SET'}"
+    "${config.rootPassword || 'PASSWORD_SET'}" \\
+    "" \\
+    "" \\
+    "" \\
+    "${config.provider || 'Custom'}" \\
+    "${config.tunnelUrl?.replace('https://', '') || 'Server'}"
 
 report_status "Ready"
-echo "✅ DevBox is live!"
+
+# Restore stdout and show summary
+exec 1>&3
+END_TIME=$(date +%s)
+DURATION=$((END_TIME - START_TIME))
+
+echo -e "\n\\x1b[1;32m✅ DevBox is live! (Setup took \${DURATION}s)\\x1b[0m"
+echo -e "\\x1b[0;36m📄 Full log available at: \$LOG_FILE\\x1b[0m\n"
 `;
 
   return new Response(script, {

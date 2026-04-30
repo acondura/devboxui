@@ -37,8 +37,10 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
 
   // Poll for updates if any server is provisioning
   useEffect(() => {
-    const isProvisioning = servers.some(s => s.status === 'provisioning');
-    if (!isProvisioning) return;
+    const isPending = servers.some(s => 
+      ['provisioning', 'waiting-for-bootstrap', 'initializing', 'Initializing'].includes(s.status as string)
+    );
+    if (!isPending) return;
 
     let timerId: NodeJS.Timeout;
 
@@ -47,8 +49,11 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
         const data = await getServers();
         setServers(data || []);
         
-        // Re-schedule only if still provisioning
-        if (data && data.some(s => s.status === 'provisioning')) {
+        // Re-schedule only if still pending
+        const stillPending = data && data.some(s => 
+          ['provisioning', 'waiting-for-bootstrap', 'initializing', 'Initializing'].includes(s.status as string)
+        );
+        if (stillPending) {
           timerId = setTimeout(poll, 3000);
         }
       } catch (error) {
