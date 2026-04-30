@@ -280,14 +280,21 @@ function ServerCard({ server, userEmail, onAddProject, onDeleteServer, onToggleL
                   key={idx}
                   href={`https://${project.domain}`}
                   target={`${safeTargetBase}_${project.domain.replace(/[^a-zA-Z0-9]/g, '_')}`}
-                  className="flex items-center justify-between p-2.5 rounded bg-slate-950 border border-slate-800 hover:border-indigo-500/30 transition-all group/project"
+                  className="flex items-center justify-between py-2 px-1 rounded-lg hover:bg-indigo-500/5 transition-colors group/project"
                 >
-                  <span className="text-sm text-slate-300 font-medium">{project.domain.split('.')[0]}</span>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-[10px] text-slate-600 font-mono hidden group-hover/project:block">
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold text-slate-200 group-hover/project:text-indigo-400 transition-colors">
+                      {project.domain.split('.')[0]}
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-mono">
                       {project.domain}
                     </span>
-                    <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.3)]" />
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
+                    <svg className="w-3.5 h-3.5 text-slate-600 group-hover/project:text-indigo-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
                   </div>
                 </a>
               ))
