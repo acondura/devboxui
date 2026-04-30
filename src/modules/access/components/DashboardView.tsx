@@ -214,7 +214,7 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
               <div className="animate-spin h-8 w-8 border-4 border-indigo-500 border-t-transparent rounded-full" />
             </div>
           ) : (
-            <ServerList servers={servers} onAddProject={handleAddProject} onDeleteServer={handleDeleteServer} onToggleLock={handleToggleLock} onReinstall={handleReinstall} />
+            <ServerList servers={servers} userEmail={userEmail} onAddProject={handleAddProject} onDeleteServer={handleDeleteServer} onToggleLock={handleToggleLock} onReinstall={handleReinstall} />
           )}
         </div>
       </main>

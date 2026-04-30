@@ -5,13 +5,14 @@ import { getServerLogs } from '../actions';
 
 interface ServerListProps {
   servers: ServerConfig[];
+  userEmail: string;
   onAddProject: (serverId: string, projectName: string) => Promise<void>;
   onDeleteServer: (serverId: string) => Promise<void>;
   onToggleLock?: (serverId: string, enableLock: boolean) => Promise<void>;
   onReinstall?: (serverId: string) => Promise<void>;
 }
 
-export function ServerList({ servers, onAddProject, onDeleteServer, onToggleLock, onReinstall }: ServerListProps) {
+export function ServerList({ servers, userEmail, onAddProject, onDeleteServer, onToggleLock, onReinstall }: ServerListProps) {
   if (servers.length === 0) {
     return (
       <div className="border border-dashed border-slate-700 rounded-xl p-12 text-center bg-slate-800/20">
@@ -29,13 +30,13 @@ export function ServerList({ servers, onAddProject, onDeleteServer, onToggleLock
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {servers.map((server) => (
-        <ServerCard key={server.id} server={server} onAddProject={onAddProject} onDeleteServer={onDeleteServer} onToggleLock={onToggleLock} onReinstall={onReinstall} />
+        <ServerCard key={server.id} server={server} userEmail={userEmail} onAddProject={onAddProject} onDeleteServer={onDeleteServer} onToggleLock={onToggleLock} onReinstall={onReinstall} />
       ))}
     </div>
   );
 }
 
-function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock, onReinstall }: { server: ServerConfig, onAddProject: (serverId: string, projectName: string) => Promise<void>, onDeleteServer: (serverId: string) => Promise<void>, onToggleLock?: (serverId: string, enableLock: boolean) => Promise<void>, onReinstall?: (serverId: string) => Promise<void> }) {
+function ServerCard({ server, userEmail, onAddProject, onDeleteServer, onToggleLock, onReinstall }: { server: ServerConfig, userEmail: string, onAddProject: (serverId: string, projectName: string) => Promise<void>, onDeleteServer: (serverId: string) => Promise<void>, onToggleLock?: (serverId: string, enableLock: boolean) => Promise<void>, onReinstall?: (serverId: string) => Promise<void> }) {
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isTogglingLock, setIsTogglingLock] = useState(false);
@@ -275,7 +276,7 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock, onRein
                 <a 
                   key={idx}
                   href={`https://${project.domain}`}
-                  target="_blank"
+                  target={`${userEmail}-${project.domain}`}
                   rel="noreferrer"
                   className="flex items-center justify-between p-2.5 rounded bg-slate-950 border border-slate-800 hover:border-indigo-500/30 transition-all group/project"
                 >
@@ -299,7 +300,7 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock, onRein
           <div className="space-y-3.5 pt-2">
             <a 
               href={server.tunnelUrl} 
-              target="_blank" 
+              target={`${userEmail}-${server.id}`} 
               rel="noreferrer"
               className="block w-full text-center bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-600/20 transition-all text-sm active:scale-95"
             >
