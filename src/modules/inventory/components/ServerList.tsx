@@ -46,6 +46,9 @@ function ServerCard({ server, userEmail, onAddProject, onDeleteServer, onToggleL
   const [isReinstalling, setIsReinstalling] = useState(false);
   const [debugData, setDebugData] = useState<{docker: string, setup: string, timestamp: string} | null>(null);
 
+  // Sanitize target name for reliable window reuse
+  const safeTargetBase = `${userEmail}-${server.id}`.replace(/[^a-zA-Z0-9]/g, '_');
+
   const handleFetchLogs = async () => {
     setIsLogsModalOpen(true);
     setIsFetchingLogs(true);
@@ -276,8 +279,7 @@ function ServerCard({ server, userEmail, onAddProject, onDeleteServer, onToggleL
                 <a 
                   key={idx}
                   href={`https://${project.domain}`}
-                  target={`${userEmail}-${project.domain}`}
-                  rel="noreferrer"
+                  target={`${safeTargetBase}_${project.domain.replace(/[^a-zA-Z0-9]/g, '_')}`}
                   className="flex items-center justify-between p-2.5 rounded bg-slate-950 border border-slate-800 hover:border-indigo-500/30 transition-all group/project"
                 >
                   <span className="text-sm text-slate-300 font-medium">{project.domain.split('.')[0]}</span>
@@ -300,8 +302,7 @@ function ServerCard({ server, userEmail, onAddProject, onDeleteServer, onToggleL
           <div className="space-y-3.5 pt-2">
             <a 
               href={server.tunnelUrl} 
-              target={`${userEmail}-${server.id}`} 
-              rel="noreferrer"
+              target={safeTargetBase} 
               className="block w-full text-center bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-600/20 transition-all text-sm active:scale-95"
             >
               Launch VS Code
