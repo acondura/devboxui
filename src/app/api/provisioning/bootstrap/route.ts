@@ -97,14 +97,13 @@ report_status() {
     -d "{\\"serverId\\": \\"\$SERVER_ID\\", \\"token\\": \\"\$TOKEN\\", \\"status\\": \\"\$1\\"}" > /dev/null || true
 }
 
-report_status "Initializing System"
-
 # Wait for apt locks (background updates often lock apt on fresh boot)
 echo -e "\x1b[33m[Waiting]\x1b[0m Ubuntu is finishing background updates (apt lock)..." >&3
-while fuser /var/lib/dpkg/lock-mirror >/dev/null 2>&1 || fuser /var/lib/apt/lists/lock >/dev/null 2>&1 || fuser /var/lib/dpkg/lock >/dev/null 2>&1; do
+while fuser /var/lib/dpkg/lock-mirror >/dev/null 2>&1 || fuser /var/lib/apt/lists/lock >/dev/null 2>&1 || fuser /var/lib/dpkg/lock >/dev/null 2>&1 || fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
    sleep 5
 done
 
+report_status "Initializing System"
 
 # 1. Install Dependencies
 apt-get update -qq

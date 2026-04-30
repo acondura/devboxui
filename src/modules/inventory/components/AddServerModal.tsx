@@ -59,6 +59,20 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
   const [createdServerName, setCreatedServerName] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
+  const [hasLoadedProvider, setHasLoadedProvider] = useState(false);
+  
+  // Load last provider on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('devbox_last_provider');
+    if (saved) setProvider(saved as CloudProvider);
+    setHasLoadedProvider(true);
+  }, []);
+
+  // Save provider on change
+  const handleProviderSelect = (p: CloudProvider) => {
+    setProvider(p);
+    localStorage.setItem('devbox_last_provider', p);
+  };
 
   useEffect(() => {
     if (isOpen && provider === 'hetzner') {
@@ -182,7 +196,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
             </div>
             
             <div className="relative group">
-              <div className="bg-slate-950 border border-slate-800 rounded-xl p-5 font-mono text-[10px] text-indigo-300 break-all leading-relaxed shadow-inner">
+              <div className="bg-slate-950 border border-slate-800 rounded-xl p-5 font-mono text-[10px] text-indigo-300 break-all leading-relaxed shadow-inner max-h-[100px] overflow-y-auto">
                 <span className="text-slate-500 mr-2 select-none">$</span>
                 {bootstrapCommand}
               </div>
@@ -249,19 +263,20 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
                   <span className="w-2 h-2 bg-indigo-500 rounded-full mr-2 animate-ping"></span>
                   Paste this on your server
                 </p>
-                <code className="text-xs text-slate-300 font-mono break-all leading-relaxed block pr-8 h-[100px] overflow-y-auto scrollbar-thin scrollbar-thumb-indigo-500/20 scrollbar-track-transparent">
+                <code className="text-xs text-slate-300 font-mono break-all leading-relaxed block pr-8 max-h-[100px] overflow-y-auto scrollbar-thin scrollbar-thumb-indigo-500/20 scrollbar-track-transparent">
                   {bootstrapCommand}
                 </code>
                 <button 
                   onClick={() => {
-                    navigator.clipboard.writeText(bootstrapCommand);
+                    navigator.clipboard.writeText(bootstrapCommand || '');
                     setCopyStatus('Copied!');
                     setTimeout(() => setCopyStatus(null), 2000);
                   }}
-                  className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors"
+                  className="absolute top-4 right-4 p-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                  title="Copy to clipboard"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m-3 8h4m-2-2v4" />
                   </svg>
                 </button>
               </div>
@@ -324,7 +339,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
               value={provider}
               onChange={(e) => {
                 const selected = providers.find(p => p.id === e.target.value);
-                if (selected?.active) setProvider(e.target.value as CloudProvider);
+                if (selected?.active) handleProviderSelect(e.target.value as CloudProvider);
               }}
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer text-sm font-medium"
             >
@@ -517,7 +532,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
           <div className="pt-2">
             <button
               type="submit"
-              disabled={isSubmitting || (provider === 'hetzner' && isLoadingOptions)}
+              disabled={isSubmitting || (provider === 'hetzner' && isLoadingOptions) || !name.trim()}
               className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-indigo-500/20 flex items-center justify-center space-x-2"
             >
               {isSubmitting ? (

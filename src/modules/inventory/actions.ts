@@ -86,6 +86,13 @@ hetzner_heartbeat() {
 # START BEATING
 hetzner_heartbeat "Booting-system"
 
+# CRITICAL: Wait for apt locks (background updates often lock apt on fresh boot)
+# We use a simple apt-get update retry loop instead of 'fuser' (which might be missing)
+echo -e "\x1b[33m[Waiting]\x1b[0m Ubuntu is finishing background updates (apt lock)..."
+while fuser /var/lib/dpkg/lock-mirror >/dev/null 2>&1 || fuser /var/lib/apt/lists/lock >/dev/null 2>&1 || fuser /var/lib/dpkg/lock >/dev/null 2>&1 || fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
+   sleep 5
+done
+
 # Install tools
 apt-get update && apt-get install -y curl wget || echo "Initial apt failed, will retry later"
 
@@ -144,9 +151,7 @@ export DEBIAN_FRONTEND=noninteractive
 # Open debug port
 ufw allow 8080/tcp || echo "ufw not present or failed"
 
-# CRITICAL: Wait for apt locks (background updates often lock apt on fresh boot)
 # We use a simple apt-get update retry loop instead of 'fuser' (which might be missing)
-echo -e "\x1b[33m[Waiting]\x1b[0m Ubuntu is finishing background updates (apt lock)..."
 START_TIME=$(date +%s)
 LOG_FILE="/var/log/devbox-setup.log"
 touch "$LOG_FILE"
@@ -558,7 +563,8 @@ export async function provisionServer(
   const shortId = serverId.slice(0, 8);
   const name = customName || `devbox-${shortId}`;
   const userName = userEmail.split('@')[0].replace(/[^a-zA-Z0-9]/g, '_');
-  const hostname = `${name}-code.devboxui.com`;
+  const safeName = name.toLowerCase().replace(/[^a-z0-9]/g, '-');
+  const hostname = `${safeName}-code.devboxui.com`;
 
   const rootPassword = Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-6);
   const config: ServerConfig = {
@@ -1224,7 +1230,8 @@ export async function provisionManualServer(customName: string, provider: string
   const shortId = serverId.slice(0, 8);
   const name = customName || `devbox-${shortId}`;
   const userName = userEmail.split('@')[0].replace(/[^a-zA-Z0-9]/g, '_');
-  const hostname = `${name}-code.devboxui.com`;
+  const safeName = name.toLowerCase().replace(/[^a-z0-9]/g, '-');
+  const hostname = `${safeName}-code.devboxui.com`;
 
   const rootPassword = manualPassword || Math.random().toString(36).slice(-10);
   const config: ServerConfig = {
@@ -1288,7 +1295,7 @@ export async function provisionManualServer(customName: string, provider: string
 
     // 3. Generate One-Liner (Base64 to survive all shells)
     const base64Script = Buffer.from(bootstrapScript).toString('base64');
-    const command = `echo "${base64Script}" | base64 -d | bash`;
+    const command = `echo "${base64Script}" | base64 -d | bash `;
     config.bootstrapCommand = command;
 
     // 4. Save to KV (Multi-tenant listing)
@@ -1341,7 +1348,8 @@ export async function provisionContaboServer(
   const shortId = serverId.slice(0, 8);
   const name = customName || `devbox-${shortId}`;
   const userName = userEmail.split('@')[0].replace(/[^a-zA-Z0-9]/g, '_');
-  const hostname = `${name}-code.devboxui.com`;
+  const safeName = name.toLowerCase().replace(/[^a-z0-9]/g, '-');
+  const hostname = `${safeName}-code.devboxui.com`;
 
   const rootPassword = Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-6);
   const config: ServerConfig = {
