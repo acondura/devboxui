@@ -886,7 +886,7 @@ export async function getServers() {
 /**
  * Adds a new DDEV project to an existing server.
  */
-export async function addProject(serverId: string, projectName: string) {
+export async function addProject(serverId: string, projectName: string, port: number = 8443) {
   const userEmail = await getIdentity();
   const env = await getCloudflareEnv();
   const kv = env.KV;
@@ -915,11 +915,12 @@ export async function addProject(serverId: string, projectName: string) {
 
   // 2. Generate Project Domain
   const cleanName = projectName.toLowerCase().replace(/[^a-z0-9]/g, '-');
-  const projectDomain = `${cleanName}-app.devboxui.com`;
+  const projectDomain = `${cleanName}.devboxui.com`; // Simplified domain generation
 
   // 3. Update Cloudflare Tunnel, DNS & Access
-  await cfApi.setupHostname(projectDomain, config.tunnelId);
-  console.log(`Setting up Zero Trust Access for project ${projectDomain}...`);
+  const service = `http://localhost:${port}`;
+  await cfApi.setupHostname(projectDomain, config.tunnelId, service);
+  console.log(`Setting up Zero Trust Access for project ${projectDomain} -> ${service}...`);
   await cfApi.setupAccess(projectDomain, userEmail);
 
   // 4. Update Server State

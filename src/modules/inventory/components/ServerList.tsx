@@ -6,7 +6,7 @@ import { getServerLogs } from '../actions';
 interface ServerListProps {
   servers: ServerConfig[];
   userEmail: string;
-  onAddProject: (serverId: string, projectName: string) => Promise<void>;
+  onAddProject: (serverId: string, projectName: string, port: number) => Promise<void>;
   onDeleteServer: (serverId: string) => Promise<void>;
   onToggleLock?: (serverId: string, enableLock: boolean) => Promise<void>;
   onReinstall?: (serverId: string) => Promise<void>;
@@ -36,7 +36,7 @@ export function ServerList({ servers, userEmail, onAddProject, onDeleteServer, o
   );
 }
 
-function ServerCard({ server, userEmail, onAddProject, onDeleteServer, onToggleLock, onReinstall }: { server: ServerConfig, userEmail: string, onAddProject: (serverId: string, projectName: string) => Promise<void>, onDeleteServer: (serverId: string) => Promise<void>, onToggleLock?: (serverId: string, enableLock: boolean) => Promise<void>, onReinstall?: (serverId: string) => Promise<void> }) {
+function ServerCard({ server, userEmail, onAddProject, onDeleteServer, onToggleLock, onReinstall }: { server: ServerConfig, userEmail: string, onAddProject: (serverId: string, projectName: string, port: number) => Promise<void>, onDeleteServer: (serverId: string) => Promise<void>, onToggleLock?: (serverId: string, enableLock: boolean) => Promise<void>, onReinstall?: (serverId: string) => Promise<void> }) {
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isTogglingLock, setIsTogglingLock] = useState(false);
@@ -99,7 +99,7 @@ function ServerCard({ server, userEmail, onAddProject, onDeleteServer, onToggleL
       <AddDomainModal 
         isOpen={isProjectModalOpen} 
         onClose={() => setIsProjectModalOpen(false)} 
-        onAdd={(name) => onAddProject(server.id, name)} 
+        onAdd={(name, port) => onAddProject(server.id, name, port)} 
       />
       
       <div className="p-5 border-b border-slate-800 bg-slate-950/50 rounded-t-xl flex justify-between items-start">

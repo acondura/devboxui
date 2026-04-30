@@ -5,11 +5,12 @@ import { useState } from 'react';
 interface AddDomainModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (domainPrefix: string) => void;
+  onAdd: (domainPrefix: string, port: number) => void;
 }
 
 export function AddDomainModal({ isOpen, onClose, onAdd }: AddDomainModalProps) {
   const [domainPrefix, setDomainPrefix] = useState('');
+  const [port, setPort] = useState<string>('32768');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
@@ -17,7 +18,7 @@ export function AddDomainModal({ isOpen, onClose, onAdd }: AddDomainModalProps) 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    await onAdd(domainPrefix);
+    await onAdd(domainPrefix, parseInt(port) || 80);
     setIsSubmitting(false);
     setDomainPrefix('');
     onClose();
@@ -51,29 +52,59 @@ export function AddDomainModal({ isOpen, onClose, onAdd }: AddDomainModalProps) 
             </p>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1.5">Subdomain Prefix</label>
-            <input
-              type="text"
-              required
-              placeholder="e.g. my-app"
-              value={domainPrefix}
-              onChange={(e) => setDomainPrefix(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-            />
-            <div className="mt-3 p-3 bg-slate-950/50 rounded-lg border border-slate-800/50 flex items-center justify-between">
-               <span className="text-xs text-slate-500 font-bold uppercase tracking-tight">Resulting URL:</span>
-               <span className="text-sm font-mono text-indigo-400 truncate ml-2">
-                  {domainPrefix ? `${domainPrefix}.devboxui.com` : 'prefix.devboxui.com'}
-               </span>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-slate-400 mb-1.5">Subdomain</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. odb-app"
+                  value={domainPrefix}
+                  onChange={(e) => setDomainPrefix(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-4 pr-32 py-2.5 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                />
+                <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
+                  <span className="text-slate-500 text-sm font-medium">.devboxui.com</span>
+                </div>
+              </div>
             </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-400 mb-1.5">Port</label>
+              <input
+                type="number"
+                required
+                placeholder="32768"
+                value={port}
+                onChange={(e) => setPort(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+              />
+            </div>
+          </div>
+
+          <div className="mt-3 p-4 bg-slate-950/50 rounded-xl border border-slate-800/50 space-y-3">
+             <div className="flex flex-col space-y-1">
+                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">Endpoint URL</span>
+                <span className="text-sm font-mono text-indigo-400 break-all">
+                   https://{domainPrefix ? `${domainPrefix}.devboxui.com` : 'prefix.devboxui.com'}
+                </span>
+             </div>
+             <div className="flex items-center justify-between border-t border-slate-800/50 pt-3">
+                <div className="flex items-center space-x-2">
+                  <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Cloudflare Access + Tunnel</span>
+                </div>
+                <span className="text-[10px] text-slate-500 font-mono">
+                   :localhost:{port || '80'}
+                </span>
+             </div>
           </div>
           
           <div className="pt-2">
             <button
               type="submit"
-              disabled={isSubmitting}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-indigo-500/20 flex items-center justify-center space-x-2"
+              disabled={isSubmitting || !domainPrefix}
+              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-600 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-indigo-600/20 flex items-center justify-center space-x-2"
             >
               {isSubmitting ? (
                 <>
@@ -81,10 +112,10 @@ export function AddDomainModal({ isOpen, onClose, onAdd }: AddDomainModalProps) 
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span className="text-sm">Updating DNS...</span>
+                  <span className="text-sm uppercase tracking-wider">Activating Domain...</span>
                 </>
               ) : (
-                <span className="text-sm">Expose New Domain ✨</span>
+                <span className="text-sm uppercase tracking-wider">Activate Domain</span>
               )}
             </button>
           </div>

@@ -78,9 +78,9 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
     }
   };
 
-  const handleAddProject = async (serverId: string, projectName: string) => {
+  const handleAddProject = async (serverId: string, projectName: string, port: number = 8443) => {
     try {
-      const updatedServer = await addProject(serverId, projectName);
+      const updatedServer = await addProject(serverId, projectName, port);
       setServers(prev => prev.map(s => s.id === serverId ? updatedServer : s));
     } catch (error) {
       alert("Failed to add project. Check console for details.");
