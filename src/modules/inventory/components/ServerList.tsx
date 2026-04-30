@@ -334,7 +334,7 @@ function ServerCard({ server, onAddProject, onDeleteServer, onToggleLock, onRein
               </p>
             </div>
             <div className="relative group/cmd">
-               <pre className="bg-slate-950 border border-slate-800 rounded-lg p-3 text-[9px] font-mono text-indigo-300 break-all whitespace-pre-wrap leading-tight shadow-inner max-h-[120px] overflow-auto">
+               <pre className="bg-slate-950 border border-slate-800 rounded-lg p-4 text-[10px] font-mono text-indigo-300 break-all whitespace-pre-wrap leading-relaxed shadow-inner max-h-[100px] overflow-y-auto border-l-2 border-l-indigo-500/50">
                  {server.bootstrapCommand}
                </pre>
                <button 
