@@ -22,7 +22,7 @@ export function ServerList(props: ServerListProps) {
     return (
       <div className="border border-dashed border-slate-700 rounded-xl p-12 text-center bg-slate-800/20">
         <div className="mx-auto h-12 w-12 text-slate-500 mb-4 rounded-full bg-slate-800 flex items-center justify-center">
-           <span className="text-2xl">☁️</span>
+          <span className="text-2xl">☁️</span>
         </div>
         <h3 className="text-base font-semibold text-white">No servers active</h3>
         <p className="mt-1 text-sm text-slate-400 max-w-xs mx-auto">
@@ -71,7 +71,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
   const [isFetchingLogs, setIsFetchingLogs] = useState(false);
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
   const [deletingDomain, setDeletingDomain] = useState<string | null>(null);
-  const [debugData, setDebugData] = useState<{docker: string, setup: string, timestamp: string} | null>(null);
+  const [debugData, setDebugData] = useState<{ docker: string, setup: string, timestamp: string } | null>(null);
 
   const safeTargetBase = `${userEmail}-${server.id}`.replace(/[^a-zA-Z0-9]/g, '_');
   const displayHostname = (server.hostname || 'devbox').replace('.devboxui.com', '');
@@ -84,7 +84,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
       if (result.success && result.logsUrl) {
         const resp = await fetch(result.logsUrl, { credentials: 'include' });
         if (resp.ok) {
-          const data = await resp.json() as {docker: string, setup: string, timestamp: string};
+          const data = await resp.json() as { docker: string, setup: string, timestamp: string };
           setDebugData(data);
         }
       }
@@ -102,17 +102,17 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
 
   return (
     <tr className="group hover:bg-slate-800/30 transition-colors">
-      <AddDomainModal 
-        isOpen={isProjectModalOpen} 
-        onClose={() => { setIsProjectModalOpen(false); setEditingDomain(null); }} 
-        onAdd={(name, port) => editingDomain ? onUpdateDomain(server.id, editingDomain.domain, port) : onAddProject(server.id, name, port)} 
+      <AddDomainModal
+        isOpen={isProjectModalOpen}
+        onClose={() => { setIsProjectModalOpen(false); setEditingDomain(null); }}
+        onAdd={(name, port) => editingDomain ? onUpdateDomain(server.id, editingDomain.domain, port) : onAddProject(server.id, name, port)}
         initialData={editingDomain ? { prefix: editingDomain.domain.split('.')[0], port: editingDomain.port || 80 } : undefined}
       />
-      <ReinstallModal 
+      <ReinstallModal
         isOpen={isReinstallModalOpen}
         onClose={() => setIsReinstallModalOpen(false)}
         onConfirm={async () => {
-          try { await onReinstall?.(server.id); } 
+          try { await onReinstall?.(server.id); }
           finally { setIsReinstallModalOpen(false); }
         }}
         serverName={server.hostname || server.ip}
@@ -154,8 +154,8 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
         <div className="flex flex-col space-y-2 min-w-[200px]">
           {server.projects?.map((project) => (
             <div key={project.domain} className="flex items-center justify-between group/url">
-              <a 
-                href={`https://${project.domain}`} 
+              <a
+                href={`https://${project.domain}`}
                 target={`win_${project.domain.replace(/[^a-zA-Z0-9]/g, '_')}`}
                 className="text-[11px] font-mono text-indigo-400 hover:text-indigo-300 transition-colors flex items-center space-x-1"
               >
@@ -168,13 +168,13 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
                 <button onClick={() => { setEditingDomain({ domain: project.domain, port: project.port || 80 }); setIsProjectModalOpen(true); }} className="p-1 text-slate-500 hover:text-white transition-colors">
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                 </button>
-                <button 
+                <button
                   onClick={async () => {
                     if (confirm(`Delete ${project.domain}?`)) {
                       setDeletingDomain(project.domain);
                       try { await onDeleteDomain(server.id, project.domain); } finally { setDeletingDomain(null); }
                     }
-                  }} 
+                  }}
                   className="p-1 text-slate-500 hover:text-rose-500 transition-colors"
                 >
                   {deletingDomain === project.domain ? <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> : <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>}
@@ -192,17 +192,19 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
           <button onClick={handleFetchLogs} disabled={isFetchingLogs} className="p-2 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition-all" title="Logs">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
           </button>
-          <button 
-            onClick={() => setIsReinstallModalOpen(true)} 
-            className="p-2 text-slate-500 hover:text-amber-500 hover:bg-slate-800 rounded-lg transition-all" 
-            title="Reinstall"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-          </button>
-          
+          {(server.hetznerServerId || server.contaboInstanceId) && (
+            <button
+              onClick={() => setIsReinstallModalOpen(true)}
+              className="p-2 text-slate-500 hover:text-amber-500 hover:bg-slate-800 rounded-lg transition-all"
+              title="Reinstall"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+            </button>
+          )}
+
           {server.ip !== 'manual-setup' && (
-            <button 
-              onClick={async () => { if (confirm("Delete server?")) await onDeleteServer(server.id); }} 
+            <button
+              onClick={async () => { if (confirm("Delete server?")) await onDeleteServer(server.id); }}
               disabled={server.isLocked}
               className={`p-2 rounded-lg transition-all ${server.isLocked ? 'text-slate-800' : 'text-slate-500 hover:text-rose-500 hover:bg-rose-500/10'}`}
               title="Delete Server"
@@ -212,8 +214,8 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
           )}
 
           <div className="pl-2 ml-2 border-l border-slate-800">
-             <a 
-              href={server.tunnelUrl || '#'} 
+            <a
+              href={server.tunnelUrl || '#'}
               target={`win_ide_${safeTargetBase}`}
               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-indigo-600/20 inline-block"
             >
@@ -236,7 +238,7 @@ function ServerCard({ server, userEmail, onAddProject, onUpdateDomain, onDeleteD
   const [isFetchingLogs, setIsFetchingLogs] = useState(false);
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
   const [isTogglingLock, setIsTogglingLock] = useState(false);
-  const [debugData, setDebugData] = useState<{docker: string, setup: string, timestamp: string} | null>(null);
+  const [debugData, setDebugData] = useState<{ docker: string, setup: string, timestamp: string } | null>(null);
 
   const displayHostname = (server.hostname || 'devbox').replace('.devboxui.com', '');
 
@@ -248,7 +250,7 @@ function ServerCard({ server, userEmail, onAddProject, onUpdateDomain, onDeleteD
       if (result.success && result.logsUrl) {
         const resp = await fetch(result.logsUrl, { credentials: 'include' });
         if (resp.ok) {
-          const data = await resp.json() as {docker: string, setup: string, timestamp: string};
+          const data = await resp.json() as { docker: string, setup: string, timestamp: string };
           setDebugData(data);
         }
       }
@@ -271,23 +273,23 @@ function ServerCard({ server, userEmail, onAddProject, onUpdateDomain, onDeleteD
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-xl hover:border-indigo-500/50 transition-all group relative overflow-hidden">
-      <AddDomainModal 
-        isOpen={isProjectModalOpen} 
-        onClose={() => { setIsProjectModalOpen(false); setEditingDomain(null); }} 
-        onAdd={(name, port) => editingDomain ? onUpdateDomain(server.id, editingDomain.domain, port) : onAddProject(server.id, name, port)} 
+      <AddDomainModal
+        isOpen={isProjectModalOpen}
+        onClose={() => { setIsProjectModalOpen(false); setEditingDomain(null); }}
+        onAdd={(name, port) => editingDomain ? onUpdateDomain(server.id, editingDomain.domain, port) : onAddProject(server.id, name, port)}
         initialData={editingDomain ? { prefix: editingDomain.domain.split('.')[0], port: editingDomain.port || 80 } : undefined}
       />
-      <ReinstallModal 
+      <ReinstallModal
         isOpen={isReinstallModalOpen}
         onClose={() => setIsReinstallModalOpen(false)}
         onConfirm={async () => {
-          try { await onReinstall?.(server.id); } 
+          try { await onReinstall?.(server.id); }
           finally { setIsReinstallModalOpen(false); }
         }}
         serverName={server.hostname || server.ip}
         provider={server.providerName}
       />
-      
+
       {/* Mobile Card Header */}
       <div className="p-6 border-b border-slate-800 bg-slate-950/50 space-y-4">
         <div className="flex justify-between items-start">
@@ -305,18 +307,20 @@ function ServerCard({ server, userEmail, onAddProject, onUpdateDomain, onDeleteD
             </div>
           </div>
           <div className="flex space-x-1">
-             <button onClick={handleToggleLock} disabled={isTogglingLock} className={`p-2 rounded-lg ${server.isLocked ? 'text-amber-500 bg-amber-500/10' : 'text-slate-500'}`}>
-                {server.isLocked ? <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg> : <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>}
-             </button>
-             {server.ip !== 'manual-setup' && (
-               <button onClick={handleDelete} disabled={server.isLocked} className="p-2 text-slate-500 hover:text-rose-500"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
-             )}
+            <button onClick={handleToggleLock} disabled={isTogglingLock} className={`p-2 rounded-lg ${server.isLocked ? 'text-amber-500 bg-amber-500/10' : 'text-slate-500'}`}>
+              {server.isLocked ? <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg> : <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>}
+            </button>
+            {server.ip !== 'manual-setup' && (
+              <button onClick={handleDelete} disabled={server.isLocked} className="p-2 text-slate-500 hover:text-rose-500"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+            )}
           </div>
         </div>
 
         <div className="flex items-center space-x-2 pt-2">
           <button onClick={handleFetchLogs} className="flex-1 py-2 text-[10px] font-bold uppercase bg-slate-800 text-slate-300 rounded-lg">Logs</button>
-          <button onClick={() => setIsReinstallModalOpen(true)} className="flex-1 py-2 text-[10px] font-bold uppercase bg-slate-800 text-slate-300 rounded-lg">Reinstall</button>
+          {(server.hetznerServerId || server.contaboInstanceId) && (
+            <button onClick={() => setIsReinstallModalOpen(true)} className="flex-1 py-2 text-[10px] font-bold uppercase bg-slate-800 text-slate-300 rounded-lg">Reinstall</button>
+          )}
         </div>
       </div>
 
@@ -363,11 +367,11 @@ function CopyButton({ value }: { value: string }) {
   );
 }
 
-function LogsModal({ isOpen, onClose, debugData, isFetching }: { 
-  isOpen: boolean, 
-  onClose: () => void, 
-  debugData: { docker: string, setup: string, timestamp: string } | null, 
-  isFetching: boolean 
+function LogsModal({ isOpen, onClose, debugData, isFetching }: {
+  isOpen: boolean,
+  onClose: () => void,
+  debugData: { docker: string, setup: string, timestamp: string } | null,
+  isFetching: boolean
 }) {
   if (!isOpen) return null;
   return (

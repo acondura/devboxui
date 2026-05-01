@@ -422,7 +422,7 @@ export async function syncSshKeys(newPublicKey: string) {
 
   for (const server of servers) {
     if (server.status !== 'ready' || !server.ip || !server.rootPassword) continue;
-    
+
     try {
       // Use root password to update the user's authorized_keys
       const script = `
@@ -457,9 +457,9 @@ export async function getUserSettings() {
   if (!kv) return null;
 
   const data = await kv.get(`settings:${userEmail}`);
-  const settings = data ? JSON.parse(data) : { 
-    hetznerToken: '', 
-    sshPublicKey: '', 
+  const settings = data ? JSON.parse(data) : {
+    hetznerToken: '',
+    sshPublicKey: '',
     sshPrivateKey: '',
     contaboClientId: '',
     contaboClientSecret: '',
@@ -469,7 +469,7 @@ export async function getUserSettings() {
 
   // Auto-generate SSH keys if missing or in old/invalid format
   const isOldFormat = settings.sshPublicKey && (!settings.sshPublicKey.startsWith('ssh-rsa') || settings.sshKeyVersion !== 'v2');
-  
+
   if (!settings.sshPublicKey || !settings.sshPrivateKey || isOldFormat) {
     try {
       const keyPair = await crypto.subtle.generateKey(
@@ -486,16 +486,16 @@ export async function getUserSettings() {
       settings.sshPrivateKey = await formatPrivateKey(keyPair.privateKey);
       settings.sshPublicKey = await formatRsaPublicKey(keyPair.publicKey);
       settings.sshKeyVersion = 'v2';
-      
+
       await kv.put(`settings:${userEmail}`, JSON.stringify(settings));
     } catch {
       throw new Error("Secure key generation failed. Please try again or provide an SSH key in Settings.");
     }
   }
 
-  return settings as { 
-    hetznerToken: string; 
-    sshPublicKey: string; 
+  return settings as {
+    hetznerToken: string;
+    sshPublicKey: string;
     sshPrivateKey: string;
     contaboClientId?: string;
     contaboClientSecret?: string;
@@ -508,9 +508,9 @@ export async function getUserSettings() {
 /**
  * Saves per-user settings to KV.
  */
-export async function saveUserSettings(settings: { 
-  hetznerToken?: string; 
-  sshPublicKey?: string; 
+export async function saveUserSettings(settings: {
+  hetznerToken?: string;
+  sshPublicKey?: string;
   sshPrivateKey?: string;
   contaboClientId?: string;
   contaboClientSecret?: string;
@@ -550,7 +550,7 @@ export async function provisionServer(
   // 1. Fetch User Settings (with auto-generated keys)
   const settings = await getUserSettings();
   if (!settings) throw new Error("Could not retrieve or generate user settings.");
-  
+
   const hetznerToken = settings.hetznerToken || env.HETZNER_API_TOKEN;
   if (!hetznerToken) {
     throw new Error("Hetzner API Token is missing. Please set it in Settings.");
@@ -607,7 +607,7 @@ export async function provisionServer(
     console.log(`Setting up Logs Tunnel for ${logsHostname}...`);
     await cfApi.setupHostname(logsHostname, tunnelResult.id, "http://localhost:8000");
     await cfApi.setupAccess(logsHostname, userEmail);
-    
+
     config.detailedStatus = 'Logs endpoint created';
     config.logs = [...(config.logs || []), `Tunnel Token: ${tunnelResult.token}`];
 
@@ -615,27 +615,27 @@ export async function provisionServer(
     const provisioningToken = crypto.randomUUID();
     config.provisioningToken = provisioningToken;
     config.detailedStatus = 'Starting bootstrap...';
-    
+
     const requestHost = env.NEXT_PUBLIC_APP_URL || 'https://devboxui.com';
-    const callbackUrl = `${requestHost}/api/provisioning/status`; 
-    
+    const callbackUrl = `${requestHost}/api/provisioning/status`;
+
     const managementKey = env.MANAGEMENT_SSH_PUBLIC_KEY || '';
     const userSSHKey = settings.sshPublicKey;
-    
+
     console.log("[Provisioning] Setting up Cloudflare Access Service Token...");
     const serviceToken = await cfApi.getOrCreateServiceToken(kv);
-    
+
     await cfApi.authorizeServiceToken(requestHost.replace('https://', ''), serviceToken.id);
     console.log("[Provisioning] Authorization step complete.");
-    
+
     const bootstrapScript = getBootstrapScript(
-      userName, 
+      userName,
       userEmail,
-      tunnelResult.token, 
-      managementKey, 
-      userSSHKey, 
-      serverId, 
-      provisioningToken, 
+      tunnelResult.token,
+      managementKey,
+      userSSHKey,
+      serverId,
+      provisioningToken,
       callbackUrl,
       rootPassword,
       serviceToken.id,
@@ -648,7 +648,7 @@ export async function provisionServer(
     // 5. Hetzner Automation: Manage SSH Keys
     console.log(`Managing SSH keys on Hetzner...`);
     const sshKeyIds: (string | number)[] = [];
-    
+
     const keysToRegister = [
       { name: `devbox-${userName}`, key: userSSHKey },
       { name: 'devbox-mgmt', key: managementKey }
@@ -658,7 +658,7 @@ export async function provisionServer(
       try {
         const existingKeys = await hetznerApi.getSSHKeys();
         const cleanedKey = k.key.trim().split(' ').slice(0, 2).join(' ');
-        
+
         const contentMatch = existingKeys.find(ex => ex.public_key.trim().includes(cleanedKey));
         const nameMatch = existingKeys.find(ex => ex.name === k.name);
 
@@ -670,7 +670,7 @@ export async function provisionServer(
             console.warn(`Key '${k.name}' exists but content differs. Deleting old key to recreate...`);
             await hetznerApi.deleteSSHKey(nameMatch.id);
           }
-          
+
           console.log(`Registering key '${k.name}' with Hetzner...`);
           const created = await hetznerApi.createSSHKey(k.name, k.key);
           if (created) {
@@ -696,7 +696,7 @@ export async function provisionServer(
     const hetznerResult = await hetznerApi.createServer(name, bootstrapScript, serverType, location, image, sshKeyIds);
     hetznerServerId = hetznerResult.server.id;
     config.hetznerServerId = hetznerServerId;
-    
+
     // Capture the root password ONLY if we didn't generate one (rare)
     if (hetznerResult.root_password && !rootPassword) {
       console.log("Captured root password from Hetzner.");
@@ -756,7 +756,7 @@ export async function getServers() {
       const val = await kv.get(key.name);
       if (!val) {
         console.warn(`Self-healing: Deleting ghost key ${key.name}`);
-        await kv.delete(key.name).catch(() => {});
+        await kv.delete(key.name).catch(() => { });
         return null;
       }
       return JSON.parse(val) as ServerConfig;
@@ -766,7 +766,7 @@ export async function getServers() {
   // Fetch from Hetzner API if token is available
   const settings = await getUserSettings();
   const hetznerToken = settings?.hetznerToken || env.HETZNER_API_TOKEN;
-  
+
   if (hetznerToken) {
     try {
       const hetznerApi = new HetznerApiService(env, hetznerToken);
@@ -780,7 +780,7 @@ export async function getServers() {
           finalServers.push(s);
           continue;
         }
-        
+
         const hs = hetznerMap.get(s.hetznerServerId.toString());
         if (hs) {
           // Sync live data
@@ -793,15 +793,15 @@ export async function getServers() {
           if (hs.name.includes('-')) {
             const parts = hs.name.split('-');
             const statusStr = parts[parts.length - 1];
-            
+
             if (statusStr === 'Ready') {
-                s.status = 'ready';
-                s.detailedStatus = 'Ready';
+              s.status = 'ready';
+              s.detailedStatus = 'Ready';
             } else if (['Booting', 'Installing', 'system', 'Docker', 'DDEV', 'Code'].some(st => statusStr.includes(st))) {
-                s.detailedStatus = 'Installing ' + statusStr;
+              s.detailedStatus = 'Installing ' + statusStr;
             }
           }
-          
+
           // ELEGANT PROBING: If in setup phase, try a direct "pull" from the IP:8080 exporter
           const setupStatuses: string[] = ['provisioning', 'Initializing', 'initializing'];
           const isSettingUp = setupStatuses.includes(s.status as string);
@@ -809,7 +809,7 @@ export async function getServers() {
             try {
               const controller = new AbortController();
               const id = setTimeout(() => controller.abort(), 800); // Very fast probe
-              const probeResp = await fetch(`http://${s.ip}:8080`, { 
+              const probeResp = await fetch(`http://${s.ip}:8080`, {
                 signal: controller.signal,
                 cache: 'no-store'
               });
@@ -838,10 +838,10 @@ export async function getServers() {
         } else {
           // GHOST DETECTION WITH GRACE PERIOD
           const serverAgeMinutes = (Date.now() - new Date(s.createdAt).getTime()) / (1000 * 60);
-          
+
           if (serverAgeMinutes > 2) {
             console.log(`Self-healing: Removing ghost server ${s.id} (not in Hetzner after ${Math.round(serverAgeMinutes)}m)`);
-            await kv.delete(`servers:${userEmail}:${s.id}`).catch(() => {});
+            await kv.delete(`servers:${userEmail}:${s.id}`).catch(() => { });
             // Skip adding to final list
           } else {
             // Give it more time to show up in Hetzner API
@@ -854,7 +854,7 @@ export async function getServers() {
       for (const [, hs] of hetznerMap) {
         if (!hs.public_net?.ipv4?.ip) continue;
         const ip = hs.public_net.ipv4.ip;
-        
+
         finalServers.push({
           id: `hetzner-${hs.id}`,
           ip: ip,
@@ -1078,7 +1078,7 @@ export async function deleteServer(serverId: string) {
       console.log(`Cleaning up DNS and Access for ${hostname} and ${logsHostname}...`);
       await cfApi.deleteDnsRecord(hostname).catch(e => console.error("DNS deletion failed:", e));
       await cfApi.deleteAccess(hostname).catch(e => console.error("Access deletion failed:", e));
-      
+
       await cfApi.deleteDnsRecord(logsHostname).catch(e => console.error("Logs DNS deletion failed:", e));
       await cfApi.deleteAccess(logsHostname).catch(e => console.error("Logs Access deletion failed:", e));
     }
@@ -1152,10 +1152,10 @@ export async function reinstallServer(serverId: string) {
   config.detailedStatus = 'Triggering Reinstall...';
   config.updatedAt = new Date().toISOString();
   config.logs = [`OS Reinstallation triggered at ${config.updatedAt}`];
-  
+
   // Clear tunnel URL temporarily to show provisioning state
   const oldTunnelUrl = config.tunnelUrl;
-  
+
   const serverKey = `servers:${userEmail}:${serverId}`;
   await kv.put(serverKey, JSON.stringify(config));
 
@@ -1193,23 +1193,23 @@ export async function reinstallServer(serverId: string) {
         userData: bootstrapScript,
         sshKeys: config.contaboSecretId ? [config.contaboSecretId] : []
       });
-      
+
       config.detailedStatus = 'OS Reinstalling (Contabo)...';
     } else if (config.hetznerServerId) {
       console.log(`Triggering Hetzner Rebuild for ${config.hetznerServerId}...`);
       await hetznerApi.rebuildServer(config.hetznerServerId);
       config.detailedStatus = 'OS Rebuild in progress (Hetzner)...';
-      
+
       // Since Hetzner rebuild doesn't re-run cloud-init easily, 
       // we'll switch back to waiting-for-bootstrap for manual servers
       if (config.ip && !config.hetznerServerId) {
-         config.status = 'waiting-for-bootstrap';
+        config.status = 'waiting-for-bootstrap';
       }
     } else {
       // Manual server or promoted to manual: Reset status and provide new command
       config.status = 'waiting-for-bootstrap';
       config.detailedStatus = 'Waiting for manual bootstrap...';
-      
+
       const requestHost = env.NEXT_PUBLIC_APP_URL || 'https://devboxui.com';
       const callbackUrl = `${requestHost}/api/provisioning/status`;
       const serviceToken = await cfApi.getOrCreateServiceToken(kv);
@@ -1279,7 +1279,7 @@ export async function toggleServerLock(serverId: string, enableLock: boolean) {
   // 3. Update KV state for immediate feedback
   config.isLocked = enableLock;
   config.updatedAt = new Date().toISOString();
-  
+
   const kvKey = `servers:${userEmail}:${config.ip}`;
   await kv.put(kvKey, JSON.stringify(config));
 
@@ -1322,7 +1322,7 @@ export async function getServerLogs(serverId: string) {
   if (!config) throw new Error("Server not found.");
 
   const logsUrl = config.tunnelUrl?.replace('-code.', '-logs.') || `https://logs-${serverId.slice(0, 8)}.devboxui.com`;
-  
+
   try {
     // In the dashboard, we will fetch from this URL directly from the browser
     // to take advantage of the user's existing Cloudflare Access session.
@@ -1390,7 +1390,7 @@ export async function provisionManualServer(customName: string, provider: string
 
     const provisioningToken = crypto.randomUUID();
     config.provisioningToken = provisioningToken;
-    
+
     const requestHost = env.NEXT_PUBLIC_APP_URL || 'https://devboxui.com';
     const callbackUrl = `${requestHost}/api/provisioning/status`;
     const serviceToken = await cfApi.getOrCreateServiceToken(kv);
@@ -1499,7 +1499,7 @@ export async function provisionContaboServer(
 
     const provisioningToken = crypto.randomUUID();
     config.provisioningToken = provisioningToken;
-    
+
     const requestHost = env.NEXT_PUBLIC_APP_URL || 'https://devboxui.com';
     const callbackUrl = `${requestHost}/api/provisioning/status`;
     const serviceToken = await cfApi.getOrCreateServiceToken(kv);
@@ -1508,7 +1508,7 @@ export async function provisionContaboServer(
     // 4. Register SSH Key as Secret in Contabo
     const secretName = `key-${shortId}`;
     const secretId = await contaboApi.createSecret(secretName, settings.sshPublicKey);
-    
+
     // 5. Generate Cloud-Init
     const bootstrapScript = getBootstrapScript(
       userName,
@@ -1543,7 +1543,7 @@ export async function provisionContaboServer(
 
     // 7. Save to KV
     await kv.put(`servers:${userEmail}:${serverId}`, JSON.stringify(config));
-    
+
     return { success: true, server: config };
   } catch (e: unknown) {
     const error = e as Error;
