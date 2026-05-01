@@ -142,16 +142,6 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
     }
   };
 
-  const handleUpdateProvider = async (serverId: string, data: { hetznerServerId?: number; contaboInstanceId?: number }) => {
-    try {
-      const updatedServer = await updateServerProvider(serverId, data);
-      setServers(prev => prev.map(s => s.id === serverId ? updatedServer : s));
-    } catch (error) {
-      alert("Failed to link provider. Check console for details.");
-      console.error(error);
-    }
-  };
-
   const handleLogout = () => {
     const returnTo = encodeURIComponent(window.location.origin);
     window.location.href = `/cdn-cgi/access/logout?returnTo=${returnTo}`;
@@ -253,7 +243,6 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
               onDeleteServer={handleDeleteServer} 
               onToggleLock={handleToggleLock} 
               onReinstall={handleReinstall} 
-              onUpdateProvider={handleUpdateProvider}
             />
           )}
         </div>
