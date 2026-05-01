@@ -192,20 +192,25 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
           <button onClick={handleFetchLogs} disabled={isFetchingLogs} className="p-2 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition-all" title="Logs">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
           </button>
-          <button onClick={openTerminal} className="p-2 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition-all" title="SSH Terminal">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-          </button>
-          <button onClick={() => setIsReinstallModalOpen(true)} className="p-2 text-slate-500 hover:text-amber-500 hover:bg-slate-800 rounded-lg transition-all" title="Wipe OS">
+          <button 
+            onClick={() => setIsReinstallModalOpen(true)} 
+            className="p-2 text-slate-500 hover:text-amber-500 hover:bg-slate-800 rounded-lg transition-all" 
+            title="Reinstall"
+          >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
           </button>
-          <button 
-            onClick={async () => { if (confirm("Delete server?")) await onDeleteServer(server.id); }} 
-            disabled={server.isLocked}
-            className={`p-2 rounded-lg transition-all ${server.isLocked ? 'text-slate-800' : 'text-slate-500 hover:text-rose-500 hover:bg-rose-500/10'}`}
-            title="Delete Server"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-          </button>
+          
+          {server.ip !== 'manual-setup' && (
+            <button 
+              onClick={async () => { if (confirm("Delete server?")) await onDeleteServer(server.id); }} 
+              disabled={server.isLocked}
+              className={`p-2 rounded-lg transition-all ${server.isLocked ? 'text-slate-800' : 'text-slate-500 hover:text-rose-500 hover:bg-rose-500/10'}`}
+              title="Delete Server"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+            </button>
+          )}
+
           <div className="pl-2 ml-2 border-l border-slate-800">
              <a 
               href={server.tunnelUrl || '#'} 
@@ -216,11 +221,10 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
             </a>
           </div>
         </div>
+        {isLogsModalOpen && (
+          <LogsModal isOpen={isLogsModalOpen} onClose={() => setIsLogsModalOpen(false)} debugData={debugData} isFetching={isFetchingLogs} />
+        )}
       </td>
-
-      {isLogsModalOpen && (
-        <LogsModal isOpen={isLogsModalOpen} onClose={() => setIsLogsModalOpen(false)} debugData={debugData} isFetching={isFetchingLogs} />
-      )}
     </tr>
   );
 }
@@ -304,14 +308,15 @@ function ServerCard({ server, userEmail, onAddProject, onUpdateDomain, onDeleteD
              <button onClick={handleToggleLock} disabled={isTogglingLock} className={`p-2 rounded-lg ${server.isLocked ? 'text-amber-500 bg-amber-500/10' : 'text-slate-500'}`}>
                 {server.isLocked ? <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg> : <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>}
              </button>
-             <button onClick={handleDelete} disabled={server.isLocked} className="p-2 text-slate-500 hover:text-rose-500"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+             {server.ip !== 'manual-setup' && (
+               <button onClick={handleDelete} disabled={server.isLocked} className="p-2 text-slate-500 hover:text-rose-500"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+             )}
           </div>
         </div>
 
         <div className="flex items-center space-x-2 pt-2">
           <button onClick={handleFetchLogs} className="flex-1 py-2 text-[10px] font-bold uppercase bg-slate-800 text-slate-300 rounded-lg">Logs</button>
-          <button onClick={() => window.open(server.tunnelUrl || '#')} className="flex-1 py-2 text-[10px] font-bold uppercase bg-slate-800 text-slate-300 rounded-lg">SSH</button>
-          <button onClick={() => setIsReinstallModalOpen(true)} className="flex-1 py-2 text-[10px] font-bold uppercase bg-slate-800 text-slate-300 rounded-lg">Wipe</button>
+          <button onClick={() => setIsReinstallModalOpen(true)} className="flex-1 py-2 text-[10px] font-bold uppercase bg-slate-800 text-slate-300 rounded-lg">Reinstall</button>
         </div>
       </div>
 
