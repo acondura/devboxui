@@ -1113,8 +1113,34 @@ export async function reinstallServer(serverId: string) {
          config.status = 'waiting-for-bootstrap';
       }
     } else {
-      // Manual server without provider API
-      throw new Error("Reinstall not supported for this server type.");
+      // Manual server or promoted to manual: Reset status and provide new command
+      config.status = 'waiting-for-bootstrap';
+      config.detailedStatus = 'Waiting for manual bootstrap...';
+      
+      const requestHost = env.NEXT_PUBLIC_APP_URL || 'https://devboxui.com';
+      const callbackUrl = `${requestHost}/api/provisioning/status`;
+      const serviceToken = await cfApi.getOrCreateServiceToken(kv);
+
+      const bootstrapScript = getBootstrapScript(
+        config.userName || 'abc',
+        userEmail,
+        config.tunnelToken || '',
+        env.MANAGEMENT_SSH_PUBLIC_KEY || '',
+        settings.sshPublicKey,
+        serverId,
+        config.provisioningToken || '',
+        callbackUrl,
+        config.rootPassword || '',
+        serviceToken.id,
+        serviceToken.client_secret,
+        undefined,
+        config.providerName || 'Custom',
+        config.hostname || 'devbox'
+      );
+
+      const base64Script = Buffer.from(bootstrapScript).toString('base64');
+      config.bootstrapCommand = `echo "${base64Script}" | base64 -d | bash `;
+      config.logs = [...(config.logs || []), `Manual reinstall requested at ${new Date().toISOString()}`];
     }
 
     await kv.put(serverKey, JSON.stringify(config));

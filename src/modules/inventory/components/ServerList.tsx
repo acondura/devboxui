@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ServerConfig } from '../types';
 import { AddDomainModal } from './AddDomainModal';
+import { ReinstallModal } from './ReinstallModal';
 import { getServerLogs } from '../actions';
 
 interface ServerListProps {
@@ -38,6 +39,7 @@ export function ServerList({ servers, userEmail, onAddProject, onDeleteServer, o
 
 function ServerCard({ server, userEmail, onAddProject, onDeleteServer, onToggleLock, onReinstall }: { server: ServerConfig, userEmail: string, onAddProject: (serverId: string, projectName: string, port: number) => Promise<void>, onDeleteServer: (serverId: string) => Promise<void>, onToggleLock?: (serverId: string, enableLock: boolean) => Promise<void>, onReinstall?: (serverId: string) => Promise<void> }) {
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [isReinstallModalOpen, setIsReinstallModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isTogglingLock, setIsTogglingLock] = useState(false);
   const [isFetchingLogs, setIsFetchingLogs] = useState(false);
@@ -102,6 +104,24 @@ function ServerCard({ server, userEmail, onAddProject, onDeleteServer, onToggleL
         onAdd={(name, port) => onAddProject(server.id, name, port)} 
       />
       
+      <ReinstallModal 
+        isOpen={isReinstallModalOpen}
+        onClose={() => setIsReinstallModalOpen(false)}
+        onConfirm={async () => {
+          setIsReinstalling(true);
+          try {
+            await onReinstall?.(server.id);
+          } catch {
+            alert("Failed to trigger reinstall.");
+          } finally {
+            setIsReinstalling(false);
+            setIsReinstallModalOpen(false);
+          }
+        }}
+        serverName={server.hostname || server.ip}
+        provider={server.providerName}
+      />
+
       <div className="p-5 border-b border-slate-800 bg-slate-950/50 rounded-t-xl flex justify-between items-start">
         <div>
           <div className="flex items-center space-x-2">
@@ -193,20 +213,9 @@ function ServerCard({ server, userEmail, onAddProject, onDeleteServer, onToggleL
               </div>
             </button>
           )}
-          {onReinstall && (server.hetznerServerId || server.contaboInstanceId) && (
+          {onReinstall && (
             <button 
-              onClick={async () => {
-                if (confirm("Are you sure you want to REINSTALL the OS on this server? ALL DATA WILL BE LOST. This will trigger a fresh Ubuntu 24.04 install and restart the provisioning process.")) {
-                  setIsReinstalling(true);
-                  try {
-                    await onReinstall(server.id);
-                  } catch {
-                    alert("Failed to trigger reinstall.");
-                  } finally {
-                    setIsReinstalling(false);
-                  }
-                }
-              }}
+              onClick={() => setIsReinstallModalOpen(true)}
               disabled={isReinstalling || server.isLocked}
               className={`p-1.5 transition-colors rounded group/reinstall relative ${server.isLocked ? 'text-slate-700 cursor-not-allowed' : 'text-slate-500 hover:text-amber-500 hover:bg-slate-800'}`}
             >
