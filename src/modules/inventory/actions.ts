@@ -425,15 +425,7 @@ export async function syncSshKeys(newPublicKey: string) {
 
     try {
       // Use root password to update the user's authorized_keys
-      const script = `
-        DEV_USER="${server.userName}"
-        mkdir -p /home/\$DEV_USER/.ssh
-        echo "${newPublicKey}" > /home/\$DEV_USER/.ssh/authorized_keys
-        chown -R \$DEV_USER:\$DEV_USER /home/\$DEV_USER/.ssh
-        chmod 700 /home/\$DEV_USER/.ssh
-        chmod 600 /home/\$DEV_USER/.ssh/authorized_keys
-        echo "✅ SSH key updated for \$DEV_USER"
-      `;
+      // results.push({ id: server.id, success: false, error: new Error("SSH sync not available for manual servers.") });
 
       results.push({ id: server.id, success: false, error: new Error("SSH sync not available for manual servers.") });
     } catch (error) {
@@ -1121,6 +1113,27 @@ export async function deleteServer(serverId: string) {
 /**
  * Reinstalls the OS on a server (Contabo/Hetzner) and restarts provisioning.
  */
+async function setupCloudflareTunnel(config: ServerConfig, userEmail: string) {
+  const env = await getCloudflareEnv();
+  const cfApi = new CloudflareApiService(env);
+  
+  const hostname = (config.tunnelUrl || '').replace('https://', '');
+  if (!hostname) throw new Error("Tunnel URL missing in config.");
+
+  console.log(`Setting up Cloudflare Tunnel for ${hostname}...`);
+  const tunnelResult = await cfApi.createTunnel(`tunnel-${config.id}`);
+  config.tunnelId = tunnelResult.id;
+  config.tunnelToken = tunnelResult.token;
+  
+  await cfApi.setupHostname(hostname, tunnelResult.id);
+  await cfApi.setupAccess(hostname, userEmail);
+  
+  return tunnelResult;
+}
+
+/**
+ * Reinstalls the operating system on an existing server.
+ */
 export async function reinstallServer(serverId: string) {
   const userEmail = await getIdentity();
   const env = await getCloudflareEnv();
@@ -1153,9 +1166,6 @@ export async function reinstallServer(serverId: string) {
   config.updatedAt = new Date().toISOString();
   config.logs = [`OS Reinstallation triggered at ${config.updatedAt}`];
 
-  // Clear tunnel URL temporarily to show provisioning state
-  const oldTunnelUrl = config.tunnelUrl;
-
   const serverKey = `servers:${userEmail}:${serverId}`;
   await kv.put(serverKey, JSON.stringify(config));
 
@@ -1163,8 +1173,7 @@ export async function reinstallServer(serverId: string) {
     if (config.contaboInstanceId) {
       // For Contabo, we can re-inject cloud-init
       // 1. Re-generate bootstrap script (needs the same token/ids)
-      const tunnelResult = await kv.get(`token:${config.provisioningToken}`);
-      const tunnelToken = config.tunnelToken; // We should have this in config
+      await setupCloudflareTunnel(config, userEmail);
 
       const requestHost = env.NEXT_PUBLIC_APP_URL || 'https://devboxui.com';
       const callbackUrl = `${requestHost}/api/provisioning/status`;
@@ -1579,4 +1588,34 @@ export async function getContaboOptions() {
       { id: 'debian-12', name: 'debian-12', description: 'Debian 12', architecture: 'x86' },
     ]
   };
+}
+
+export async function updateServerProvider(serverId: string, data: { hetznerServerId?: number; contaboInstanceId?: number }) {
+  const userEmail = await getIdentity();
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+  if (!kv) throw new Error("KV database missing.");
+
+  const kvKey = `servers:${userEmail}:${serverId}`;
+  const existing = await kv.get(kvKey);
+  if (!existing) throw new Error("Server not found.");
+
+  const config = JSON.parse(existing) as ServerConfig;
+  
+  if (data.hetznerServerId) {
+    config.hetznerServerId = data.hetznerServerId;
+    config.providerName = 'Hetzner';
+    config.provider = 'hetzner';
+  } else if (data.contaboInstanceId) {
+    config.contaboInstanceId = data.contaboInstanceId;
+    config.providerName = 'Contabo';
+    config.provider = 'contabo';
+  }
+
+  config.updatedAt = new Date().toISOString();
+  if (!config.logs) config.logs = [];
+  config.logs.push(`Associated with cloud provider: ${config.providerName}`);
+
+  await kv.put(kvKey, JSON.stringify(config));
+  return config;
 }

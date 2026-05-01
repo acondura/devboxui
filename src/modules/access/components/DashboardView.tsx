@@ -6,7 +6,7 @@ import { AddServerModal } from '@/modules/inventory/components/AddServerModal';
 import { SettingsModal } from '@/modules/access/components/SettingsModal';
 import { FeedbackModal } from '@/modules/feedback/components/FeedbackModal';
 import { ServerList } from '@/modules/inventory/components/ServerList';
-import { provisionServer, getServers, addProject, deleteServer, reinstallServer, deleteDomain, updateDomain } from '@/modules/inventory/actions';
+import { provisionServer, getServers, addProject, deleteServer, reinstallServer, deleteDomain, updateDomain, updateServerProvider } from '@/modules/inventory/actions';
 import { ServerConfig } from '@/modules/inventory/types';
 
 interface DashboardViewProps {
@@ -142,6 +142,16 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
     }
   };
 
+  const handleUpdateProvider = async (serverId: string, data: { hetznerServerId?: number; contaboInstanceId?: number }) => {
+    try {
+      const updatedServer = await updateServerProvider(serverId, data);
+      setServers(prev => prev.map(s => s.id === serverId ? updatedServer : s));
+    } catch (error) {
+      alert("Failed to link provider. Check console for details.");
+      console.error(error);
+    }
+  };
+
   const handleLogout = () => {
     const returnTo = encodeURIComponent(window.location.origin);
     window.location.href = `/cdn-cgi/access/logout?returnTo=${returnTo}`;
@@ -243,6 +253,7 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
               onDeleteServer={handleDeleteServer} 
               onToggleLock={handleToggleLock} 
               onReinstall={handleReinstall} 
+              onUpdateProvider={handleUpdateProvider}
             />
           )}
         </div>
