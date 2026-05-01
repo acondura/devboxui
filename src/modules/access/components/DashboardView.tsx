@@ -6,7 +6,7 @@ import { AddServerModal } from '@/modules/inventory/components/AddServerModal';
 import { SettingsModal } from '@/modules/access/components/SettingsModal';
 import { FeedbackModal } from '@/modules/feedback/components/FeedbackModal';
 import { ServerList } from '@/modules/inventory/components/ServerList';
-import { provisionServer, getServers, addProject, deleteServer, reinstallServer } from '@/modules/inventory/actions';
+import { provisionServer, getServers, addProject, deleteServer, reinstallServer, deleteDomain, updateDomain } from '@/modules/inventory/actions';
 import { ServerConfig } from '@/modules/inventory/types';
 
 interface DashboardViewProps {
@@ -84,6 +84,26 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
       setServers(prev => prev.map(s => s.id === serverId ? updatedServer : s));
     } catch (error) {
       alert("Failed to add project. Check console for details.");
+      console.error(error);
+    }
+  };
+
+  const handleUpdateDomain = async (serverId: string, domain: string, port: number) => {
+    try {
+      const updatedServer = await updateDomain(serverId, domain, port);
+      setServers(prev => prev.map(s => s.id === serverId ? updatedServer : s));
+    } catch (error) {
+      alert("Failed to update domain. Check console for details.");
+      console.error(error);
+    }
+  };
+
+  const handleDeleteDomain = async (serverId: string, domain: string) => {
+    try {
+      const updatedServer = await deleteDomain(serverId, domain);
+      setServers(prev => prev.map(s => s.id === serverId ? updatedServer : s));
+    } catch (error) {
+      alert("Failed to delete domain. Check console for details.");
       console.error(error);
     }
   };
@@ -214,7 +234,16 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
               <div className="animate-spin h-8 w-8 border-4 border-indigo-500 border-t-transparent rounded-full" />
             </div>
           ) : (
-            <ServerList servers={servers} userEmail={userEmail} onAddProject={handleAddProject} onDeleteServer={handleDeleteServer} onToggleLock={handleToggleLock} onReinstall={handleReinstall} />
+            <ServerList 
+              servers={servers} 
+              userEmail={userEmail} 
+              onAddProject={handleAddProject} 
+              onUpdateDomain={handleUpdateDomain}
+              onDeleteDomain={handleDeleteDomain}
+              onDeleteServer={handleDeleteServer} 
+              onToggleLock={handleToggleLock} 
+              onReinstall={handleReinstall} 
+            />
           )}
         </div>
       </main>

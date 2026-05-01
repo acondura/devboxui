@@ -17,6 +17,7 @@ export interface ServerConfig {
   projects?: {
     name: string;
     domain: string;
+    port?: number;
     status: 'ready' | 'provisioning' | 'error';
   }[];
   detailedStatus?: string;

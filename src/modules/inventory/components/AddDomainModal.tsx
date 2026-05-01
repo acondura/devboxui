@@ -1,17 +1,26 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface AddDomainModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAdd: (domainPrefix: string, port: number) => void;
+  initialData?: { prefix: string; port: number };
 }
 
-export function AddDomainModal({ isOpen, onClose, onAdd }: AddDomainModalProps) {
-  const [domainPrefix, setDomainPrefix] = useState('');
-  const [port, setPort] = useState<string>('32768');
+export function AddDomainModal({ isOpen, onClose, onAdd, initialData }: AddDomainModalProps) {
+  const [domainPrefix, setDomainPrefix] = useState(initialData?.prefix || '');
+  const [port, setPort] = useState<string>(initialData?.port?.toString() || '32768');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Sync state with initialData when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setDomainPrefix(initialData?.prefix || '');
+      setPort(initialData?.port?.toString() || '32768');
+    }
+  }, [isOpen, initialData]);
 
   if (!isOpen) return null;
 

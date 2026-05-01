@@ -8,12 +8,14 @@ interface ServerListProps {
   servers: ServerConfig[];
   userEmail: string;
   onAddProject: (serverId: string, projectName: string, port: number) => Promise<void>;
+  onUpdateDomain: (serverId: string, domain: string, port: number) => Promise<void>;
+  onDeleteDomain: (serverId: string, domain: string) => Promise<void>;
   onDeleteServer: (serverId: string) => Promise<void>;
   onToggleLock?: (serverId: string, enableLock: boolean) => Promise<void>;
   onReinstall?: (serverId: string) => Promise<void>;
 }
 
-export function ServerList({ servers, userEmail, onAddProject, onDeleteServer, onToggleLock, onReinstall }: ServerListProps) {
+export function ServerList({ servers, userEmail, onAddProject, onUpdateDomain, onDeleteDomain, onDeleteServer, onToggleLock, onReinstall }: ServerListProps) {
   if (servers.length === 0) {
     return (
       <div className="border border-dashed border-slate-700 rounded-xl p-12 text-center bg-slate-800/20">
@@ -31,14 +33,25 @@ export function ServerList({ servers, userEmail, onAddProject, onDeleteServer, o
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {servers.map((server) => (
-        <ServerCard key={server.id} server={server} userEmail={userEmail} onAddProject={onAddProject} onDeleteServer={onDeleteServer} onToggleLock={onToggleLock} onReinstall={onReinstall} />
+        <ServerCard 
+          key={server.id} 
+          server={server} 
+          userEmail={userEmail} 
+          onAddProject={onAddProject} 
+          onUpdateDomain={onUpdateDomain}
+          onDeleteDomain={onDeleteDomain}
+          onDeleteServer={onDeleteServer} 
+          onToggleLock={onToggleLock} 
+          onReinstall={onReinstall} 
+        />
       ))}
     </div>
   );
 }
 
-function ServerCard({ server, userEmail, onAddProject, onDeleteServer, onToggleLock, onReinstall }: { server: ServerConfig, userEmail: string, onAddProject: (serverId: string, projectName: string, port: number) => Promise<void>, onDeleteServer: (serverId: string) => Promise<void>, onToggleLock?: (serverId: string, enableLock: boolean) => Promise<void>, onReinstall?: (serverId: string) => Promise<void> }) {
+function ServerCard({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDomain, onDeleteServer, onToggleLock, onReinstall }: { server: ServerConfig, userEmail: string, onAddProject: (serverId: string, projectName: string, port: number) => Promise<void>, onUpdateDomain: (serverId: string, domain: string, port: number) => Promise<void>, onDeleteDomain: (serverId: string, domain: string) => Promise<void>, onDeleteServer: (serverId: string) => Promise<void>, onToggleLock?: (serverId: string, enableLock: boolean) => Promise<void>, onReinstall?: (serverId: string) => Promise<void> }) {
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [editingDomain, setEditingDomain] = useState<{ domain: string; port: number } | null>(null);
   const [isReinstallModalOpen, setIsReinstallModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isTogglingLock, setIsTogglingLock] = useState(false);
@@ -96,12 +109,30 @@ function ServerCard({ server, userEmail, onAddProject, onDeleteServer, onToggleL
     }
   };
 
+  const openTerminal = () => {
+    if (server.tunnelUrl) {
+      window.open(server.tunnelUrl, `terminal_${safeTargetBase}`);
+    } else {
+      alert("Tunnel not ready yet.");
+    }
+  };
+
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-xl hover:border-indigo-500/50 transition-all group relative">
       <AddDomainModal 
         isOpen={isProjectModalOpen} 
-        onClose={() => setIsProjectModalOpen(false)} 
-        onAdd={(name, port) => onAddProject(server.id, name, port)} 
+        onClose={() => {
+          setIsProjectModalOpen(false);
+          setEditingDomain(null);
+        }} 
+        onAdd={(name, port) => {
+          if (editingDomain) {
+            onUpdateDomain(server.id, editingDomain.domain, port);
+          } else {
+            onAddProject(server.id, name, port);
+          }
+        }} 
+        initialData={editingDomain ? { prefix: editingDomain.domain.split('.')[0], port: editingDomain.port } : undefined}
       />
       
       <ReinstallModal 
@@ -122,127 +153,98 @@ function ServerCard({ server, userEmail, onAddProject, onDeleteServer, onToggleL
         provider={server.providerName}
       />
 
-      <div className="p-5 border-b border-slate-800 bg-slate-950/50 rounded-t-xl flex justify-between items-start">
-        <div>
-          <div className="flex items-center space-x-2">
-            {server.status !== 'provisioning' && server.status !== 'Initializing' && server.status !== 'initializing' && server.status !== 'waiting-for-bootstrap' && (
-              <>
-                <span className={`h-2.5 w-2.5 rounded-full ${server.status === 'ready' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-slate-600'}`} />
-                <h4 className="font-bold text-white uppercase tracking-wider text-xs">
-                  {server.status}
-                </h4>
-              </>
-            )}
-            {server.status === 'waiting-for-bootstrap' && (
-              <div className="flex items-center space-x-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-amber-500 animate-pulse shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
-                <h4 className="font-bold text-amber-500 uppercase tracking-wider text-xs">
-                  Awaiting Setup
-                </h4>
-              </div>
-            )}
-          </div>
-          <div className="flex items-center space-x-2 mt-2">
-            {server.hetznerStatus && (
-              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-tighter ${
-                server.hetznerStatus === 'running' ? 'bg-emerald-500/10 text-emerald-500' : 
-                server.hetznerStatus === 'off' ? 'bg-red-500/10 text-red-500' :
-                'bg-amber-500/10 text-amber-500'
-              }`}>
-                {server.hetznerStatus}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center space-x-2 mt-0.5 group/ip">
-            <p className="text-xl font-mono text-indigo-400" title="Public IP address of your DevBox">{server.ip === 'manual-setup' ? 'MANUAL' : server.ip}</p>
-            {server.ip !== 'manual-setup' && <CopyButton value={server.ip} />}
-          </div>
-          {server.tunnelUrl && (
-            <p className="text-xs font-mono text-slate-500 mt-1 truncate max-w-[180px]" title="Cloudflare Tunnel Endpoint">
-              {server.tunnelUrl.replace('https://', '')}
-            </p>
-          )}
-        </div>
-        <div className="flex items-center space-x-1.5">
-          <div className="bg-slate-800 px-2 py-1 rounded text-[10px] font-bold text-slate-400 uppercase mr-1 text-center leading-tight">
-            Ubuntu 24.04
-          </div>
-          <button 
-            onClick={handleFetchLogs}
-            className="p-1.5 text-slate-500 hover:text-indigo-400 hover:bg-slate-800 rounded transition-colors group/logs relative"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover/logs:opacity-100 transition-opacity bg-slate-700 text-white text-[10px] py-1 px-2 rounded pointer-events-none whitespace-nowrap z-50">
-              View live provisioning logs
+      <div className="p-6 border-b border-slate-800 bg-slate-950/50 rounded-t-xl space-y-5">
+        <div className="flex justify-between items-start">
+          <div className="space-y-1.5">
+            <div className="flex items-center space-x-2">
+              <span className="text-[10px] font-bold text-slate-400 bg-slate-800 px-2 py-0.5 rounded uppercase tracking-widest">Ubuntu 24.04 LTS</span>
+              {server.status !== 'provisioning' && server.status !== 'Initializing' && server.status !== 'initializing' && server.status !== 'waiting-for-bootstrap' && (
+                <span className={`h-1.5 w-1.5 rounded-full ${server.status === 'ready' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-slate-600'}`} />
+              )}
+              {server.status === 'waiting-for-bootstrap' && (
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+              )}
             </div>
-          </button>
-          {server.bootstrapCommand && (
+            <div className="flex flex-col">
+              <div className="flex items-center space-x-2">
+                <h3 className="text-3xl font-mono font-bold text-white tracking-tight">
+                  {server.ip === 'manual-setup' ? 'MANUAL' : server.ip}
+                </h3>
+                {server.ip !== 'manual-setup' && <CopyButton value={server.ip} />}
+              </div>
+              <p className="text-[11px] text-slate-500 font-mono tracking-widest mt-0.5">
+                {server.hostname || 'devbox'}.devboxui.com
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-center space-x-1">
+            {onToggleLock && (
+              <button 
+                onClick={handleToggleLock}
+                disabled={isTogglingLock}
+                className={`p-2 transition-colors rounded-lg ${server.isLocked ? 'text-amber-500 bg-amber-500/10' : 'text-slate-500 hover:text-white hover:bg-slate-800'}`}
+                title={server.isLocked ? "Unlock Server" : "Lock Server"}
+              >
+                {server.isLocked ? (
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                )}
+              </button>
+            )}
             <button 
-              onClick={() => setShowManualSetup(!showManualSetup)}
-              className={`p-1.5 transition-colors rounded group/setup relative ${showManualSetup ? 'text-indigo-400 bg-indigo-500/10' : 'text-slate-500 hover:text-indigo-400 hover:bg-slate-800'}`}
+              onClick={handleDelete}
+              disabled={isDeleting || server.isLocked}
+              className={`p-2 transition-colors rounded-lg ${server.isLocked ? 'text-slate-700 cursor-not-allowed' : 'text-slate-500 hover:text-rose-500 hover:bg-rose-500/10'}`}
+              title="Delete Server"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
-              <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover/setup:opacity-100 transition-opacity bg-slate-700 text-white text-[10px] py-1 px-2 rounded pointer-events-none whitespace-nowrap z-50">
-                Setup Instructions
-              </div>
             </button>
-          )}
-          {server.hetznerServerId && (
-            <button 
-              onClick={handleToggleLock}
-              disabled={isTogglingLock}
-              className={`p-1.5 rounded transition-colors group/lock relative ${server.isLocked ? 'text-indigo-400 hover:bg-indigo-500/10' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-300'}`}
-            >
-              {isTogglingLock ? (
-                <div className="h-5 w-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-              ) : server.isLocked ? (
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                </svg>
-              ) : (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
-                </svg>
-              )}
-              <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover/lock:opacity-100 transition-opacity bg-slate-700 text-white text-[10px] py-1 px-2 rounded pointer-events-none whitespace-nowrap z-50">
-                {server.isLocked ? 'Unlock to allow deletion' : 'Lock to prevent accidental deletion'}
-              </div>
-            </button>
-          )}
+          </div>
+        </div>
+
+        {/* Action Row */}
+        <div className="flex items-center space-x-2">
+          <button 
+            onClick={handleFetchLogs}
+            disabled={isFetchingLogs}
+            className="flex items-center space-x-2 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg border border-slate-800/50 transition-all"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+            <span>Logs</span>
+          </button>
+          
+          <button 
+            onClick={openTerminal}
+            className="flex items-center space-x-2 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg border border-slate-800/50 transition-all"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+            <span>SSH</span>
+          </button>
+
           {onReinstall && (
             <button 
               onClick={() => setIsReinstallModalOpen(true)}
               disabled={isReinstalling || server.isLocked}
-              className={`p-1.5 transition-colors rounded group/reinstall relative ${server.isLocked ? 'text-slate-700 cursor-not-allowed' : 'text-slate-500 hover:text-amber-500 hover:bg-slate-800'}`}
+              className={`flex items-center space-x-2 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all rounded-lg border border-slate-800/50 ${server.isLocked ? 'text-slate-700 cursor-not-allowed' : 'text-slate-400 hover:text-amber-500 hover:bg-amber-500/5'}`}
             >
-              <svg className={`w-5 h-5 ${isReinstalling ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover/reinstall:opacity-100 transition-opacity bg-slate-700 text-white text-[10px] py-1 px-2 rounded pointer-events-none whitespace-nowrap z-50">
-                {server.isLocked ? 'Unlock to allow reinstall' : 'Reinstall OS (Full Wipe)'}
-              </div>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+              <span>Wipe</span>
             </button>
           )}
-          <button 
-            onClick={handleDelete}
-            disabled={isDeleting || server.isLocked}
-            className={`p-1.5 transition-colors rounded group/delete relative ${server.isLocked ? 'text-slate-700 cursor-not-allowed' : 'text-slate-500 hover:text-red-500 hover:bg-slate-800'}`}
-          >
-            {isDeleting ? (
-              <div className="h-5 w-5 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            )}
-            <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover/delete:opacity-100 transition-opacity bg-slate-700 text-white text-[10px] py-1 px-2 rounded pointer-events-none whitespace-nowrap z-50">
-              {server.isLocked ? 'Unlock first' : 'Destroy server and DNS'}
-            </div>
-          </button>
+
+          {server.bootstrapCommand && (
+             <button 
+                onClick={() => setShowManualSetup(!showManualSetup)}
+                className={`flex items-center space-x-2 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all rounded-lg border border-slate-800/50 ${showManualSetup ? 'text-indigo-400 bg-indigo-500/10 border-indigo-500/30' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
+                <span>Setup</span>
+              </button>
+          )}
         </div>
       </div>
       
@@ -299,7 +301,34 @@ function ServerCard({ server, userEmail, onAddProject, onDeleteServer, onToggleL
                       {project.domain}
                     </span>
                   </div>
-                  <div className="flex items-center space-x-3">
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setEditingDomain({ domain: project.domain, port: project.port || 80 });
+                        setIsProjectModalOpen(true);
+                      }}
+                      className="p-1.5 text-slate-600 hover:text-indigo-400 hover:bg-indigo-500/10 rounded transition-colors"
+                      title="Edit Domain Port"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (confirm(`Are you sure you want to delete the URL ${project.domain}?`)) {
+                          onDeleteDomain(server.id, project.domain);
+                        }
+                      }}
+                      className="p-1.5 text-slate-600 hover:text-rose-500 hover:bg-rose-500/10 rounded transition-colors"
+                      title="Delete URL"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
                     <svg className="w-3.5 h-3.5 text-slate-600 group-hover/project:text-indigo-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />

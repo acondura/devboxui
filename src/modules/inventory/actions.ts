@@ -941,6 +941,99 @@ export async function addProject(serverId: string, projectName: string, port: nu
 }
 
 /**
+ * Deletes a domain/ingress rule from a server.
+ */
+export async function deleteDomain(serverId: string, projectDomain: string) {
+  const userEmail = await getIdentity();
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+  const cfApi = new CloudflareApiService(env);
+
+  if (!kv) throw new Error("KV database missing.");
+
+  // 1. Find the server
+  const list = await kv.list({ prefix: `servers:${userEmail}:` });
+  let serverKey = "";
+  let config: ServerConfig | null = null;
+
+  for (const key of list.keys) {
+    const val = await kv.get(key.name);
+    const c = JSON.parse(val!) as ServerConfig;
+    if (c.id === serverId) {
+      serverKey = key.name;
+      config = c;
+      break;
+    }
+  }
+
+  if (!config || !serverKey) throw new Error("Server not found.");
+  if (!config.tunnelId) throw new Error("Server is missing a Tunnel ID.");
+
+  // 2. Remove from Cloudflare (Tunnel, DNS, Access)
+  console.log(`Deleting domain ${projectDomain}...`);
+  try {
+    await cfApi.removeHostname(projectDomain, config.tunnelId);
+    await cfApi.deleteAccess(projectDomain);
+  } catch (err) {
+    console.error("Cloudflare cleanup failed during domain deletion:", err);
+    // Continue anyway to clean up local state
+  }
+
+  // 3. Update Server State
+  config.projects = (config.projects || []).filter(p => p.domain !== projectDomain);
+  config.updatedAt = new Date().toISOString();
+  await kv.put(serverKey, JSON.stringify(config));
+
+  return config;
+}
+
+/**
+ * Updates an existing domain's configuration (e.g. changing the port).
+ */
+export async function updateDomain(serverId: string, projectDomain: string, newPort: number) {
+  const userEmail = await getIdentity();
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+  const cfApi = new CloudflareApiService(env);
+
+  if (!kv) throw new Error("KV database missing.");
+
+  // 1. Find the server
+  const list = await kv.list({ prefix: `servers:${userEmail}:` });
+  let serverKey = "";
+  let config: ServerConfig | null = null;
+
+  for (const key of list.keys) {
+    const val = await kv.get(key.name);
+    const c = JSON.parse(val!) as ServerConfig;
+    if (c.id === serverId) {
+      serverKey = key.name;
+      config = c;
+      break;
+    }
+  }
+
+  if (!config || !serverKey) throw new Error("Server not found.");
+  if (!config.tunnelId) throw new Error("Server is missing a Tunnel ID.");
+
+  // 2. Update Cloudflare Tunnel Ingress
+  const service = `http://localhost:${newPort}`;
+  await cfApi.setupHostname(projectDomain, config.tunnelId, service);
+
+  // 3. Update Server State
+  config.projects = (config.projects || []).map(p => {
+    if (p.domain === projectDomain) {
+      return { ...p, port: newPort }; // Note: Ensure port is in types
+    }
+    return p;
+  });
+  config.updatedAt = new Date().toISOString();
+  await kv.put(serverKey, JSON.stringify(config));
+
+  return config;
+}
+
+/**
  * Deletes a server and cleans up Cloudflare resources.
  */
 export async function deleteServer(serverId: string) {
