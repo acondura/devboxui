@@ -136,6 +136,12 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
           <div className="flex items-center space-x-2">
             <span className="text-base font-mono font-bold text-white leading-none">{server.ip}</span>
             <CopyButton value={server.ip} />
+            {server.rootPassword && (
+              <div className="flex items-center space-x-1 pl-1 border-l border-slate-800 ml-1">
+                <span className="text-[10px] font-bold text-slate-500 uppercase">PWD</span>
+                <CopyButton value={server.rootPassword} />
+              </div>
+            )}
           </div>
           <span className="text-[10px] font-mono text-slate-500 mt-1">{displayHostname}.devboxui.com</span>
         </div>
@@ -299,6 +305,12 @@ function ServerCard({ server, userEmail, onAddProject, onUpdateDomain, onDeleteD
               <div className="flex items-center space-x-2">
                 <h3 className="text-xl font-mono font-bold text-white tracking-tight">{server.ip}</h3>
                 <CopyButton value={server.ip} />
+                {server.rootPassword && (
+                  <div className="flex items-center space-x-1 pl-1 border-l border-slate-800 ml-1">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase">PWD</span>
+                    <CopyButton value={server.rootPassword} />
+                  </div>
+                )}
               </div>
               <p className="text-xs text-slate-500 font-mono tracking-widest mt-0.5">{displayHostname}.devboxui.com</p>
             </div>
