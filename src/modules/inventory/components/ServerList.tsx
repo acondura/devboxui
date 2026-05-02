@@ -39,11 +39,11 @@ export function ServerList(props: ServerListProps) {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-slate-800">
-              <th className="py-4 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Status</th>
-              <th className="py-4 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Server Identification</th>
-              <th className="py-4 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Environment</th>
-              <th className="py-4 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Service URLs</th>
-              <th className="py-4 px-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
+              <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Status</th>
+              <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Server Identification</th>
+              <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Environment</th>
+              <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Service URLs</th>
+              <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/50">
@@ -126,7 +126,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
           ) : (
             <span className="h-2 w-2 rounded-full bg-slate-600" />
           )}
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{server.status}</span>
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-400">{server.status}</span>
         </div>
       </td>
 
@@ -197,7 +197,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
           </button>
 
-          {server.ip !== 'manual-setup' && (
+          {(server.hetznerServerId || server.contaboInstanceId) && (
             <button
               onClick={async () => { if (confirm("Delete server?")) await onDeleteServer(server.id); }}
               disabled={server.isLocked}
@@ -212,7 +212,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
             <a
               href={server.tunnelUrl || '#'}
               target={`win_ide_${safeTargetBase}`}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-indigo-600/20 inline-block"
+              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg transition-all shadow-lg shadow-indigo-600/20 inline-block"
             >
               IDE
             </a>
@@ -292,39 +292,39 @@ function ServerCard({ server, userEmail, onAddProject, onUpdateDomain, onDeleteD
         <div className="flex justify-between items-start">
           <div className="space-y-1.5">
             <div className="flex items-center space-x-2">
-              <span className="text-[10px] font-bold text-slate-400 bg-slate-800 px-2 py-0.5 rounded uppercase tracking-widest">Ubuntu 24.04 LTS</span>
+              <span className="text-sm font-bold text-slate-400 bg-slate-800 px-3 py-1 rounded uppercase tracking-widest">Ubuntu 24.04 LTS</span>
               {server.status === 'ready' && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />}
             </div>
             <div className="flex flex-col">
               <div className="flex items-center space-x-2">
-                <h3 className="text-2xl font-mono font-bold text-white tracking-tight">{server.ip}</h3>
+                <h3 className="text-xl font-mono font-bold text-white tracking-tight">{server.ip}</h3>
                 <CopyButton value={server.ip} />
               </div>
-              <p className="text-[11px] text-slate-500 font-mono tracking-widest mt-0.5">{displayHostname}.devboxui.com</p>
+              <p className="text-xs text-slate-500 font-mono tracking-widest mt-0.5">{displayHostname}.devboxui.com</p>
             </div>
           </div>
           <div className="flex space-x-1">
-            {server.ip !== 'manual-setup' && (
+            {(server.hetznerServerId || server.contaboInstanceId) && (
               <button onClick={handleDelete} disabled={server.isLocked} className="p-2 text-slate-500 hover:text-rose-500"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
             )}
           </div>
         </div>
 
         <div className="flex items-center space-x-2 pt-2">
-          <button onClick={handleFetchLogs} className="flex-1 py-2 text-[10px] font-bold uppercase bg-slate-800 text-slate-300 rounded-lg">Logs</button>
-          <button onClick={() => setIsReinstallModalOpen(true)} className="flex-1 py-2 text-[10px] font-bold uppercase bg-slate-800 text-slate-300 rounded-lg">Reinstall</button>
+          <button onClick={handleFetchLogs} className="flex-1 py-2 text-xs font-bold uppercase bg-slate-800 text-slate-300 rounded-lg">Logs</button>
+          <button onClick={() => setIsReinstallModalOpen(true)} className="flex-1 py-2 text-xs font-bold uppercase bg-slate-800 text-slate-300 rounded-lg">Reinstall</button>
         </div>
       </div>
 
       <div className="p-6 space-y-4">
         <div className="space-y-3">
           <div className="flex justify-between items-center">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Service URLs</span>
-            <button onClick={() => setIsProjectModalOpen(true)} className="text-[10px] font-bold text-indigo-500">+ Add</button>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Projects</span>
+            <button onClick={() => setIsProjectModalOpen(true)} className="text-xs font-bold text-indigo-500 hover:text-indigo-400 transition-colors">+ Add Domain</button>
           </div>
           {server.projects?.map(p => (
             <div key={p.domain} className="flex justify-between items-center bg-slate-950/30 p-2 rounded-lg border border-slate-800/50">
-              <span className="text-[11px] font-mono text-indigo-400 truncate max-w-[150px]">{p.domain}</span>
+              <span className="text-sm font-mono text-indigo-400 truncate max-w-[200px]">{p.domain}</span>
               <div className="flex space-x-2">
                 <button onClick={() => { setEditingDomain({ domain: p.domain, port: p.port || 80 }); setIsProjectModalOpen(true); }} className="text-slate-600 hover:text-white"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" /></svg></button>
                 <button onClick={() => onDeleteDomain(server.id, p.domain)} className="text-slate-600 hover:text-rose-500"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
