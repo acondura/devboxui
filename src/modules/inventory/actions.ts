@@ -313,7 +313,7 @@ fi
 # --- 5. Deploy Code-Server ---
 C_HOME="/home/\$DEV_USER"
 C_CONFIG="\$C_HOME/.code-server"
-C_WORKSPACE="\$C_CONFIG/workspace"
+C_WORKSPACE="\$C_HOME/workspace"
 
 mkdir -p "\$C_WORKSPACE" "\$C_CONFIG/data/User"
 
@@ -340,27 +340,32 @@ while ! docker info >/dev/null 2>&1; do
   sleep 2
 done
 
-report_status "Deploying Code-Server..."
-# Start code-server container
-docker run -d \
-  --name=code-server \
-  -e PUID=1000 -e PGID=1000 \
-  -e SUDO_PASSWORD="$DEV_USER" \
-  -e DEFAULT_WORKSPACE="$C_WORKSPACE" \
-  -v "$C_CONFIG:/config" \
-  -v "$C_HOME:$C_HOME" \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -v /usr/bin/docker:/usr/bin/docker \
-  -v /usr/libexec/docker/cli-plugins:/usr/libexec/docker/cli-plugins \
-  -p 127.0.0.1:8443:8443 \
-  -p 9003:9003 \
-  --restart unless-stopped \
-  linuxserver/code-server:latest
+  # Unique Port based on UID to avoid conflicts (1000 -> 8443, 1001 -> 8444, etc)
+  USER_UID=$(id -u "$DEV_USER")
+  PORT=$(( 8443 + USER_UID - 1000 ))
+  XDEBUG_PORT=$(( 9003 + USER_UID - 1000 ))
+
+  report_status "Deploying Code-Server ($DEV_USER)..."
+  # Start code-server container
+  docker run -d \
+    --name="code-server-$DEV_USER" \
+    -e PUID=$USER_UID -e PGID=$(id -g "$DEV_USER") \
+    -e SUDO_PASSWORD="$DEV_USER" \
+    -e DEFAULT_WORKSPACE="$C_WORKSPACE" \
+    -v "$C_CONFIG:/config" \
+    -v "$C_HOME:$C_HOME" \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    -v /usr/bin/docker:/usr/bin/docker \
+    -v /usr/libexec/docker/cli-plugins:/usr/libexec/docker/cli-plugins \
+    -p 127.0.0.1:$PORT:8443 \
+    -p $XDEBUG_PORT:9003 \
+    --restart unless-stopped \
+    linuxserver/code-server:latest
 
 # Final Container Setup (Wait for container to be ready)
 MAX_RETRIES=30
 COUNT=0
-while ! docker ps | grep -q code-server; do
+while ! docker ps | grep -q "code-server-$DEV_USER"; do
     if [ "\$COUNT" -ge "\$MAX_RETRIES" ]; then echo "Container failed to start"; exit 1; fi
     echo "Waiting for code-server container..."
     sleep 2
@@ -370,7 +375,7 @@ done
 # Final Container Setup (Synchronous & Robust)
 # Final Container Setup (Synchronous & Robust)
 # Final Container Setup (Synchronous & Robust)
-docker exec -d -u root code-server bash -c "
+docker exec -d -u root "code-server-$DEV_USER" bash -c "
     # Ensure Docker socket is accessible
     chmod 666 /var/run/docker.sock || true
     
@@ -388,6 +393,7 @@ docker exec -d -u root code-server bash -c "
     chmod 0440 /etc/sudoers.d/abc
     echo 'abc ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
     sudo -u abc mkcert -install || true
+    sudo -u abc ddev config global --instrumentation-opt-in=false --omit-containers=ddev-ssh-agent || true
     
     # Extensions
     sudo -u abc code-server --install-extension xdebug.php-debug --install-extension vscodevim.vim || true
