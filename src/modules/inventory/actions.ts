@@ -351,6 +351,7 @@ done
     --name="code-server-$DEV_USER" \
     -e PUID=$USER_UID -e PGID=$(id -g "$DEV_USER") \
     -e SUDO_PASSWORD="$DEV_USER" \
+    -e HOME="/home/$DEV_USER" \
     -e DEFAULT_WORKSPACE="/home/$DEV_USER/workspace" \
     -v "$C_CONFIG:/config" \
     -v "$C_HOME:$C_HOME" \
@@ -389,6 +390,7 @@ docker exec -d -u root "code-server-$DEV_USER" bash -c "
     apt-get update && apt-get install -y ddev vim git jq sudo
     
     # Permissions & Initializations
+    usermod -d "/home/$DEV_USER" abc
     echo 'abc ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/abc
     chmod 0440 /etc/sudoers.d/abc
     echo 'abc ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
