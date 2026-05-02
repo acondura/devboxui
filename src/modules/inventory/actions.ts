@@ -17,6 +17,10 @@ function getBootstrapScript(username: string, userEmail: string, tunnelToken: st
 
   const settingsJson = JSON.stringify({
     "window.title": `${providerName} - ${displayUrl} - DevBox`,
+    "window.menuBarVisibility": "compact",
+    "window.titleBarStyle": "custom",
+    "window.commandCenter": false,
+    "workbench.layoutControl.enabled": false,
     "editor.fontSize": 15,
     "terminal.integrated.fontSize": 15,
     "workbench.colorTheme": "Dark+"
