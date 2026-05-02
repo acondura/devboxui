@@ -351,7 +351,7 @@ done
     --name="code-server-$DEV_USER" \
     -e PUID=$USER_UID -e PGID=$(id -g "$DEV_USER") \
     -e SUDO_PASSWORD="$DEV_USER" \
-    -e DEFAULT_WORKSPACE="$C_WORKSPACE" \
+    -e DEFAULT_WORKSPACE="/home/$DEV_USER/workspace" \
     -v "$C_CONFIG:/config" \
     -v "$C_HOME:$C_HOME" \
     -v /var/run/docker.sock:/var/run/docker.sock \
@@ -392,6 +392,12 @@ docker exec -d -u root "code-server-$DEV_USER" bash -c "
     echo 'abc ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/abc
     chmod 0440 /etc/sudoers.d/abc
     echo 'abc ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+    
+    # Path Parity Symlink: ensure ~/workspace points to a host-compatible absolute path
+    rm -rf /config/workspace
+    ln -s "/home/$DEV_USER/workspace" /config/workspace
+    chown -h abc:abc /config/workspace
+
     sudo -u abc mkcert -install || true
     sudo -u abc ddev config global --instrumentation-opt-in=false --omit-containers=ddev-ssh-agent || true
     
