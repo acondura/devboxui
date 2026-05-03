@@ -399,10 +399,23 @@ docker exec -d -u root "code-server-$DEV_USER" bash -c "
     chmod 0440 /etc/sudoers.d/abc
     echo 'abc ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
     
-    # Path Parity Symlink: ensure ~/workspace points to a host-compatible absolute path
-    rm -rf /config/workspace
-    ln -s "/home/$DEV_USER/workspace" /config/workspace
-    chown -h abc:abc /config/workspace
+    # Ensure workspace exists and is owned by the user
+    mkdir -p "/home/$DEV_USER/workspace"
+    
+    # Handle migration if workspace was stuck in .code-server
+    if [ -d "/home/$DEV_USER/.code-server/workspace" ] && [ ! -d "/home/$DEV_USER/workspace/odb" ]; then
+        mv "/home/$DEV_USER/.code-server/workspace"/* "/home/$DEV_USER/workspace/" 2>/dev/null || true
+    fi
+    chown -R abc:abc "/home/$DEV_USER/workspace"
+
+    # Install Oh My Bash for the user
+    if [ ! -d "/home/$DEV_USER/.oh-my-bash" ]; then
+        sudo -u abc bash -c "sh -c '$(curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh)' --unattended" || true
+    fi
+    
+    # Configure Bash (Theme & Bracketed Paste)
+    sudo -u abc sed -i 's/OSH_THEME="font"/OSH_THEME="90210"/g' "/home/$DEV_USER/.bashrc" || true
+    grep -q "enable-bracketed-paste off" "/home/$DEV_USER/.bashrc" || echo "bind 'set enable-bracketed-paste off'" >> "/home/$DEV_USER/.bashrc"
 
     sudo -u abc mkcert -install || true
     sudo -u abc ddev config global --instrumentation-opt-in=false --omit-containers=ddev-ssh-agent || true
@@ -594,7 +607,7 @@ export async function provisionServer(
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     logs: [`Starting Cloud-Init provisioning (${serverType} in ${location}) via Hetzner API...`],
-    tunnelUrl: `https://${hostname}`,
+    tunnelUrl: `https://${hostname}/?folder=/home/${userName}/workspace`,
     projects: []
   };
 
@@ -1398,7 +1411,7 @@ export async function provisionManualServer(customName: string, provider: string
     sshPublicKey: settings.sshPublicKey,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    tunnelUrl: `https://${hostname}`,
+    tunnelUrl: `https://${hostname}/?folder=/home/${userName}/workspace`,
     projects: [],
     provider: provider as 'hetzner' | 'contabo' | 'custom',
     logs: [manualIp ? `Automated SSH provisioning started for ${manualIp}` : 'Manual provisioning initiated. Waiting for bootstrap script.']
