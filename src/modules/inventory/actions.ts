@@ -418,7 +418,18 @@ docker exec -d -u root "code-server-$DEV_USER" bash -c "
     grep -q "enable-bracketed-paste off" "/home/$DEV_USER/.bashrc" || echo "bind 'set enable-bracketed-paste off'" >> "/home/$DEV_USER/.bashrc"
 
     sudo -u abc mkcert -install || true
-    sudo -u abc ddev config global --instrumentation-opt-in=false --omit-containers=ddev-ssh-agent || true
+    
+    # Calculate unique DDEV router ports to avoid multi-user conflicts
+    DDEV_HTTP=$(( 8080 + USER_UID - 1000 ))
+    DDEV_HTTPS=$(( 8443 + USER_UID - 1000 ))
+    # User 1000 gets standard ports, others shift
+    if [ "$USER_UID" -eq 1000 ]; then DDEV_HTTP=80; DDEV_HTTPS=443; fi
+
+    sudo -u abc ddev config global \
+        --router-http-port=$DDEV_HTTP \
+        --router-https-port=$DDEV_HTTPS \
+        --instrumentation-opt-in=false \
+        --omit-containers=ddev-ssh-agent || true
     
     # Extensions
     sudo -u abc code-server --install-extension xdebug.php-debug --install-extension vscodevim.vim || true
