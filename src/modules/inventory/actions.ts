@@ -346,6 +346,10 @@ done
   XDEBUG_PORT=$(( 9003 + USER_UID - 1000 ))
 
   report_status "Deploying Code-Server ($DEV_USER)..."
+  # Cleanup existing containers to allow reinstall
+  docker stop "code-server-$DEV_USER" code-server || true
+  docker rm "code-server-$DEV_USER" code-server || true
+
   # Start code-server container
   docker run -d \
     --name="code-server-$DEV_USER" \
