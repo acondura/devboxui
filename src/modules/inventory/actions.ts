@@ -402,10 +402,10 @@ docker exec -d -u root "code-server-$DEV_USER" bash -c "
     # Ensure workspace exists and is owned by the user
     mkdir -p "/home/$DEV_USER/workspace"
     
-    # Handle migration if workspace was stuck in .code-server
-    if [ -d "/home/$DEV_USER/.code-server/workspace" ] && [ ! -d "/home/$DEV_USER/workspace/odb" ]; then
-        mv "/home/$DEV_USER/.code-server/workspace"/* "/home/$DEV_USER/workspace/" 2>/dev/null || true
-    fi
+    # Path Parity Symlink (convenience shortcut)
+    rm -rf /config/workspace
+    ln -s "/home/$DEV_USER/workspace" /config/workspace
+    chown -h abc:abc /config/workspace
     chown -R abc:abc "/home/$DEV_USER/workspace"
 
     # Install Oh My Bash for the user
@@ -1540,7 +1540,7 @@ export async function provisionContaboServer(
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     logs: [`Starting Cloud-Init provisioning (${productId} in ${region}) via Contabo API...`],
-    tunnelUrl: `https://${hostname}`,
+    tunnelUrl: `https://${hostname}/?folder=/home/${userName}/workspace`,
     projects: [],
     provider: 'contabo'
   };

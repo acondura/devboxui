@@ -216,7 +216,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
 
           <div className="pl-2 ml-2 border-l border-slate-800">
             <a
-              href={server.tunnelUrl || '#'}
+              href={server.tunnelUrl ? (server.tunnelUrl.includes('?folder=') ? server.tunnelUrl : `${server.tunnelUrl}/?folder=/home/${server.userName}/workspace`) : '#'}
               target={`win_ide_${safeTargetBase}`}
               className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg transition-all shadow-lg shadow-indigo-600/20 inline-block"
             >
