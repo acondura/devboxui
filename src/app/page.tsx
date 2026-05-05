@@ -50,7 +50,7 @@ export default function HomePage() {
             </h1>
             
             <p className="text-xl md:text-2xl text-slate-400 leading-relaxed max-w-xl mx-auto lg:mx-0">
-              Instant DDEV & VS Code setup on your own infrastructure. High-performance, isolated development environments with absolute path parity in 60 seconds.
+              Instant DDEV & VS Code setup on your own infrastructure. High-performance, isolated development environments that work exactly like your local machine.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
