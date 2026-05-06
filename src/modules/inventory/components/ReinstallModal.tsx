@@ -66,9 +66,32 @@ export function ReinstallModal({ isOpen, onClose, onConfirm, serverName, provide
               </div>
             </div>
           ) : (
-            <p className="text-sm text-slate-400 leading-relaxed">
-              Run this command on <strong>{serverName}</strong> to reinstall the DevBox environment.
-            </p>
+            <div className="space-y-4">
+              <p className="text-sm text-slate-400 leading-relaxed">
+                Run this command on <strong>{serverName}</strong> to reinstall the DevBox environment.
+              </p>
+              
+              <div className="bg-slate-950/50 border border-slate-800/50 rounded-xl p-4 space-y-3">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">What this script does:</p>
+                <ul className="grid grid-cols-2 gap-x-4 gap-y-2">
+                  {[
+                    'Updates system & tools',
+                    'Configures users & SSH',
+                    'Installs Docker Engine',
+                    'Deploys VS Code IDE',
+                    'Installs DDEV & Git',
+                    'Secures firewall & ports'
+                  ].map((step, i) => (
+                    <li key={i} className="flex items-center space-x-2 text-xs text-slate-400">
+                      <svg className="w-3 h-3 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span>{step}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
           )}
 
           <div className="space-y-3">
@@ -94,7 +117,9 @@ export function ReinstallModal({ isOpen, onClose, onConfirm, serverName, provide
                     <span className="absolute -top-8 right-0 bg-emerald-600 text-white text-[10px] px-2 py-1 rounded shadow-lg animate-bounce">{copyStatus}</span>
                   )}
                 </div>
-                <p className="text-[10px] text-slate-500 italic">This is a one-line command that executes the bootstrap script.</p>
+                <p className="text-[10px] text-slate-500 italic mt-2">
+                  This one-line command uses Base64 encoding to safely pass the full bootstrap script (including special characters) to your server in a single paste.
+                </p>
               </div>
             )}
           </div>
