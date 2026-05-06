@@ -345,6 +345,10 @@ done
   PORT=$(( 8443 + USER_UID - 1000 ))
   XDEBUG_PORT=$(( 9003 + USER_UID - 1000 ))
 
+  # Ensure workspace exists on host before mounting to avoid race conditions
+  mkdir -p "/home/$DEV_USER/workspace"
+  chown -R "$DEV_USER:$DEV_USER" "/home/$DEV_USER/workspace"
+
   report_status "Deploying Code-Server ($DEV_USER)..."
   # Cleanup existing containers to allow reinstall
   docker stop "code-server-$DEV_USER" code-server || true
