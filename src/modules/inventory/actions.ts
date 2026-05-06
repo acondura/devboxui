@@ -13,7 +13,9 @@ import { formatRsaPublicKey, formatPrivateKey } from '@/lib/ssh-utils';
  */
 function getBootstrapScript(username: string, userEmail: string, tunnelToken: string, managementKey: string, userSSHKey: string, serverId: string, provisioningToken: string, callbackUrl: string, rootPassword?: string, serviceTokenId?: string, serviceTokenSecret?: string, hetznerToken?: string, providerName: string = 'DevBox', displayUrl: string = 'Server') {
   // DERIVED VARIABLES
-  const C_CONFIG = `/home/${username}/.code-server`;
+  const HOST_HOME = `/home/${username}`;
+  const HOST_WORKSPACE = `${HOST_HOME}/workspace`;
+  const HOST_CONFIG = `${HOST_HOME}/.code-server`;
 
   const settingsJson = JSON.stringify({
     "window.title": `${providerName} - ${displayUrl} - DevBox`,
@@ -29,14 +31,15 @@ function getBootstrapScript(username: string, userEmail: string, tunnelToken: st
 
   return `#!/bin/bash
 set -e
-# Script Version: 2026-04-27-v3
+# Script Version: 2026-05-06-v1
 
 # --- 0. Configuration ---
 DEV_USER="${username}"
-WORKSPACE_DIR="${C_CONFIG}/workspace"
 ROOT_PASSWORD="${rootPassword || ''}"
 SERVER_ID="${serverId}"
 PROV_TOKEN="${provisioningToken}"
+WORKSPACE_DIR="${HOST_WORKSPACE}"
+CONFIG_DIR="${HOST_CONFIG}"
 
 # EXPORT SECRETS
 export TUNNEL_TOKEN="${tunnelToken}"
@@ -310,29 +313,23 @@ if [ -n "$TUNNEL_TOKEN" ]; then
 fi
 
 # --- 5. Deploy Code-Server ---
-# --- 5. Deploy Code-Server ---
-C_HOME="/home/\$DEV_USER"
-C_CONFIG="\$C_HOME/.code-server"
-C_WORKSPACE="\$C_HOME/workspace"
+mkdir -p "${HOST_WORKSPACE}" "${HOST_CONFIG}/data/User"
+chown -R "$DEV_USER":"$DEV_USER" "${HOST_HOME}"
 
-mkdir -p "\$C_WORKSPACE" "\$C_CONFIG/data/User"
-
-# Ensure user owns their home before we try to install things as them
-chown -R "$DEV_USER":"$DEV_USER" "$C_HOME"
+# Ensure user owns their home
+chown -R "$DEV_USER":"$DEV_USER" "${HOST_HOME}"
 
 # Pre-configure Container Environment (Host-side)
 report_status "Pre-configuring container..."
-sudo -u "$DEV_USER" bash -c "export HOME=$C_CONFIG; curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh | bash -s -- --unattended" || true
-sed -i 's/OSH_THEME="[^"]*"/OSH_THEME="90210"/' "$C_CONFIG/.bashrc" || true
-# Translate paths for container
-sed -i "s|$C_CONFIG|/config|g" "$C_CONFIG/.bashrc" || true
+sudo -u "$DEV_USER" bash -c "export HOME=${HOST_CONFIG}; curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh | bash -s -- --unattended" || true
+sed -i 's/OSH_THEME="[^"]*"/OSH_THEME="90210"/' "${HOST_CONFIG}/.bashrc" || true
 
-# Base64 encoded configs to survive all shells
-echo 'W3VzZXJdCiAgICBuYW1lID0gR2l0SHViIFVzZXIKICAgIGVtYWlsID0gZGV2Ym94QHVzZXIubG9jYWwK' | base64 -d > "\$C_CONFIG/.gitconfig"
-echo 'YmluZC1hZGRyOiAwLjAuMC4wOjg0NDMKYXV0aDogbm9uZQpjZXJ0OiBmYWxzZQo=' | base64 -d > "\$C_CONFIG/config.yaml"
-echo '${settingsBase64}' | base64 -d > "\$C_CONFIG/data/User/settings.json"
+# Base64 encoded configs
+echo 'W3VzZXJdCiAgICBuYW1lID0gR2l0SHViIFVzZXIKICAgIGVtYWlsID0gZGV2Ym94QHVzZXIubG9jYWwK' | base64 -d > "${HOST_CONFIG}/.gitconfig"
+echo 'YmluZC1hZGRyOiAwLjAuMC4wOjg0NDMKYXV0aDogbm9uZQpjZXJ0OiBmYWxzZQo=' | base64 -d > "${HOST_CONFIG}/config.yaml"
+echo '${settingsBase64}' | base64 -d > "${HOST_CONFIG}/data/User/settings.json"
 
-chown -R "\$DEV_USER":"\$DEV_USER" "\$C_HOME"
+chown -R "$DEV_USER":"$DEV_USER" "${HOST_HOME}"
 
 # Wait for docker daemon
 report_status "Waiting for Docker..."
@@ -359,10 +356,10 @@ done
     --name="code-server-$DEV_USER" \
     -e PUID=$USER_UID -e PGID=$(id -g "$DEV_USER") \
     -e SUDO_PASSWORD="$DEV_USER" \
-    -e HOME="/home/$DEV_USER" \
-    -e DEFAULT_WORKSPACE="/home/$DEV_USER/workspace" \
-    -v "$C_CONFIG:/config" \
-    -v "$C_HOME:$C_HOME" \
+    -e HOME="${HOST_HOME}" \
+    -e DEFAULT_WORKSPACE="${HOST_WORKSPACE}" \
+    -v "${HOST_CONFIG}:/config" \
+    -v "${HOST_HOME}:${HOST_HOME}" \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v /usr/bin/docker:/usr/bin/docker \
     -v /usr/libexec/docker/cli-plugins:/usr/libexec/docker/cli-plugins \
@@ -398,19 +395,14 @@ docker exec -d -u root "code-server-$DEV_USER" bash -c "
     apt-get update && apt-get install -y ddev vim git jq sudo
     
     # Permissions & Initializations
-    usermod -d "/home/$DEV_USER" abc
+    usermod -d \"${HOST_HOME}\" abc
     echo 'abc ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/abc
     chmod 0440 /etc/sudoers.d/abc
-    echo 'abc ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
     
-    # Ensure workspace exists and is owned by the user
-    mkdir -p "/home/$DEV_USER/workspace"
-    
-    # Path Parity Symlink (convenience shortcut)
+    # Path Parity Symlink
     rm -rf /config/workspace
-    ln -s "/home/$DEV_USER/workspace" /config/workspace
+    ln -s \"${HOST_WORKSPACE}\" /config/workspace
     chown -h abc:abc /config/workspace
-    chown -R abc:abc "/home/$DEV_USER/workspace"
 
     # Install Oh My Bash for the user
     if [ ! -d "/home/$DEV_USER/.oh-my-bash" ]; then
