@@ -31,6 +31,7 @@ function getBootstrapScript(username: string, userEmail: string, tunnelToken: st
 
   return `#!/bin/bash
 set -e
+echo -e "\\x1b[32m🚀 Script decoded successfully. Starting setup...\\x1b[0m"
 # Script Version: 2026-05-06-v1
 
 # --- 0. Configuration ---
