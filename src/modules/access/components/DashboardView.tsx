@@ -35,9 +35,10 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
     loadServers();
   }, []);
 
-  // Poll for updates if any server is provisioning
+  // Poll for updates if any Hetzner server is provisioning
   useEffect(() => {
     const isPending = servers.some(s => 
+      s.hetznerServerId &&
       ['provisioning', 'waiting-for-bootstrap', 'initializing', 'Initializing'].includes(s.status as string)
     );
     if (!isPending) return;
@@ -51,18 +52,19 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
         
         // Re-schedule only if still pending
         const stillPending = data && data.some(s => 
+          s.hetznerServerId &&
           ['provisioning', 'waiting-for-bootstrap', 'initializing', 'Initializing'].includes(s.status as string)
         );
         if (stillPending) {
-          timerId = setTimeout(poll, 3000);
+          timerId = setTimeout(poll, 5000);
         }
       } catch (error) {
-        console.error("Polling error:", error);
-        timerId = setTimeout(poll, 5000); // Wait longer on error
+        // Silently retry polling on network/auth errors to avoid console drama
+        timerId = setTimeout(poll, 10000); 
       }
     }
 
-    timerId = setTimeout(poll, 3000);
+    timerId = setTimeout(poll, 5000);
     return () => clearTimeout(timerId);
   }, [servers]); // Simplified dependency to avoid complex expression warnings
 
