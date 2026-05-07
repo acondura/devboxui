@@ -354,42 +354,40 @@ docker run -d \
 # Wait for container
 while ! docker ps | grep -q "code-server-$DEV_USER"; do sleep 2; done
 
-    # Final Container Setup (Synchronous to ensure Ready means Ready)
-    docker exec -u root "code-server-$DEV_USER" bash -c "
-        cat << 'EOF' > /tmp/setup-container.sh
+    # Final Container Setup (Base64 encoded to avoid all quoting issues)
+    CONTAINER_SETUP_B64=$(base64 -w0 << EOF
 #!/bin/bash
 set -e
-# Ensure Docker socket is accessible
 chmod 666 /var/run/docker.sock || true
 
 # Install DDEV Repo
 apt-get update && apt-get install -y curl gnupg ca-certificates
 install -m 0755 -d /etc/apt/keyrings
 curl -fsSL https://pkg.ddev.com/apt/gpg.key | gpg --batch --yes --dearmor -o /etc/apt/keyrings/ddev.gpg
-echo \"deb [signed-by=/etc/apt/keyrings/ddev.gpg] https://pkg.ddev.com/apt/ * *\" > /etc/apt/sources.list.d/ddev.list
+echo "deb [signed-by=/etc/apt/keyrings/ddev.gpg] https://pkg.ddev.com/apt/ * *" > /etc/apt/sources.list.d/ddev.list
 
 # Install DDEV, Vim, Git, etc
 apt-get update && apt-get install -y ddev vim git jq sudo
 
-# Permissions & Environment
-echo \"abc ALL=(ALL) NOPASSWD:ALL\" > /etc/sudoers.d/abc
+# Permissions
+echo "abc ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/abc
 chmod 0440 /etc/sudoers.d/abc
 
 # Path Parity Symlink
 rm -rf /config/workspace
-ln -s \"/home/${username}/workspace\" /config/workspace
+ln -s "/home/${username}/workspace" /config/workspace
 chown -h abc:abc /config/workspace
 
 # Install Oh My Bash
-if [ ! -d \"/home/${username}/.oh-my-bash\" ]; then
-    sudo -u abc bash -c \"export HOME=/home/${username}; curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh | bash -s -- --unattended\" || true
+if [ ! -d "/home/${username}/.oh-my-bash" ]; then
+    sudo -u abc bash -c "export HOME=/home/${username}; curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh | bash -s -- --unattended" || true
 fi
 
 # Apply Theme and Fixes
-if [ -f \"/home/${username}/.bashrc\" ]; then
-    sed -i 's/OSH_THEME=\"font\"/OSH_THEME=\"90210\"/' \"/home/${username}/.bashrc\"
-    grep -q \"enable-bracketed-paste\" \"/home/${username}/.bashrc\" || echo \"bind 'set enable-bracketed-paste off'\" >> \"/home/${username}/.bashrc\"
-    grep -q \"alias l=\" \"/home/${username}/.bashrc\" || echo \"alias l='ls -lah'\" >> \"/home/${username}/.bashrc\"
+if [ -f "/home/${username}/.bashrc" ]; then
+    sed -i 's/OSH_THEME="font"/OSH_THEME="90210"/' "/home/${username}/.bashrc"
+    grep -q "enable-bracketed-paste" "/home/${username}/.bashrc" || echo "bind 'set enable-bracketed-paste off'" >> "/home/${username}/.bashrc"
+    grep -q "alias l=" "/home/${username}/.bashrc" || echo "alias l='ls -lah'" >> "/home/${username}/.bashrc"
 fi
 
 sudo -u abc mkcert -install || true
@@ -404,8 +402,8 @@ sudo -u abc ddev config global \\
 # Extensions
 sudo -u abc code-server --install-extension xdebug.php-debug --install-extension vscodevim.vim || true
 EOF
-        bash /tmp/setup-container.sh
-    "
+)
+    docker exec -u root "code-server-$DEV_USER" bash -c "echo \$CONTAINER_SETUP_B64 | base64 -d | bash"
 
 # Firewall
 ufw allow 22/tcp
