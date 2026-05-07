@@ -42,14 +42,15 @@ export default function HomePage() {
           <div className="space-y-8 text-center lg:text-left">
             
             <h1 className="text-6xl md:text-8xl font-black tracking-tighter text-white leading-[0.9]">
-              The Next Gen <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-cyan-400 to-emerald-400">
-                Cloud IDE
+              Provision Any VPS <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-cyan-400 to-emerald-400 text-[0.8em]">
+                Into a Powerful <br />
+                Cloud DevBox
               </span>
             </h1>
             
             <p className="text-xl md:text-2xl text-slate-400 leading-relaxed max-w-xl mx-auto lg:mx-0">
-              Transform raw VPS infrastructure into high-performance, secure development boxes in 60 seconds.
+              Instant DDEV & VS Code setup on your own infrastructure. High-performance, isolated development environments that work exactly like your local machine.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">

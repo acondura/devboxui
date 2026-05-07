@@ -6,7 +6,7 @@ import { AddServerModal } from '@/modules/inventory/components/AddServerModal';
 import { SettingsModal } from '@/modules/access/components/SettingsModal';
 import { FeedbackModal } from '@/modules/feedback/components/FeedbackModal';
 import { ServerList } from '@/modules/inventory/components/ServerList';
-import { provisionServer, getServers, addProject, deleteServer } from '@/modules/inventory/actions';
+import { provisionServer, getServers, addProject, deleteServer, reinstallServer, deleteDomain, updateDomain, updateServerProvider } from '@/modules/inventory/actions';
 import { ServerConfig } from '@/modules/inventory/types';
 
 interface DashboardViewProps {
@@ -37,8 +37,10 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
 
   // Poll for updates if any server is provisioning
   useEffect(() => {
-    const isProvisioning = servers.some(s => s.status === 'provisioning');
-    if (!isProvisioning) return;
+    const isPending = servers.some(s => 
+      ['provisioning', 'waiting-for-bootstrap', 'initializing', 'Initializing'].includes(s.status as string)
+    );
+    if (!isPending) return;
 
     let timerId: NodeJS.Timeout;
 
@@ -47,8 +49,11 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
         const data = await getServers();
         setServers(data || []);
         
-        // Re-schedule only if still provisioning
-        if (data && data.some(s => s.status === 'provisioning')) {
+        // Re-schedule only if still pending
+        const stillPending = data && data.some(s => 
+          ['provisioning', 'waiting-for-bootstrap', 'initializing', 'Initializing'].includes(s.status as string)
+        );
+        if (stillPending) {
           timerId = setTimeout(poll, 3000);
         }
       } catch (error) {
@@ -73,12 +78,32 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
     }
   };
 
-  const handleAddProject = async (serverId: string, projectName: string) => {
+  const handleAddProject = async (serverId: string, projectName: string, port: number = 8443) => {
     try {
-      const updatedServer = await addProject(serverId, projectName);
+      const updatedServer = await addProject(serverId, projectName, port);
       setServers(prev => prev.map(s => s.id === serverId ? updatedServer : s));
     } catch (error) {
       alert("Failed to add project. Check console for details.");
+      console.error(error);
+    }
+  };
+
+  const handleUpdateDomain = async (serverId: string, domain: string, port: number) => {
+    try {
+      const updatedServer = await updateDomain(serverId, domain, port);
+      setServers(prev => prev.map(s => s.id === serverId ? updatedServer : s));
+    } catch (error) {
+      alert("Failed to update domain. Check console for details.");
+      console.error(error);
+    }
+  };
+
+  const handleDeleteDomain = async (serverId: string, domain: string) => {
+    try {
+      const updatedServer = await deleteDomain(serverId, domain);
+      setServers(prev => prev.map(s => s.id === serverId ? updatedServer : s));
+    } catch (error) {
+      alert("Failed to delete domain. Check console for details.");
       console.error(error);
     }
   };
@@ -102,6 +127,17 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
       }
     } catch (error) {
       alert("Failed to toggle server protection. Check console for details.");
+      console.error(error);
+    }
+  };
+
+  const handleReinstall = async (serverId: string) => {
+    try {
+      await reinstallServer(serverId);
+      const data = await getServers();
+      setServers(data || []);
+    } catch (error) {
+      alert("Failed to trigger reinstall. Check console for details.");
       console.error(error);
     }
   };
@@ -198,7 +234,16 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
               <div className="animate-spin h-8 w-8 border-4 border-indigo-500 border-t-transparent rounded-full" />
             </div>
           ) : (
-            <ServerList servers={servers} onAddProject={handleAddProject} onDeleteServer={handleDeleteServer} onToggleLock={handleToggleLock} />
+            <ServerList 
+              servers={servers} 
+              userEmail={userEmail} 
+              onAddProject={handleAddProject} 
+              onUpdateDomain={handleUpdateDomain}
+              onDeleteDomain={handleDeleteDomain}
+              onDeleteServer={handleDeleteServer} 
+              onToggleLock={handleToggleLock} 
+              onReinstall={handleReinstall} 
+            />
           )}
         </div>
       </main>
