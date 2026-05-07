@@ -331,18 +331,23 @@ USER_UID=$(id -u "$DEV_USER")
 PORT=$(( 8443 + USER_UID - 1000 ))
 XDEBUG_PORT=$(( 9003 + USER_UID - 1000 ))
 
-report_status "Deploying Code-Server ($DEV_USER)..."
-docker stop "code-server-$DEV_USER" code-server || true
-docker rm "code-server-$DEV_USER" code-server || true
+# Ensure DDEV network exists
+docker network create ddev_default || true
 
-docker run -d \
-  --name="code-server-$DEV_USER" \
-  -e PUID=$USER_UID -e PGID=$(id -g "$DEV_USER") \
-  -e SUDO_PASSWORD="$DEV_USER" \
-  -e HOME="${HOST_HOME}" \
-  -e DEFAULT_WORKSPACE="${HOST_WORKSPACE}" \
+# Deploy Code-Server
+report_status "Deploying Code-Server ($DEV_USER)..."
+docker stop "code-server-$DEV_USER" code-server 2>/dev/null || true
+docker rm "code-server-$DEV_USER" code-server 2>/dev/null || true
+
+docker run -d --name="code-server-$DEV_USER" \
+  -e PUID=$USER_UID \
+  -e PGID=$(id -g "$DEV_USER") \
+  -e SUDO_PASSWORD="$ROOT_PASSWORD" \
+  -e HOME="/home/$DEV_USER" \
+  -e DEFAULT_WORKSPACE="/home/$DEV_USER/workspace" \
+  --network ddev_default \
   -v "${HOST_CONFIG}:/config" \
-  -v "${HOST_HOME}:${HOST_HOME}" \
+  -v "/home/$DEV_USER:/home/$DEV_USER" \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v /usr/bin/docker:/usr/bin/docker \
   -v /usr/libexec/docker/cli-plugins:/usr/libexec/docker/cli-plugins \
@@ -388,6 +393,7 @@ if [ -f "/home/${username}/.bashrc" ]; then
     sed -i 's/OSH_THEME="font"/OSH_THEME="90210"/' "/home/${username}/.bashrc"
     grep -q "enable-bracketed-paste" "/home/${username}/.bashrc" || echo "bind 'set enable-bracketed-paste off'" >> "/home/${username}/.bashrc"
     grep -q "alias l=" "/home/${username}/.bashrc" || echo "alias l='ls -lah'" >> "/home/${username}/.bashrc"
+    grep -q "alias ddev-refresh=" "/home/${username}/.bashrc" || echo "alias ddev-refresh='for nw in \$(docker network ls --format \"{{.Name}}\" | grep \"_default\"); do docker network connect \"\$nw\" \"code-server-${username}\" 2>/dev/null || true; done'" >> "/home/${username}/.bashrc"
 fi
 
 sudo -u abc mkcert -install || true
@@ -399,8 +405,15 @@ sudo -u abc ddev config global \\
     --instrumentation-opt-in=false \\
     --omit-containers=ddev-ssh-agent || true
 
-# Extensions
-sudo -u abc code-server --install-extension xdebug.php-debug --install-extension vscodevim.vim || true
+    # Agnostic Network Joiner: Connect to all DDEV project networks
+    echo "Connecting code-server to all DDEV networks..."
+    for nw in $(docker network ls --format "{{.Name}}" | grep "_default"); do
+        echo "Joining network: $nw"
+        docker network connect "$nw" "code-server-$DEV_USER" 2>/dev/null || true
+    done
+
+    # Extensions
+    sudo -u abc code-server --install-extension xdebug.php-debug --install-extension vscodevim.vim || true
 EOF
 )
     docker exec -u root "code-server-$DEV_USER" bash -c "echo \$CONTAINER_SETUP_B64 | base64 -d | bash"
