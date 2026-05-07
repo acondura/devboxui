@@ -111,8 +111,8 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
           finally { setIsReinstallModalOpen(false); }
         }}
         serverName={server.hostname || server.ip}
+        serverId={server.id}
         provider={server.providerName}
-        bootstrapCommand={server.bootstrapCommand}
         isAutomated={!!(server.hetznerServerId || server.contaboInstanceId)}
       />
 
@@ -288,8 +288,8 @@ function ServerCard({ server, userEmail, onAddProject, onUpdateDomain, onDeleteD
           finally { setIsReinstallModalOpen(false); }
         }}
         serverName={server.hostname || server.ip}
+        serverId={server.id}
         provider={server.providerName}
-        bootstrapCommand={server.bootstrapCommand}
         isAutomated={!!(server.hetznerServerId || server.contaboInstanceId)}
       />
 

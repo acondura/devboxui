@@ -1333,6 +1333,54 @@ export async function getHetznerOptions() {
 }
 
 /**
+ * Regenerates the bootstrap command for an existing server using the latest script logic.
+ */
+export async function getLatestBootstrapCommand(serverId: string) {
+  const userEmail = await getIdentity();
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+  const settings = await getUserSettings();
+
+  if (!kv || !settings) throw new Error("Environment or settings missing.");
+
+  const servers = await getServers();
+  const config = servers.find(s => s.id === serverId);
+
+  if (!config) throw new Error("Server not found.");
+
+  const cfApi = new CloudflareApiService(env);
+  const requestHost = env.NEXT_PUBLIC_APP_URL || 'https://devboxui.com';
+  const callbackUrl = `${requestHost}/api/provisioning/status`;
+  const serviceToken = await cfApi.getOrCreateServiceToken(kv);
+
+  const bootstrapScript = getBootstrapScript(
+    config.userName || 'abc',
+    userEmail,
+    config.tunnelToken || '',
+    env.MANAGEMENT_SSH_PUBLIC_KEY || '',
+    settings.sshPublicKey,
+    serverId,
+    config.provisioningToken || '',
+    callbackUrl,
+    config.rootPassword || '',
+    serviceToken.id,
+    serviceToken.client_secret,
+    undefined,
+    config.providerName || 'Custom',
+    config.hostname || 'devbox'
+  );
+
+  const base64Script = Buffer.from(bootstrapScript).toString('base64');
+  const command = `echo "Decoding and starting setup..." && echo '${base64Script}' | base64 -d | bash`;
+  
+  // Optionally update KV with the latest command
+  config.bootstrapCommand = command;
+  await kv.put(`servers:${userEmail}:${serverId}`, JSON.stringify(config));
+
+  return { success: true, command };
+}
+
+/**
  * Returns the secure log URL for the server.
  */
 export async function getServerLogs(serverId: string) {

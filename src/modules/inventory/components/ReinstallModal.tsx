@@ -1,20 +1,40 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { getLatestBootstrapCommand } from '../actions';
 
 interface ReinstallModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
   serverName: string;
+  serverId: string; // Added serverId
   provider?: string;
-  bootstrapCommand?: string;
   isAutomated?: boolean;
 }
 
-export function ReinstallModal({ isOpen, onClose, onConfirm, serverName, provider, bootstrapCommand, isAutomated }: ReinstallModalProps) {
+export function ReinstallModal({ isOpen, onClose, onConfirm, serverName, serverId, provider, isAutomated }: ReinstallModalProps) {
   const [isConfirming, setIsConfirming] = useState(false);
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
+  const [bootstrapCommand, setBootstrapCommand] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && !isAutomated) {
+      async function fetchCommand() {
+        setIsLoading(true);
+        try {
+          const result = await getLatestBootstrapCommand(serverId);
+          if (result.success) setBootstrapCommand(result.command);
+        } catch (err) {
+          console.error("Failed to refresh command", err);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+      fetchCommand();
+    }
+  }, [isOpen, serverId, isAutomated]);
 
   if (!isOpen) return null;
 
@@ -95,31 +115,44 @@ export function ReinstallModal({ isOpen, onClose, onConfirm, serverName, provide
           )}
 
           <div className="space-y-3">
-            {bootstrapCommand && (
+            {!isAutomated && (
               <div className="space-y-2 pt-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Command</label>
-                <div className="relative group">
-                  <div className="w-full bg-slate-950 border border-slate-800 rounded-lg p-4 font-mono text-sm text-slate-300 break-all leading-relaxed pr-10 max-h-[120px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-800">
-                    {bootstrapCommand}
+                {isLoading ? (
+                  <div className="w-full bg-slate-950 border border-slate-800 rounded-lg p-8 flex flex-col items-center justify-center space-y-3">
+                    <div className="h-5 w-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest animate-pulse">Regenerating Script...</span>
                   </div>
-                  <button 
-                    onClick={handleCopy}
-                    className="absolute top-3 right-3 p-1.5 bg-slate-800 text-slate-400 hover:text-white rounded-md opacity-0 group-hover:opacity-100 transition-all"
-                    title="Copy command"
-                  >
-                    {copyStatus ? (
-                      <svg className="w-3.5 h-3.5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                    ) : (
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
-                    )}
-                  </button>
-                  {copyStatus && (
-                    <span className="absolute -top-8 right-0 bg-emerald-600 text-white text-[10px] px-2 py-1 rounded shadow-lg animate-bounce">{copyStatus}</span>
-                  )}
-                </div>
-                <p className="text-sm text-slate-500 italic mt-3 leading-relaxed">
-                  This one-line command uses Base64 encoding to safely pass the full bootstrap script (including special characters) to your server in a single paste.
-                </p>
+                ) : bootstrapCommand ? (
+                  <>
+                    <div className="relative group">
+                      <div className="w-full bg-slate-950 border border-slate-800 rounded-lg p-4 font-mono text-sm text-slate-300 break-all leading-relaxed pr-10 max-h-[120px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-800">
+                        {bootstrapCommand}
+                      </div>
+                      <button 
+                        onClick={handleCopy}
+                        className="absolute top-3 right-3 p-1.5 bg-slate-800 text-slate-400 hover:text-white rounded-md opacity-0 group-hover:opacity-100 transition-all"
+                        title="Copy command"
+                      >
+                        {copyStatus ? (
+                          <svg className="w-3.5 h-3.5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                        ) : (
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                        )}
+                      </button>
+                      {copyStatus && (
+                        <span className="absolute -top-8 right-0 bg-emerald-600 text-white text-[10px] px-2 py-1 rounded shadow-lg animate-bounce">{copyStatus}</span>
+                      )}
+                    </div>
+                    <p className="text-sm text-slate-500 italic mt-3 leading-relaxed">
+                      This one-line command uses Base64 encoding to safely pass the full bootstrap script (including special characters) to your server in a single paste.
+                    </p>
+                  </>
+                ) : (
+                  <div className="w-full bg-rose-500/10 border border-rose-500/20 rounded-lg p-4 text-xs text-rose-400 text-center">
+                    Failed to generate command. Please try again.
+                  </div>
+                )}
               </div>
             )}
           </div>
