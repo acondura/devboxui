@@ -72,7 +72,7 @@ export function ReinstallModal({ isOpen, onClose, onConfirm, serverName, provide
               </p>
               
               <div className="bg-slate-950/50 border border-slate-800/50 rounded-xl p-4 space-y-3">
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">What this script does:</p>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">What this script does:</p>
                 <ul className="grid grid-cols-2 gap-x-4 gap-y-2">
                   {[
                     'Updates system & tools',
@@ -82,7 +82,7 @@ export function ReinstallModal({ isOpen, onClose, onConfirm, serverName, provide
                     'Installs DDEV & Git',
                     'Secures firewall & ports'
                   ].map((step, i) => (
-                    <li key={i} className="flex items-center space-x-2 text-xs text-slate-400">
+                    <li key={i} className="flex items-center space-x-2 text-sm text-slate-400">
                       <svg className="w-3 h-3 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
@@ -97,9 +97,9 @@ export function ReinstallModal({ isOpen, onClose, onConfirm, serverName, provide
           <div className="space-y-3">
             {bootstrapCommand && (
               <div className="space-y-2 pt-2">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Command</label>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Command</label>
                 <div className="relative group">
-                  <div className="w-full bg-slate-950 border border-slate-800 rounded-lg p-4 font-mono text-[11px] text-slate-300 break-all leading-relaxed pr-10 max-h-[120px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-800">
+                  <div className="w-full bg-slate-950 border border-slate-800 rounded-lg p-4 font-mono text-sm text-slate-300 break-all leading-relaxed pr-10 max-h-[120px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-800">
                     {bootstrapCommand}
                   </div>
                   <button 
@@ -117,7 +117,7 @@ export function ReinstallModal({ isOpen, onClose, onConfirm, serverName, provide
                     <span className="absolute -top-8 right-0 bg-emerald-600 text-white text-[10px] px-2 py-1 rounded shadow-lg animate-bounce">{copyStatus}</span>
                   )}
                 </div>
-                <p className="text-[10px] text-slate-500 italic mt-2">
+                <p className="text-sm text-slate-500 italic mt-3 leading-relaxed">
                   This one-line command uses Base64 encoding to safely pass the full bootstrap script (including special characters) to your server in a single paste.
                 </p>
               </div>
@@ -131,27 +131,29 @@ export function ReinstallModal({ isOpen, onClose, onConfirm, serverName, provide
             >
               Close
             </button>
-            <button
-              onClick={handleConfirm}
-              disabled={isConfirming}
-              className={`flex-[2] font-bold py-3.5 rounded-xl transition-all shadow-lg flex items-center justify-center space-x-2 ${
-                isAutomated 
-                ? 'bg-rose-600 hover:bg-rose-500 shadow-rose-600/20 text-white' 
-                : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/20 text-white'
-              }`}
-            >
-              {isConfirming ? (
-                <>
-                  <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <span>Processing...</span>
-                </>
-              ) : (
-                <span>{isAutomated ? 'Wipe & Reinstall' : 'Reset Status & Reinstall'}</span>
-              )}
-            </button>
+            {isAutomated && (
+              <button
+                onClick={handleConfirm}
+                disabled={isConfirming}
+                className={`flex-[2] font-bold py-3.5 rounded-xl transition-all shadow-lg flex items-center justify-center space-x-2 ${
+                  isAutomated 
+                  ? 'bg-rose-600 hover:bg-rose-500 shadow-rose-600/20 text-white' 
+                  : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/20 text-white'
+                }`}
+              >
+                {isConfirming ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Processing...</span>
+                  </>
+                ) : (
+                  <span>{isAutomated ? 'Wipe & Reinstall' : 'Reset Status & Reinstall'}</span>
+                )}
+              </button>
+            )}
           </div>
         </div>
       </div>
