@@ -313,10 +313,8 @@ if [ -n "$TUNNEL_TOKEN" ]; then
 fi
 
 # --- 5. Deploy Code-Server ---
+# Build Timestamp: ${new Date().toISOString()}
 mkdir -p "${HOST_WORKSPACE}" "${HOST_CONFIG}/data/User"
-chown -R "$DEV_USER":"$DEV_USER" "${HOST_HOME}"
-
-# Ensure user owns their home
 chown -R "$DEV_USER":"$DEV_USER" "${HOST_HOME}"
 
 # Pre-configure Container Environment (Host-side)
@@ -329,60 +327,36 @@ echo 'W3VzZXJdCiAgICBuYW1lID0gR2l0SHViIFVzZXIKICAgIGVtYWlsID0gZGV2Ym94QHVzZXIubG
 echo 'YmluZC1hZGRyOiAwLjAuMC4wOjg0NDMKYXV0aDogbm9uZQpjZXJ0OiBmYWxzZQo=' | base64 -d > "${HOST_CONFIG}/config.yaml"
 echo '${settingsBase64}' | base64 -d > "${HOST_CONFIG}/data/User/settings.json"
 
-chown -R "$DEV_USER":"$DEV_USER" "${HOST_HOME}"
+# Unique Port based on UID
+USER_UID=$(id -u "$DEV_USER")
+PORT=$(( 8443 + USER_UID - 1000 ))
+XDEBUG_PORT=$(( 9003 + USER_UID - 1000 ))
 
-# Wait for docker daemon
-report_status "Waiting for Docker..."
-while ! docker info >/dev/null 2>&1; do
-  sleep 2
-done
+report_status "Deploying Code-Server ($DEV_USER)..."
+docker stop "code-server-$DEV_USER" code-server || true
+docker rm "code-server-$DEV_USER" code-server || true
 
-  # Unique Port based on UID to avoid conflicts (1000 -> 8443, 1001 -> 8444, etc)
-  USER_UID=$(id -u "$DEV_USER")
-  PORT=$(( 8443 + USER_UID - 1000 ))
-  XDEBUG_PORT=$(( 9003 + USER_UID - 1000 ))
+docker run -d \
+  --name="code-server-$DEV_USER" \
+  -e PUID=$USER_UID -e PGID=$(id -g "$DEV_USER") \
+  -e SUDO_PASSWORD="$DEV_USER" \
+  -e HOME="${HOST_HOME}" \
+  -e DEFAULT_WORKSPACE="${HOST_WORKSPACE}" \
+  -v "${HOST_CONFIG}:/config" \
+  -v "${HOST_HOME}:${HOST_HOME}" \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v /usr/bin/docker:/usr/bin/docker \
+  -v /usr/libexec/docker/cli-plugins:/usr/libexec/docker/cli-plugins \
+  -p 127.0.0.1:$PORT:8443 \
+  -p $XDEBUG_PORT:9003 \
+  --restart unless-stopped \
+  linuxserver/code-server:latest
 
-  # Ensure workspace exists on host before mounting to avoid race conditions
-  mkdir -p "/home/$DEV_USER/workspace"
-  chown -R "$DEV_USER:$DEV_USER" "/home/$DEV_USER/workspace"
+# Wait for container
+while ! docker ps | grep -q "code-server-$DEV_USER"; do sleep 2; done
 
-  report_status "Deploying Code-Server ($DEV_USER)..."
-  # Cleanup existing containers to allow reinstall
-  docker stop "code-server-$DEV_USER" code-server || true
-  docker rm "code-server-$DEV_USER" code-server || true
-
-  # Start code-server container
-  docker run -d \
-    --name="code-server-$DEV_USER" \
-    -e PUID=$USER_UID -e PGID=$(id -g "$DEV_USER") \
-    -e SUDO_PASSWORD="$DEV_USER" \
-    -e HOME="${HOST_HOME}" \
-    -e DEFAULT_WORKSPACE="${HOST_WORKSPACE}" \
-    -v "${HOST_CONFIG}:/config" \
-    -v "${HOST_HOME}:${HOST_HOME}" \
-    -v /var/run/docker.sock:/var/run/docker.sock \
-    -v /usr/bin/docker:/usr/bin/docker \
-    -v /usr/libexec/docker/cli-plugins:/usr/libexec/docker/cli-plugins \
-    -p 127.0.0.1:$PORT:8443 \
-    -p $XDEBUG_PORT:9003 \
-    --restart unless-stopped \
-    linuxserver/code-server:latest
-
-# Final Container Setup (Wait for container to be ready)
-MAX_RETRIES=30
-COUNT=0
-while ! docker ps | grep -q "code-server-$DEV_USER"; do
-    if [ "\$COUNT" -ge "\$MAX_RETRIES" ]; then echo "Container failed to start"; exit 1; fi
-    echo "Waiting for code-server container..."
-    sleep 2
-    COUNT=\$((COUNT + 1))
-done
-
-# Final Container Setup (Synchronous & Robust)
-# Final Container Setup (Synchronous & Robust)
-# Final Container Setup (Synchronous & Robust)
+# Final Container Setup
 docker exec -d -u root "code-server-$DEV_USER" bash -c "
-    # Ensure Docker socket is accessible
     chmod 666 /var/run/docker.sock || true
     
     # Install DDEV Repo
@@ -403,27 +377,26 @@ docker exec -d -u root "code-server-$DEV_USER" bash -c "
     rm -rf /config/workspace
     ln -s \"${HOST_WORKSPACE}\" /config/workspace
     chown -h abc:abc /config/workspace
-
+    
     # Install Oh My Bash for the user
-    if [ ! -d "/home/$DEV_USER/.oh-my-bash" ]; then
-        sudo -u abc bash -c "sh -c '$(curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh)' --unattended" || true
+    if [ ! -d \"${HOST_HOME}/.oh-my-bash\" ]; then
+        sudo -u abc bash -c \"sh -c '$(curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh)' --unattended\" || true
     fi
     
     # Configure Bash (Theme & Bracketed Paste)
-    sudo -u abc sed -i 's/OSH_THEME="font"/OSH_THEME="90210"/g' "/home/$DEV_USER/.bashrc" || true
-    grep -q "enable-bracketed-paste off" "/home/$DEV_USER/.bashrc" || echo "bind 'set enable-bracketed-paste off'" >> "/home/$DEV_USER/.bashrc"
+    sudo -u abc sed -i 's/OSH_THEME=\"font\"/OSH_THEME=\"90210\"/g' \"${HOST_HOME}/.bashrc\" || true
+    grep -q \"enable-bracketed-paste off\" \"${HOST_HOME}/.bashrc\" || echo \"bind 'set enable-bracketed-paste off'\" >> \"${HOST_HOME}/.bashrc\"
 
     sudo -u abc mkcert -install || true
-    
     # Calculate unique DDEV router ports to avoid multi-user conflicts
     DDEV_HTTP=$(( 8080 + USER_UID - 1000 ))
     DDEV_HTTPS=$(( 8443 + USER_UID - 1000 ))
     # User 1000 gets standard ports, others shift
-    if [ "$USER_UID" -eq 1000 ]; then DDEV_HTTP=80; DDEV_HTTPS=443; fi
+    if [ \"$USER_UID\" -eq 1000 ]; then DDEV_HTTP=80; DDEV_HTTPS=443; fi
 
     sudo -u abc ddev config global \
-        --router-http-port=$DDEV_HTTP \
-        --router-https-port=$DDEV_HTTPS \
+        --router-http-port=\$DDEV_HTTP \
+        --router-https-port=\$DDEV_HTTPS \
         --instrumentation-opt-in=false \
         --omit-containers=ddev-ssh-agent || true
     
