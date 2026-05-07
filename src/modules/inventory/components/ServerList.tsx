@@ -40,6 +40,7 @@ export function ServerList(props: ServerListProps) {
           <thead>
             <tr className="border-b border-slate-800">
               <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Status</th>
+              <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Type</th>
               <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Server Identification</th>
               <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Environment</th>
               <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Service URLs</th>
@@ -118,16 +119,31 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
 
       {/* Status */}
       <td className="py-6 px-4">
-        <div className="flex items-center space-x-2">
-          {server.status === 'ready' ? (
-            <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-          ) : server.status === 'waiting-for-bootstrap' ? (
-            <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-          ) : (
-            <span className="h-2 w-2 rounded-full bg-slate-600" />
-          )}
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-400">{server.status}</span>
-        </div>
+        {!(server.hetznerServerId || server.contaboInstanceId) ? (
+          <span className="text-xs font-bold text-slate-600">—</span>
+        ) : (
+          <div className="flex items-center space-x-2">
+            {server.status === 'ready' ? (
+              <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+            ) : server.status === 'waiting-for-bootstrap' ? (
+              <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+            ) : (
+              <span className="h-2 w-2 rounded-full bg-slate-600" />
+            )}
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">{server.status}</span>
+          </div>
+        )}
+      </td>
+
+      {/* Type */}
+      <td className="py-6 px-4">
+        <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest ${
+          (server.hetznerServerId || server.contaboInstanceId) 
+            ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' 
+            : 'bg-slate-800 text-slate-400 border border-slate-700'
+        }`}>
+          {server.providerName || 'Custom'}
+        </span>
       </td>
 
       {/* Server Identification */}
@@ -298,8 +314,17 @@ function ServerCard({ server, userEmail, onAddProject, onUpdateDomain, onDeleteD
         <div className="flex justify-between items-start">
           <div className="space-y-1.5">
             <div className="flex items-center space-x-2">
-              <span className="text-sm font-bold text-slate-400 bg-slate-800 px-3 py-1 rounded uppercase tracking-widest">Ubuntu 24.04 LTS</span>
-              {server.status === 'ready' && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />}
+              <span className="text-[10px] font-bold text-slate-400 bg-slate-800 px-2 py-1 rounded uppercase tracking-widest border border-slate-700">Ubuntu 24.04</span>
+              <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest ${
+                (server.hetznerServerId || server.contaboInstanceId) 
+                  ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' 
+                  : 'bg-slate-800 text-slate-400 border border-slate-700'
+              }`}>
+                {server.providerName || 'Custom'}
+              </span>
+              {(server.hetznerServerId || server.contaboInstanceId) && server.status === 'ready' && (
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+              )}
             </div>
             <div className="flex flex-col">
               <div className="flex items-center space-x-2">
