@@ -4,63 +4,43 @@ import { ServerConfig } from './types';
 import { getCloudflareEnv, getIdentity } from '@/lib/auth';
 import { CloudflareApiService } from '@/lib/cloudflare-api';
 import { HetznerApiService } from '@/lib/hetzner-api';
+import { ContaboApiService } from '@/lib/contabo-api';
 import { formatRsaPublicKey, formatPrivateKey } from '@/lib/ssh-utils';
 
-/**
- * Executes a command on a remote server via the SSH-as-a-Service Worker.
- */
-const runRemoteCommand = async (config: {
-  host: string;
-  username: string;
-  password?: string;
-  privateKey?: string;
-  command: string;
-}) => {
-  const env = await getCloudflareEnv();
-  const serviceUrl = env.SSH_SERVICE_URL;
-  const secret = env.SSH_SERVICE_SECRET;
-
-  if (!serviceUrl || !secret) {
-    throw new Error("SSH Service configuration missing (SSH_SERVICE_URL or SSH_SERVICE_SECRET).");
-  }
-
-  const response = await fetch(serviceUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${secret}`
-    },
-    body: JSON.stringify(config)
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    let errorMessage = response.statusText;
-    try { errorMessage = JSON.parse(errorText).error || errorMessage; } catch { }
-    throw new Error(`SSH Service Error: ${errorMessage}`);
-  }
-
-  return await response.json() as { success: boolean; stdout: string; stderr: string; code: number };
-};
 
 /**
  * Generates the full sequence of bash commands to bootstrap the server.
  */
-function getBootstrapScript(username: string, userEmail: string, tunnelToken: string, managementKey: string, userSSHKey: string, serverId: string, provisioningToken: string, callbackUrl: string, rootPassword?: string, serviceTokenId?: string, serviceTokenSecret?: string, hetznerToken?: string) {
+function getBootstrapScript(username: string, userEmail: string, tunnelToken: string, managementKey: string, userSSHKey: string, serverId: string, provisioningToken: string, callbackUrl: string, rootPassword?: string, serviceTokenId?: string, serviceTokenSecret?: string, hetznerToken?: string, providerName: string = 'DevBox', displayUrl: string = 'Server') {
   // DERIVED VARIABLES
-  const C_CONFIG = `/home/${username}/.code-server`;
-  const C_HOME = `/home/${username}`;
+  const HOST_HOME = `/home/${username}`;
+  const HOST_WORKSPACE = `${HOST_HOME}/workspace`;
+  const HOST_CONFIG = `${HOST_HOME}/.code-server`;
+
+  const settingsJson = JSON.stringify({
+    "window.title": `${providerName} - ${displayUrl} - DevBox`,
+    "window.menuBarVisibility": "compact",
+    "window.titleBarStyle": "custom",
+    "window.commandCenter": false,
+    "workbench.layoutControl.enabled": false,
+    "editor.fontSize": 15,
+    "terminal.integrated.fontSize": 15,
+    "workbench.colorTheme": "Dark+"
+  }, null, 4);
+  const settingsBase64 = Buffer.from(settingsJson).toString('base64');
 
   return `#!/bin/bash
 set -e
-# Script Version: 2026-04-27-v3
+echo -e "\\x1b[32m🚀 Script decoded successfully. Starting setup...\\x1b[0m"
+# Script Version: 2026-05-06-v1
 
 # --- 0. Configuration ---
 DEV_USER="${username}"
-WORKSPACE_DIR="${C_CONFIG}/workspace"
 ROOT_PASSWORD="${rootPassword || ''}"
 SERVER_ID="${serverId}"
 PROV_TOKEN="${provisioningToken}"
+WORKSPACE_DIR="${HOST_WORKSPACE}"
+CONFIG_DIR="${HOST_CONFIG}"
 
 # EXPORT SECRETS
 export TUNNEL_TOKEN="${tunnelToken}"
@@ -88,7 +68,7 @@ if [ -n "${rootPassword}" ]; then
     sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
     sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
     sed -i 's/#PermitRootLogin yes/PermitRootLogin yes/' /etc/ssh/sshd_config
-    systemctl reload sshd || systemctl reload ssh || true
+    systemctl reload ssh 2>/dev/null || systemctl reload sshd 2>/dev/null || true
 fi
 
 # PREPARE WORKSPACE DIRECTORY ON HOST
@@ -113,6 +93,13 @@ hetzner_heartbeat() {
 
 # START BEATING
 hetzner_heartbeat "Booting-system"
+
+# CRITICAL: Wait for apt locks (background updates often lock apt on fresh boot)
+# We use a simple apt-get update retry loop instead of 'fuser' (which might be missing)
+echo -e "\x1b[33m[Waiting]\x1b[0m Ubuntu is finishing background updates (apt lock)..."
+while fuser /var/lib/dpkg/lock-mirror >/dev/null 2>&1 || fuser /var/lib/apt/lists/lock >/dev/null 2>&1 || fuser /var/lib/dpkg/lock >/dev/null 2>&1 || fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
+   sleep 5
+done
 
 # Install tools
 apt-get update && apt-get install -y curl wget || echo "Initial apt failed, will retry later"
@@ -172,25 +159,38 @@ export DEBIAN_FRONTEND=noninteractive
 # Open debug port
 ufw allow 8080/tcp || echo "ufw not present or failed"
 
-# CRITICAL: Wait for apt locks (background updates often lock apt on fresh boot)
 # We use a simple apt-get update retry loop instead of 'fuser' (which might be missing)
-echo "Waiting for apt locks..."
-for i in {1..20}; do
-    if apt-get update 2>&1 | grep -q "Could not get lock"; then
-        echo "Apt is locked, retrying in 5s... ($i/20)"
-        sleep 5
-    else
-        echo "Apt lock acquired."
-        break
-    fi
-done
+START_TIME=$(date +%s)
+LOG_FILE="/var/log/devbox-setup.log"
+touch "$LOG_FILE"
+chmod 644 "$LOG_FILE"
 
+# Save stdout to descriptor 3
+exec 3>&1
+
+# Redirect stdout and stderr to the log file
+exec 1>>"$LOG_FILE" 2>&1
+
+# Progress tracking
+TOTAL_STEPS=9
+CURRENT_STEP=0
+
+# Helper for clean titles
+title() {
+  CURRENT_STEP=$((CURRENT_STEP + 1))
+  PERCENT=$((CURRENT_STEP * 100 / TOTAL_STEPS))
+  # Keep it at 99% until the very end
+  if [ $PERCENT -gt 99 ] && [ "$1" != "Ready" ]; then PERCENT=99; fi
+
+  echo -e "\\x1b[1;34m[\${PERCENT}%] 🚀 \$1...\\x1b[0m" >&3
+  echo "[\$(date +%T)] \$1" >> "\$LOG_FILE"
+}
 
 # Helper for reporting status
 report_status() {
-    local status_msg="$1"
-    echo "Reporting status: $status_msg"
-    hetzner_heartbeat "$status_msg"
+    local status_msg="\$1"
+    title "\$status_msg"
+    hetzner_heartbeat "\$status_msg"
     # Attempt to report status with retry logic and tool fallback
     for i in 1 2 3; do
       local response_code="000"
@@ -228,7 +228,7 @@ MAX_WAIT=300
 WAIT_COUNT=0
 while fuser /var/lib/dpkg/lock-mirror >/dev/null 2>&1 || fuser /var/lib/apt/lists/lock >/dev/null 2>&1 || fuser /var/lib/dpkg/lock >/dev/null 2>&1; do
    if [ $WAIT_COUNT -gt $MAX_WAIT ]; then echo "Apt lock timeout"; break; fi
-   echo "Waiting for other software managers to finish..."
+   echo -e "\\x1b[33m[Waiting]\\x1b[0m Ubuntu is finishing background updates (apt lock)..." >&3
    sleep 5
    WAIT_COUNT=$((WAIT_COUNT+5))
 done
@@ -314,87 +314,109 @@ if [ -n "$TUNNEL_TOKEN" ]; then
 fi
 
 # --- 5. Deploy Code-Server ---
-# --- 5. Deploy Code-Server ---
-C_HOME="/home/\$DEV_USER"
-C_CONFIG="\$C_HOME/.code-server"
-C_WORKSPACE="\$C_CONFIG/workspace"
-
-mkdir -p "\$C_WORKSPACE" "\$C_CONFIG/data/User"
-
-# Ensure user owns their home before we try to install things as them
-chown -R "$DEV_USER":"$DEV_USER" "$C_HOME"
+# Build Timestamp: ${new Date().toISOString()}
+mkdir -p "${HOST_WORKSPACE}" "${HOST_CONFIG}/data/User"
+chown -R "$DEV_USER":"$DEV_USER" "${HOST_HOME}"
 
 # Pre-configure Container Environment (Host-side)
 report_status "Pre-configuring container..."
-sudo -u "$DEV_USER" bash -c "export HOME=$C_CONFIG; curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh | bash -s -- --unattended" || true
-sed -i 's/OSH_THEME="[^"]*"/OSH_THEME="90210"/' "$C_CONFIG/.bashrc" || true
-# Translate paths for container
-sed -i "s|$C_CONFIG|/config|g" "$C_CONFIG/.bashrc" || true
 
-# Base64 encoded configs to survive all shells
-echo 'W3VzZXJdCiAgICBuYW1lID0gR2l0SHViIFVzZXIKICAgIGVtYWlsID0gZGV2Ym94QHVzZXIubG9jYWwK' | base64 -d > "\$C_CONFIG/.gitconfig"
-echo 'YmluZC1hZGRyOiAwLjAuMC4wOjg0NDMKYXV0aDogbm9uZQpjZXJ0OiBmYWxzZQo=' | base64 -d > "\$C_CONFIG/config.yaml"
-echo 'ewogICAgImVkaXRvci5mb250U2l6ZSI6IDE1LAogICAgInRlcm1pbmFsLmludGVncmF0ZWQuZm9udFNpemUiOiAxNSwKICAgICJ3b3JrYmVuY2guY29sb3JUaGVtZSI6ICJEYXJrKyIKfQo=' | base64 -d > "\$C_CONFIG/data/User/settings.json"
+# Base64 encoded configs
+echo 'W3VzZXJdCiAgICBuYW1lID0gR2l0SHViIFVzZXIKICAgIGVtYWlsID0gZGV2Ym94QHVzZXIubG9jYWwK' | base64 -d > "${HOST_CONFIG}/.gitconfig"
+echo 'YmluZC1hZGRyOiAwLjAuMC4wOjg0NDMKYXV0aDogbm9uZQpjZXJ0OiBmYWxzZQo=' | base64 -d > "${HOST_CONFIG}/config.yaml"
+echo '${settingsBase64}' | base64 -d > "${HOST_CONFIG}/data/User/settings.json"
 
-chown -R "\$DEV_USER":"\$DEV_USER" "\$C_HOME"
+# Unique Port based on UID
+USER_UID=$(id -u "$DEV_USER")
+PORT=$(( 8443 + USER_UID - 1000 ))
+XDEBUG_PORT=$(( 9003 + USER_UID - 1000 ))
 
-# Wait for docker daemon
-report_status "Waiting for Docker..."
-while ! docker info >/dev/null 2>&1; do
-  sleep 2
-done
+# Ensure DDEV network exists
+docker network create ddev_default || true
 
-report_status "Deploying Code-Server..."
-# Start code-server container
-docker run -d \
-  --name=code-server \
-  -e PUID=1000 -e PGID=1000 \
-  -e SUDO_PASSWORD="$DEV_USER" \
-  -e DEFAULT_WORKSPACE=/config/workspace \
-  -v "$C_CONFIG:/config" \
+# Deploy Code-Server
+report_status "Deploying Code-Server ($DEV_USER)..."
+docker stop "code-server-$DEV_USER" code-server 2>/dev/null || true
+docker rm "code-server-$DEV_USER" code-server 2>/dev/null || true
+
+docker run -d --name="code-server-$DEV_USER" \
+  -e PUID=$USER_UID \
+  -e PGID=$(id -g "$DEV_USER") \
+  -e SUDO_PASSWORD="$ROOT_PASSWORD" \
+  -e HOME="/home/$DEV_USER" \
+  -e DEFAULT_WORKSPACE="/home/$DEV_USER/workspace" \
+  --network ddev_default \
+  -v "${HOST_CONFIG}:/config" \
+  -v "/home/$DEV_USER:/home/$DEV_USER" \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v /usr/bin/docker:/usr/bin/docker \
   -v /usr/libexec/docker/cli-plugins:/usr/libexec/docker/cli-plugins \
-  -p 127.0.0.1:8443:8443 \
-  -p 9003:9003 \
+  -p 127.0.0.1:$PORT:8443 \
+  -p $XDEBUG_PORT:9003 \
   --restart unless-stopped \
   linuxserver/code-server:latest
 
-# Final Container Setup (Wait for container to be ready)
-MAX_RETRIES=30
-COUNT=0
-while ! docker ps | grep -q code-server; do
-    if [ "\$COUNT" -ge "\$MAX_RETRIES" ]; then echo "Container failed to start"; exit 1; fi
-    echo "Waiting for code-server container..."
-    sleep 2
-    COUNT=\$((COUNT + 1))
-done
+# Wait for container
+while ! docker ps | grep -q "code-server-$DEV_USER"; do sleep 2; done
 
-# Final Container Setup (Synchronous & Robust)
-# Final Container Setup (Synchronous & Robust)
-# Final Container Setup (Synchronous & Robust)
-docker exec -d -u root code-server bash -c "
-    # Ensure Docker socket is accessible
-    chmod 666 /var/run/docker.sock || true
-    
-    # Install DDEV Repo
-    apt-get update && apt-get install -y curl gnupg ca-certificates
-    install -m 0755 -d /etc/apt/keyrings
-    curl -fsSL https://pkg.ddev.com/apt/gpg.key | gpg --batch --yes --dearmor -o /etc/apt/keyrings/ddev.gpg
-    echo 'deb [signed-by=/etc/apt/keyrings/ddev.gpg] https://pkg.ddev.com/apt/ * *' > /etc/apt/sources.list.d/ddev.list
-    
-    # Install DDEV, Vim, etc
-    apt-get update && apt-get install -y ddev vim git jq sudo
-    
-    # Permissions & Initializations
-    echo 'abc ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/abc
-    chmod 0440 /etc/sudoers.d/abc
-    echo 'abc ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
-    sudo -u abc mkcert -install || true
-    
+    # Final Container Setup (Base64 encoded to avoid all quoting issues)
+    CONTAINER_SETUP_B64=$(base64 -w0 << EOF
+#!/bin/bash
+set -e
+chmod 666 /var/run/docker.sock || true
+
+# Install DDEV Repo
+apt-get update && apt-get install -y curl gnupg ca-certificates
+install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://pkg.ddev.com/apt/gpg.key | gpg --batch --yes --dearmor -o /etc/apt/keyrings/ddev.gpg
+echo "deb [signed-by=/etc/apt/keyrings/ddev.gpg] https://pkg.ddev.com/apt/ * *" > /etc/apt/sources.list.d/ddev.list
+
+# Install DDEV, Vim, Git, etc
+apt-get update && apt-get install -y ddev vim git jq sudo
+
+# Permissions
+echo "abc ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/abc
+chmod 0440 /etc/sudoers.d/abc
+
+# Path Parity Symlink
+rm -rf /config/workspace
+ln -s "/home/${username}/workspace" /config/workspace
+chown -h abc:abc /config/workspace
+
+# Install Oh My Bash
+if [ ! -d "/home/${username}/.oh-my-bash" ]; then
+    sudo -u abc bash -c "export HOME=/home/${username}; curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh | bash -s -- --unattended" || true
+fi
+
+# Apply Theme and Fixes
+if [ -f "/home/${username}/.bashrc" ]; then
+    sed -i 's/OSH_THEME="font"/OSH_THEME="90210"/' "/home/${username}/.bashrc"
+    grep -q "enable-bracketed-paste" "/home/${username}/.bashrc" || echo "bind 'set enable-bracketed-paste off'" >> "/home/${username}/.bashrc"
+    grep -q "alias l=" "/home/${username}/.bashrc" || echo "alias l='ls -lah'" >> "/home/${username}/.bashrc"
+    grep -q "alias ddev-refresh=" "/home/${username}/.bashrc" || echo "alias ddev-refresh='for nw in \$(docker network ls --format \"{{.Name}}\" | grep \"_default\"); do docker network connect \"\$nw\" \"code-server-${username}\" 2>/dev/null || true; done'" >> "/home/${username}/.bashrc"
+fi
+
+sudo -u abc mkcert -install || true
+
+# Global DDEV Config
+sudo -u abc ddev config global \\
+    --router-http-port=80 \\
+    --router-https-port=443 \\
+    --instrumentation-opt-in=false \\
+    --omit-containers=ddev-ssh-agent || true
+
+    # Agnostic Network Joiner: Connect to all DDEV project networks
+    echo "Connecting code-server to all DDEV networks..."
+    for nw in $(docker network ls --format "{{.Name}}" | grep "_default"); do
+        echo "Joining network: $nw"
+        docker network connect "$nw" "code-server-$DEV_USER" 2>/dev/null || true
+    done
+
     # Extensions
     sudo -u abc code-server --install-extension xdebug.php-debug --install-extension vscodevim.vim || true
-"
+EOF
+)
+    docker exec -u root "code-server-$DEV_USER" bash -c "echo \$CONTAINER_SETUP_B64 | base64 -d | bash"
 
 # Firewall
 ufw allow 22/tcp
@@ -402,6 +424,20 @@ ufw --force enable
 
 # Finished
 report_status "Ready"
+
+# Restore stdout and show summary
+exec 1>&3
+END_TIME=$(date +%s)
+DIFF=$((END_TIME - START_TIME))
+if [ \$DIFF -ge 60 ]; then
+  DURATION="$((DIFF / 60))m $((DIFF % 60))s"
+else
+  DURATION="\${DIFF}s"
+fi
+
+echo -e "\n\\x1b[1;32m✅ DevBox is live! (Setup took \${DURATION})\\x1b[0m"
+echo -e "\\x1b[0;36m📄 Full log available at: \$LOG_FILE\\x1b[0m\n"
+
 echo "✅ SETUP FINISHED - Server is ready for use." > /etc/motd
 `;
 }
@@ -415,21 +451,12 @@ export async function syncSshKeys(newPublicKey: string) {
 
   for (const server of servers) {
     if (server.status !== 'ready' || !server.ip || !server.rootPassword) continue;
-    
+
     try {
       // Use root password to update the user's authorized_keys
-      const script = `
-        DEV_USER="${server.userName}"
-        mkdir -p /home/\$DEV_USER/.ssh
-        echo "${newPublicKey}" > /home/\$DEV_USER/.ssh/authorized_keys
-        chown -R \$DEV_USER:\$DEV_USER /home/\$DEV_USER/.ssh
-        chmod 700 /home/\$DEV_USER/.ssh
-        chmod 600 /home/\$DEV_USER/.ssh/authorized_keys
-        echo "✅ SSH key updated for \$DEV_USER"
-      `;
+      // results.push({ id: server.id, success: false, error: new Error("SSH sync not available for manual servers.") });
 
-      await executeSshCommands(server.ip, server.rootPassword, script, (log) => console.log(`[Sync ${server.ip}] ${log}`));
-      results.push({ id: server.id, success: true });
+      results.push({ id: server.id, success: false, error: new Error("SSH sync not available for manual servers.") });
     } catch (error) {
       console.error(`Failed to sync key to ${server.ip}:`, error);
       results.push({ id: server.id, success: false, error });
@@ -439,28 +466,6 @@ export async function syncSshKeys(newPublicKey: string) {
   return { success: true, results };
 }
 
-/**
- * Executes commands on a remote server via SSH (Remote Service).
- */
-async function executeSshCommands(ip: string, password: string, script: string, onLog: (log: string) => void) {
-  onLog(`Sending bootstrap script to remote SSH service for ${ip}...`);
-
-  const result = await runRemoteCommand({
-    host: ip,
-    username: 'root',
-    password: password,
-    command: script
-  });
-
-  if (result.stdout) onLog(result.stdout);
-  if (result.stderr) onLog(`[STDERR] ${result.stderr}`);
-
-  if (!result.success || result.code !== 0) {
-    throw new Error(`SSH Command failed with code ${result.code}`);
-  }
-
-  return true;
-}
 
 /**
  * Retrieves per-user settings (like Hetzner API Token) from KV.
@@ -473,12 +478,19 @@ export async function getUserSettings() {
   if (!kv) return null;
 
   const data = await kv.get(`settings:${userEmail}`);
-  const settings = data ? JSON.parse(data) : { hetznerToken: '', sshPublicKey: '', sshPrivateKey: '' };
+  const settings = data ? JSON.parse(data) : {
+    hetznerToken: '',
+    sshPublicKey: '',
+    sshPrivateKey: '',
+    contaboClientId: '',
+    contaboClientSecret: '',
+    contaboUsername: '',
+    contaboPassword: ''
+  };
 
   // Auto-generate SSH keys if missing or in old/invalid format
-  // We check for 'ssh-rsa' prefix AND a version flag to ensure everyone gets the fixed format
   const isOldFormat = settings.sshPublicKey && (!settings.sshPublicKey.startsWith('ssh-rsa') || settings.sshKeyVersion !== 'v2');
-  
+
   if (!settings.sshPublicKey || !settings.sshPrivateKey || isOldFormat) {
     try {
       const keyPair = await crypto.subtle.generateKey(
@@ -495,20 +507,37 @@ export async function getUserSettings() {
       settings.sshPrivateKey = await formatPrivateKey(keyPair.privateKey);
       settings.sshPublicKey = await formatRsaPublicKey(keyPair.publicKey);
       settings.sshKeyVersion = 'v2';
-      
+
       await kv.put(`settings:${userEmail}`, JSON.stringify(settings));
     } catch {
       throw new Error("Secure key generation failed. Please try again or provide an SSH key in Settings.");
     }
   }
 
-  return settings as { hetznerToken: string; sshPublicKey: string; sshPrivateKey: string };
+  return settings as {
+    hetznerToken: string;
+    sshPublicKey: string;
+    sshPrivateKey: string;
+    contaboClientId?: string;
+    contaboClientSecret?: string;
+    contaboUsername?: string;
+    contaboPassword?: string;
+    sshKeyVersion?: string;
+  };
 }
 
 /**
  * Saves per-user settings to KV.
  */
-export async function saveUserSettings(settings: { hetznerToken: string; sshPublicKey?: string; sshPrivateKey?: string }) {
+export async function saveUserSettings(settings: {
+  hetznerToken?: string;
+  sshPublicKey?: string;
+  sshPrivateKey?: string;
+  contaboClientId?: string;
+  contaboClientSecret?: string;
+  contaboUsername?: string;
+  contaboPassword?: string;
+}) {
   const userEmail = await getIdentity();
   const env = await getCloudflareEnv();
   const kv = env.KV;
@@ -523,14 +552,18 @@ export async function saveUserSettings(settings: { hetznerToken: string; sshPubl
 }
 
 /**
- * Provisions a new server automatically via Hetzner API and Cloud-Init.
+ * Provisions a new server automatically via Cloud-Init.
  */
 export async function provisionServer(
-  customName?: string,
-  serverType: string = 'cpx21',
-  location: string = 'nbg1',
-  image: string = 'ubuntu-24.04'
+  customName: string,
+  serverType: string,
+  location: string,
+  image: string,
+  provider: 'hetzner' | 'contabo' = 'hetzner'
 ) {
+  if (provider === 'contabo') {
+    return provisionContaboServer(customName, serverType, location, image);
+  }
   const userEmail = await getIdentity();
   const env = await getCloudflareEnv();
   const kv = env.KV;
@@ -538,7 +571,7 @@ export async function provisionServer(
   // 1. Fetch User Settings (with auto-generated keys)
   const settings = await getUserSettings();
   if (!settings) throw new Error("Could not retrieve or generate user settings.");
-  
+
   const hetznerToken = settings.hetznerToken || env.HETZNER_API_TOKEN;
   if (!hetznerToken) {
     throw new Error("Hetzner API Token is missing. Please set it in Settings.");
@@ -552,7 +585,8 @@ export async function provisionServer(
   const shortId = serverId.slice(0, 8);
   const name = customName || `devbox-${shortId}`;
   const userName = userEmail.split('@')[0].replace(/[^a-zA-Z0-9]/g, '_');
-  const hostname = `${name}-code.devboxui.com`;
+  const safeName = name.toLowerCase().replace(/[^a-z0-9]/g, '-');
+  const hostname = `${safeName}-code.devboxui.com`;
 
   const rootPassword = Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-6);
   const config: ServerConfig = {
@@ -567,7 +601,7 @@ export async function provisionServer(
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     logs: [`Starting Cloud-Init provisioning (${serverType} in ${location}) via Hetzner API...`],
-    tunnelUrl: `https://${hostname}`,
+    tunnelUrl: `https://${hostname}/?folder=/home/${userName}/workspace`,
     projects: []
   };
 
@@ -580,6 +614,9 @@ export async function provisionServer(
     const tunnelResult = await cfApi.createTunnel(`tunnel-${serverId}`);
     tunnelId = tunnelResult.id;
     config.tunnelId = tunnelId;
+    config.tunnelToken = tunnelResult.token;
+    config.providerName = 'Hetzner';
+    config.hostname = hostname;
 
     console.log("Setting up DNS and Routing...");
     await cfApi.setupHostname(hostname, tunnelResult.id);
@@ -591,7 +628,7 @@ export async function provisionServer(
     console.log(`Setting up Logs Tunnel for ${logsHostname}...`);
     await cfApi.setupHostname(logsHostname, tunnelResult.id, "http://localhost:8000");
     await cfApi.setupAccess(logsHostname, userEmail);
-    
+
     config.detailedStatus = 'Logs endpoint created';
     config.logs = [...(config.logs || []), `Tunnel Token: ${tunnelResult.token}`];
 
@@ -599,38 +636,40 @@ export async function provisionServer(
     const provisioningToken = crypto.randomUUID();
     config.provisioningToken = provisioningToken;
     config.detailedStatus = 'Starting bootstrap...';
-    
+
     const requestHost = env.NEXT_PUBLIC_APP_URL || 'https://devboxui.com';
-    const callbackUrl = `${requestHost}/api/provisioning/status`; 
-    
+    const callbackUrl = `${requestHost}/api/provisioning/status`;
+
     const managementKey = env.MANAGEMENT_SSH_PUBLIC_KEY || '';
     const userSSHKey = settings.sshPublicKey;
-    
+
     console.log("[Provisioning] Setting up Cloudflare Access Service Token...");
     const serviceToken = await cfApi.getOrCreateServiceToken(kv);
-    
+
     await cfApi.authorizeServiceToken(requestHost.replace('https://', ''), serviceToken.id);
     console.log("[Provisioning] Authorization step complete.");
-    
+
     const bootstrapScript = getBootstrapScript(
-      userName, 
+      userName,
       userEmail,
-      tunnelResult.token, 
-      managementKey, 
-      userSSHKey, 
-      serverId, 
-      provisioningToken, 
+      tunnelResult.token,
+      managementKey,
+      userSSHKey,
+      serverId,
+      provisioningToken,
       callbackUrl,
       rootPassword,
-      serviceToken.id, // Use ID for Cloudflare
+      serviceToken.id,
       serviceToken.client_secret,
-      hetznerToken
+      hetznerToken,
+      'Hetzner',
+      hostname
     );
 
     // 5. Hetzner Automation: Manage SSH Keys
     console.log(`Managing SSH keys on Hetzner...`);
     const sshKeyIds: (string | number)[] = [];
-    
+
     const keysToRegister = [
       { name: `devbox-${userName}`, key: userSSHKey },
       { name: 'devbox-mgmt', key: managementKey }
@@ -640,7 +679,7 @@ export async function provisionServer(
       try {
         const existingKeys = await hetznerApi.getSSHKeys();
         const cleanedKey = k.key.trim().split(' ').slice(0, 2).join(' ');
-        
+
         const contentMatch = existingKeys.find(ex => ex.public_key.trim().includes(cleanedKey));
         const nameMatch = existingKeys.find(ex => ex.name === k.name);
 
@@ -652,7 +691,7 @@ export async function provisionServer(
             console.warn(`Key '${k.name}' exists but content differs. Deleting old key to recreate...`);
             await hetznerApi.deleteSSHKey(nameMatch.id);
           }
-          
+
           console.log(`Registering key '${k.name}' with Hetzner...`);
           const created = await hetznerApi.createSSHKey(k.name, k.key);
           if (created) {
@@ -678,7 +717,7 @@ export async function provisionServer(
     const hetznerResult = await hetznerApi.createServer(name, bootstrapScript, serverType, location, image, sshKeyIds);
     hetznerServerId = hetznerResult.server.id;
     config.hetznerServerId = hetznerServerId;
-    
+
     // Capture the root password ONLY if we didn't generate one (rare)
     if (hetznerResult.root_password && !rootPassword) {
       console.log("Captured root password from Hetzner.");
@@ -738,7 +777,7 @@ export async function getServers() {
       const val = await kv.get(key.name);
       if (!val) {
         console.warn(`Self-healing: Deleting ghost key ${key.name}`);
-        await kv.delete(key.name).catch(() => {});
+        await kv.delete(key.name).catch(() => { });
         return null;
       }
       return JSON.parse(val) as ServerConfig;
@@ -748,7 +787,7 @@ export async function getServers() {
   // Fetch from Hetzner API if token is available
   const settings = await getUserSettings();
   const hetznerToken = settings?.hetznerToken || env.HETZNER_API_TOKEN;
-  
+
   if (hetznerToken) {
     try {
       const hetznerApi = new HetznerApiService(env, hetznerToken);
@@ -762,7 +801,7 @@ export async function getServers() {
           finalServers.push(s);
           continue;
         }
-        
+
         const hs = hetznerMap.get(s.hetznerServerId.toString());
         if (hs) {
           // Sync live data
@@ -775,15 +814,15 @@ export async function getServers() {
           if (hs.name.includes('-')) {
             const parts = hs.name.split('-');
             const statusStr = parts[parts.length - 1];
-            
+
             if (statusStr === 'Ready') {
-                s.status = 'ready';
-                s.detailedStatus = 'Ready';
+              s.status = 'ready';
+              s.detailedStatus = 'Ready';
             } else if (['Booting', 'Installing', 'system', 'Docker', 'DDEV', 'Code'].some(st => statusStr.includes(st))) {
-                s.detailedStatus = 'Installing ' + statusStr;
+              s.detailedStatus = 'Installing ' + statusStr;
             }
           }
-          
+
           // ELEGANT PROBING: If in setup phase, try a direct "pull" from the IP:8080 exporter
           const setupStatuses: string[] = ['provisioning', 'Initializing', 'initializing'];
           const isSettingUp = setupStatuses.includes(s.status as string);
@@ -791,7 +830,7 @@ export async function getServers() {
             try {
               const controller = new AbortController();
               const id = setTimeout(() => controller.abort(), 800); // Very fast probe
-              const probeResp = await fetch(`http://${s.ip}:8080`, { 
+              const probeResp = await fetch(`http://${s.ip}:8080`, {
                 signal: controller.signal,
                 cache: 'no-store'
               });
@@ -820,10 +859,10 @@ export async function getServers() {
         } else {
           // GHOST DETECTION WITH GRACE PERIOD
           const serverAgeMinutes = (Date.now() - new Date(s.createdAt).getTime()) / (1000 * 60);
-          
+
           if (serverAgeMinutes > 2) {
             console.log(`Self-healing: Removing ghost server ${s.id} (not in Hetzner after ${Math.round(serverAgeMinutes)}m)`);
-            await kv.delete(`servers:${userEmail}:${s.id}`).catch(() => {});
+            await kv.delete(`servers:${userEmail}:${s.id}`).catch(() => { });
             // Skip adding to final list
           } else {
             // Give it more time to show up in Hetzner API
@@ -836,7 +875,7 @@ export async function getServers() {
       for (const [, hs] of hetznerMap) {
         if (!hs.public_net?.ipv4?.ip) continue;
         const ip = hs.public_net.ipv4.ip;
-        
+
         finalServers.push({
           id: `hetzner-${hs.id}`,
           ip: ip,
@@ -869,7 +908,7 @@ export async function getServers() {
 /**
  * Adds a new DDEV project to an existing server.
  */
-export async function addProject(serverId: string, projectName: string) {
+export async function addProject(serverId: string, projectName: string, port: number = 8443) {
   const userEmail = await getIdentity();
   const env = await getCloudflareEnv();
   const kv = env.KV;
@@ -898,11 +937,12 @@ export async function addProject(serverId: string, projectName: string) {
 
   // 2. Generate Project Domain
   const cleanName = projectName.toLowerCase().replace(/[^a-z0-9]/g, '-');
-  const projectDomain = `${cleanName}-app.devboxui.com`;
+  const projectDomain = `${cleanName}.devboxui.com`; // Simplified domain generation
 
   // 3. Update Cloudflare Tunnel, DNS & Access
-  await cfApi.setupHostname(projectDomain, config.tunnelId);
-  console.log(`Setting up Zero Trust Access for project ${projectDomain}...`);
+  const service = `http://localhost:${port}`;
+  await cfApi.setupHostname(projectDomain, config.tunnelId, service);
+  console.log(`Setting up Zero Trust Access for project ${projectDomain} -> ${service}...`);
   await cfApi.setupAccess(projectDomain, userEmail);
 
   // 4. Update Server State
@@ -922,6 +962,99 @@ export async function addProject(serverId: string, projectName: string) {
 }
 
 /**
+ * Deletes a domain/ingress rule from a server.
+ */
+export async function deleteDomain(serverId: string, projectDomain: string) {
+  const userEmail = await getIdentity();
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+  const cfApi = new CloudflareApiService(env);
+
+  if (!kv) throw new Error("KV database missing.");
+
+  // 1. Find the server
+  const list = await kv.list({ prefix: `servers:${userEmail}:` });
+  let serverKey = "";
+  let config: ServerConfig | null = null;
+
+  for (const key of list.keys) {
+    const val = await kv.get(key.name);
+    const c = JSON.parse(val!) as ServerConfig;
+    if (c.id === serverId) {
+      serverKey = key.name;
+      config = c;
+      break;
+    }
+  }
+
+  if (!config || !serverKey) throw new Error("Server not found.");
+  if (!config.tunnelId) throw new Error("Server is missing a Tunnel ID.");
+
+  // 2. Remove from Cloudflare (Tunnel, DNS, Access)
+  console.log(`Deleting domain ${projectDomain}...`);
+  try {
+    await cfApi.removeHostname(projectDomain, config.tunnelId);
+    await cfApi.deleteAccess(projectDomain);
+  } catch (err) {
+    console.error("Cloudflare cleanup failed during domain deletion:", err);
+    // Continue anyway to clean up local state
+  }
+
+  // 3. Update Server State
+  config.projects = (config.projects || []).filter(p => p.domain !== projectDomain);
+  config.updatedAt = new Date().toISOString();
+  await kv.put(serverKey, JSON.stringify(config));
+
+  return config;
+}
+
+/**
+ * Updates an existing domain's configuration (e.g. changing the port).
+ */
+export async function updateDomain(serverId: string, projectDomain: string, newPort: number) {
+  const userEmail = await getIdentity();
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+  const cfApi = new CloudflareApiService(env);
+
+  if (!kv) throw new Error("KV database missing.");
+
+  // 1. Find the server
+  const list = await kv.list({ prefix: `servers:${userEmail}:` });
+  let serverKey = "";
+  let config: ServerConfig | null = null;
+
+  for (const key of list.keys) {
+    const val = await kv.get(key.name);
+    const c = JSON.parse(val!) as ServerConfig;
+    if (c.id === serverId) {
+      serverKey = key.name;
+      config = c;
+      break;
+    }
+  }
+
+  if (!config || !serverKey) throw new Error("Server not found.");
+  if (!config.tunnelId) throw new Error("Server is missing a Tunnel ID.");
+
+  // 2. Update Cloudflare Tunnel Ingress
+  const service = `http://localhost:${newPort}`;
+  await cfApi.setupHostname(projectDomain, config.tunnelId, service);
+
+  // 3. Update Server State
+  config.projects = (config.projects || []).map(p => {
+    if (p.domain === projectDomain) {
+      return { ...p, port: newPort }; // Note: Ensure port is in types
+    }
+    return p;
+  });
+  config.updatedAt = new Date().toISOString();
+  await kv.put(serverKey, JSON.stringify(config));
+
+  return config;
+}
+
+/**
  * Deletes a server and cleans up Cloudflare resources.
  */
 export async function deleteServer(serverId: string) {
@@ -932,6 +1065,12 @@ export async function deleteServer(serverId: string) {
 
   const cfApi = new CloudflareApiService(env);
   const hetznerApi = new HetznerApiService(env, settings?.hetznerToken);
+  const contaboApi = new ContaboApiService(env, {
+    clientId: settings?.contaboClientId || env.CONTABO_CLIENT_ID || '',
+    clientSecret: settings?.contaboClientSecret || env.CONTABO_CLIENT_SECRET || '',
+    apiUsername: settings?.contaboUsername || env.CONTABO_API_USERNAME || '',
+    apiPassword: settings?.contaboPassword || env.CONTABO_API_PASSWORD || ''
+  });
 
   if (!kv) throw new Error("KV database missing.");
 
@@ -960,7 +1099,7 @@ export async function deleteServer(serverId: string) {
       console.log(`Cleaning up DNS and Access for ${hostname} and ${logsHostname}...`);
       await cfApi.deleteDnsRecord(hostname).catch(e => console.error("DNS deletion failed:", e));
       await cfApi.deleteAccess(hostname).catch(e => console.error("Access deletion failed:", e));
-      
+
       await cfApi.deleteDnsRecord(logsHostname).catch(e => console.error("Logs DNS deletion failed:", e));
       await cfApi.deleteAccess(logsHostname).catch(e => console.error("Logs Access deletion failed:", e));
     }
@@ -978,16 +1117,173 @@ export async function deleteServer(serverId: string) {
       console.log(`Deleting Hetzner server ${config.hetznerServerId}...`);
       await hetznerApi.deleteServer(config.hetznerServerId).catch(e => console.error("Hetzner deletion failed:", e));
     }
+
+    // Delete Contabo Instance and Secret
+    if (config.contaboInstanceId) {
+      console.log(`Deleting Contabo instance ${config.contaboInstanceId}...`);
+      await contaboApi.deleteInstance(config.contaboInstanceId).catch(e => console.error("Contabo instance deletion failed:", e));
+    }
+
+    if (config.contaboSecretId) {
+      console.log(`Deleting Contabo secret ${config.contaboSecretId}...`);
+      await contaboApi.deleteSecret(config.contaboSecretId).catch(e => console.error("Contabo secret deletion failed:", e));
+    }
   } catch (e) {
     console.error("Cleanup process encountered errors, proceeding with KV removal:", e);
   }
 
   // 3. Remove from KV
-  // Note: We use the IP in the key, so we need it. If it's still 'pending', we'll need to find the key.
-  const kvKey = `servers:${userEmail}:${config.ip}`;
+  const kvKey = `servers:${userEmail}:${serverId}`;
   await kv.delete(kvKey);
 
   return { success: true };
+}
+
+/**
+ * Reinstalls the OS on a server (Contabo/Hetzner) and restarts provisioning.
+ */
+async function setupCloudflareTunnel(config: ServerConfig, userEmail: string) {
+  const env = await getCloudflareEnv();
+  const cfApi = new CloudflareApiService(env);
+  
+  const hostname = (config.tunnelUrl || '').replace('https://', '');
+  if (!hostname) throw new Error("Tunnel URL missing in config.");
+
+  console.log(`Setting up Cloudflare Tunnel for ${hostname}...`);
+  const tunnelResult = await cfApi.createTunnel(`tunnel-${config.id}`);
+  config.tunnelId = tunnelResult.id;
+  config.tunnelToken = tunnelResult.token;
+  
+  await cfApi.setupHostname(hostname, tunnelResult.id);
+  await cfApi.setupAccess(hostname, userEmail);
+  
+  return tunnelResult;
+}
+
+/**
+ * Reinstalls the operating system on an existing server.
+ */
+export async function reinstallServer(serverId: string) {
+  const userEmail = await getIdentity();
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+  const settings = await getUserSettings();
+
+  const cfApi = new CloudflareApiService(env);
+  const hetznerApi = new HetznerApiService(env, settings?.hetznerToken);
+  const contaboApi = new ContaboApiService(env, {
+    clientId: settings?.contaboClientId || env.CONTABO_CLIENT_ID || '',
+    clientSecret: settings?.contaboClientSecret || env.CONTABO_CLIENT_SECRET || '',
+    apiUsername: settings?.contaboUsername || env.CONTABO_API_USERNAME || '',
+    apiPassword: settings?.contaboPassword || env.CONTABO_API_PASSWORD || ''
+  });
+
+  if (!kv) throw new Error("KV database missing.");
+  if (!settings) throw new Error("User settings not found.");
+
+  // 1. Find the server in KV
+  const servers = await getServers();
+  const config = servers.find(s => s.id === serverId);
+
+  if (!config) {
+    throw new Error("Server not found.");
+  }
+
+  // 2. Reset Status
+  config.status = 'provisioning';
+  config.detailedStatus = 'Triggering Reinstall...';
+  config.updatedAt = new Date().toISOString();
+  config.logs = [`OS Reinstallation triggered at ${config.updatedAt}`];
+
+  const serverKey = `servers:${userEmail}:${serverId}`;
+  await kv.put(serverKey, JSON.stringify(config));
+
+  try {
+    if (config.contaboInstanceId) {
+      // For Contabo, we can re-inject cloud-init
+      // 1. Re-generate bootstrap script (needs the same token/ids)
+      await setupCloudflareTunnel(config, userEmail);
+
+      const requestHost = env.NEXT_PUBLIC_APP_URL || 'https://devboxui.com';
+      const callbackUrl = `${requestHost}/api/provisioning/status`;
+      const serviceToken = await cfApi.getOrCreateServiceToken(kv);
+
+      const bootstrapScript = getBootstrapScript(
+        config.userName || 'abc',
+        userEmail,
+        config.tunnelToken || '',
+        env.MANAGEMENT_SSH_PUBLIC_KEY || '',
+        settings.sshPublicKey,
+        serverId,
+        config.provisioningToken || '',
+        callbackUrl,
+        config.rootPassword || '',
+        serviceToken.id,
+        serviceToken.client_secret,
+        undefined,
+        config.providerName || 'Custom',
+        config.hostname || 'devbox'
+      );
+
+      console.log(`Triggering Contabo Reinstall for ${config.contaboInstanceId}...`);
+      await contaboApi.reinstallInstance(config.contaboInstanceId, {
+        imageId: 'ubuntu-24.04',
+        userData: bootstrapScript,
+        sshKeys: config.contaboSecretId ? [config.contaboSecretId] : []
+      });
+
+      config.detailedStatus = 'OS Reinstalling (Contabo)...';
+    } else if (config.hetznerServerId) {
+      console.log(`Triggering Hetzner Rebuild for ${config.hetznerServerId}...`);
+      await hetznerApi.rebuildServer(config.hetznerServerId);
+      config.detailedStatus = 'OS Rebuild in progress (Hetzner)...';
+
+      // Since Hetzner rebuild doesn't re-run cloud-init easily, 
+      // we'll switch back to waiting-for-bootstrap for manual servers
+      if (config.ip && !config.hetznerServerId) {
+        config.status = 'waiting-for-bootstrap';
+      }
+    } else {
+      // Manual server or promoted to manual: Reset status and provide new command
+      config.status = 'waiting-for-bootstrap';
+      config.detailedStatus = 'Waiting for manual bootstrap...';
+
+      const requestHost = env.NEXT_PUBLIC_APP_URL || 'https://devboxui.com';
+      const callbackUrl = `${requestHost}/api/provisioning/status`;
+      const serviceToken = await cfApi.getOrCreateServiceToken(kv);
+
+      const bootstrapScript = getBootstrapScript(
+        config.userName || 'abc',
+        userEmail,
+        config.tunnelToken || '',
+        env.MANAGEMENT_SSH_PUBLIC_KEY || '',
+        settings.sshPublicKey,
+        serverId,
+        config.provisioningToken || '',
+        callbackUrl,
+        config.rootPassword || '',
+        serviceToken.id,
+        serviceToken.client_secret,
+        undefined,
+        config.providerName || 'Custom',
+        config.hostname || 'devbox'
+      );
+
+      const base64Script = Buffer.from(bootstrapScript).toString('base64');
+      config.bootstrapCommand = `echo "${base64Script}" | base64 -d | bash `;
+      config.logs = [...(config.logs || []), `Manual reinstall requested at ${new Date().toISOString()}`];
+    }
+
+    await kv.put(serverKey, JSON.stringify(config));
+    return { success: true };
+  } catch (error) {
+    console.error("Reinstall failed:", error);
+    // Restore state if failed
+    config.status = 'ready'; // Best guess
+    config.detailedStatus = undefined;
+    await kv.put(serverKey, JSON.stringify(config));
+    throw error;
+  }
 }
 
 /**
@@ -1021,7 +1317,7 @@ export async function toggleServerLock(serverId: string, enableLock: boolean) {
   // 3. Update KV state for immediate feedback
   config.isLocked = enableLock;
   config.updatedAt = new Date().toISOString();
-  
+
   const kvKey = `servers:${userEmail}:${config.ip}`;
   await kv.put(kvKey, JSON.stringify(config));
 
@@ -1051,6 +1347,54 @@ export async function getHetznerOptions() {
 }
 
 /**
+ * Regenerates the bootstrap command for an existing server using the latest script logic.
+ */
+export async function getLatestBootstrapCommand(serverId: string) {
+  const userEmail = await getIdentity();
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+  const settings = await getUserSettings();
+
+  if (!kv || !settings) throw new Error("Environment or settings missing.");
+
+  const servers = await getServers();
+  const config = servers.find(s => s.id === serverId);
+
+  if (!config) throw new Error("Server not found.");
+
+  const cfApi = new CloudflareApiService(env);
+  const requestHost = env.NEXT_PUBLIC_APP_URL || 'https://devboxui.com';
+  const callbackUrl = `${requestHost}/api/provisioning/status`;
+  const serviceToken = await cfApi.getOrCreateServiceToken(kv);
+
+  const bootstrapScript = getBootstrapScript(
+    config.userName || 'abc',
+    userEmail,
+    config.tunnelToken || '',
+    env.MANAGEMENT_SSH_PUBLIC_KEY || '',
+    settings.sshPublicKey,
+    serverId,
+    config.provisioningToken || '',
+    callbackUrl,
+    config.rootPassword || '',
+    serviceToken.id,
+    serviceToken.client_secret,
+    undefined,
+    config.providerName || 'Custom',
+    config.hostname || 'devbox'
+  );
+
+  const base64Script = Buffer.from(bootstrapScript).toString('base64');
+  const command = `echo "Decoding and starting setup..." && echo '${base64Script}' | base64 -d | bash`;
+  
+  // Optionally update KV with the latest command
+  config.bootstrapCommand = command;
+  await kv.put(`servers:${userEmail}:${serverId}`, JSON.stringify(config));
+
+  return { success: true, command };
+}
+
+/**
  * Returns the secure log URL for the server.
  */
 export async function getServerLogs(serverId: string) {
@@ -1064,7 +1408,7 @@ export async function getServerLogs(serverId: string) {
   if (!config) throw new Error("Server not found.");
 
   const logsUrl = config.tunnelUrl?.replace('-code.', '-logs.') || `https://logs-${serverId.slice(0, 8)}.devboxui.com`;
-  
+
   try {
     // In the dashboard, we will fetch from this URL directly from the browser
     // to take advantage of the user's existing Cloudflare Access session.
@@ -1074,3 +1418,281 @@ export async function getServerLogs(serverId: string) {
   }
 }
 
+/**
+ * Provisions a new server configuration for manual setup (e.g. Contabo).
+ * Sets up Cloudflare resources and optionally bootstraps via SSH if credentials are provided.
+ */
+export async function provisionManualServer(customName: string, provider: string = 'contabo', manualIp?: string, manualPassword?: string) {
+  const userEmail = await getIdentity();
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+  if (!kv) throw new Error("KV database missing.");
+
+  const settings = await getUserSettings();
+  if (!settings) throw new Error("Settings missing.");
+
+  const cfApi = new CloudflareApiService(env);
+
+  const serverId = crypto.randomUUID();
+  const shortId = serverId.slice(0, 8);
+  const name = customName || `devbox-${shortId}`;
+  const userName = userEmail.split('@')[0].replace(/[^a-zA-Z0-9]/g, '_');
+  const safeName = name.toLowerCase().replace(/[^a-z0-9]/g, '-');
+  const hostname = `${safeName}-code.devboxui.com`;
+
+  const rootPassword = manualPassword || Math.random().toString(36).slice(-10);
+  const config: ServerConfig = {
+    id: serverId,
+    ip: manualIp || 'manual-setup',
+    userName,
+    userEmail,
+    status: manualIp ? 'provisioning' : 'waiting-for-bootstrap',
+    detailedStatus: manualIp ? 'Starting automated SSH bootstrap...' : 'Waiting for manual bootstrap...',
+    rootPassword,
+    sshPrivateKey: settings.sshPrivateKey,
+    sshPublicKey: settings.sshPublicKey,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    tunnelUrl: `https://${hostname}/?folder=/home/${userName}/workspace`,
+    projects: [],
+    provider: provider as 'hetzner' | 'contabo' | 'custom',
+    logs: [manualIp ? `Automated SSH provisioning started for ${manualIp}` : 'Manual provisioning initiated. Waiting for bootstrap script.']
+  };
+
+  try {
+    // 1. Cloudflare Automation
+    const tunnelResult = await cfApi.createTunnel(`tunnel-${serverId}`);
+    config.tunnelId = tunnelResult.id;
+    config.tunnelToken = tunnelResult.token;
+    config.providerName = provider === 'contabo' ? 'Custom' : (provider || 'Custom');
+    config.hostname = hostname;
+
+    await cfApi.setupHostname(hostname, tunnelResult.id);
+    await cfApi.setupAccess(hostname, userEmail);
+
+    const logsHostname = `${name}-logs.devboxui.com`;
+    await cfApi.setupHostname(logsHostname, tunnelResult.id, "http://localhost:8000");
+    await cfApi.setupAccess(logsHostname, userEmail);
+
+    const provisioningToken = crypto.randomUUID();
+    config.provisioningToken = provisioningToken;
+
+    const requestHost = env.NEXT_PUBLIC_APP_URL || 'https://devboxui.com';
+    const callbackUrl = `${requestHost}/api/provisioning/status`;
+    const serviceToken = await cfApi.getOrCreateServiceToken(kv);
+    await cfApi.authorizeServiceToken(requestHost.replace('https://', ''), serviceToken.id);
+
+    // 2. Generate Bootstrap Script
+    const bootstrapScript = getBootstrapScript(
+      userName,
+      userEmail,
+      tunnelResult.token,
+      env.MANAGEMENT_SSH_PUBLIC_KEY || '',
+      settings.sshPublicKey,
+      serverId,
+      provisioningToken,
+      callbackUrl,
+      rootPassword,
+      serviceToken.id,
+      serviceToken.client_secret,
+      undefined,
+      provider === 'contabo' ? 'Custom' : (provider || 'Custom'),
+      hostname
+    );
+
+    // 3. Generate One-Liner (Base64 to survive all shells)
+    const base64Script = Buffer.from(bootstrapScript).toString('base64');
+    const command = `echo "${base64Script}" | base64 -d | bash `;
+    config.bootstrapCommand = command;
+
+    // 4. Save to KV (Multi-tenant listing)
+    const serverKey = `servers:${userEmail}:${serverId}`;
+    await kv.put(serverKey, JSON.stringify(config));
+
+    // Fast-lookup index for the bootstrap API
+    await kv.put(`token:${provisioningToken}`, JSON.stringify({ serverKey, serverId }));
+
+    return { success: true, server: config, command };
+  } catch (error) {
+    console.error("Manual provisioning setup failed:", error);
+    throw error;
+  }
+}
+
+/**
+ * Provisions a new server automatically via Contabo API and Cloud-Init.
+ */
+export async function provisionContaboServer(
+  customName: string,
+  productId: string = 'V1', // Standard VPS S
+  region: string = 'EU',
+  imageId: string = 'ubuntu-24.04'
+) {
+  const userEmail = await getIdentity();
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+
+  // 1. Fetch User Settings
+  const settings = await getUserSettings();
+  if (!settings) throw new Error("Could not retrieve user settings.");
+
+  const credentials = {
+    clientId: settings.contaboClientId || env.CONTABO_CLIENT_ID || '',
+    clientSecret: settings.contaboClientSecret || env.CONTABO_CLIENT_SECRET || '',
+    apiUsername: settings.contaboUsername || env.CONTABO_API_USERNAME || '',
+    apiPassword: settings.contaboPassword || env.CONTABO_API_PASSWORD || ''
+  };
+
+  if (!credentials.clientId || !credentials.clientSecret || !credentials.apiUsername || !credentials.apiPassword) {
+    throw new Error("Contabo API credentials missing. Please set them in Settings.");
+  }
+
+  const cfApi = new CloudflareApiService(env);
+  const contaboApi = new ContaboApiService(env, credentials);
+
+  // 2. Initialize Server Configuration
+  const serverId = crypto.randomUUID();
+  const shortId = serverId.slice(0, 8);
+  const name = customName || `devbox-${shortId}`;
+  const userName = userEmail.split('@')[0].replace(/[^a-zA-Z0-9]/g, '_');
+  const safeName = name.toLowerCase().replace(/[^a-z0-9]/g, '-');
+  const hostname = `${safeName}-code.devboxui.com`;
+
+  const rootPassword = Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-6);
+  const config: ServerConfig = {
+    id: serverId,
+    ip: 'pending',
+    userName,
+    userEmail,
+    status: 'provisioning',
+    rootPassword: rootPassword,
+    sshPrivateKey: settings.sshPrivateKey,
+    sshPublicKey: settings.sshPublicKey,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    logs: [`Starting Cloud-Init provisioning (${productId} in ${region}) via Contabo API...`],
+    tunnelUrl: `https://${hostname}/?folder=/home/${userName}/workspace`,
+    projects: [],
+    provider: 'contabo'
+  };
+
+  try {
+    // 3. Setup Networking (Cloudflare)
+    const tunnelResult = await cfApi.createTunnel(`tunnel-${serverId}`);
+    config.tunnelId = tunnelResult.id;
+    await cfApi.setupHostname(hostname, tunnelResult.id);
+    await cfApi.setupAccess(hostname, userEmail);
+
+    const provisioningToken = crypto.randomUUID();
+    config.provisioningToken = provisioningToken;
+
+    const requestHost = env.NEXT_PUBLIC_APP_URL || 'https://devboxui.com';
+    const callbackUrl = `${requestHost}/api/provisioning/status`;
+    const serviceToken = await cfApi.getOrCreateServiceToken(kv);
+    await cfApi.authorizeServiceToken(requestHost.replace('https://', ''), serviceToken.id);
+
+    // 4. Register SSH Key as Secret in Contabo
+    const secretName = `key-${shortId}`;
+    const secretId = await contaboApi.createSecret(secretName, settings.sshPublicKey);
+
+    // 5. Generate Cloud-Init
+    const bootstrapScript = getBootstrapScript(
+      userName,
+      userEmail,
+      tunnelResult.token,
+      env.MANAGEMENT_SSH_PUBLIC_KEY || '',
+      settings.sshPublicKey,
+      serverId,
+      provisioningToken,
+      callbackUrl,
+      rootPassword,
+      serviceToken.id,
+      serviceToken.client_secret,
+      undefined,
+      'Contabo',
+      hostname
+    );
+
+    // 6. Launch Instance
+    const instance = await contaboApi.createInstance({
+      productId,
+      region,
+      imageId,
+      name,
+      userData: bootstrapScript,
+      sshKeys: [secretId.id]
+    });
+
+    config.ip = instance.ipAddress;
+    config.contaboInstanceId = instance.instanceId;
+    config.contaboSecretId = secretId.id;
+
+    // 7. Save to KV
+    await kv.put(`servers:${userEmail}:${serverId}`, JSON.stringify(config));
+
+    return { success: true, server: config };
+  } catch (e: unknown) {
+    const error = e as Error;
+    console.error("Contabo provisioning failed:", error);
+    config.status = 'error';
+    if (!config.logs) config.logs = [];
+    config.logs.push(`Error: ${error.message}`);
+    await kv.put(`servers:${userEmail}:${serverId}`, JSON.stringify(config));
+    throw error;
+  }
+}
+
+/**
+ * Returns available Contabo regions and products for the UI.
+ */
+export async function getContaboOptions() {
+  return {
+    serverTypes: [
+      { id: 'V1', name: 'VPS S', cores: 4, memory: 8, disk: 50, price_monthly: '4.50', architecture: 'x86' },
+      { id: 'V2', name: 'VPS M', cores: 6, memory: 16, disk: 100, price_monthly: '8.50', architecture: 'x86' },
+      { id: 'V3', name: 'VPS L', cores: 8, memory: 30, disk: 200, price_monthly: '13.50', architecture: 'x86' },
+      { id: 'V4', name: 'VPS XL', cores: 10, memory: 60, disk: 400, price_monthly: '24.50', architecture: 'x86' },
+    ],
+    locations: [
+      { id: 'EU', name: 'EU', city: 'Germany' },
+      { id: 'US-C', name: 'US-C', city: 'United States' },
+      { id: 'ASIA', name: 'ASIA', city: 'Singapore' },
+      { id: 'AU', name: 'AU', city: 'Australia' },
+    ],
+    images: [
+      { id: 'ubuntu-24.04', name: 'ubuntu-24.04', description: 'Ubuntu 24.04', architecture: 'x86' },
+      { id: 'ubuntu-22.04', name: 'ubuntu-22.04', description: 'Ubuntu 22.04', architecture: 'x86' },
+      { id: 'debian-12', name: 'debian-12', description: 'Debian 12', architecture: 'x86' },
+    ]
+  };
+}
+
+export async function updateServerProvider(serverId: string, data: { hetznerServerId?: number; contaboInstanceId?: number }) {
+  const userEmail = await getIdentity();
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+  if (!kv) throw new Error("KV database missing.");
+
+  const kvKey = `servers:${userEmail}:${serverId}`;
+  const existing = await kv.get(kvKey);
+  if (!existing) throw new Error("Server not found.");
+
+  const config = JSON.parse(existing) as ServerConfig;
+  
+  if (data.hetznerServerId) {
+    config.hetznerServerId = data.hetznerServerId;
+    config.providerName = 'Hetzner';
+    config.provider = 'hetzner';
+  } else if (data.contaboInstanceId) {
+    config.contaboInstanceId = data.contaboInstanceId;
+    config.providerName = 'Contabo';
+    config.provider = 'contabo';
+  }
+
+  config.updatedAt = new Date().toISOString();
+  if (!config.logs) config.logs = [];
+  config.logs.push(`Associated with cloud provider: ${config.providerName}`);
+
+  await kv.put(kvKey, JSON.stringify(config));
+  return config;
+}

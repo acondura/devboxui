@@ -12,8 +12,6 @@
     "start": "next start",
     "lint": "next lint",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
-    "deploy-ssh": "cd ssh-worker && npm install && npx wrangler deploy",
-    "deploy-all": "npm run deploy && npm run deploy-ssh",
     "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts",

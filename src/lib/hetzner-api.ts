@@ -288,4 +288,25 @@ export class HetznerApiService {
       console.error(`Failed to delete SSH key ${sshKeyId}:`, error);
     }
   }
+
+  /**
+   * Rebuilds a server (reinstall OS)
+   */
+  async rebuildServer(serverId: number, image: string = 'ubuntu-24.04'): Promise<HetznerServerResponse> {
+    const response = await fetch(`${this.baseUrl}/servers/${serverId}/actions/rebuild`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.token}`
+      },
+      body: JSON.stringify({ image })
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Hetzner Rebuild Error: ${response.status} - ${error}`);
+    }
+
+    return await response.json() as HetznerServerResponse;
+  }
 }

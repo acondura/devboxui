@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getHetznerOptions } from '@/modules/inventory/actions';
+import { getHetznerOptions, provisionManualServer } from '@/modules/inventory/actions';
 
 interface AddServerModalProps {
   isOpen: boolean;
@@ -53,6 +53,26 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
     images: HetznerImage[];
   }>({ serverTypes: [], locations: [], images: [] });
   const [isLoadingOptions, setIsLoadingOptions] = useState(true);
+  const [ip, setIp] = useState('');
+  const [password, setPassword] = useState('');
+  const [bootstrapCommand, setBootstrapCommand] = useState<string | null>(null);
+  const [createdServerName, setCreatedServerName] = useState<string | null>(null);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<string | null>(null);
+  const [hasLoadedProvider, setHasLoadedProvider] = useState(false);
+  
+  // Load last provider on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('devbox_last_provider');
+    if (saved) setProvider(saved as CloudProvider);
+    setHasLoadedProvider(true);
+  }, []);
+
+  // Save provider on change
+  const handleProviderSelect = (p: CloudProvider) => {
+    setProvider(p);
+    localStorage.setItem('devbox_last_provider', p);
+  };
 
   useEffect(() => {
     if (isOpen && provider === 'hetzner') {
@@ -124,16 +144,22 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (provider !== 'hetzner') {
-      alert("Only Hetzner is currently supported in the prototype.");
-      return;
-    }
     setIsSubmitting(true);
     try {
-      await onAdd(name, serverType, location, image);
-      onClose();
+      if (provider === 'hetzner') {
+        await onAdd(name, serverType, location, image);
+        onClose();
+      } else {
+        const result = await provisionManualServer(name, provider, ip, password);
+        if (result.success) {
+          setBootstrapCommand(result.command || null);
+          setShowSuccess(true);
+          setCreatedServerName(name);
+        }
+      }
     } catch (err) {
       console.error("Failed to add server:", err);
+      alert("Failed to provision server. Check console for details.");
     } finally {
       setIsSubmitting(false);
     }
@@ -141,11 +167,154 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
 
   const providers: {id: CloudProvider, name: string, active: boolean, info?: string}[] = [
     { id: 'hetzner', name: 'Hetzner', active: true },
-    { id: 'contabo', name: 'Contabo', active: false, info: 'Monthly billing' },
     { id: 'digitalocean', name: 'DigitalOcean', active: false },
     { id: 'linode', name: 'Linode', active: false },
     { id: 'vultr', name: 'Vultr', active: false },
+    { id: 'contabo', name: 'Custom', active: true, info: 'Manual Provision' },
   ];
+
+  if (bootstrapCommand) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+        <div className="w-full max-w-xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden transform transition-all animate-in fade-in zoom-in duration-200">
+          <div className="px-6 py-5 border-b border-slate-800 bg-slate-950/50 flex justify-between items-center">
+             <div>
+               <h3 className="text-xl font-bold text-white">Manual Setup Required</h3>
+               <p className="text-xs text-indigo-400 uppercase tracking-widest font-black mt-1">Provider: {provider}</p>
+             </div>
+             <button onClick={() => { setBootstrapCommand(null); onClose(); }} className="text-slate-400 hover:text-white transition-colors">
+               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+               </svg>
+             </button>
+          </div>
+          <div className="p-6 space-y-6">
+            <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-4">
+              <p className="text-sm text-indigo-200 leading-relaxed">
+                Infrastructure for <strong>{createdServerName}</strong> is ready. Connect to your fresh <strong>Ubuntu</strong> server and run this command as root:
+              </p>
+            </div>
+            
+            <div className="relative group">
+              <div className="bg-slate-950 border border-slate-800 rounded-xl p-5 font-mono text-[10px] text-indigo-300 break-all leading-relaxed shadow-inner max-h-[100px] overflow-y-auto">
+                <span className="text-slate-500 mr-2 select-none">$</span>
+                {bootstrapCommand}
+              </div>
+              <button 
+                onClick={() => {
+                  navigator.clipboard.writeText(bootstrapCommand);
+                }}
+                className="absolute top-3 right-3 p-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-all shadow-lg"
+                title="Copy to clipboard"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m-3 8h4m-2-2v4" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-4 bg-slate-950/40 border border-slate-800/50 rounded-xl">
+              <h4 className="text-xs font-black uppercase tracking-widest text-slate-500 mb-2">What happens next?</h4>
+              <ul className="text-xs text-slate-400 space-y-2 list-disc pl-4">
+                <li>Server reports progress back to DevBox UI automatically</li>
+                <li>Your secure Cloudflare Tunnel will be activated</li>
+                <li>Docker, DDEV and VS Code will be deployed</li>
+              </ul>
+            </div>
+
+            <div className="text-center pt-2">
+              <button
+                onClick={() => {
+                  setBootstrapCommand(null);
+                  onClose();
+                }}
+                className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3.5 rounded-xl transition-all"
+              >
+                Close and wait for server
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (showSuccess) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md">
+        <div className="w-full max-w-md bg-slate-900 border border-indigo-500/30 rounded-3xl shadow-2xl overflow-hidden text-center p-8 relative">
+          <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-24 h-24 bg-indigo-600 rounded-full flex items-center justify-center shadow-xl shadow-indigo-600/40">
+             <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+             </svg>
+          </div>
+          <div className="mt-8 space-y-4">
+            <h3 className="text-2xl font-black text-white italic">{bootstrapCommand ? 'READY TO LAUNCH! 🚀' : 'VICTORY! 🚀'}</h3>
+            <p className="text-slate-400 text-sm leading-relaxed">
+              {bootstrapCommand 
+                ? "Your Cloudflare infrastructure is ready. Now just paste this command on your VPS to link it."
+                : "Your DevBox is live. You just saved yourself roughly 2 hours of manual configuration."}
+            </p>
+            
+            {bootstrapCommand && (
+              <div className="bg-slate-950 border border-indigo-500/30 rounded-2xl p-4 mt-6 text-left group relative overflow-hidden">
+                <div className="absolute inset-0 bg-indigo-500/5 animate-pulse"></div>
+                <p className="text-[10px] uppercase font-black text-indigo-400 mb-2 tracking-widest flex items-center">
+                  <span className="w-2 h-2 bg-indigo-500 rounded-full mr-2 animate-ping"></span>
+                  Paste this on your server
+                </p>
+                <code className="text-xs text-slate-300 font-mono break-all leading-relaxed block pr-8 max-h-[100px] overflow-y-auto scrollbar-thin scrollbar-thumb-indigo-500/20 scrollbar-track-transparent">
+                  {bootstrapCommand}
+                </code>
+                <button 
+                  onClick={() => {
+                    navigator.clipboard.writeText(bootstrapCommand || '');
+                    setCopyStatus('Copied!');
+                    setTimeout(() => setCopyStatus(null), 2000);
+                  }}
+                  className="absolute top-4 right-4 p-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                  title="Copy to clipboard"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m-3 8h4m-2-2v4" />
+                  </svg>
+                </button>
+              </div>
+            )}
+
+            {!bootstrapCommand && (
+              <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 mt-6 text-left group">
+                <p className="text-[10px] uppercase font-black text-slate-500 mb-2 tracking-widest">Share your expert setup</p>
+                <p className="text-xs text-indigo-300 italic font-medium leading-relaxed">
+                  &quot;Just provisioned a full Docker/VS Code dev environment in under 60 seconds with @DevBoxUI. My infra is finally automated. ⚡️&quot;
+                </p>
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-4">
+              <button 
+                onClick={() => {
+                  const text = bootstrapCommand || `Just provisioned a full Docker/VS Code dev environment in under 60 seconds with DevBoxUI. My infra is finally automated. ⚡️`;
+                  navigator.clipboard.writeText(text);
+                  setCopyStatus('Copied!');
+                  setTimeout(() => setCopyStatus(null), 2000);
+                }}
+                className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-xl transition-all text-sm border border-slate-700"
+              >
+                {copyStatus || (bootstrapCommand ? 'Copy Command' : 'Copy Post')}
+              </button>
+              <button 
+                onClick={onClose}
+                className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition-all text-sm shadow-lg shadow-indigo-600/20"
+              >
+                Go to Dashboard
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
@@ -164,30 +333,27 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
 
         {/* Provider Selector */}
         <div className="px-6 py-4 bg-slate-950/30 border-b border-slate-800/50">
-          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Select Cloud Provider</label>
-          <div className="flex flex-wrap gap-2">
-            {providers.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => p.active && setProvider(p.id)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border flex flex-col items-center justify-center min-w-[100px] h-12 relative overflow-hidden group ${
-                  provider === p.id 
-                    ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-600/20' 
-                    : p.active 
-                      ? 'bg-slate-800 border-slate-700 text-slate-400 hover:border-indigo-500/50 hover:text-slate-300' 
-                      : 'bg-slate-900/50 border-slate-800 text-slate-600 cursor-not-allowed grayscale'
-                }`}
-              >
-                <span>{p.name}</span>
-                {p.info && <span className="text-[8px] opacity-60 font-normal">{p.info}</span>}
-                {!p.active && (
-                  <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-[1px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <span className="text-[8px] uppercase tracking-tighter text-white font-black bg-indigo-500 px-1.5 py-0.5 rounded shadow-lg">Coming Soon</span>
-                  </div>
-                )}
-              </button>
-            ))}
+          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2.5">Select Cloud Provider</label>
+          <div className="relative">
+            <select
+              value={provider}
+              onChange={(e) => {
+                const selected = providers.find(p => p.id === e.target.value);
+                if (selected?.active) handleProviderSelect(e.target.value as CloudProvider);
+              }}
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer text-sm font-medium"
+            >
+              {providers.map((p) => (
+                <option key={p.id} value={p.id} disabled={!p.active}>
+                  {p.name} {p.info ? `(${p.info})` : ''} {!p.active ? '— Coming Soon' : ''}
+                </option>
+              ))}
+            </select>
+            <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-500">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
           </div>
         </div>
         
@@ -205,42 +371,46 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
               />
             </div>
             
-            <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1.5">Server Type</label>
-              <select
-                value={serverType}
-                onChange={(e) => setServerType(e.target.value)}
-                disabled={isLoadingOptions || provider !== 'hetzner'}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer disabled:opacity-50 text-sm"
-              >
-                {sortedServerTypes.map(t => {
-                  const p = t.prices.find((p) => p.location === location) || t.prices[0];
-                  const priceLabel = p ? `€${parseFloat(p.price_monthly.gross).toFixed(2)}` : '';
-                  const specs = `${t.cores} vCPU / ${t.memory}GB RAM / ${t.disk}GB / ${t.architecture.toUpperCase()}`;
-                  return (
-                    <option key={t.id} value={t.name}>
-                      {t.name.toUpperCase()} - ({priceLabel}) - {specs}
-                    </option>
-                  );
-                })}
-                {isLoadingOptions && <option>Loading types...</option>}
-              </select>
-            </div>
+            {provider === 'hetzner' && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-slate-400 mb-1.5">Server Type</label>
+                  <select
+                    value={serverType}
+                    onChange={(e) => setServerType(e.target.value)}
+                    disabled={isLoadingOptions}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer disabled:opacity-50 text-sm"
+                  >
+                    {sortedServerTypes.map(t => {
+                      const p = t.prices.find((p) => p.location === location) || t.prices[0];
+                      const priceLabel = p ? `€${parseFloat(p.price_monthly.gross).toFixed(2)}` : '';
+                      const specs = `${t.cores} vCPU / ${t.memory}GB RAM / ${t.disk}GB / ${t.architecture.toUpperCase()}`;
+                      return (
+                        <option key={t.id} value={t.name}>
+                          {t.name.toUpperCase()} - ({priceLabel}) - {specs}
+                        </option>
+                      );
+                    })}
+                    {isLoadingOptions && <option>Loading types...</option>}
+                  </select>
+                </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1.5">Location</label>
-              <select
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                disabled={isLoadingOptions || provider !== 'hetzner'}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer disabled:opacity-50 text-sm"
-              >
-                {options.locations.map(l => (
-                  <option key={l.id} value={l.name}>{l.city} ({l.name.toUpperCase()})</option>
-                ))}
-                {isLoadingOptions && <option>Loading locations...</option>}
-              </select>
-            </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-400 mb-1.5">Location</label>
+                  <select
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    disabled={isLoadingOptions}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer disabled:opacity-50 text-sm"
+                  >
+                    {options.locations.map(l => (
+                      <option key={l.id} value={l.name}>{l.city} ({l.name.toUpperCase()})</option>
+                    ))}
+                    {isLoadingOptions && <option>Loading locations...</option>}
+                  </select>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Specs Summary */}
@@ -277,40 +447,71 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
             </div>
           )}
 
-          <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1.5">OS Image</label>
-            <select
-              value={image}
-              onChange={(e) => setImage(e.target.value)}
-              disabled={isLoadingOptions || provider !== 'hetzner'}
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer disabled:opacity-50 text-sm"
-            >
-              {filteredImages.map(i => (
-                <option key={i.id} value={i.name}>
-                  {i.description} ({i.architecture === 'arm' ? 'ARM' : 'x86'})
-                </option>
-              ))}
-              {isLoadingOptions && <option>Loading images...</option>}
-              {!isLoadingOptions && filteredImages.length === 0 && <option>No compatible images</option>}
-            </select>
-          </div>
+          {provider === 'contabo' && (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-1.5">Server IP Address</label>
+                <input
+                  type="text"
+                  placeholder="e.g. 1.2.3.4"
+                  value={ip}
+                  onChange={(e) => setIp(e.target.value)}
+                  required
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-white placeholder-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-1.5">Root Password</label>
+                <input
+                  type="password"
+                  placeholder="Enter root password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-white placeholder-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
+                />
+              </div>
+            </div>
+          )}
 
-          <div className="bg-slate-950/50 border border-slate-800/50 rounded-xl p-4 flex justify-between items-center group relative">
-            <div>
-              <p className="text-xs uppercase tracking-wider text-slate-500 font-bold">Cost</p>
-              <p className="text-2xl font-black text-white">
-                {monthlyPrice ? `€${parseFloat(monthlyPrice).toFixed(2)}` : '--'}
-                <span className="text-sm text-slate-400 font-normal ml-1">/ month</span>
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-xs uppercase tracking-wider text-slate-500 font-bold">Billing Model</p>
-              <p className="text-sm font-mono text-indigo-400 uppercase tracking-tighter">
-                {provider === 'contabo' ? 'Monthly' : 'Hourly Pro-rata'}
-              </p>
-            </div>
-            <div className="absolute inset-0 bg-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl pointer-events-none" />
-          </div>
+          {provider === 'hetzner' && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-1.5">OS Image</label>
+                <select
+                  value={image}
+                  onChange={(e) => setImage(e.target.value)}
+                  disabled={isLoadingOptions}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer disabled:opacity-50 text-sm"
+                >
+                  {filteredImages.map(i => (
+                    <option key={i.id} value={i.name}>
+                      {i.description} ({i.architecture === 'arm' ? 'ARM' : 'x86'})
+                    </option>
+                  ))}
+                  {isLoadingOptions && <option>Loading images...</option>}
+                  {!isLoadingOptions && filteredImages.length === 0 && <option>No compatible images</option>}
+                </select>
+              </div>
+
+              <div className="bg-slate-950/50 border border-slate-800/50 rounded-xl p-4 flex justify-between items-center group relative">
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-slate-500 font-bold">Cost</p>
+                  <p className="text-2xl font-black text-white">
+                    {monthlyPrice ? `€${parseFloat(monthlyPrice).toFixed(2)}` : '--'}
+                    <span className="text-sm text-slate-400 font-normal ml-1">/ month</span>
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs uppercase tracking-wider text-slate-500 font-bold">Billing Model</p>
+                  <p className="text-sm font-mono text-indigo-400 uppercase tracking-tighter">
+                    Hourly Pro-rata
+                  </p>
+                </div>
+                <div className="absolute inset-0 bg-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl pointer-events-none" />
+              </div>
+            </>
+          )}
 
           <div className="p-4 bg-slate-950/40 border border-slate-800/50 rounded-xl space-y-2.5">
             <div className="flex items-center space-x-2 text-indigo-400">
@@ -320,14 +521,18 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
               <p className="text-xs font-bold uppercase tracking-wider">How it works</p>
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">
-              We&apos;ll create a <strong className="text-slate-200 capitalize">{provider}</strong> instance and run our custom DevBox bootstrap. This installs Docker, sets up your secure tunnel, and deploys your VS Code environment.
+              {provider === 'hetzner' ? (
+                <>We&apos;ll create a <strong className="text-slate-200">Hetzner</strong> instance and run our custom DevBox bootstrap.</>
+              ) : (
+                <>We&apos;ll connect to your <strong className="text-slate-200">existing server</strong> and run our custom DevBox bootstrap.</>
+              )} This installs Docker, sets up your secure tunnel, and deploys your VS Code environment.
             </p>
           </div>
           
           <div className="pt-2">
             <button
               type="submit"
-              disabled={isSubmitting || (provider === 'hetzner' && isLoadingOptions)}
+              disabled={isSubmitting || (provider === 'hetzner' && isLoadingOptions) || !name.trim()}
               className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-indigo-500/20 flex items-center justify-center space-x-2"
             >
               {isSubmitting ? (
@@ -336,7 +541,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span className="text-sm">Provisioning on {provider}...</span>
+                  <span className="text-sm">Provisioning on {providers.find(p => p.id === provider)?.name}...</span>
                 </>
               ) : (
                 <span className="text-sm">Launch DevBox ✨</span>

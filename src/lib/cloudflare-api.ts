@@ -112,6 +112,46 @@ export class CloudflareApiService {
     }
   }
 
+  async removeHostname(hostname: string, tunnelId: string) {
+    // 1. Fetch current configuration
+    interface IngressRule { hostname?: string; service: string }
+    const result = await this.request<{ config: { ingress: IngressRule[] } }>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/cfd_tunnel/${tunnelId}/configurations`);
+    const currentConfig = result?.config || { ingress: [] };
+
+    // 2. Filter out this hostname
+    const newIngress = (currentConfig.ingress || []).filter((rule: IngressRule) => 
+      rule.hostname !== hostname
+    );
+
+    // 3. Update Tunnel Configuration
+    await this.request(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/cfd_tunnel/${tunnelId}/configurations`, {
+      method: "PUT",
+      body: JSON.stringify({ config: { ingress: newIngress } }),
+    });
+
+    // 4. Delete DNS Record
+    const records = await this.request<{ id: string; name: string }[]>(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/dns_records?name=${hostname}&type=CNAME`);
+    const existing = records.find(r => r.name === hostname);
+    if (existing) {
+      await this.request(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/dns_records/${existing.id}`, {
+        method: "DELETE",
+      });
+    }
+  }
+
+  async deleteAccess(hostname: string) {
+    // 1. Find the application
+    const apps = await this.request<{ id: string; domain: string }[]>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps`);
+    const app = apps.find(a => a.domain === hostname);
+
+    if (app) {
+      console.log(`Deleting Access Application for ${hostname}...`);
+      await this.request(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps/${app.id}`, {
+        method: "DELETE",
+      });
+    }
+  }
+
   /**
    * Protects a hostname with Cloudflare Access (Zero Trust).
    * Creates an Application and an 'Allow' policy for the specified email.
@@ -157,22 +197,6 @@ export class CloudflareApiService {
     }
 
     return app.id;
-  }
-
-  /**
-   * Removes Cloudflare Access protection for a hostname.
-   */
-  async deleteAccess(hostname: string): Promise<void> {
-    // 1. Find the application by domain
-    const apps = await this.request<{ id: string; domain: string }[]>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps`);
-    const app = apps.find(a => a.domain === hostname);
-
-    if (app) {
-      // 2. Delete the application (policies are deleted automatically)
-      await this.request(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps/${app.id}`, {
-        method: "DELETE",
-      });
-    }
   }
 
   /**
