@@ -378,15 +378,15 @@ while ! docker ps | grep -q "code-server-$DEV_USER"; do sleep 2; done
         chown -h abc:abc /config/workspace
         
         # Install Oh My Bash
-        if [ ! -d "/config/.oh-my-bash" ]; then
-            sudo -u abc bash -c "export HOME=/config; curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh | bash -s -- --unattended" || true
+        if [ ! -d "/home/${username}/.oh-my-bash" ]; then
+            sudo -u abc bash -c "export HOME=/home/${username}; curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh | bash -s -- --unattended" || true
         fi
         
         # Apply Theme and Fixes
-        if [ -f "/config/.bashrc" ]; then
-            sed -i "s/OSH_THEME=\\"font\\"/OSH_THEME=\\"90210\\"/" /config/.bashrc
-            grep -q "enable-bracketed-paste" /config/.bashrc || echo "bind \"set enable-bracketed-paste off\"" >> /config/.bashrc
-            grep -q "alias l=" /config/.bashrc || echo "alias l=\"ls -lah\"" >> /config/.bashrc
+        if [ -f "/home/${username}/.bashrc" ]; then
+            sed -i 's/OSH_THEME="font"/OSH_THEME="90210"/' "/home/${username}/.bashrc"
+            grep -q "enable-bracketed-paste" "/home/${username}/.bashrc" || echo "bind 'set enable-bracketed-paste off'" >> "/home/${username}/.bashrc"
+            grep -q "alias l=" "/home/${username}/.bashrc" || echo "alias l='ls -lah'" >> "/home/${username}/.bashrc"
         fi
 
         sudo -u abc mkcert -install || true
