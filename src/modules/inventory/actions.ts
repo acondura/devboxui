@@ -40,7 +40,7 @@ export MANAGEMENT_SSH_KEY="${managementKey}"
 
 # Auto-detect Hetzner Server ID from metadata if not provided
 if [ -z "$HETZNER_SERVER_ID" ]; then
-    HETZNER_SERVER_ID=$(curl -s http://169.254.169.254/hetzner/v1/metadata/instance-id || echo "")
+    HETZNER_SERVER_ID=$(curl -s -m 2 http://169.254.169.254/hetzner/v1/metadata/instance-id || echo "")
 fi
 
 # UNLOCK root immediately
@@ -177,20 +177,20 @@ report_status() {
     title "\$status_msg"
     hetzner_heartbeat "\$status_msg"
     # Attempt to report status with retry logic and tool fallback
-    for i in 1 2 3; do
+    for i in {1..3}; do
       local response_code="000"
       if command -v curl >/dev/null 2>&1; then
-        response_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$CALLBACK_URL" \
+        response_code=$(curl -s -m 5 -o /dev/null -w "%{http_code}" -X POST "$CALLBACK_URL" \
           -H "Content-Type: application/json" \
           -H "CF-Access-Client-Id: $SERVICE_TOKEN_ID" \
           -H "CF-Access-Client-Secret: $SERVICE_TOKEN_SECRET" \
           -d "{\\\"serverId\\\": \\\"$SERVER_ID\\\", \\\"token\\\": \\\"$PROV_TOKEN\\\", \\\"status\\\": \\\"$status_msg\\\"}")
       elif command -v wget >/dev/null 2>&1; then
         # Fallback to wget if curl is not yet available
-        wget -q --spider --method=POST --header="Content-Type: application/json" \
+        wget -q --timeout=5 --spider --method=POST --header="Content-Type: application/json" \
           --header="CF-Access-Client-Id: $SERVICE_TOKEN_ID" \
           --header="CF-Access-Client-Secret: $SERVICE_TOKEN_SECRET" \
-          --body-data="{\"serverId\": \"$SERVER_ID\", \"token\": \"$PROV_TOKEN\", \"status\": \"$status_msg\"}" \
+          --body-data="{\\\"serverId\\\": \\\"$SERVER_ID\\\", \\\"token\\\": \\\"$PROV_TOKEN\\\", \\\"status\\\": \\\"$status_msg\\\"}" \
           "$CALLBACK_URL" && response_code="200"
       fi
       
@@ -321,6 +321,9 @@ echo 'deb [signed-by=/etc/apt/keyrings/ddev.gpg] https://pkg.ddev.com/apt/ * *' 
 
 # Install DDEV and essential tools
 apt-get update && apt-get install -y ddev git jq vim libnss3-tools mkcert
+
+# Grant NOPASSWD so the developer can use sudo without a password (since they use SSH keys)
+echo "$DEV_USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/90-devbox-user
 
 # Initialize mkcert for the host user
 sudo -u "$DEV_USER" mkcert -install || true

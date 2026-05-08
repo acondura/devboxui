@@ -98,6 +98,9 @@ echo 'deb [signed-by=/etc/apt/keyrings/ddev.gpg] https://pkg.ddev.com/apt/ * *' 
 # Install DDEV and essential tools
 apt-get update && apt-get install -y ddev git jq vim libnss3-tools mkcert
 
+# Grant NOPASSWD so the developer can use sudo without a password (since they use SSH keys)
+echo "$DEV_USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/90-devbox-user
+
 # Initialize mkcert for the host user
 sudo -u "$DEV_USER" mkcert -install || true
 
