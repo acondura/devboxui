@@ -407,31 +407,7 @@ export async function getUserSettings() {
     contaboPassword: ''
   };
 
-  // Auto-generate SSH keys if missing or in old/invalid format
-  const isOldFormat = settings.sshPublicKey && (!settings.sshPublicKey.startsWith('ssh-rsa') || settings.sshKeyVersion !== 'v2');
 
-  if (!settings.sshPublicKey || !settings.sshPrivateKey || isOldFormat) {
-    try {
-      const keyPair = await crypto.subtle.generateKey(
-        {
-          name: "RSASSA-PKCS1-v1_5",
-          modulusLength: 2048,
-          publicExponent: new Uint8Array([1, 0, 1]),
-          hash: "SHA-256",
-        },
-        true,
-        ["sign", "verify"]
-      );
-
-      settings.sshPrivateKey = await formatPrivateKey(keyPair.privateKey);
-      settings.sshPublicKey = await formatRsaPublicKey(keyPair.publicKey);
-      settings.sshKeyVersion = 'v2';
-
-      await kv.put(`settings:${userEmail}`, JSON.stringify(settings));
-    } catch {
-      throw new Error("Secure key generation failed. Please try again or provide an SSH key in Settings.");
-    }
-  }
 
   return settings as {
     hetznerToken: string;
