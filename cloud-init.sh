@@ -47,9 +47,7 @@ if ! id "$DEV_USER" &>/dev/null; then
 fi
 
 # --- 2.1 Install Oh My Bash for '$DEV_USER' ---
-sudo -u "$DEV_USER" bash -c "curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh | bash -s -- --unattended"
-# Ensure the theme is set to '90210'
-sed -i 's/OSH_THEME="[^"]*"/OSH_THEME="90210"/' /home/"$DEV_USER"/.bashrc
+
 
 # --- 3. Install Docker & Tools ---
 apt-get install -y ca-certificates curl gnupg lsb-release
@@ -97,11 +95,23 @@ install -m 0755 -d /etc/apt/keyrings
 curl -fsSL https://pkg.ddev.com/apt/gpg.key | gpg --batch --yes --dearmor -o /etc/apt/keyrings/ddev.gpg
 echo 'deb [signed-by=/etc/apt/keyrings/ddev.gpg] https://pkg.ddev.com/apt/ * *' > /etc/apt/sources.list.d/ddev.list
 
-# Install DDEV
-apt-get update && apt-get install -y ddev
+# Install DDEV and essential tools
+apt-get update && apt-get install -y ddev git jq vim libnss3-tools mkcert
 
 # Initialize mkcert for the host user
-sudo -u "$DEV_USER" mkcert -install
+sudo -u "$DEV_USER" mkcert -install || true
+
+# Oh My Bash for the host user
+if [ ! -d "/home/$DEV_USER/.oh-my-bash" ]; then
+    sudo -u "$DEV_USER" bash -c "curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh | bash -s -- --unattended" || true
+fi
+
+# Apply Theme and Fixes
+if [ -f "/home/$DEV_USER/.bashrc" ]; then
+    sed -i 's/OSH_THEME="[^"]*"/OSH_THEME="90210"/' "/home/$DEV_USER/.bashrc"
+    grep -q "enable-bracketed-paste" "/home/$DEV_USER/.bashrc" || echo "bind 'set enable-bracketed-paste off'" >> "/home/$DEV_USER/.bashrc"
+    grep -q "alias l=" "/home/$DEV_USER/.bashrc" || echo "alias l='ls -lah'" >> "/home/$DEV_USER/.bashrc"
+fi
 
 echo "------------------------------------------------"
 echo "✅ Setup Complete! Master Server is Ready."

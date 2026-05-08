@@ -295,7 +295,10 @@ dpkg -i cloudflared.deb
 rm cloudflared.deb
 if [ -n "$TUNNEL_TOKEN" ]; then
     cloudflared service install "$TUNNEL_TOKEN"
-    systemctl start cloudflared ||# --- 5. Developer Tools (DDEV) ---
+    systemctl start cloudflared || true
+fi
+
+# --- 5. Developer Tools (DDEV) ---
 # Build Timestamp: ${new Date().toISOString()}
 mkdir -p "${HOST_WORKSPACE}"
 chown -R "$DEV_USER":"$DEV_USER" "${HOST_HOME}"
@@ -316,8 +319,8 @@ install -m 0755 -d /etc/apt/keyrings
 curl -fsSL https://pkg.ddev.com/apt/gpg.key | gpg --batch --yes --dearmor -o /etc/apt/keyrings/ddev.gpg
 echo 'deb [signed-by=/etc/apt/keyrings/ddev.gpg] https://pkg.ddev.com/apt/ * *' > /etc/apt/sources.list.d/ddev.list
 
-# Install DDEV
-apt-get update && apt-get install -y ddev
+# Install DDEV and essential tools
+apt-get update && apt-get install -y ddev git jq vim libnss3-tools mkcert
 
 # Initialize mkcert for the host user
 sudo -u "$DEV_USER" mkcert -install || true
