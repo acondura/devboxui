@@ -232,11 +232,10 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
 
           <div className="pl-2 ml-2 border-l border-slate-800">
             <a
-              href={server.tunnelUrl ? (server.tunnelUrl.includes('?folder=') ? server.tunnelUrl : `${server.tunnelUrl}/?folder=/home/${server.userName}/workspace`) : '#'}
-              target={`win_ide_${safeTargetBase}`}
-              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg transition-all shadow-lg shadow-indigo-600/20 inline-block"
+              href={`vscode://vscode-remote/ssh-remote+${server.userName || 'root'}@${server.ip}/home/${server.userName || 'root'}/workspace`}
+              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg transition-all shadow-lg shadow-indigo-600/20 inline-block text-center whitespace-nowrap"
             >
-              IDE
+              VS Code SSH
             </a>
           </div>
         </div>
@@ -370,7 +369,7 @@ function ServerCard({ server, userEmail, onAddProject, onUpdateDomain, onDeleteD
           ))}
         </div>
 
-        <button onClick={() => window.open(server.tunnelUrl || '#')} className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg">Launch VS Code</button>
+        <a href={`vscode://vscode-remote/ssh-remote+${server.userName || 'root'}@${server.ip}/home/${server.userName || 'root'}/workspace`} className="block text-center w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg transition-all">Open in VS Code (SSH)</a>
       </div>
 
       {isLogsModalOpen && <LogsModal isOpen={isLogsModalOpen} onClose={() => setIsLogsModalOpen(false)} debugData={debugData} isFetching={isFetchingLogs} />}

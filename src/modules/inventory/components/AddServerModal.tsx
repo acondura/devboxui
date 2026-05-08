@@ -218,7 +218,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
               <ul className="text-xs text-slate-400 space-y-2 list-disc pl-4">
                 <li>Server reports progress back to DevBox UI automatically</li>
                 <li>Your secure Cloudflare Tunnel will be activated</li>
-                <li>Docker, DDEV and VS Code will be deployed</li>
+                <li>Docker, DDEV and Oh-My-Bash will be deployed</li>
               </ul>
             </div>
 
@@ -286,7 +286,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
               <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 mt-6 text-left group">
                 <p className="text-[10px] uppercase font-black text-slate-500 mb-2 tracking-widest">Share your expert setup</p>
                 <p className="text-xs text-indigo-300 italic font-medium leading-relaxed">
-                  &quot;Just provisioned a full Docker/VS Code dev environment in under 60 seconds with @DevBoxUI. My infra is finally automated. ⚡️&quot;
+                  &quot;Just provisioned a full Docker/DDEV dev environment in under 60 seconds with @DevBoxUI. My infra is finally automated. ⚡️&quot;
                 </p>
               </div>
             )}
@@ -294,7 +294,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
             <div className="flex gap-3 pt-4">
               <button 
                 onClick={() => {
-                  const text = bootstrapCommand || `Just provisioned a full Docker/VS Code dev environment in under 60 seconds with DevBoxUI. My infra is finally automated. ⚡️`;
+                  const text = bootstrapCommand || `Just provisioned a full Docker/DDEV dev environment in under 60 seconds with DevBoxUI. My infra is finally automated. ⚡️`;
                   navigator.clipboard.writeText(text);
                   setCopyStatus('Copied!');
                   setTimeout(() => setCopyStatus(null), 2000);
@@ -525,7 +525,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
                 <>We&apos;ll create a <strong className="text-slate-200">Hetzner</strong> instance and run our custom DevBox bootstrap.</>
               ) : (
                 <>We&apos;ll connect to your <strong className="text-slate-200">existing server</strong> and run our custom DevBox bootstrap.</>
-              )} This installs Docker, sets up your secure tunnel, and deploys your VS Code environment.
+              )} This installs Docker, Oh-My-Bash, and configures your DDEV environment.
             </p>
           </div>
           

@@ -15,20 +15,6 @@ function getBootstrapScript(username: string, userEmail: string, tunnelToken: st
   // DERIVED VARIABLES
   const HOST_HOME = `/home/${username}`;
   const HOST_WORKSPACE = `${HOST_HOME}/workspace`;
-  const HOST_CONFIG = `${HOST_HOME}/.code-server`;
-
-  const settingsJson = JSON.stringify({
-    "window.title": `${providerName} - ${displayUrl} - DevBox`,
-    "window.menuBarVisibility": "compact",
-    "window.titleBarStyle": "custom",
-    "window.commandCenter": false,
-    "workbench.layoutControl.enabled": false,
-    "editor.fontSize": 15,
-    "terminal.integrated.fontSize": 15,
-    "workbench.colorTheme": "Dark+"
-  }, null, 4);
-  const settingsBase64 = Buffer.from(settingsJson).toString('base64');
-
   return `#!/bin/bash
 set -e
 echo -e "\\x1b[32m🚀 Script decoded successfully. Starting setup...\\x1b[0m"
@@ -40,7 +26,6 @@ ROOT_PASSWORD="${rootPassword || ''}"
 SERVER_ID="${serverId}"
 PROV_TOKEN="${provisioningToken}"
 WORKSPACE_DIR="${HOST_WORKSPACE}"
-CONFIG_DIR="${HOST_CONFIG}"
 
 # EXPORT SECRETS
 export TUNNEL_TOKEN="${tunnelToken}"
@@ -310,113 +295,44 @@ dpkg -i cloudflared.deb
 rm cloudflared.deb
 if [ -n "$TUNNEL_TOKEN" ]; then
     cloudflared service install "$TUNNEL_TOKEN"
-    systemctl start cloudflared || true
-fi
-
-# --- 5. Deploy Code-Server ---
+    systemctl start cloudflared ||# --- 5. Developer Tools (DDEV) ---
 # Build Timestamp: ${new Date().toISOString()}
-mkdir -p "${HOST_WORKSPACE}" "${HOST_CONFIG}/data/User"
+mkdir -p "${HOST_WORKSPACE}"
 chown -R "$DEV_USER":"$DEV_USER" "${HOST_HOME}"
 
-# Pre-configure Container Environment (Host-side)
-report_status "Pre-configuring container..."
+report_status "Installing DDEV..."
 
-# Base64 encoded configs
-echo 'W3VzZXJdCiAgICBuYW1lID0gR2l0SHViIFVzZXIKICAgIGVtYWlsID0gZGV2Ym94QHVzZXIubG9jYWwK' | base64 -d > "${HOST_CONFIG}/.gitconfig"
-echo 'YmluZC1hZGRyOiAwLjAuMC4wOjg0NDMKYXV0aDogbm9uZQpjZXJ0OiBmYWxzZQo=' | base64 -d > "${HOST_CONFIG}/config.yaml"
-echo '${settingsBase64}' | base64 -d > "${HOST_CONFIG}/data/User/settings.json"
-
-# Unique Port based on UID
-USER_UID=$(id -u "$DEV_USER")
-PORT=$(( 8443 + USER_UID - 1000 ))
-XDEBUG_PORT=$(( 9003 + USER_UID - 1000 ))
-
-# Ensure DDEV network exists
-docker network create ddev_default || true
-
-# Deploy Code-Server
-report_status "Deploying Code-Server ($DEV_USER)..."
-docker stop "code-server-$DEV_USER" code-server 2>/dev/null || true
-docker rm "code-server-$DEV_USER" code-server 2>/dev/null || true
-
-docker run -d --name="code-server-$DEV_USER" \
-  -e PUID=$USER_UID \
-  -e PGID=$(id -g "$DEV_USER") \
-  -e SUDO_PASSWORD="$ROOT_PASSWORD" \
-  -e HOME="/home/$DEV_USER" \
-  -e DEFAULT_WORKSPACE="/home/$DEV_USER/workspace" \
-  --network ddev_default \
-  -v "${HOST_CONFIG}:/config" \
-  -v "/home/$DEV_USER:/home/$DEV_USER" \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -v /usr/bin/docker:/usr/bin/docker \
-  -v /usr/libexec/docker/cli-plugins:/usr/libexec/docker/cli-plugins \
-  -p 127.0.0.1:$PORT:8443 \
-  -p $XDEBUG_PORT:9003 \
-  --restart unless-stopped \
-  linuxserver/code-server:latest
-
-# Wait for container
-while ! docker ps | grep -q "code-server-$DEV_USER"; do sleep 2; done
-
-    # Final Container Setup (Base64 encoded to avoid all quoting issues)
-    CONTAINER_SETUP_B64=$(base64 -w0 << EOF
-#!/bin/bash
-set -e
-chmod 666 /var/run/docker.sock || true
+# Pre-configure Git for the host user
+cat <<EOF > /home/"$DEV_USER"/.gitconfig
+[user]
+    name = ${username}
+    email = ${userEmail}
+EOF
+chown "$DEV_USER":"$DEV_USER" /home/"$DEV_USER"/.gitconfig
 
 # Install DDEV Repo
-apt-get update && apt-get install -y curl gnupg ca-certificates
+apt-get update && apt-get install -y curl gnupg
 install -m 0755 -d /etc/apt/keyrings
 curl -fsSL https://pkg.ddev.com/apt/gpg.key | gpg --batch --yes --dearmor -o /etc/apt/keyrings/ddev.gpg
-echo "deb [signed-by=/etc/apt/keyrings/ddev.gpg] https://pkg.ddev.com/apt/ * *" > /etc/apt/sources.list.d/ddev.list
+echo 'deb [signed-by=/etc/apt/keyrings/ddev.gpg] https://pkg.ddev.com/apt/ * *' > /etc/apt/sources.list.d/ddev.list
 
-# Install DDEV, Vim, Git, etc
-apt-get update && apt-get install -y ddev vim git jq sudo
+# Install DDEV
+apt-get update && apt-get install -y ddev
 
-# Permissions
-echo "abc ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/abc
-chmod 0440 /etc/sudoers.d/abc
+# Initialize mkcert for the host user
+sudo -u "$DEV_USER" mkcert -install || true
 
-# Path Parity Symlink
-rm -rf /config/workspace
-ln -s "/home/${username}/workspace" /config/workspace
-chown -h abc:abc /config/workspace
-
-# Install Oh My Bash
+# Oh My Bash for the host user
 if [ ! -d "/home/${username}/.oh-my-bash" ]; then
-    sudo -u abc bash -c "export HOME=/home/${username}; curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh | bash -s -- --unattended" || true
+    sudo -u "$DEV_USER" bash -c "curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh | bash -s -- --unattended" || true
 fi
 
 # Apply Theme and Fixes
 if [ -f "/home/${username}/.bashrc" ]; then
-    sed -i 's/OSH_THEME="font"/OSH_THEME="90210"/' "/home/${username}/.bashrc"
+    sed -i 's/OSH_THEME="[^"]*"/OSH_THEME="90210"/' "/home/${username}/.bashrc"
     grep -q "enable-bracketed-paste" "/home/${username}/.bashrc" || echo "bind 'set enable-bracketed-paste off'" >> "/home/${username}/.bashrc"
     grep -q "alias l=" "/home/${username}/.bashrc" || echo "alias l='ls -lah'" >> "/home/${username}/.bashrc"
-    grep -q "alias ddev-refresh=" "/home/${username}/.bashrc" || echo "alias ddev-refresh='for nw in \$(docker network ls --format \"{{.Name}}\" | grep \"_default\"); do docker network connect \"\$nw\" \"code-server-${username}\" 2>/dev/null || true; done'" >> "/home/${username}/.bashrc"
 fi
-
-sudo -u abc mkcert -install || true
-
-# Global DDEV Config
-sudo -u abc ddev config global \\
-    --router-http-port=80 \\
-    --router-https-port=443 \\
-    --instrumentation-opt-in=false \\
-    --omit-containers=ddev-ssh-agent || true
-
-    # Agnostic Network Joiner: Connect to all DDEV project networks
-    echo "Connecting code-server to all DDEV networks..."
-    for nw in $(docker network ls --format "{{.Name}}" | grep "_default"); do
-        echo "Joining network: $nw"
-        docker network connect "$nw" "code-server-$DEV_USER" 2>/dev/null || true
-    done
-
-    # Extensions
-    sudo -u abc code-server --install-extension xdebug.php-debug --install-extension vscodevim.vim || true
-EOF
-)
-    docker exec -u root "code-server-$DEV_USER" bash -c "echo \$CONTAINER_SETUP_B64 | base64 -d | bash"
 
 # Firewall
 ufw allow 22/tcp
