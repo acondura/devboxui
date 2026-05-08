@@ -215,7 +215,7 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
       </nav>
 
       {/* Main Content Area */}
-      <main className="max-w-7xl mx-auto p-8">
+      <main className="max-w-[1600px] mx-auto p-8">
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
           <div className="mb-10 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
             <div>

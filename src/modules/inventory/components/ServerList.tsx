@@ -233,13 +233,13 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
           <div className="pl-2 ml-2 border-l border-slate-800 flex items-center space-x-2">
             <a
               href={`vscode://vscode-remote/ssh-remote+${server.userName || 'root'}@${server.ip}/home/${server.userName || 'root'}/workspace`}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-indigo-600/20 inline-block text-center whitespace-nowrap"
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg transition-all shadow-lg shadow-indigo-600/20 inline-block text-center whitespace-nowrap"
             >
               Open in VS Code
             </a>
             <a
               href={`antigravity://vscode-remote/ssh-remote+${server.userName || 'root'}@${server.ip}/home/${server.userName || 'root'}/workspace`}
-              className="px-4 py-2 bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-fuchsia-600/20 inline-block text-center whitespace-nowrap"
+              className="px-4 py-2 bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-sm font-bold rounded-lg transition-all shadow-lg shadow-fuchsia-600/20 inline-block text-center whitespace-nowrap"
             >
               Open in Antigravity
             </a>
