@@ -230,12 +230,18 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
             </button>
           )}
 
-          <div className="pl-2 ml-2 border-l border-slate-800">
+          <div className="pl-2 ml-2 border-l border-slate-800 flex items-center space-x-2">
             <a
               href={`vscode://vscode-remote/ssh-remote+${server.userName || 'root'}@${server.ip}/home/${server.userName || 'root'}/workspace`}
-              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg transition-all shadow-lg shadow-indigo-600/20 inline-block text-center whitespace-nowrap"
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-indigo-600/20 inline-block text-center whitespace-nowrap"
             >
-              VS Code SSH
+              Open in VS Code
+            </a>
+            <a
+              href={`antigravity://vscode-remote/ssh-remote+${server.userName || 'root'}@${server.ip}/home/${server.userName || 'root'}/workspace`}
+              className="px-4 py-2 bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-fuchsia-600/20 inline-block text-center whitespace-nowrap"
+            >
+              Open in Antigravity
             </a>
           </div>
         </div>
@@ -369,7 +375,10 @@ function ServerCard({ server, userEmail, onAddProject, onUpdateDomain, onDeleteD
           ))}
         </div>
 
-        <a href={`vscode://vscode-remote/ssh-remote+${server.userName || 'root'}@${server.ip}/home/${server.userName || 'root'}/workspace`} className="block text-center w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg transition-all">Open in VS Code (SSH)</a>
+        <div className="flex flex-col space-y-2 mt-4">
+          <a href={`vscode://vscode-remote/ssh-remote+${server.userName || 'root'}@${server.ip}/home/${server.userName || 'root'}/workspace`} className="block text-center w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-xl shadow-lg transition-all">Open in VS Code</a>
+          <a href={`antigravity://vscode-remote/ssh-remote+${server.userName || 'root'}@${server.ip}/home/${server.userName || 'root'}/workspace`} className="block text-center w-full py-3 bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-sm font-bold rounded-xl shadow-lg transition-all">Open in Antigravity</a>
+        </div>
       </div>
 
       {isLogsModalOpen && <LogsModal isOpen={isLogsModalOpen} onClose={() => setIsLogsModalOpen(false)} debugData={debugData} isFetching={isFetchingLogs} />}
