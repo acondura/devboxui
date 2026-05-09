@@ -7,13 +7,27 @@ import { HetznerApiService } from '@/lib/hetzner-api';
 import { ContaboApiService } from '@/lib/contabo-api';
 import { formatRsaPublicKey, formatPrivateKey } from '@/lib/ssh-utils';
 
-
 /**
  * Generates the full sequence of bash commands to bootstrap the server.
  */
-function getBootstrapScript(username: string, userEmail: string, tunnelToken: string, managementKey: string, userSSHKey: string, serverId: string, provisioningToken: string, callbackUrl: string, rootPassword?: string, serviceTokenId?: string, serviceTokenSecret?: string, hetznerToken?: string, providerName: string = 'DevBox', displayUrl: string = 'Server') {
+function getBootstrapScript(
+  userName: string,
+  userEmail: string,
+  tunnelToken: string,
+  managementKey: string,
+  userSSHKey: string,
+  serverId: string,
+  provisioningToken: string,
+  callbackUrl: string,
+  rootPassword?: string,
+  serviceTokenId?: string,
+  serviceTokenSecret?: string,
+  hetznerToken?: string,
+  providerName: string = 'DevBox',
+  displayUrl: string = 'Server'
+) {
   // DERIVED VARIABLES
-  const HOST_HOME = `/home/${username}`;
+  const HOST_HOME = `/home/${userName}`;
   const HOST_WORKSPACE = `${HOST_HOME}/workspace`;
   return `#!/bin/bash
 set -e
@@ -21,7 +35,7 @@ echo -e "\\x1b[32m🚀 Script decoded successfully. Starting setup...\\x1b[0m"
 # Script Version: 2026-05-06-v1
 
 # --- 0. Configuration ---
-DEV_USER="${username}"
+DEV_USER="${userName}"
 ROOT_PASSWORD="${rootPassword || ''}"
 SERVER_ID="${serverId}"
 PROV_TOKEN="${provisioningToken}"
@@ -69,9 +83,9 @@ hetzner_heartbeat() {
     if [ -n "$HETZNER_TOKEN" ] && [ -n "$HETZNER_SERVER_ID" ]; then
         local clean_msg=$(echo "$status_msg" | tr ' ' '-')
         if command -v curl >/dev/null 2>&1; then
-            curl -s -X PUT "https://api.hetzner.cloud/v1/servers/$HETZNER_SERVER_ID" -H "Authorization: Bearer $HETZNER_TOKEN" -H "Content-Type: application/json" -d '{"name": "'"${username}-\$clean_msg"'"}' || true
+            curl -s -X PUT "https://api.hetzner.cloud/v1/servers/$HETZNER_SERVER_ID" -H "Authorization: Bearer $HETZNER_TOKEN" -H "Content-Type: application/json" -d '{"name": "'"${userName}-\$clean_msg"'"}' || true
         elif command -v wget >/dev/null 2>&1; then
-            wget -qO- --method=PUT --header="Authorization: Bearer $HETZNER_TOKEN" --header="Content-Type: application/json" --body-data='{"name": "'"${username}-\$clean_msg"'"}' "https://api.hetzner.cloud/v1/servers/$HETZNER_SERVER_ID" || true
+            wget -qO- --method=PUT --header="Authorization: Bearer $HETZNER_TOKEN" --header="Content-Type: application/json" --body-data='{"name": "'"${userName}-\$clean_msg"'"}' "https://api.hetzner.cloud/v1/servers/$HETZNER_SERVER_ID" || true
         fi
     fi
 }
@@ -308,7 +322,7 @@ report_status "Installing DDEV..."
 # Pre-configure Git for the host user
 cat <<EOF > /home/"$DEV_USER"/.gitconfig
 [user]
-    name = ${username}
+    name = ${userName}
     email = ${userEmail}
 EOF
 chown "$DEV_USER":"$DEV_USER" /home/"$DEV_USER"/.gitconfig
@@ -329,15 +343,15 @@ echo "$DEV_USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/90-devbox-user
 sudo -u "$DEV_USER" mkcert -install || true
 
 # Oh My Bash for the host user
-if [ ! -d "/home/${username}/.oh-my-bash" ]; then
+if [ ! -d "/home/${userName}/.oh-my-bash" ]; then
     sudo -u "$DEV_USER" bash -c "curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh | bash -s -- --unattended" || true
 fi
 
 # Apply Theme and Fixes
-if [ -f "/home/${username}/.bashrc" ]; then
-    sed -i 's/OSH_THEME="[^"]*"/OSH_THEME="90210"/' "/home/${username}/.bashrc"
-    grep -q "enable-bracketed-paste" "/home/${username}/.bashrc" || echo "bind 'set enable-bracketed-paste off'" >> "/home/${username}/.bashrc"
-    grep -q "alias l=" "/home/${username}/.bashrc" || echo "alias l='ls -lah'" >> "/home/${username}/.bashrc"
+if [ -f "/home/${userName}/.bashrc" ]; then
+    sed -i 's/OSH_THEME="[^"]*"/OSH_THEME="90210"/' "/home/${userName}/.bashrc"
+    grep -q "enable-bracketed-paste" "/home/${userName}/.bashrc" || echo "bind 'set enable-bracketed-paste off'" >> "/home/${userName}/.bashrc"
+    grep -q "alias l=" "/home/${userName}/.bashrc" || echo "alias l='ls -lah'" >> "/home/${userName}/.bashrc"
 fi
 
 # Firewall
@@ -388,6 +402,28 @@ export async function syncSshKeys(newPublicKey: string) {
   return { success: true, results };
 }
 
+
+/**
+ * Generates a consistent 10-character alphanumeric Linux username based on an email address.
+ * Uses a double-hash approach combined into base36 to ensure uniqueness and predictability.
+ */
+function generateUniqueUsername(email: string): string {
+  let hash = 5381;
+  const str = email.toLowerCase();
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) + hash) + str.charCodeAt(i); /* hash * 33 + c */
+  }
+  const hashNum = (hash >>> 0);
+  
+  let hash2 = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash2 = Math.imul(31, hash2) + str.charCodeAt(i) | 0;
+  }
+  const hashNum2 = (hash2 >>> 0);
+  
+  const base36Str = (hashNum.toString(36) + hashNum2.toString(36)).replace(/[^a-z0-9]/g, '');
+  return ('u' + base36Str.padEnd(9, '0')).substring(0, 10);
+}
 
 /**
  * Retrieves per-user settings (like Hetzner API Token) from KV.
@@ -482,7 +518,7 @@ export async function provisionServer(
   const serverId = crypto.randomUUID();
   const shortId = serverId.slice(0, 8);
   const name = customName || `devbox-${shortId}`;
-  const userName = userEmail.split('@')[0].replace(/[^a-zA-Z0-9]/g, '_');
+  const userName = generateUniqueUsername(userEmail);
   const safeName = name.toLowerCase().replace(/[^a-z0-9]/g, '-');
   const hostname = `${safeName}-code.devboxui.com`;
 
@@ -1334,7 +1370,7 @@ export async function provisionManualServer(customName: string, provider: string
   const serverId = crypto.randomUUID();
   const shortId = serverId.slice(0, 8);
   const name = customName || `devbox-${shortId}`;
-  const userName = userEmail.split('@')[0].replace(/[^a-zA-Z0-9]/g, '_');
+  const userName = generateUniqueUsername(userEmail);
   const safeName = name.toLowerCase().replace(/[^a-z0-9]/g, '-');
   const hostname = `${safeName}-code.devboxui.com`;
 
@@ -1452,7 +1488,7 @@ export async function provisionContaboServer(
   const serverId = crypto.randomUUID();
   const shortId = serverId.slice(0, 8);
   const name = customName || `devbox-${shortId}`;
-  const userName = userEmail.split('@')[0].replace(/[^a-zA-Z0-9]/g, '_');
+  const userName = generateUniqueUsername(userEmail);
   const safeName = name.toLowerCase().replace(/[^a-z0-9]/g, '-');
   const hostname = `${safeName}-code.devboxui.com`;
 

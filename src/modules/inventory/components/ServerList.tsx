@@ -442,7 +442,7 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
   const dropdownRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
-    const saved = localStorage.getItem('devboxui_default_ide');
+    const saved = localStorage.getItem(`devboxui_default_ide_${server.id}`);
     if (saved) setDefaultIde(saved);
 
     const handleClickOutside = (event: MouseEvent) => {
@@ -452,12 +452,13 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [server.id]);
 
-  const handleSelect = (ideId: string) => {
+  const handleSelect = (ideId: string, targetUrl: string) => {
     setDefaultIde(ideId);
-    localStorage.setItem('devboxui_default_ide', ideId);
+    localStorage.setItem(`devboxui_default_ide_${server.id}`, ideId);
     setIsOpen(false);
+    window.location.href = targetUrl;
   };
 
   const ides = [
@@ -466,13 +467,17 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
     { id: 'vscode', name: 'Open in VS Code', protocol: 'vscode://vscode-remote/ssh-remote+', colorClass: 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/20' }
   ];
 
+  const getIdeUrl = (protocol: string) => {
+    return `${protocol}${server.userName || 'root'}@${server.ip}/home/${server.userName || 'root'}/workspace?windowId=_blank`;
+  };
+
   const currentIde = ides.find(i => i.id === defaultIde) || ides.find(i => i.id === 'vscode')!;
-  const url = `${currentIde.protocol}${server.userName || 'root'}@${server.ip}/home/${server.userName || 'root'}/workspace`;
+  const currentUrl = getIdeUrl(currentIde.protocol);
 
   return (
     <div className={`relative inline-flex items-stretch ${fullWidth ? 'w-full' : ''}`} ref={dropdownRef}>
       <a
-        href={url}
+        href={currentUrl}
         className={`${fullWidth ? 'flex-1 py-3 justify-center' : 'px-4 py-2'} ${currentIde.colorClass} text-white text-sm font-bold rounded-l-lg transition-all shadow-lg inline-flex items-center whitespace-nowrap`}
       >
         {currentIde.name}
@@ -490,7 +495,7 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
           {ides.map(ide => (
             <button
               key={ide.id}
-              onClick={() => handleSelect(ide.id)}
+              onClick={() => handleSelect(ide.id, getIdeUrl(ide.protocol))}
               className="w-full text-left px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-slate-700 transition-colors flex items-center space-x-2"
             >
               <div className={`w-2 h-2 rounded-full ${ide.id === currentIde.id ? 'bg-emerald-400' : 'bg-transparent'}`} />
