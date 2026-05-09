@@ -471,7 +471,7 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
     const user = server.userName || 'root';
     const workspace = `/home/${user}/workspace`;
     if (ideId === 'phpstorm') {
-      return `jetbrains://gateway/ssh/environment?h=${server.ip}&u=${user}&p=22&launchIde=true&ideHint=PS&projectHint=${workspace}`;
+      return `jetbrains-gateway://connect#type=ssh&host=${server.ip}&port=22&user=${user}&projectPath=${workspace}&deploy=true`;
     }
     const scheme = ideId === 'antigravity' ? 'antigravity' : 'vscode';
     return `${scheme}://vscode-remote/ssh-remote+${user}@${server.ip}${workspace}?windowId=_blank`;
