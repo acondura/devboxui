@@ -510,7 +510,7 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
           ))}
           <div className="px-4 py-3 bg-slate-900/50 border-t border-slate-700">
             <p className="text-xs text-slate-400 leading-relaxed">
-              <strong>PhpStorm</strong> requires <a href="https://www.jetbrains.com/remote-development/gateway/" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline font-medium" onClick={(e) => e.stopPropagation()}>JetBrains Gateway</a> to be installed.
+              <strong>PhpStorm</strong> requires the <a href="https://www.jetbrains.com/toolbox-app/" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline font-medium" onClick={(e) => e.stopPropagation()}>JetBrains Toolbox App</a> to be installed.
             </p>
           </div>
         </div>
