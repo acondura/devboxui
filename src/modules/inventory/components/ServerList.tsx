@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ServerConfig } from '../types';
 import { AddDomainModal } from './AddDomainModal';
 import { ReinstallModal } from './ReinstallModal';
@@ -231,18 +231,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
           )}
 
           <div className="pl-2 ml-2 border-l border-slate-800 flex items-center space-x-2">
-            <a
-              href={`vscode://vscode-remote/ssh-remote+${server.userName || 'root'}@${server.ip}/home/${server.userName || 'root'}/workspace`}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg transition-all shadow-lg shadow-indigo-600/20 inline-block text-center whitespace-nowrap"
-            >
-              Open in VS Code
-            </a>
-            <a
-              href={`antigravity://vscode-remote/ssh-remote+${server.userName || 'root'}@${server.ip}/home/${server.userName || 'root'}/workspace`}
-              className="px-4 py-2 bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-sm font-bold rounded-lg transition-all shadow-lg shadow-fuchsia-600/20 inline-block text-center whitespace-nowrap"
-            >
-              Open in Antigravity
-            </a>
+            <IdeLaunchButton server={server} />
           </div>
         </div>
         {isLogsModalOpen && (
@@ -376,8 +365,7 @@ function ServerCard({ server, userEmail, onAddProject, onUpdateDomain, onDeleteD
         </div>
 
         <div className="flex flex-col space-y-2 mt-4">
-          <a href={`vscode://vscode-remote/ssh-remote+${server.userName || 'root'}@${server.ip}/home/${server.userName || 'root'}/workspace`} className="block text-center w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-xl shadow-lg transition-all">Open in VS Code</a>
-          <a href={`antigravity://vscode-remote/ssh-remote+${server.userName || 'root'}@${server.ip}/home/${server.userName || 'root'}/workspace`} className="block text-center w-full py-3 bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-sm font-bold rounded-xl shadow-lg transition-all">Open in Antigravity</a>
+          <IdeLaunchButton server={server} fullWidth />
         </div>
       </div>
 
@@ -448,3 +436,69 @@ function LogsModal({ isOpen, onClose, debugData, isFetching }: {
   );
 }
 
+function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, fullWidth?: boolean }) {
+  const [defaultIde, setDefaultIde] = useState<string>('vscode');
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    const saved = localStorage.getItem('devboxui_default_ide');
+    if (saved) setDefaultIde(saved);
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSelect = (ideId: string) => {
+    setDefaultIde(ideId);
+    localStorage.setItem('devboxui_default_ide', ideId);
+    setIsOpen(false);
+  };
+
+  const ides = [
+    { id: 'antigravity', name: 'Open in Antigravity', protocol: 'antigravity://vscode-remote/ssh-remote+', colorClass: 'bg-fuchsia-600 hover:bg-fuchsia-500 shadow-fuchsia-600/20' },
+    { id: 'phpstorm', name: 'Open in PhpStorm', protocol: 'phpstorm://vscode-remote/ssh-remote+', colorClass: 'bg-pink-600 hover:bg-pink-500 shadow-pink-600/20' },
+    { id: 'vscode', name: 'Open in VS Code', protocol: 'vscode://vscode-remote/ssh-remote+', colorClass: 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/20' }
+  ];
+
+  const currentIde = ides.find(i => i.id === defaultIde) || ides.find(i => i.id === 'vscode')!;
+  const url = `${currentIde.protocol}${server.userName || 'root'}@${server.ip}/home/${server.userName || 'root'}/workspace`;
+
+  return (
+    <div className={`relative inline-flex items-stretch ${fullWidth ? 'w-full' : ''}`} ref={dropdownRef}>
+      <a
+        href={url}
+        className={`${fullWidth ? 'flex-1 py-3 justify-center' : 'px-4 py-2'} ${currentIde.colorClass} text-white text-sm font-bold rounded-l-lg transition-all shadow-lg inline-flex items-center whitespace-nowrap`}
+      >
+        {currentIde.name}
+      </a>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={`${fullWidth ? 'px-4 py-3' : 'px-2 py-2'} ${currentIde.colorClass} text-white text-sm font-bold rounded-r-lg border-l border-white/20 transition-all shadow-lg flex items-center justify-center`}
+        title="Choose IDE"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+      </button>
+
+      {isOpen && (
+        <div className={`absolute top-full ${fullWidth ? 'left-0 right-0' : 'right-0'} mt-1 w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-50 overflow-hidden`}>
+          {ides.map(ide => (
+            <button
+              key={ide.id}
+              onClick={() => handleSelect(ide.id)}
+              className="w-full text-left px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-slate-700 transition-colors flex items-center space-x-2"
+            >
+              <div className={`w-2 h-2 rounded-full ${ide.id === currentIde.id ? 'bg-emerald-400' : 'bg-transparent'}`} />
+              <span>{ide.name}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
