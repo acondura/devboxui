@@ -471,7 +471,7 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
     const user = server.userName || 'root';
     const workspace = `/home/${user}/workspace`;
     if (ideId === 'phpstorm') {
-      return `jetbrains-gateway://connect#type=ssh&host=${server.ip}&port=22&user=${user}&projectPath=${workspace}&deploy=true`;
+      return `jetbrains://gateway/ssh/environment?h=${server.ip}&u=${user}&p=22&ideHint=PS&projectHint=${workspace}`;
     }
     const scheme = ideId === 'antigravity' ? 'antigravity' : 'vscode';
     return `${scheme}://vscode-remote/ssh-remote+${user}@${server.ip}${workspace}?windowId=_blank`;
@@ -497,7 +497,7 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
       </button>
 
       {isOpen && (
-        <div className={`absolute top-full ${fullWidth ? 'left-0 right-0' : 'right-0'} mt-1 w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-50 overflow-hidden`}>
+        <div className={`absolute top-full ${fullWidth ? 'left-0 right-0' : 'right-0'} mt-1 w-64 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-50 overflow-hidden`}>
           {ides.map(ide => (
             <button
               key={ide.id}
@@ -508,6 +508,11 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
               <span>{ide.name}</span>
             </button>
           ))}
+          <div className="px-4 py-3 bg-slate-900/50 border-t border-slate-700">
+            <p className="text-xs text-slate-400 leading-relaxed">
+              <strong>PhpStorm</strong> requires <a href="https://www.jetbrains.com/remote-development/gateway/" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline font-medium" onClick={(e) => e.stopPropagation()}>JetBrains Gateway</a> to be installed.
+            </p>
+          </div>
         </div>
       )}
     </div>
