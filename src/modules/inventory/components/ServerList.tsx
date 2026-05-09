@@ -462,17 +462,23 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
   };
 
   const ides = [
-    { id: 'antigravity', name: 'Open in Antigravity', protocol: 'antigravity://vscode-remote/ssh-remote+', colorClass: 'bg-fuchsia-600 hover:bg-fuchsia-500 shadow-fuchsia-600/20' },
-    { id: 'phpstorm', name: 'Open in PhpStorm', protocol: 'phpstorm://vscode-remote/ssh-remote+', colorClass: 'bg-pink-600 hover:bg-pink-500 shadow-pink-600/20' },
-    { id: 'vscode', name: 'Open in VS Code', protocol: 'vscode://vscode-remote/ssh-remote+', colorClass: 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/20' }
+    { id: 'antigravity', name: 'Open in Antigravity', protocol: 'antigravity', colorClass: 'bg-fuchsia-600 hover:bg-fuchsia-500 shadow-fuchsia-600/20' },
+    { id: 'phpstorm', name: 'Open in PhpStorm', protocol: 'jetbrains', colorClass: 'bg-pink-600 hover:bg-pink-500 shadow-pink-600/20' },
+    { id: 'vscode', name: 'Open in VS Code', protocol: 'vscode', colorClass: 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/20' }
   ];
 
-  const getIdeUrl = (protocol: string) => {
-    return `${protocol}${server.userName || 'root'}@${server.ip}/home/${server.userName || 'root'}/workspace?windowId=_blank`;
+  const getIdeUrl = (ideId: string) => {
+    const user = server.userName || 'root';
+    const workspace = `/home/${user}/workspace`;
+    if (ideId === 'phpstorm') {
+      return `jetbrains://gateway/ssh/environment?h=${server.ip}&u=${user}&p=22&launchIde=true&ideHint=PS&projectHint=${workspace}`;
+    }
+    const scheme = ideId === 'antigravity' ? 'antigravity' : 'vscode';
+    return `${scheme}://vscode-remote/ssh-remote+${user}@${server.ip}${workspace}?windowId=_blank`;
   };
 
   const currentIde = ides.find(i => i.id === defaultIde) || ides.find(i => i.id === 'vscode')!;
-  const currentUrl = getIdeUrl(currentIde.protocol);
+  const currentUrl = getIdeUrl(currentIde.id);
 
   return (
     <div className={`relative inline-flex items-stretch ${fullWidth ? 'w-full' : ''}`} ref={dropdownRef}>
@@ -495,7 +501,7 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
           {ides.map(ide => (
             <button
               key={ide.id}
-              onClick={() => handleSelect(ide.id, getIdeUrl(ide.protocol))}
+              onClick={() => handleSelect(ide.id, getIdeUrl(ide.id))}
               className="w-full text-left px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-slate-700 transition-colors flex items-center space-x-2"
             >
               <div className={`w-2 h-2 rounded-full ${ide.id === currentIde.id ? 'bg-emerald-400' : 'bg-transparent'}`} />
