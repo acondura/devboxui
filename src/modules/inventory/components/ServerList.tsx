@@ -10,7 +10,7 @@ interface ServerListProps {
   servers: ServerConfig[];
   userEmail: string;
   onAddProject: (serverId: string, projectName: string, port: number) => Promise<void>;
-  onUpdateDomain: (serverId: string, domain: string, port: number) => Promise<void>;
+  onUpdateDomain: (serverId: string, oldDomain: string, newSubdomain: string, port: number) => Promise<void>;
   onDeleteDomain: (serverId: string, domain: string) => Promise<void>;
   onDeleteServer: (serverId: string) => Promise<void>;
   onToggleLock?: (serverId: string, enableLock: boolean) => Promise<void>;
@@ -101,8 +101,8 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
       <AddDomainModal
         isOpen={isProjectModalOpen}
         onClose={() => { setIsProjectModalOpen(false); setEditingDomain(null); }}
-        onAdd={(name, port) => editingDomain ? onUpdateDomain(server.id, editingDomain.domain, port) : onAddProject(server.id, name, port)}
-        initialData={editingDomain ? { prefix: editingDomain.domain.split('.')[0], port: editingDomain.port || 80 } : undefined}
+        onAdd={(name, port) => editingDomain ? onUpdateDomain(server.id, editingDomain.domain, name, port) : onAddProject(server.id, name, port)}
+        initialData={editingDomain ? { prefix: editingDomain.domain.replace('.devboxui.com', ''), port: editingDomain.port || 80 } : undefined}
       />
       <ReinstallModal
         isOpen={isReinstallModalOpen}
@@ -287,8 +287,8 @@ function ServerCard({ server, userEmail, onAddProject, onUpdateDomain, onDeleteD
       <AddDomainModal
         isOpen={isProjectModalOpen}
         onClose={() => { setIsProjectModalOpen(false); setEditingDomain(null); }}
-        onAdd={(name, port) => editingDomain ? onUpdateDomain(server.id, editingDomain.domain, port) : onAddProject(server.id, name, port)}
-        initialData={editingDomain ? { prefix: editingDomain.domain.split('.')[0], port: editingDomain.port || 80 } : undefined}
+        onAdd={(name, port) => editingDomain ? onUpdateDomain(server.id, editingDomain.domain, name, port) : onAddProject(server.id, name, port)}
+        initialData={editingDomain ? { prefix: editingDomain.domain.replace('.devboxui.com', ''), port: editingDomain.port || 80 } : undefined}
       />
       <ReinstallModal
         isOpen={isReinstallModalOpen}

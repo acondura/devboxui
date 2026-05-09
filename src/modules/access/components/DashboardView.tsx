@@ -90,9 +90,9 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
     }
   };
 
-  const handleUpdateDomain = async (serverId: string, domain: string, port: number) => {
+  const handleUpdateDomain = async (serverId: string, oldDomain: string, newSubdomain: string, port: number) => {
     try {
-      const updatedServer = await updateDomain(serverId, domain, port);
+      const updatedServer = await updateDomain(serverId, oldDomain, newSubdomain, port);
       setServers(prev => prev.map(s => s.id === serverId ? updatedServer : s));
     } catch (error) {
       alert("Failed to update domain. Check console for details.");

@@ -870,7 +870,7 @@ export async function addProject(serverId: string, projectName: string, port: nu
   if (!config.tunnelId) throw new Error("Server is missing a Tunnel ID.");
 
   // 2. Generate Project Domain
-  const cleanName = projectName.toLowerCase().replace(/[^a-z0-9]/g, '-');
+  const cleanName = projectName.toLowerCase().replace(/[^a-z0-9.]/g, '-');
   const projectDomain = `${cleanName}.devboxui.com`; // Simplified domain generation
 
   // 3. Update Cloudflare Tunnel, DNS & Access
@@ -943,9 +943,9 @@ export async function deleteDomain(serverId: string, projectDomain: string) {
 }
 
 /**
- * Updates an existing domain's configuration (e.g. changing the port).
+ * Updates an existing domain's configuration (e.g. changing the port or subdomain).
  */
-export async function updateDomain(serverId: string, projectDomain: string, newPort: number) {
+export async function updateDomain(serverId: string, oldDomain: string, newSubdomain: string, newPort: number) {
   const userEmail = await getIdentity();
   const env = await getCloudflareEnv();
   const kv = env.KV;
@@ -971,14 +971,31 @@ export async function updateDomain(serverId: string, projectDomain: string, newP
   if (!config || !serverKey) throw new Error("Server not found.");
   if (!config.tunnelId) throw new Error("Server is missing a Tunnel ID.");
 
-  // 2. Update Cloudflare Tunnel Ingress
-  const service = `http://localhost:${newPort}`;
-  await cfApi.setupHostname(projectDomain, config.tunnelId, service);
+  // 2. Determine new domain
+  const cleanSubdomain = newSubdomain.toLowerCase().replace(/[^a-z0-9.]/g, '-');
+  const newDomain = `${cleanSubdomain}.devboxui.com`;
+  const domainChanged = oldDomain !== newDomain;
 
-  // 3. Update Server State
+  // 3. Update Cloudflare Tunnel Ingress
+  const service = `http://localhost:${newPort}`;
+  
+  if (domainChanged) {
+    console.log(`Domain changed from ${oldDomain} to ${newDomain}. Cleaning up old and creating new...`);
+    try {
+      await cfApi.removeHostname(oldDomain, config.tunnelId);
+      await cfApi.deleteAccess(oldDomain);
+    } catch (e) {
+      console.error("Cleanup of old domain failed (non-critical):", e);
+    }
+  }
+  
+  await cfApi.setupHostname(newDomain, config.tunnelId, service);
+  await cfApi.setupAccess(newDomain, userEmail);
+
+  // 4. Update Server State
   config.projects = (config.projects || []).map(p => {
-    if (p.domain === projectDomain) {
-      return { ...p, port: newPort }; // Note: Ensure port is in types
+    if (p.domain === oldDomain) {
+      return { ...p, domain: newDomain, name: newSubdomain, port: newPort };
     }
     return p;
   });
