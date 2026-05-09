@@ -35,7 +35,7 @@ export function ServerList(props: ServerListProps) {
   return (
     <>
       {/* Desktop Table View */}
-      <div className="hidden lg:block overflow-x-auto">
+      <div className="hidden lg:block">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-slate-800">
