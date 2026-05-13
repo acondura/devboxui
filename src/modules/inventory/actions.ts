@@ -51,6 +51,7 @@ export SERVICE_TOKEN_ID="${serviceTokenId || ''}"
 export SERVICE_TOKEN_SECRET="${serviceTokenSecret || ''}"
 export USER_SSH_KEY="${userSSHKey}"
 export MANAGEMENT_SSH_KEY="${managementKey}"
+export WORKSPACE_DIR="${HOST_WORKSPACE}"
 
 # Auto-detect Hetzner Server ID from metadata if not provided
 if [ -z "$HETZNER_SERVER_ID" ]; then
@@ -131,6 +132,16 @@ class DebugHandler(http.server.BaseHTTPRequestHandler):
         
         docker_status = subprocess.getoutput('docker ps --format "{{.Names}}: {{.Status}}" || echo "Docker not ready"')
         setup_logs = subprocess.getoutput('tail -n 100 /var/log/cloud-init-output.log || echo "Logs not ready"')
+        
+        # Live Project Discovery
+        workspace_dir = os.environ.get('WORKSPACE_DIR', '/home/root/workspace')
+        projects_list = []
+        if os.path.exists(workspace_dir):
+            try:
+                projects_list = [d for d in os.listdir(workspace_dir) if os.path.isdir(os.path.join(workspace_dir, d))]
+            except Exception as e:
+                projects_list = [f"Error listing projects: {str(e)}"]
+
         status_txt = "Initializing..."
         if os.path.exists("/var/www/debug/status.txt"):
             with open("/var/www/debug/status.txt", "r") as f:
@@ -140,6 +151,7 @@ class DebugHandler(http.server.BaseHTTPRequestHandler):
             "docker": docker_status,
             "setup": setup_logs,
             "status": status_txt,
+            "projects": projects_list,
             "timestamp": subprocess.getoutput('date')
         }
         self.wfile.write(json.dumps(data).encode())

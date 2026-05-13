@@ -440,12 +440,37 @@ function LogsModal({ isOpen, onClose, debugData, isFetching }: {
 
 function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, fullWidth?: boolean }) {
   const [defaultIde, setDefaultIde] = useState<string>('vscode');
+  const [selectedPath, setSelectedPath] = useState<string>(`/home/${server.userName || 'root'}/workspace`);
+  const [customPathInput, setCustomPathInput] = useState<string>('');
+  const [liveProjects, setLiveProjects] = useState<string[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
-    const saved = localStorage.getItem(`devboxui_default_ide_${server.id}`);
-    if (saved) setDefaultIde(saved);
+    const savedIde = localStorage.getItem(`devboxui_default_ide_${server.id}`);
+    if (savedIde) setDefaultIde(savedIde);
+
+    const savedPath = localStorage.getItem(`devboxui_default_path_${server.id}`);
+    if (savedPath) setSelectedPath(savedPath);
+
+    const fetchLiveProjects = async () => {
+      try {
+        const result = await getServerLogs(server.id);
+        if (result.success && result.logsUrl) {
+          const resp = await fetch(result.logsUrl, { credentials: 'include' });
+          if (resp.ok) {
+            const data = await resp.json() as { projects?: string[] };
+            if (data.projects) setLiveProjects(data.projects);
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to fetch live projects from exporter", e);
+      }
+    };
+
+    if (server.status === 'ready') {
+      fetchLiveProjects();
+    }
 
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -454,13 +479,16 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [server.id]);
+  }, [server.id, server.status]);
 
-  const handleSelect = (ideId: string, targetUrl: string) => {
+  const handleSelectIde = (ideId: string) => {
     setDefaultIde(ideId);
     localStorage.setItem(`devboxui_default_ide_${server.id}`, ideId);
-    setIsOpen(false);
-    window.location.href = targetUrl;
+  };
+
+  const handleSelectPath = (path: string) => {
+    setSelectedPath(path);
+    localStorage.setItem(`devboxui_default_path_${server.id}`, path);
   };
 
   const ides = [
@@ -511,18 +539,28 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
     }
   ];
 
-  const getIdeUrl = (ideId: string) => {
+  const getIdeUrl = (ideId: string, path: string) => {
     const user = server.userName || 'root';
-    const workspace = `/home/${user}/workspace`;
     if (ideId === 'phpstorm') {
-      return `jetbrains://gateway/ssh/environment?h=${server.ip}&u=${user}&p=22&ideHint=PS&projectHint=${workspace}`;
+      return `jetbrains://gateway/ssh/environment?h=${server.ip}&u=${user}&p=22&ideHint=PS&projectHint=${path}`;
     }
     const scheme = ideId === 'antigravity' ? 'antigravity' : (ideId === 'cursor' ? 'cursor' : 'vscode');
-    return `${scheme}://vscode-remote/ssh-remote+${user}@${server.ip}${workspace}?windowId=_blank`;
+    return `${scheme}://vscode-remote/ssh-remote+${user}@${server.ip}${path}?windowId=_blank`;
   };
 
   const currentIde = ides.find(i => i.id === defaultIde) || ides.find(i => i.id === 'vscode')!;
-  const currentUrl = getIdeUrl(currentIde.id);
+  const currentUrl = getIdeUrl(currentIde.id, selectedPath);
+
+  const mainWorkspacePath = `/home/${server.userName || 'root'}/workspace`;
+  
+  // Merge static projects from KV with live discovered folders from Python
+  const staticProjectNames = new Set(server.projects?.map(p => p.name) || []);
+  const mergedProjects = [
+    ...(server.projects?.map(p => ({ name: p.name, path: `${mainWorkspacePath}/${p.name}`, isLive: true })) || []),
+    ...liveProjects
+      .filter(name => !staticProjectNames.has(name))
+      .map(name => ({ name, path: `${mainWorkspacePath}/${name}`, isLive: false }))
+  ];
 
   return (
     <div className={`relative inline-flex items-stretch ${fullWidth ? 'w-full' : ''}`} ref={dropdownRef}>
@@ -531,42 +569,126 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
         className={`${fullWidth ? 'flex-1 py-3 justify-center' : 'px-4 py-2'} ${currentIde.colorClass} text-white text-sm font-bold rounded-l-lg transition-all shadow-lg inline-flex items-center whitespace-nowrap`}
       >
         {currentIde.icon}
-        Open in {currentIde.name}
+        <div className="flex flex-col items-start leading-none">
+          <span>Open in {currentIde.name}</span>
+          <span className="text-[9px] opacity-70 mt-1 truncate max-w-[120px]">
+            {selectedPath === mainWorkspacePath ? 'Main Workspace' : selectedPath.split('/').pop()}
+          </span>
+        </div>
       </a>
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`${fullWidth ? 'px-4 py-3' : 'px-2 py-2'} ${currentIde.colorClass} text-white text-sm font-bold rounded-r-lg border-l border-white/20 transition-all shadow-lg flex items-center justify-center`}
-        title="Choose IDE"
+        title="Choose IDE or Folder"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
       </button>
 
       {isOpen && (
-        <div className={`absolute top-full ${fullWidth ? 'left-0 right-0' : 'right-0'} mt-1 w-64 bg-slate-900 border border-slate-800 rounded-lg shadow-2xl z-50 overflow-hidden`}>
-          <div className="p-2 space-y-1">
-            {ides.map(ide => (
-              <button
-                key={ide.id}
-                onClick={() => handleSelect(ide.id, getIdeUrl(ide.id))}
-                className={`w-full text-left px-3 py-2 rounded-md text-sm transition-all flex items-center group ${
-                  ide.id === currentIde.id 
-                    ? 'bg-slate-800 text-white' 
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                }`}
-              >
-                <div className={`p-1.5 rounded mr-3 ${ide.colorClass} shadow-sm group-hover:scale-110 transition-transform`}>
-                  {ide.icon && React.cloneElement(ide.icon as React.ReactElement<{ className?: string }>, { className: 'w-3.5 h-3.5 mr-0' })}
+        <div className={`absolute top-full ${fullWidth ? 'left-0 right-0' : 'right-0'} mt-1 w-72 bg-slate-900 border border-slate-800 rounded-lg shadow-2xl z-50 overflow-hidden flex flex-col max-h-[80vh]`}>
+          <div className="p-2 space-y-4 overflow-y-auto">
+            {/* IDE Selection */}
+            <div>
+              <div className="px-3 py-1 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Select IDE</div>
+              <div className="mt-1 space-y-1">
+                {ides.map(ide => (
+                  <button
+                    key={ide.id}
+                    onClick={() => handleSelectIde(ide.id)}
+                    className={`w-full text-left px-3 py-2 rounded-md text-sm transition-all flex items-center group ${
+                      ide.id === currentIde.id 
+                        ? 'bg-slate-800 text-white' 
+                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                    }`}
+                  >
+                    <div className={`p-1.5 rounded mr-3 ${ide.colorClass} shadow-sm group-hover:scale-110 transition-transform`}>
+                      {ide.icon && React.cloneElement(ide.icon as React.ReactElement<{ className?: string }>, { className: 'w-3.5 h-3.5 mr-0' })}
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-bold">{ide.name}</div>
+                      {ide.id === currentIde.id && <div className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest">Default</div>}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Project Selection */}
+            <div>
+              <div className="px-3 py-1 text-[10px] font-bold text-slate-500 uppercase tracking-widest flex justify-between items-center">
+                <span>Select Project / Folder</span>
+                {server.status === 'ready' && liveProjects.length > 0 && <span className="text-emerald-500 text-[8px] animate-pulse">Live</span>}
+              </div>
+              <div className="mt-1 space-y-1">
+                <button
+                  onClick={() => handleSelectPath(mainWorkspacePath)}
+                  className={`w-full text-left px-3 py-2 rounded-md text-sm transition-all flex items-center ${
+                    selectedPath === mainWorkspacePath 
+                      ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30' 
+                      : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                  }`}
+                >
+                  <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
+                  <div className="flex-1">
+                    <div className="font-bold">Main Workspace</div>
+                    <div className="text-[9px] opacity-50 truncate">{mainWorkspacePath}</div>
+                  </div>
+                </button>
+
+                {mergedProjects.map(project => (
+                  <button
+                    key={project.name}
+                    onClick={() => handleSelectPath(project.path)}
+                    className={`w-full text-left px-3 py-2 rounded-md text-sm transition-all flex items-center ${
+                      selectedPath === project.path 
+                        ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30' 
+                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                    }`}
+                  >
+                    <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2">
+                        <div className="font-bold">{project.name}</div>
+                        {!staticProjectNames.has(project.name) && <span className="text-[8px] bg-slate-800 text-slate-500 px-1 rounded">On Disk</span>}
+                      </div>
+                      <div className="text-[9px] opacity-50 truncate">{project.path}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Custom Path */}
+            <div>
+              <div className="px-3 py-1 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Custom Folder Path</div>
+              <div className="mt-2 px-3 pb-2">
+                <div className="flex space-x-2">
+                  <input 
+                    type="text" 
+                    value={customPathInput}
+                    onChange={(e) => setCustomPathInput(e.target.value)}
+                    placeholder="/home/..."
+                    className="flex-1 bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                  />
+                  <button 
+                    onClick={() => {
+                      if (customPathInput.trim()) {
+                        handleSelectPath(customPathInput.trim());
+                        setCustomPathInput('');
+                      }
+                    }}
+                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold rounded uppercase transition-colors"
+                  >
+                    Set
+                  </button>
                 </div>
-                <div className="flex-1">
-                  <div className="font-bold">Open in {ide.name}</div>
-                  {ide.id === currentIde.id && <div className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest mt-0.5">Current Default</div>}
-                </div>
-              </button>
-            ))}
+              </div>
+            </div>
           </div>
+          
           <div className="px-4 py-3 bg-slate-950/50 border-t border-slate-800">
             <p className="text-[10px] text-slate-500 leading-relaxed italic">
-              Clicking an option sets it as your default for this DevBox.
+              Selected IDE and Folder are remembered for this DevBox.
             </p>
           </div>
         </div>
