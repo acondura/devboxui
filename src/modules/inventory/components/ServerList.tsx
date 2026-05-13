@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ServerConfig } from '../types';
 import { AddDomainModal } from './AddDomainModal';
 import { ReinstallModal } from './ReinstallModal';
@@ -74,7 +74,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
   const [deletingDomain, setDeletingDomain] = useState<string | null>(null);
   const [debugData, setDebugData] = useState<{ docker: string, setup: string, timestamp: string } | null>(null);
 
-  const safeTargetBase = `${userEmail}-${server.id}`.replace(/[^a-zA-Z0-9]/g, '_');
+  // const safeTargetBase = `${userEmail}-${server.id}`.replace(/[^a-zA-Z0-9]/g, '_');
   const displayHostname = (server.hostname || 'devbox').replace('.devboxui.com', '');
 
   const handleFetchLogs = async () => {
@@ -242,13 +242,13 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
   );
 }
 
-function ServerCard({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDomain, onDeleteServer, onToggleLock, onReinstall }: ServerListProps & { server: ServerConfig }) {
+function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDeleteServer, onReinstall }: ServerListProps & { server: ServerConfig }) {
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [editingDomain, setEditingDomain] = useState<{ domain: string; port: number } | null>(null);
   const [isReinstallModalOpen, setIsReinstallModalOpen] = useState(false);
   const [isFetchingLogs, setIsFetchingLogs] = useState(false);
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
-  const [isTogglingLock, setIsTogglingLock] = useState(false);
+  // const [isTogglingLock, setIsTogglingLock] = useState(false);
   const [debugData, setDebugData] = useState<{ docker: string, setup: string, timestamp: string } | null>(null);
 
   const displayHostname = (server.hostname || 'devbox').replace('.devboxui.com', '');
@@ -268,6 +268,7 @@ function ServerCard({ server, userEmail, onAddProject, onUpdateDomain, onDeleteD
     } finally { setIsFetchingLogs(false); }
   };
 
+  /*
   const handleToggleLock = async () => {
     if (onToggleLock) {
       setIsTogglingLock(true);
@@ -275,6 +276,7 @@ function ServerCard({ server, userEmail, onAddProject, onUpdateDomain, onDeleteD
       setIsTogglingLock(false);
     }
   };
+  */
 
   const handleDelete = async () => {
     if (confirm("Delete this server?")) {
@@ -462,9 +464,51 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
   };
 
   const ides = [
-    { id: 'antigravity', name: 'Open in Antigravity', protocol: 'antigravity', colorClass: 'bg-fuchsia-600 hover:bg-fuchsia-500 shadow-fuchsia-600/20' },
-    { id: 'phpstorm', name: 'Open in PhpStorm', protocol: 'jetbrains', colorClass: 'bg-pink-600 hover:bg-pink-500 shadow-pink-600/20' },
-    { id: 'vscode', name: 'Open in VS Code', protocol: 'vscode', colorClass: 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/20' }
+    { 
+      id: 'antigravity', 
+      name: 'Antigravity', 
+      protocol: 'antigravity', 
+      colorClass: 'bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:via-purple-500 hover:to-pink-500 shadow-purple-500/20',
+      icon: (
+        <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      )
+    },
+    { 
+      id: 'vscode', 
+      name: 'VS Code', 
+      protocol: 'vscode', 
+      colorClass: 'bg-[#007ACC] hover:bg-[#0062a3] shadow-blue-500/20',
+      icon: (
+        <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M23.15 2.58L17.62 0l-9.64 9.19-4.37-3.32L0 8.09l4.79 3.01L0 14.12l3.61 2.21 4.37-3.32 9.64 9.19 5.53-2.58L12.7 12l10.45-9.42z" />
+        </svg>
+      )
+    },
+    { 
+      id: 'cursor', 
+      name: 'Cursor', 
+      protocol: 'cursor', 
+      colorClass: 'bg-[#f54e00] hover:bg-[#d44300] shadow-orange-500/20',
+      icon: (
+        <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 18c-3.314 0-6-2.686-6-6s2.686-6 6-6 6 2.686 6 6-2.686 6-6 6z" />
+          <path d="M12 8c-2.209 0-4 1.791-4 4s1.791 4 4 4 4-1.791 4-4-1.791-4-4-4zm0 6c-1.105 0-2-.895-2-2s.895-2 2-2 2 .895 2 2-.895 2-2 2z" />
+        </svg>
+      )
+    },
+    { 
+      id: 'phpstorm', 
+      name: 'PhpStorm', 
+      protocol: 'jetbrains', 
+      colorClass: 'bg-[#FE315D] hover:bg-[#e01b4a] shadow-rose-500/20',
+      icon: (
+        <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M0 0v24h24V0H0zm18.324 16.272c-.12.44-.36.88-.6 1.16-.48.48-1.2.76-1.88.76-.84 0-1.52-.36-1.92-.96-.28-.4-.4-.84-.4-1.32s.12-.92.4-1.32c.4-.6.96-.92 1.8-.92h.48v-1.96h-2.12v-1.16h3.24v5.72zm-7.68 0c-.12.44-.36.88-.6 1.16-.48.48-1.2.76-1.88.76-.84 0-1.52-.36-1.92-.96-.28-.4-.4-.84-.4-1.32s.12-.92.4-1.32c.4-.6.96-.92 1.8-.92h.48v-1.96H5.404v-1.16h3.24v5.72z" />
+        </svg>
+      )
+    }
   ];
 
   const getIdeUrl = (ideId: string) => {
@@ -473,7 +517,7 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
     if (ideId === 'phpstorm') {
       return `jetbrains://gateway/ssh/environment?h=${server.ip}&u=${user}&p=22&ideHint=PS&projectHint=${workspace}`;
     }
-    const scheme = ideId === 'antigravity' ? 'antigravity' : 'vscode';
+    const scheme = ideId === 'antigravity' ? 'antigravity' : (ideId === 'cursor' ? 'cursor' : 'vscode');
     return `${scheme}://vscode-remote/ssh-remote+${user}@${server.ip}${workspace}?windowId=_blank`;
   };
 
@@ -486,7 +530,8 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
         href={currentUrl}
         className={`${fullWidth ? 'flex-1 py-3 justify-center' : 'px-4 py-2'} ${currentIde.colorClass} text-white text-sm font-bold rounded-l-lg transition-all shadow-lg inline-flex items-center whitespace-nowrap`}
       >
-        {currentIde.name}
+        {currentIde.icon}
+        Open in {currentIde.name}
       </a>
       <button
         onClick={() => setIsOpen(!isOpen)}
@@ -497,20 +542,31 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
       </button>
 
       {isOpen && (
-        <div className={`absolute top-full ${fullWidth ? 'left-0 right-0' : 'right-0'} mt-1 w-64 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-50 overflow-hidden`}>
-          {ides.map(ide => (
-            <button
-              key={ide.id}
-              onClick={() => handleSelect(ide.id, getIdeUrl(ide.id))}
-              className="w-full text-left px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-slate-700 transition-colors flex items-center space-x-2"
-            >
-              <div className={`w-2 h-2 rounded-full ${ide.id === currentIde.id ? 'bg-emerald-400' : 'bg-transparent'}`} />
-              <span>{ide.name}</span>
-            </button>
-          ))}
-          <div className="px-4 py-3 bg-slate-900/50 border-t border-slate-700">
-            <p className="text-xs text-slate-400 leading-relaxed">
-              <strong>PhpStorm</strong> requires the <a href="https://www.jetbrains.com/toolbox-app/" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline font-medium" onClick={(e) => e.stopPropagation()}>JetBrains Toolbox App</a> to be installed.
+        <div className={`absolute top-full ${fullWidth ? 'left-0 right-0' : 'right-0'} mt-1 w-64 bg-slate-900 border border-slate-800 rounded-lg shadow-2xl z-50 overflow-hidden`}>
+          <div className="p-2 space-y-1">
+            {ides.map(ide => (
+              <button
+                key={ide.id}
+                onClick={() => handleSelect(ide.id, getIdeUrl(ide.id))}
+                className={`w-full text-left px-3 py-2 rounded-md text-sm transition-all flex items-center group ${
+                  ide.id === currentIde.id 
+                    ? 'bg-slate-800 text-white' 
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                }`}
+              >
+                <div className={`p-1.5 rounded mr-3 ${ide.colorClass} shadow-sm group-hover:scale-110 transition-transform`}>
+                  {ide.icon && React.cloneElement(ide.icon as React.ReactElement<{ className?: string }>, { className: 'w-3.5 h-3.5 mr-0' })}
+                </div>
+                <div className="flex-1">
+                  <div className="font-bold">Open in {ide.name}</div>
+                  {ide.id === currentIde.id && <div className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest mt-0.5">Current Default</div>}
+                </div>
+              </button>
+            ))}
+          </div>
+          <div className="px-4 py-3 bg-slate-950/50 border-t border-slate-800">
+            <p className="text-[10px] text-slate-500 leading-relaxed italic">
+              Clicking an option sets it as your default for this DevBox.
             </p>
           </div>
         </div>
