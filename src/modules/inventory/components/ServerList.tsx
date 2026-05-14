@@ -445,27 +445,27 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   
+  const fetchLiveProjects = async () => {
+    try {
+      const result = await getServerLogs(server.id);
+      if (result.success && result.logsUrl) {
+        const resp = await fetch(result.logsUrl, { credentials: 'include' });
+        if (resp.ok) {
+          const data = await resp.json() as { projects?: string[] };
+          if (data.projects) setLiveProjects(data.projects);
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to fetch live projects from exporter", e);
+    }
+  };
+
   useEffect(() => {
     const savedIde = localStorage.getItem(`devboxui_default_ide_${server.id}`);
     if (savedIde) setDefaultIde(savedIde);
 
     const savedPath = localStorage.getItem(`devboxui_default_path_${server.id}`);
     if (savedPath) setSelectedPath(savedPath);
-
-    const fetchLiveProjects = async () => {
-      try {
-        const result = await getServerLogs(server.id);
-        if (result.success && result.logsUrl) {
-          const resp = await fetch(result.logsUrl, { credentials: 'include' });
-          if (resp.ok) {
-            const data = await resp.json() as { projects?: string[] };
-            if (data.projects) setLiveProjects(data.projects);
-          }
-        }
-      } catch (e) {
-        console.warn("Failed to fetch live projects from exporter", e);
-      }
-    };
 
     if (server.status === 'ready') {
       fetchLiveProjects();
@@ -479,6 +479,13 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [server.id, server.status]);
+
+  // Refresh live projects whenever the dropdown is opened
+  useEffect(() => {
+    if (isOpen && server.status === 'ready') {
+      fetchLiveProjects();
+    }
+  }, [isOpen, server.status]);
 
   const handleSelectIde = (ideId: string) => {
     setDefaultIde(ideId);
@@ -497,7 +504,7 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
       protocol: 'antigravity', 
       colorClass: 'bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:via-purple-500 hover:to-pink-500 shadow-purple-500/20',
       icon: (
-        <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+        <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
           <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       )
@@ -508,7 +515,7 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
       protocol: 'vscode', 
       colorClass: 'bg-[#007ACC] hover:bg-[#0062a3] shadow-blue-500/20',
       icon: (
-        <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24" fill="currentColor">
+        <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
           <path d="M23.15 2.58L17.62 0l-9.64 9.19-4.37-3.32L0 8.09l4.79 3.01L0 14.12l3.61 2.21 4.37-3.32 9.64 9.19 5.53-2.58L12.7 12l10.45-9.42z" />
         </svg>
       )
@@ -519,7 +526,7 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
       protocol: 'cursor', 
       colorClass: 'bg-[#f54e00] hover:bg-[#d44300] shadow-orange-500/20',
       icon: (
-        <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24" fill="currentColor">
+        <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
           <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 18c-3.314 0-6-2.686-6-6s2.686-6 6-6 6 2.686 6 6-2.686 6-6 6z" />
           <path d="M12 8c-2.209 0-4 1.791-4 4s1.791 4 4 4 4-1.791 4-4-1.791-4-4-4zm0 6c-1.105 0-2-.895-2-2s.895-2 2-2 2 .895 2 2-.895 2-2 2z" />
         </svg>
@@ -531,7 +538,7 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
       protocol: 'jetbrains', 
       colorClass: 'bg-[#FE315D] hover:bg-[#e01b4a] shadow-rose-500/20',
       icon: (
-        <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24" fill="currentColor">
+        <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
           <path d="M0 0v24h24V0H0zm18.324 16.272c-.12.44-.36.88-.6 1.16-.48.48-1.2.76-1.88.76-.84 0-1.52-.36-1.92-.96-.28-.4-.4-.84-.4-1.32s.12-.92.4-1.32c.4-.6.96-.92 1.8-.92h.48v-1.96h-2.12v-1.16h3.24v5.72zm-7.68 0c-.12.44-.36.88-.6 1.16-.48.48-1.2.76-1.88.76-.84 0-1.52-.36-1.92-.96-.28-.4-.4-.84-.4-1.32s.12-.92.4-1.32c.4-.6.96-.92 1.8-.92h.48v-1.96H5.404v-1.16h3.24v5.72z" />
         </svg>
       )
@@ -552,8 +559,6 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
 
   const mainWorkspacePath = `/home/${server.userName || 'root'}/workspace`;
   
-  // Only list projects that actually exist on disk (if live discovery is active)
-  // or show static ones if discovery fails.
   const staticProjects = server.projects?.map(p => ({ name: p.name, path: `${mainWorkspacePath}/${p.name}`, isStatic: true })) || [];
   
   const mergedProjects = liveProjects.length > 0 
@@ -568,50 +573,50 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
     <div className={`relative inline-flex items-stretch ${fullWidth ? 'w-full' : ''}`} ref={dropdownRef}>
       <a
         href={currentUrl}
-        className={`${fullWidth ? 'flex-1 py-4 justify-center' : 'px-6 py-3'} ${currentIde.colorClass} text-white text-base font-extrabold rounded-l-xl transition-all shadow-xl inline-flex items-center whitespace-nowrap`}
+        className={`${fullWidth ? 'flex-1 py-2 justify-center' : 'px-4 py-2'} ${currentIde.colorClass} text-white text-xs font-bold rounded-l-lg transition-all shadow-lg inline-flex items-center whitespace-nowrap`}
       >
-        {React.cloneElement(currentIde.icon as React.ReactElement<{ className?: string }>, { className: 'w-6 h-6 mr-3' })}
+        {React.cloneElement(currentIde.icon as React.ReactElement<{ className?: string }>, { className: 'w-4 h-4 mr-2' })}
         <div className="flex flex-col items-start leading-tight">
           <span>Open in {currentIde.name}</span>
-          <span className="text-[10px] opacity-80 font-mono tracking-tight mt-1 truncate max-w-[180px]">
+          <span className="text-[8px] opacity-80 font-mono tracking-tight mt-0.5 truncate max-w-[120px]">
             {selectedPath === mainWorkspacePath ? '~/workspace' : `~/workspace/${selectedPath.split('/').pop()}`}
           </span>
         </div>
       </a>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`${fullWidth ? 'px-5' : 'px-3'} ${currentIde.colorClass} text-white rounded-r-xl border-l border-white/20 transition-all shadow-xl flex items-center justify-center hover:bg-white/10`}
+        className={`${fullWidth ? 'px-3' : 'px-2'} ${currentIde.colorClass} text-white rounded-r-lg border-l border-white/20 transition-all shadow-lg flex items-center justify-center hover:bg-white/10`}
         title="Choose IDE or Folder"
       >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
       </button>
 
       {isOpen && (
-        <div className={`absolute top-full ${fullWidth ? 'left-0 right-0' : 'right-0'} mt-2 w-80 bg-slate-900 border border-slate-800 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-50 overflow-hidden flex flex-col max-h-[85vh]`}>
-          <div className="p-3 space-y-5 overflow-y-auto">
+        <div className={`absolute top-full ${fullWidth ? 'left-0 right-0' : 'right-0'} mt-1.5 w-72 bg-slate-900 border border-slate-800 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-50 overflow-hidden flex flex-col max-h-[85vh]`}>
+          <div className="p-2 space-y-4 overflow-y-auto">
             {/* IDE Selection */}
             <div>
-              <div className="px-3 py-1.5 text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] flex justify-between items-center">
+              <div className="px-3 py-1 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] flex justify-between items-center">
                 <span>IDE</span>
-                <span className="h-px flex-1 bg-slate-800 ml-4" />
+                <span className="h-px flex-1 bg-slate-800 ml-3" />
               </div>
-              <div className="mt-2 space-y-1.5">
+              <div className="mt-1 space-y-1">
                 {ides.map(ide => (
                   <button
                     key={ide.id}
                     onClick={() => handleSelectIde(ide.id)}
-                    className={`w-full text-left px-4 py-3 rounded-lg text-base transition-all flex items-center group ${
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all flex items-center group ${
                       ide.id === currentIde.id 
                         ? 'bg-slate-800 text-white ring-1 ring-slate-700' 
                         : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
                     }`}
                   >
-                    <div className={`p-2 rounded-lg mr-4 ${ide.colorClass} shadow-lg group-hover:scale-110 transition-transform`}>
-                      {ide.icon && React.cloneElement(ide.icon as React.ReactElement<{ className?: string }>, { className: 'w-4 h-4 mr-0' })}
+                    <div className={`p-1.5 rounded-md mr-3 ${ide.colorClass} shadow-lg group-hover:scale-110 transition-transform`}>
+                      {ide.icon && React.cloneElement(ide.icon as React.ReactElement<{ className?: string }>, { className: 'w-3.5 h-3.5 mr-0' })}
                     </div>
                     <div className="flex-1">
                       <div className="font-bold">{ide.name}</div>
-                      {ide.id === currentIde.id && <div className="text-[10px] text-emerald-400 font-black uppercase tracking-widest mt-0.5">Selected Default</div>}
+                      {ide.id === currentIde.id && <div className="text-[9px] text-emerald-400 font-black uppercase tracking-widest mt-0.5">Default</div>}
                     </div>
                   </button>
                 ))}
@@ -620,31 +625,31 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
 
             {/* Project Selection */}
             <div>
-              <div className="px-3 py-1.5 text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] flex justify-between items-center">
+              <div className="px-3 py-1 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] flex justify-between items-center">
                 <span>Projects</span>
-                <span className="h-px flex-1 bg-slate-800 ml-4" />
+                <span className="h-px flex-1 bg-slate-800 ml-3" />
                 {server.status === 'ready' && liveProjects.length > 0 && (
-                  <div className="flex items-center ml-4 space-x-1.5">
+                  <div className="flex items-center ml-3 space-x-1">
                     <span className="h-1.5 w-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                    <span className="text-emerald-500 font-bold text-[9px]">LIVE</span>
+                    <span className="text-emerald-500 font-bold text-[8px]">LIVE</span>
                   </div>
                 )}
               </div>
-              <div className="mt-2 space-y-1.5">
+              <div className="mt-1 space-y-1">
                 <button
                   onClick={() => handleSelectPath(mainWorkspacePath)}
-                  className={`w-full text-left px-4 py-3 rounded-lg text-base transition-all flex items-center ${
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all flex items-center ${
                     selectedPath === mainWorkspacePath 
                       ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20' 
                       : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
                   }`}
                 >
-                  <div className="p-2 bg-slate-800 rounded-lg mr-4 text-slate-400">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+                  <div className="p-1.5 bg-slate-800 rounded-md mr-3 text-slate-400">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
                   </div>
                   <div className="flex-1">
-                    <div className="font-bold text-lg leading-tight">Main Workspace</div>
-                    <div className="text-[11px] opacity-60 font-mono mt-0.5">{mainWorkspacePath}</div>
+                    <div className="font-bold leading-tight">Main Workspace</div>
+                    <div className="text-[10px] opacity-60 font-mono mt-0.5">{mainWorkspacePath}</div>
                   </div>
                 </button>
 
@@ -652,20 +657,18 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
                   <button
                     key={project.name}
                     onClick={() => handleSelectPath(project.path)}
-                    className={`w-full text-left px-4 py-3 rounded-lg text-base transition-all flex items-center ${
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all flex items-center ${
                       selectedPath === project.path 
                         ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20' 
                         : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
                     }`}
                   >
-                    <div className="p-2 bg-slate-800 rounded-lg mr-4 text-slate-400">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
+                    <div className="p-1.5 bg-slate-800 rounded-md mr-3 text-slate-400">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
                     </div>
                     <div className="flex-1">
-                      <div className="flex items-center space-x-2">
-                        <div className="font-bold text-lg leading-tight">{project.name}</div>
-                      </div>
-                      <div className="text-[11px] opacity-60 font-mono mt-0.5">{project.path}</div>
+                      <div className="font-bold leading-tight">{project.name}</div>
+                      <div className="text-[10px] opacity-60 font-mono mt-0.5">{project.path}</div>
                     </div>
                   </button>
                 ))}
@@ -673,9 +676,9 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
             </div>
           </div>
           
-          <div className="px-5 py-4 bg-slate-950/50 border-t border-slate-800 flex justify-between items-center">
-            <span className="text-[10px] text-slate-500 font-medium italic">PhpStorm requires JetBrains Toolbox.</span>
-            <span className="text-[10px] font-black text-indigo-500 uppercase tracking-tighter">DevBox UI</span>
+          <div className="px-4 py-3 bg-slate-950/50 border-t border-slate-800 flex justify-between items-center">
+            <span className="text-[9px] text-slate-500 font-medium italic">PhpStorm requires JetBrains Toolbox.</span>
+            <span className="text-[9px] font-black text-indigo-500 uppercase tracking-tighter">DevBox UI</span>
           </div>
         </div>
       )}
