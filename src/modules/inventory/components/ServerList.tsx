@@ -449,10 +449,16 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
     try {
       const result = await getServerLogs(server.id);
       if (result.success && result.logsUrl) {
-        const resp = await fetch(result.logsUrl, { credentials: 'include' });
+        // Add cache-busting timestamp
+        const url = new URL(result.logsUrl);
+        url.searchParams.set('t', Date.now().toString());
+        
+        const resp = await fetch(url.toString(), { credentials: 'include' });
         if (resp.ok) {
           const data = await resp.json() as { projects?: string[] };
-          if (data.projects) setLiveProjects(data.projects);
+          if (data.projects) {
+            setLiveProjects(data.projects);
+          }
         }
       }
     } catch (e) {
