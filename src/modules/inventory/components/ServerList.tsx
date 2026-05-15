@@ -443,9 +443,11 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
   const [selectedPath, setSelectedPath] = useState<string>(`/home/${server.userName || 'root'}/workspace`);
   const [liveProjects, setLiveProjects] = useState<string[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   
   const fetchLiveProjects = async () => {
+    setIsFetching(true);
     try {
       const result = await getServerLogs(server.id);
       if (result.success && result.logsUrl) {
@@ -463,6 +465,8 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
       }
     } catch (e) {
       console.warn("Failed to fetch live projects from exporter", e);
+    } finally {
+      setIsFetching(false);
     }
   };
 
@@ -567,7 +571,9 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
   
   const staticProjects = server.projects?.map(p => ({ name: p.name, path: `${mainWorkspacePath}/${p.name}`, isStatic: true })) || [];
   
-  const mergedProjects = liveProjects.length > 0 
+  // Show live results if we've successfully fetched them at least once
+  const isLiveActive = liveProjects.length > 0;
+  const mergedProjects = isLiveActive
     ? liveProjects.map(name => ({ 
         name, 
         path: `${mainWorkspacePath}/${name}`, 
@@ -608,9 +614,13 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
               </div>
               <div className="mt-1 space-y-1">
                 {ides.map(ide => (
-                  <button
+                  <a
                     key={ide.id}
-                    onClick={() => handleSelectIde(ide.id)}
+                    href={getIdeUrl(ide.id, selectedPath)}
+                    onClick={() => {
+                      handleSelectIde(ide.id);
+                      setIsOpen(false);
+                    }}
                     className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all flex items-center group ${
                       ide.id === currentIde.id 
                         ? 'bg-slate-800 text-white ring-1 ring-slate-700' 
@@ -624,7 +634,7 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
                       <div className="font-bold">{ide.name}</div>
                       {ide.id === currentIde.id && <div className="text-[9px] text-emerald-400 font-black uppercase tracking-widest mt-0.5">Default</div>}
                     </div>
-                  </button>
+                  </a>
                 ))}
               </div>
             </div>
@@ -634,16 +644,26 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
               <div className="px-3 py-1 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] flex justify-between items-center">
                 <span>Projects</span>
                 <span className="h-px flex-1 bg-slate-800 ml-3" />
-                {server.status === 'ready' && liveProjects.length > 0 && (
+                {server.status === 'ready' && (isLiveActive || isFetching) && (
                   <div className="flex items-center ml-3 space-x-1">
-                    <span className="h-1.5 w-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                    <span className="text-emerald-500 font-bold text-[8px]">LIVE</span>
+                    {isFetching ? (
+                      <div className="h-1.5 w-1.5 border border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <span className="h-1.5 w-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_5px_rgba(16,185,129,0.5)]" />
+                    )}
+                    <span className="text-emerald-500 font-bold text-[8px] tracking-tighter">
+                      {isFetching ? 'REFRESHING' : 'LIVE'}
+                    </span>
                   </div>
                 )}
               </div>
               <div className="mt-1 space-y-1">
-                <button
-                  onClick={() => handleSelectPath(mainWorkspacePath)}
+                <a
+                  href={getIdeUrl(currentIde.id, mainWorkspacePath)}
+                  onClick={() => {
+                    handleSelectPath(mainWorkspacePath);
+                    setIsOpen(false);
+                  }}
                   className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all flex items-center ${
                     selectedPath === mainWorkspacePath 
                       ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20' 
@@ -657,12 +677,16 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
                     <div className="font-bold leading-tight">Main Workspace</div>
                     <div className="text-[10px] opacity-60 font-mono mt-0.5">{mainWorkspacePath}</div>
                   </div>
-                </button>
+                </a>
 
                 {mergedProjects.map(project => (
-                  <button
+                  <a
                     key={project.name}
-                    onClick={() => handleSelectPath(project.path)}
+                    href={getIdeUrl(currentIde.id, project.path)}
+                    onClick={() => {
+                      handleSelectPath(project.path);
+                      setIsOpen(false);
+                    }}
                     className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all flex items-center ${
                       selectedPath === project.path 
                         ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20' 
@@ -676,7 +700,7 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
                       <div className="font-bold leading-tight">{project.name}</div>
                       <div className="text-[10px] opacity-60 font-mono mt-0.5">{project.path}</div>
                     </div>
-                  </button>
+                  </a>
                 ))}
               </div>
             </div>

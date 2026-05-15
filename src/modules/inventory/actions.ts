@@ -134,7 +134,12 @@ class DebugHandler(http.server.BaseHTTPRequestHandler):
         setup_logs = subprocess.getoutput('tail -n 100 /var/log/cloud-init-output.log || echo "Logs not ready"')
         
         # Live Project Discovery
-        workspace_dir = os.environ.get('WORKSPACE_DIR', '/home/root/workspace')
+        workspace_dir = os.environ.get('WORKSPACE_DIR')
+        if not workspace_dir:
+            # Try to auto-detect if env var is missing
+            possible_home = subprocess.getoutput('echo /home/$(ls /home | head -n 1)/workspace')
+            workspace_dir = possible_home if os.path.exists(possible_home) else '/home/root/workspace'
+            
         projects_list = []
         if os.path.exists(workspace_dir):
             try:
@@ -152,23 +157,24 @@ class DebugHandler(http.server.BaseHTTPRequestHandler):
             "setup": setup_logs,
             "status": status_txt,
             "projects": projects_list,
+            "workspace": workspace_dir,
             "timestamp": subprocess.getoutput('date')
         }
         self.wfile.write(json.dumps(data).encode())
 
-PORT = 8080
+PORT = 8000
 socketserver.TCPServer.allow_reuse_address = True
 with socketserver.TCPServer(("", PORT), DebugHandler) as httpd:
     httpd.serve_forever()
 PYEOF
 
 # Start the server in the background with nohup to ensure survival
-nohup python3 /var/www/debug/server.py > /var/log/debug-server.log 2>&1 &
+nohup env WORKSPACE_DIR="$WORKSPACE_DIR" python3 /var/www/debug/server.py > /var/log/debug-server.log 2>&1 &
 
 # --- 2. System Resilience & Immediate Reporting ---
 export DEBIAN_FRONTEND=noninteractive
 # Open debug port
-ufw allow 8080/tcp || echo "ufw not present or failed"
+ufw allow 8000/tcp || echo "ufw not present or failed"
 
 # We use a simple apt-get update retry loop instead of 'fuser' (which might be missing)
 START_TIME=$(date +%s)
@@ -776,7 +782,7 @@ export async function getServers() {
             try {
               const controller = new AbortController();
               const id = setTimeout(() => controller.abort(), 800); // Very fast probe
-              const probeResp = await fetch(`http://${s.ip}:8080`, {
+              const probeResp = await fetch(`http://${s.ip}:8000`, {
                 signal: controller.signal,
                 cache: 'no-store'
               });
