@@ -1376,13 +1376,47 @@ export async function getServerLogs(serverId: string) {
 
   if (!config) throw new Error("Server not found.");
 
-  const logsUrl = config.tunnelUrl?.replace('-code.', '-logs.') || `https://logs-${serverId.slice(0, 8)}.devboxui.com`;
+  const logsUrl = config.tunnelUrl?.split('?')[0].replace('-code.', '-logs.') || `https://logs-${serverId.slice(0, 8)}.devboxui.com`;
+
+  return { success: true, logsUrl };
+}
+
+/**
+ * Fetches live projects from the server via the secure logs tunnel.
+ * Performs the fetch on the server side to bypass Cloudflare Access and CORS.
+ */
+export async function getLiveProjects(serverId: string) {
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+  if (!kv) throw new Error("KV database missing.");
+
+  const servers = await getServers();
+  const config = servers.find(s => s.id === serverId);
+  if (!config) throw new Error("Server not found.");
+
+  const logsUrl = config.tunnelUrl?.split('?')[0].replace('-code.', '-logs.') || `https://logs-${serverId.slice(0, 8)}.devboxui.com`;
 
   try {
-    // In the dashboard, we will fetch from this URL directly from the browser
-    // to take advantage of the user's existing Cloudflare Access session.
-    return { success: true, logsUrl };
+    const cfApi = new CloudflareApiService(env);
+    const serviceToken = await cfApi.getOrCreateServiceToken(kv);
+
+    const resp = await fetch(logsUrl, {
+      headers: {
+        'CF-Access-Client-Id': serviceToken.id,
+        'CF-Access-Client-Secret': serviceToken.client_secret,
+      },
+      next: { revalidate: 0 },
+      cache: 'no-store'
+    });
+
+    if (resp.ok) {
+      const data = await resp.json() as { projects?: string[] };
+      return { success: true, projects: data.projects || [] };
+    }
+    
+    return { success: false, error: `Fetch failed: ${resp.status} ${resp.statusText}` };
   } catch (error) {
+    console.error("Failed to fetch live projects:", error);
     return { success: false, error: String(error) };
   }
 }

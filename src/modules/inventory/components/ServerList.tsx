@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ServerConfig } from '../types';
 import { AddDomainModal } from './AddDomainModal';
 import { ReinstallModal } from './ReinstallModal';
-import { getServerLogs } from '../actions';
+import { getServerLogs, getLiveProjects } from '../actions';
 
 interface ServerListProps {
   servers: ServerConfig[];
@@ -449,19 +449,11 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
   const fetchLiveProjects = async () => {
     setIsFetching(true);
     try {
-      const result = await getServerLogs(server.id);
-      if (result.success && result.logsUrl) {
-        // Add cache-busting timestamp
-        const url = new URL(result.logsUrl);
-        url.searchParams.set('t', Date.now().toString());
-        
-        const resp = await fetch(url.toString(), { credentials: 'include' });
-        if (resp.ok) {
-          const data = await resp.json() as { projects?: string[] };
-          if (data.projects) {
-            setLiveProjects(data.projects);
-          }
-        }
+      const result = await getLiveProjects(server.id);
+      if (result.success && result.projects) {
+        setLiveProjects(result.projects);
+      } else {
+        console.warn("Server discovery failed:", result.error);
       }
     } catch (e) {
       console.warn("Failed to fetch live projects from exporter", e);
