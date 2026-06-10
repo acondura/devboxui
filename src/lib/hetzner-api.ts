@@ -79,10 +79,25 @@ export interface HetznerLocation {
 
 export interface HetznerImage {
   id: number;
-  name: string;
+  name: string | null;
+  description: string;
   status: string;
   os_flavor: string;
+  type: string;
   deprecated: boolean | string | null;
+  created: string;
+  disk_size: number;
+  labels: Record<string, string>;
+}
+
+export interface HetznerAction {
+  id: number;
+  command: string;
+  status: 'running' | 'success' | 'error';
+  progress: number;
+  started: string;
+  finished: string | null;
+  error: { code: string; message: string } | null;
 }
 
 export class HetznerApiService {
@@ -307,6 +322,184 @@ export class HetznerApiService {
       throw new Error(`Hetzner Rebuild Error: ${response.status} - ${error}`);
     }
 
+    return await response.json() as HetznerServerResponse;
+  }
+
+  /**
+   * Sends an ACPI shutdown signal to a server (graceful poweroff).
+   */
+  async poweroffServer(serverId: number): Promise<HetznerAction> {
+    const response = await fetch(`${this.baseUrl}/servers/${serverId}/actions/poweroff`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${this.token}` }
+    });
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Hetzner Poweroff Error: ${response.status} - ${error}`);
+    }
+    const data = await response.json() as { action: HetznerAction };
+    return data.action;
+  }
+
+  /**
+   * Gets the live status of a single server.
+   */
+  async getServerStatus(serverId: number): Promise<string> {
+    const response = await fetch(`${this.baseUrl}/servers/${serverId}`, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${this.token}` }
+    });
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Hetzner GetServer Error: ${response.status} - ${error}`);
+    }
+    const data = await response.json() as { server: HetznerServer };
+    return data.server.status;
+  }
+
+  /**
+   * Polls until the server reaches the target status or timeout.
+   */
+  async waitForServerStatus(
+    serverId: number,
+    targetStatus: string,
+    timeoutMs: number = 120_000,
+    pollIntervalMs: number = 5_000
+  ): Promise<void> {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      const status = await this.getServerStatus(serverId);
+      if (status === targetStatus) return;
+      await new Promise(r => setTimeout(r, pollIntervalMs));
+    }
+    throw new Error(`Timeout: server ${serverId} did not reach status '${targetStatus}' within ${timeoutMs}ms`);
+  }
+
+  /**
+   * Creates a snapshot of a server. The server MUST be powered off first.
+   * Applies a label so old snapshots can be identified and cleaned up.
+   */
+  async createSnapshot(
+    serverId: number,
+    description: string,
+    labels: Record<string, string> = {}
+  ): Promise<HetznerImage> {
+    const response = await fetch(`${this.baseUrl}/servers/${serverId}/actions/create_image`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.token}`
+      },
+      body: JSON.stringify({
+        description,
+        type: 'snapshot',
+        labels
+      })
+    });
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Hetzner Snapshot Error: ${response.status} - ${error}`);
+    }
+    const data = await response.json() as { image: HetznerImage; action: HetznerAction };
+    return data.image;
+  }
+
+  /**
+   * Polls until the snapshot image reaches 'available' status.
+   */
+  async waitForSnapshot(
+    imageId: number,
+    timeoutMs: number = 600_000,
+    pollIntervalMs: number = 10_000
+  ): Promise<HetznerImage> {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      const image = await this.getImage(imageId);
+      if (image.status === 'available') return image;
+      await new Promise(r => setTimeout(r, pollIntervalMs));
+    }
+    throw new Error(`Timeout: snapshot ${imageId} did not become available within ${timeoutMs}ms`);
+  }
+
+  /**
+   * Gets a single image/snapshot by ID.
+   */
+  async getImage(imageId: number): Promise<HetznerImage> {
+    const response = await fetch(`${this.baseUrl}/images/${imageId}`, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${this.token}` }
+    });
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Hetzner GetImage Error: ${response.status} - ${error}`);
+    }
+    const data = await response.json() as { image: HetznerImage };
+    return data.image;
+  }
+
+  /**
+   * Lists all snapshots, optionally filtered by label selector.
+   * e.g. labelSelector = 'devbox-server-id=abc123'
+   */
+  async getSnapshots(labelSelector?: string): Promise<HetznerImage[]> {
+    let url = `${this.baseUrl}/images?type=snapshot`;
+    if (labelSelector) url += `&label_selector=${encodeURIComponent(labelSelector)}`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${this.token}` }
+    });
+    if (!response.ok) return [];
+    const data = await response.json() as { images: HetznerImage[] };
+    return data.images;
+  }
+
+  /**
+   * Deletes a snapshot image by ID.
+   */
+  async deleteSnapshot(imageId: number): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/images/${imageId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${this.token}` }
+    });
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Hetzner DeleteSnapshot Error: ${response.status} - ${error}`);
+    }
+  }
+
+  /**
+   * Creates a new server from a snapshot image.
+   */
+  async createServerFromSnapshot(
+    name: string,
+    snapshotId: number,
+    serverType: string = 'cpx21',
+    location: string = 'nbg1',
+    sshKeys: (string | number)[] = []
+  ): Promise<HetznerServerResponse> {
+    const response = await fetch(`${this.baseUrl}/servers`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.token}`
+      },
+      body: JSON.stringify({
+        name,
+        server_type: serverType,
+        image: snapshotId,
+        location,
+        start_after_create: true,
+        ssh_keys: sshKeys,
+        public_net: {
+          enable_ipv4: true,
+          enable_ipv6: false
+        }
+      })
+    });
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Hetzner CreateFromSnapshot Error: ${response.status} - ${error}`);
+    }
     return await response.json() as HetznerServerResponse;
   }
 }

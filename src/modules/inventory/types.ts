@@ -32,6 +32,23 @@ export interface ServerConfig {
   tunnelToken?: string;
   providerName?: string;
   hostname?: string;
+  scheduleConfig?: ScheduleConfig;
+}
+
+export interface ScheduleConfig {
+  enabled: boolean;
+  timezone: string;        // e.g. 'Europe/Bucharest'
+  spinupTime: string;      // 'HH:MM' in local timezone
+  snapshotTime: string;    // 'HH:MM' in local timezone
+  serverType: string;      // e.g. 'cpx21'
+  location: string;        // e.g. 'nbg1'
+  sshKeyIds?: number[];    // Hetzner SSH key IDs to attach on spin-up
+  latestSnapshotId?: number;
+  latestSnapshotDate?: string;
+  lastEveningRun?: string; // ISO timestamp
+  lastMorningRun?: string; // ISO timestamp
+  lastRunStatus?: 'success' | 'error' | 'running';
+  lastRunError?: string;
 }
 
 export interface ProvisioningState {

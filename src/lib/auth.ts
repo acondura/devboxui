@@ -21,6 +21,8 @@ export const CloudflareEnvSchema = z.object({
   CONTABO_API_USERNAME: z.string().optional(),
   CONTABO_API_PASSWORD: z.string().optional(),
   NEXT_PUBLIC_APP_URL: z.string().optional(),
+  CRON_SECRET: z.string().optional(),
+  ADMIN_EMAIL: z.string().optional(),
 });
 
 export type CloudflareEnv = z.infer<typeof CloudflareEnvSchema>;

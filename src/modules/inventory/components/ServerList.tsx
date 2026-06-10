@@ -4,7 +4,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ServerConfig } from '../types';
 import { AddDomainModal } from './AddDomainModal';
 import { ReinstallModal } from './ReinstallModal';
+import { ScheduleModal } from './ScheduleModal';
 import { getServerLogs, getLiveProjects } from '../actions';
+import { ScheduleConfig } from '../types';
 
 interface ServerListProps {
   servers: ServerConfig[];
@@ -69,6 +71,8 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [editingDomain, setEditingDomain] = useState<{ domain: string; port: number } | null>(null);
   const [isReinstallModalOpen, setIsReinstallModalOpen] = useState(false);
+  const [isScheduleOpen, setIsScheduleOpen] = useState(false);
+  const [scheduleConfig, setScheduleConfig] = useState<ScheduleConfig | null>(server.scheduleConfig || null);
   const [isFetchingLogs, setIsFetchingLogs] = useState(false);
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
   const [deletingDomain, setDeletingDomain] = useState<string | null>(null);
@@ -116,6 +120,15 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
         provider={server.providerName}
         isAutomated={!!(server.hetznerServerId || server.contaboInstanceId)}
       />
+      {isScheduleOpen && (
+        <ScheduleModal
+          isOpen={isScheduleOpen}
+          onClose={() => setIsScheduleOpen(false)}
+          serverId={server.id}
+          serverName={server.hostname || server.ip}
+          onSaved={(cfg) => setScheduleConfig(cfg)}
+        />
+      )}
 
       {/* Status */}
       <td className="py-6 px-4">
@@ -219,6 +232,26 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
           </button>
 
+          {/* Schedule button — only for Hetzner servers */}
+          {server.hetznerServerId && (
+            <button
+              onClick={() => setIsScheduleOpen(true)}
+              className={`relative p-2 rounded-lg transition-all ${
+                scheduleConfig?.enabled
+                  ? 'text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20'
+                  : 'text-slate-500 hover:text-indigo-400 hover:bg-slate-800'
+              }`}
+              title={scheduleConfig?.enabled ? `Schedule active — ${scheduleConfig.spinupTime} / ${scheduleConfig.snapshotTime}` : 'Set daily schedule'}
+            >
+              {scheduleConfig?.enabled && (
+                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-indigo-500 rounded-full shadow-[0_0_6px_rgba(99,102,241,0.8)] animate-pulse" />
+              )}
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
+          )}
+
           {(server.hetznerServerId || server.contaboInstanceId) && (
             <button
               onClick={async () => { if (confirm("Delete server?")) await onDeleteServer(server.id); }}
@@ -246,6 +279,8 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [editingDomain, setEditingDomain] = useState<{ domain: string; port: number } | null>(null);
   const [isReinstallModalOpen, setIsReinstallModalOpen] = useState(false);
+  const [isScheduleOpen, setIsScheduleOpen] = useState(false);
+  const [scheduleConfig, setScheduleConfig] = useState<ScheduleConfig | null>(server.scheduleConfig || null);
   const [isFetchingLogs, setIsFetchingLogs] = useState(false);
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
   // const [isTogglingLock, setIsTogglingLock] = useState(false);
@@ -304,6 +339,15 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
         provider={server.providerName}
         isAutomated={!!(server.hetznerServerId || server.contaboInstanceId)}
       />
+      {isScheduleOpen && (
+        <ScheduleModal
+          isOpen={isScheduleOpen}
+          onClose={() => setIsScheduleOpen(false)}
+          serverId={server.id}
+          serverName={server.hostname || server.ip}
+          onSaved={(cfg) => setScheduleConfig(cfg)}
+        />
+      )}
 
       {/* Mobile Card Header */}
       <div className="p-6 border-b border-slate-800 bg-slate-950/50 space-y-4">
@@ -346,6 +390,21 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
         <div className="flex items-center space-x-2 pt-2">
           <button onClick={handleFetchLogs} className="flex-1 py-2 text-xs font-bold uppercase bg-slate-800 text-slate-300 rounded-lg">Logs</button>
           <button onClick={() => setIsReinstallModalOpen(true)} className="flex-1 py-2 text-xs font-bold uppercase bg-slate-800 text-slate-300 rounded-lg">Reinstall</button>
+          {server.hetznerServerId && (
+            <button
+              onClick={() => setIsScheduleOpen(true)}
+              className={`relative flex-1 py-2 text-xs font-bold uppercase rounded-lg transition-all ${
+                scheduleConfig?.enabled
+                  ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
+                  : 'bg-slate-800 text-slate-300'
+              }`}
+            >
+              {scheduleConfig?.enabled && (
+                <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse" />
+              )}
+              Schedule
+            </button>
+          )}
         </div>
       </div>
 
