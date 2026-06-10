@@ -49,6 +49,9 @@ export interface ScheduleConfig {
   lastMorningRun?: string; // ISO timestamp
   lastRunStatus?: 'success' | 'error' | 'running';
   lastRunError?: string;
+  // Vacation / pause controls
+  pauseUntil?: string;     // ISO date string 'YYYY-MM-DD' — skip ALL automation until this date (inclusive)
+  blockedDates?: string[]; // Array of 'YYYY-MM-DD' strings — skip spin-up AND snapshot on these dates
 }
 
 export interface ProvisioningState {

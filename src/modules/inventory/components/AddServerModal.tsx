@@ -104,7 +104,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
         }
         if (data.images.length > 0) {
           const defaultImg = data.images.find(i => i.name === 'ubuntu-24.04') || data.images[0];
-          setImage(defaultImg.name);
+          setImage(defaultImg.name ?? '');
         }
         
         setIsLoadingOptions(false);

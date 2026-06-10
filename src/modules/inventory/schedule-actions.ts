@@ -92,9 +92,35 @@ async function resolveSSHKeyIds(
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MORNING WORKFLOW — spin up from snapshot
-// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * Returns { paused: true, reason } when the schedule should not run today.
+ * Checks:
+ *   1. pauseUntil — a hard pause until a specific date
+ *   2. blockedDates — a set of individual skip days (vacation days)
+ * All date comparisons are done in the server's configured timezone.
+ */
+function isSchedulePaused(
+  sched: ScheduleConfig,
+  nowUtc: Date = new Date()
+): { paused: boolean; reason?: string } {
+  // Get today's date string in the server's local timezone (YYYY-MM-DD)
+  const localDateStr = nowUtc.toLocaleDateString('en-CA', { timeZone: sched.timezone || 'UTC' }); // en-CA gives YYYY-MM-DD
+
+  // 1. Hard pause until a specific date
+  if (sched.pauseUntil) {
+    if (localDateStr <= sched.pauseUntil) {
+      return { paused: true, reason: `Paused until ${sched.pauseUntil} (today: ${localDateStr})` };
+    }
+  }
+
+  // 2. Blocked individual dates (vacation days)
+  if (sched.blockedDates && sched.blockedDates.includes(localDateStr)) {
+    return { paused: true, reason: `${localDateStr} is a blocked date` };
+  }
+
+  return { paused: false };
+}
+
 
 export async function runMorningWorkflow(
   serverId: string,
@@ -115,6 +141,12 @@ export async function runMorningWorkflow(
   if (!schedConfig) return { success: false, message: 'No schedule config found for server.' };
   const sched = JSON.parse(schedConfig) as ScheduleConfig;
   if (!sched.enabled) return { success: false, message: 'Schedule is disabled.' };
+
+  // Check pause / vacation days
+  const pauseCheck = isSchedulePaused(sched);
+  if (pauseCheck.paused) {
+    return { success: true, message: `Skipped: ${pauseCheck.reason}` };
+  }
 
   // Load KV server record
   const serverData = await kv.get(serverKey(userEmail, serverId));
@@ -206,6 +238,12 @@ export async function runEveningWorkflow(
   if (!schedData) return { success: false, message: 'No schedule config found for server.' };
   const sched = JSON.parse(schedData) as ScheduleConfig;
   if (!sched.enabled) return { success: false, message: 'Schedule is disabled.' };
+
+  // Check pause / vacation days
+  const pauseCheck = isSchedulePaused(sched);
+  if (pauseCheck.paused) {
+    return { success: true, message: `Skipped: ${pauseCheck.reason}` };
+  }
 
   const serverData = await kv.get(serverKey(userEmail, serverId));
   if (!serverData) return { success: false, message: 'Server KV record not found.' };

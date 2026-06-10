@@ -233,6 +233,115 @@ export function ScheduleModal({ serverId, serverName, isOpen, onClose, onSaved }
               </div>
             </div>
 
+            {/* ── Pause Controls ───────────────────────────────────────────── */}
+            <div className="space-y-4">
+              <Label>Pause Controls</Label>
+
+              {/* Pause Until */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                  <svg className="w-3 h-3 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 9v6m4-6v6M9 19h6a2 2 0 002-2V7a2 2 0 00-2-2H9a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                  Pause until date
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    id={`pause-until-${serverId}`}
+                    type="date"
+                    value={config.pauseUntil || ''}
+                    min={new Date().toISOString().slice(0, 10)}
+                    onChange={e => setConfig(c => ({ ...c, pauseUntil: e.target.value || undefined }))}
+                    className="flex-1 bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-amber-500 font-mono"
+                  />
+                  {config.pauseUntil && (
+                    <button
+                      onClick={() => setConfig(c => ({ ...c, pauseUntil: undefined }))}
+                      className="p-2 text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-all"
+                      title="Clear pause"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+                {config.pauseUntil && (
+                  <p className="text-[10px] text-amber-400/80 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 bg-amber-400 rounded-full inline-block" />
+                    All automation paused until <strong>{config.pauseUntil}</strong> (inclusive)
+                  </p>
+                )}
+              </div>
+
+              {/* Blocked / vacation dates */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                  <svg className="w-3 h-3 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  Vacation / skip days
+                </label>
+
+                {/* Date adder */}
+                <div className="flex items-center gap-2">
+                  <input
+                    id={`blocked-date-picker-${serverId}`}
+                    type="date"
+                    min={new Date().toISOString().slice(0, 10)}
+                    className="flex-1 bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-rose-500 font-mono"
+                    onChange={e => {
+                      const date = e.target.value;
+                      if (!date) return;
+                      setConfig(c => {
+                        const existing = c.blockedDates || [];
+                        if (existing.includes(date)) return c;
+                        const updated = [...existing, date].sort();
+                        return { ...c, blockedDates: updated };
+                      });
+                      e.target.value = ''; // reset picker
+                    }}
+                  />
+                  <span className="text-[10px] text-slate-500 whitespace-nowrap">Pick a date to block</span>
+                </div>
+
+                {/* Chip list */}
+                {config.blockedDates && config.blockedDates.length > 0 ? (
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {config.blockedDates.map(date => (
+                      <span
+                        key={date}
+                        className="flex items-center gap-1.5 px-2.5 py-1 bg-rose-500/10 border border-rose-500/20 rounded-full text-[11px] font-mono text-rose-300"
+                      >
+                        {date}
+                        <button
+                          onClick={() => setConfig(c => ({
+                            ...c,
+                            blockedDates: (c.blockedDates || []).filter(d => d !== date)
+                          }))}
+                          className="text-rose-400/60 hover:text-rose-300 transition-colors"
+                          title={`Remove ${date}`}
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </span>
+                    ))}
+                    <button
+                      onClick={() => setConfig(c => ({ ...c, blockedDates: [] }))}
+                      className="text-[10px] text-slate-500 hover:text-rose-400 transition-colors px-2 py-1 hover:bg-rose-500/10 rounded-full"
+                    >
+                      Clear all
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-slate-600 italic">No skip days set. Pick dates above to block individual days.</p>
+                )}
+              </div>
+            </div>
+
+
             {/* Snapshot status */}
             {(config.latestSnapshotId || config.lastEveningRun) && (
               <div className="space-y-3">
