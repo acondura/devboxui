@@ -98,7 +98,7 @@ export function ReinstallModal({ isOpen, onClose, onConfirm, serverName, serverI
                     'Updates system & tools',
                     'Configures users & SSH',
                     'Installs Docker Engine',
-                    'Deploys VS Code IDE',
+                    'Installs Oh-My-Bash',
                     'Installs DDEV & Git',
                     'Secures firewall & ports'
                   ].map((step, i) => (

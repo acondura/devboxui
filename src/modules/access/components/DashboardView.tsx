@@ -35,9 +35,10 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
     loadServers();
   }, []);
 
-  // Poll for updates if any server is provisioning
+  // Poll for updates if any Hetzner server is provisioning
   useEffect(() => {
     const isPending = servers.some(s => 
+      s.hetznerServerId &&
       ['provisioning', 'waiting-for-bootstrap', 'initializing', 'Initializing'].includes(s.status as string)
     );
     if (!isPending) return;
@@ -51,18 +52,19 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
         
         // Re-schedule only if still pending
         const stillPending = data && data.some(s => 
+          s.hetznerServerId &&
           ['provisioning', 'waiting-for-bootstrap', 'initializing', 'Initializing'].includes(s.status as string)
         );
         if (stillPending) {
-          timerId = setTimeout(poll, 3000);
+          timerId = setTimeout(poll, 5000);
         }
       } catch (error) {
-        console.error("Polling error:", error);
-        timerId = setTimeout(poll, 5000); // Wait longer on error
+        // Silently retry polling on network/auth errors to avoid console drama
+        timerId = setTimeout(poll, 10000); 
       }
     }
 
-    timerId = setTimeout(poll, 3000);
+    timerId = setTimeout(poll, 5000);
     return () => clearTimeout(timerId);
   }, [servers]); // Simplified dependency to avoid complex expression warnings
 
@@ -88,9 +90,9 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
     }
   };
 
-  const handleUpdateDomain = async (serverId: string, domain: string, port: number) => {
+  const handleUpdateDomain = async (serverId: string, oldDomain: string, newSubdomain: string, port: number) => {
     try {
-      const updatedServer = await updateDomain(serverId, domain, port);
+      const updatedServer = await updateDomain(serverId, oldDomain, newSubdomain, port);
       setServers(prev => prev.map(s => s.id === serverId ? updatedServer : s));
     } catch (error) {
       alert("Failed to update domain. Check console for details.");
@@ -213,7 +215,7 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
       </nav>
 
       {/* Main Content Area */}
-      <main className="max-w-7xl mx-auto p-8">
+      <main className="max-w-[1600px] mx-auto p-8">
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
           <div className="mb-10 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
             <div>
