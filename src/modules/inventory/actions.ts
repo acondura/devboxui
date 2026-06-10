@@ -7,40 +7,39 @@ import { HetznerApiService } from '@/lib/hetzner-api';
 import { ContaboApiService } from '@/lib/contabo-api';
 import { formatRsaPublicKey, formatPrivateKey } from '@/lib/ssh-utils';
 
-
 /**
  * Generates the full sequence of bash commands to bootstrap the server.
  */
-function getBootstrapScript(username: string, userEmail: string, tunnelToken: string, managementKey: string, userSSHKey: string, serverId: string, provisioningToken: string, callbackUrl: string, rootPassword?: string, serviceTokenId?: string, serviceTokenSecret?: string, hetznerToken?: string, providerName: string = 'DevBox', displayUrl: string = 'Server') {
+function getBootstrapScript(
+  userName: string,
+  userEmail: string,
+  tunnelToken: string,
+  managementKey: string,
+  userSSHKey: string,
+  serverId: string,
+  provisioningToken: string,
+  callbackUrl: string,
+  rootPassword?: string,
+  serviceTokenId?: string,
+  serviceTokenSecret?: string,
+  hetznerToken?: string,
+  providerName: string = 'DevBox',
+  displayUrl: string = 'Server'
+) {
   // DERIVED VARIABLES
-  const HOST_HOME = `/home/${username}`;
+  const HOST_HOME = `/home/${userName}`;
   const HOST_WORKSPACE = `${HOST_HOME}/workspace`;
-  const HOST_CONFIG = `${HOST_HOME}/.code-server`;
-
-  const settingsJson = JSON.stringify({
-    "window.title": `${providerName} - ${displayUrl} - DevBox`,
-    "window.menuBarVisibility": "compact",
-    "window.titleBarStyle": "custom",
-    "window.commandCenter": false,
-    "workbench.layoutControl.enabled": false,
-    "editor.fontSize": 15,
-    "terminal.integrated.fontSize": 15,
-    "workbench.colorTheme": "Dark+"
-  }, null, 4);
-  const settingsBase64 = Buffer.from(settingsJson).toString('base64');
-
   return `#!/bin/bash
 set -e
 echo -e "\\x1b[32m🚀 Script decoded successfully. Starting setup...\\x1b[0m"
 # Script Version: 2026-05-06-v1
 
 # --- 0. Configuration ---
-DEV_USER="${username}"
+DEV_USER="${userName}"
 ROOT_PASSWORD="${rootPassword || ''}"
 SERVER_ID="${serverId}"
 PROV_TOKEN="${provisioningToken}"
 WORKSPACE_DIR="${HOST_WORKSPACE}"
-CONFIG_DIR="${HOST_CONFIG}"
 
 # EXPORT SECRETS
 export TUNNEL_TOKEN="${tunnelToken}"
@@ -52,10 +51,11 @@ export SERVICE_TOKEN_ID="${serviceTokenId || ''}"
 export SERVICE_TOKEN_SECRET="${serviceTokenSecret || ''}"
 export USER_SSH_KEY="${userSSHKey}"
 export MANAGEMENT_SSH_KEY="${managementKey}"
+export WORKSPACE_DIR="${HOST_WORKSPACE}"
 
 # Auto-detect Hetzner Server ID from metadata if not provided
 if [ -z "$HETZNER_SERVER_ID" ]; then
-    HETZNER_SERVER_ID=$(curl -s http://169.254.169.254/hetzner/v1/metadata/instance-id || echo "")
+    HETZNER_SERVER_ID=$(curl -s -m 2 http://169.254.169.254/hetzner/v1/metadata/instance-id || echo "")
 fi
 
 # UNLOCK root immediately
@@ -84,9 +84,9 @@ hetzner_heartbeat() {
     if [ -n "$HETZNER_TOKEN" ] && [ -n "$HETZNER_SERVER_ID" ]; then
         local clean_msg=$(echo "$status_msg" | tr ' ' '-')
         if command -v curl >/dev/null 2>&1; then
-            curl -s -X PUT "https://api.hetzner.cloud/v1/servers/$HETZNER_SERVER_ID" -H "Authorization: Bearer $HETZNER_TOKEN" -H "Content-Type: application/json" -d '{"name": "'"${username}-\$clean_msg"'"}' || true
+            curl -s -X PUT "https://api.hetzner.cloud/v1/servers/$HETZNER_SERVER_ID" -H "Authorization: Bearer $HETZNER_TOKEN" -H "Content-Type: application/json" -d '{"name": "'"${userName}-\$clean_msg"'"}' || true
         elif command -v wget >/dev/null 2>&1; then
-            wget -qO- --method=PUT --header="Authorization: Bearer $HETZNER_TOKEN" --header="Content-Type: application/json" --body-data='{"name": "'"${username}-\$clean_msg"'"}' "https://api.hetzner.cloud/v1/servers/$HETZNER_SERVER_ID" || true
+            wget -qO- --method=PUT --header="Authorization: Bearer $HETZNER_TOKEN" --header="Content-Type: application/json" --body-data='{"name": "'"${userName}-\$clean_msg"'"}' "https://api.hetzner.cloud/v1/servers/$HETZNER_SERVER_ID" || true
         fi
     fi
 }
@@ -132,6 +132,21 @@ class DebugHandler(http.server.BaseHTTPRequestHandler):
         
         docker_status = subprocess.getoutput('docker ps --format "{{.Names}}: {{.Status}}" || echo "Docker not ready"')
         setup_logs = subprocess.getoutput('tail -n 100 /var/log/cloud-init-output.log || echo "Logs not ready"')
+        
+        # Live Project Discovery
+        workspace_dir = os.environ.get('WORKSPACE_DIR')
+        if not workspace_dir:
+            # Try to auto-detect if env var is missing
+            possible_home = subprocess.getoutput('echo /home/$(ls /home | head -n 1)/workspace')
+            workspace_dir = possible_home if os.path.exists(possible_home) else '/home/root/workspace'
+            
+        projects_list = []
+        if os.path.exists(workspace_dir):
+            try:
+                projects_list = [d for d in os.listdir(workspace_dir) if os.path.isdir(os.path.join(workspace_dir, d))]
+            except Exception as e:
+                projects_list = [f"Error listing projects: {str(e)}"]
+
         status_txt = "Initializing..."
         if os.path.exists("/var/www/debug/status.txt"):
             with open("/var/www/debug/status.txt", "r") as f:
@@ -141,23 +156,25 @@ class DebugHandler(http.server.BaseHTTPRequestHandler):
             "docker": docker_status,
             "setup": setup_logs,
             "status": status_txt,
+            "projects": projects_list,
+            "workspace": workspace_dir,
             "timestamp": subprocess.getoutput('date')
         }
         self.wfile.write(json.dumps(data).encode())
 
-PORT = 8080
+PORT = 8000
 socketserver.TCPServer.allow_reuse_address = True
 with socketserver.TCPServer(("", PORT), DebugHandler) as httpd:
     httpd.serve_forever()
 PYEOF
 
 # Start the server in the background with nohup to ensure survival
-nohup python3 /var/www/debug/server.py > /var/log/debug-server.log 2>&1 &
+nohup env WORKSPACE_DIR="$WORKSPACE_DIR" python3 /var/www/debug/server.py > /var/log/debug-server.log 2>&1 &
 
 # --- 2. System Resilience & Immediate Reporting ---
 export DEBIAN_FRONTEND=noninteractive
 # Open debug port
-ufw allow 8080/tcp || echo "ufw not present or failed"
+ufw allow 8000/tcp || echo "ufw not present or failed"
 
 # We use a simple apt-get update retry loop instead of 'fuser' (which might be missing)
 START_TIME=$(date +%s)
@@ -192,20 +209,20 @@ report_status() {
     title "\$status_msg"
     hetzner_heartbeat "\$status_msg"
     # Attempt to report status with retry logic and tool fallback
-    for i in 1 2 3; do
+    for i in {1..3}; do
       local response_code="000"
       if command -v curl >/dev/null 2>&1; then
-        response_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$CALLBACK_URL" \
+        response_code=$(curl -s -m 5 -o /dev/null -w "%{http_code}" -X POST "$CALLBACK_URL" \
           -H "Content-Type: application/json" \
           -H "CF-Access-Client-Id: $SERVICE_TOKEN_ID" \
           -H "CF-Access-Client-Secret: $SERVICE_TOKEN_SECRET" \
           -d "{\\\"serverId\\\": \\\"$SERVER_ID\\\", \\\"token\\\": \\\"$PROV_TOKEN\\\", \\\"status\\\": \\\"$status_msg\\\"}")
       elif command -v wget >/dev/null 2>&1; then
         # Fallback to wget if curl is not yet available
-        wget -q --spider --method=POST --header="Content-Type: application/json" \
+        wget -q --timeout=5 --spider --method=POST --header="Content-Type: application/json" \
           --header="CF-Access-Client-Id: $SERVICE_TOKEN_ID" \
           --header="CF-Access-Client-Secret: $SERVICE_TOKEN_SECRET" \
-          --body-data="{\"serverId\": \"$SERVER_ID\", \"token\": \"$PROV_TOKEN\", \"status\": \"$status_msg\"}" \
+          --body-data="{\\\"serverId\\\": \\\"$SERVER_ID\\\", \\\"token\\\": \\\"$PROV_TOKEN\\\", \\\"status\\\": \\\"$status_msg\\\"}" \
           "$CALLBACK_URL" && response_code="200"
       fi
       
@@ -313,110 +330,47 @@ if [ -n "$TUNNEL_TOKEN" ]; then
     systemctl start cloudflared || true
 fi
 
-# --- 5. Deploy Code-Server ---
+# --- 5. Developer Tools (DDEV) ---
 # Build Timestamp: ${new Date().toISOString()}
-mkdir -p "${HOST_WORKSPACE}" "${HOST_CONFIG}/data/User"
+mkdir -p "${HOST_WORKSPACE}"
 chown -R "$DEV_USER":"$DEV_USER" "${HOST_HOME}"
 
-# Pre-configure Container Environment (Host-side)
-report_status "Pre-configuring container..."
+report_status "Installing DDEV..."
 
-# Base64 encoded configs
-echo 'W3VzZXJdCiAgICBuYW1lID0gR2l0SHViIFVzZXIKICAgIGVtYWlsID0gZGV2Ym94QHVzZXIubG9jYWwK' | base64 -d > "${HOST_CONFIG}/.gitconfig"
-echo 'YmluZC1hZGRyOiAwLjAuMC4wOjg0NDMKYXV0aDogbm9uZQpjZXJ0OiBmYWxzZQo=' | base64 -d > "${HOST_CONFIG}/config.yaml"
-echo '${settingsBase64}' | base64 -d > "${HOST_CONFIG}/data/User/settings.json"
-
-# Unique Port based on UID
-USER_UID=$(id -u "$DEV_USER")
-PORT=$(( 8443 + USER_UID - 1000 ))
-XDEBUG_PORT=$(( 9003 + USER_UID - 1000 ))
-
-# Ensure DDEV network exists
-docker network create ddev_default || true
-
-# Deploy Code-Server
-report_status "Deploying Code-Server ($DEV_USER)..."
-docker stop "code-server-$DEV_USER" code-server 2>/dev/null || true
-docker rm "code-server-$DEV_USER" code-server 2>/dev/null || true
-
-docker run -d --name="code-server-$DEV_USER" \
-  -e PUID=$USER_UID \
-  -e PGID=$(id -g "$DEV_USER") \
-  -e SUDO_PASSWORD="$ROOT_PASSWORD" \
-  -e HOME="/home/$DEV_USER" \
-  -e DEFAULT_WORKSPACE="/home/$DEV_USER/workspace" \
-  --network ddev_default \
-  -v "${HOST_CONFIG}:/config" \
-  -v "/home/$DEV_USER:/home/$DEV_USER" \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -v /usr/bin/docker:/usr/bin/docker \
-  -v /usr/libexec/docker/cli-plugins:/usr/libexec/docker/cli-plugins \
-  -p 127.0.0.1:$PORT:8443 \
-  -p $XDEBUG_PORT:9003 \
-  --restart unless-stopped \
-  linuxserver/code-server:latest
-
-# Wait for container
-while ! docker ps | grep -q "code-server-$DEV_USER"; do sleep 2; done
-
-    # Final Container Setup (Base64 encoded to avoid all quoting issues)
-    CONTAINER_SETUP_B64=$(base64 -w0 << EOF
-#!/bin/bash
-set -e
-chmod 666 /var/run/docker.sock || true
+# Pre-configure Git for the host user
+cat <<EOF > /home/"$DEV_USER"/.gitconfig
+[user]
+    name = ${userName}
+    email = ${userEmail}
+EOF
+chown "$DEV_USER":"$DEV_USER" /home/"$DEV_USER"/.gitconfig
 
 # Install DDEV Repo
-apt-get update && apt-get install -y curl gnupg ca-certificates
+apt-get update && apt-get install -y curl gnupg
 install -m 0755 -d /etc/apt/keyrings
 curl -fsSL https://pkg.ddev.com/apt/gpg.key | gpg --batch --yes --dearmor -o /etc/apt/keyrings/ddev.gpg
-echo "deb [signed-by=/etc/apt/keyrings/ddev.gpg] https://pkg.ddev.com/apt/ * *" > /etc/apt/sources.list.d/ddev.list
+echo 'deb [signed-by=/etc/apt/keyrings/ddev.gpg] https://pkg.ddev.com/apt/ * *' > /etc/apt/sources.list.d/ddev.list
 
-# Install DDEV, Vim, Git, etc
-apt-get update && apt-get install -y ddev vim git jq sudo
+# Install DDEV and essential tools
+apt-get update && apt-get install -y ddev git jq vim libnss3-tools mkcert
 
-# Permissions
-echo "abc ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/abc
-chmod 0440 /etc/sudoers.d/abc
+# Grant NOPASSWD so the developer can use sudo without a password (since they use SSH keys)
+echo "$DEV_USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/90-devbox-user
 
-# Path Parity Symlink
-rm -rf /config/workspace
-ln -s "/home/${username}/workspace" /config/workspace
-chown -h abc:abc /config/workspace
+# Initialize mkcert for the host user
+sudo -u "$DEV_USER" mkcert -install || true
 
-# Install Oh My Bash
-if [ ! -d "/home/${username}/.oh-my-bash" ]; then
-    sudo -u abc bash -c "export HOME=/home/${username}; curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh | bash -s -- --unattended" || true
+# Oh My Bash for the host user
+if [ ! -d "/home/${userName}/.oh-my-bash" ]; then
+    sudo -u "$DEV_USER" bash -c "curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh | bash -s -- --unattended" || true
 fi
 
 # Apply Theme and Fixes
-if [ -f "/home/${username}/.bashrc" ]; then
-    sed -i 's/OSH_THEME="font"/OSH_THEME="90210"/' "/home/${username}/.bashrc"
-    grep -q "enable-bracketed-paste" "/home/${username}/.bashrc" || echo "bind 'set enable-bracketed-paste off'" >> "/home/${username}/.bashrc"
-    grep -q "alias l=" "/home/${username}/.bashrc" || echo "alias l='ls -lah'" >> "/home/${username}/.bashrc"
-    grep -q "alias ddev-refresh=" "/home/${username}/.bashrc" || echo "alias ddev-refresh='for nw in \$(docker network ls --format \"{{.Name}}\" | grep \"_default\"); do docker network connect \"\$nw\" \"code-server-${username}\" 2>/dev/null || true; done'" >> "/home/${username}/.bashrc"
+if [ -f "/home/${userName}/.bashrc" ]; then
+    sed -i 's/OSH_THEME="[^"]*"/OSH_THEME="90210"/' "/home/${userName}/.bashrc"
+    grep -q "enable-bracketed-paste" "/home/${userName}/.bashrc" || echo "bind 'set enable-bracketed-paste off'" >> "/home/${userName}/.bashrc"
+    grep -q "alias l=" "/home/${userName}/.bashrc" || echo "alias l='ls -lah'" >> "/home/${userName}/.bashrc"
 fi
-
-sudo -u abc mkcert -install || true
-
-# Global DDEV Config
-sudo -u abc ddev config global \\
-    --router-http-port=80 \\
-    --router-https-port=443 \\
-    --instrumentation-opt-in=false \\
-    --omit-containers=ddev-ssh-agent || true
-
-    # Agnostic Network Joiner: Connect to all DDEV project networks
-    echo "Connecting code-server to all DDEV networks..."
-    for nw in $(docker network ls --format "{{.Name}}" | grep "_default"); do
-        echo "Joining network: $nw"
-        docker network connect "$nw" "code-server-$DEV_USER" 2>/dev/null || true
-    done
-
-    # Extensions
-    sudo -u abc code-server --install-extension xdebug.php-debug --install-extension vscodevim.vim || true
-EOF
-)
-    docker exec -u root "code-server-$DEV_USER" bash -c "echo \$CONTAINER_SETUP_B64 | base64 -d | bash"
 
 # Firewall
 ufw allow 22/tcp
@@ -468,6 +422,28 @@ export async function syncSshKeys(newPublicKey: string) {
 
 
 /**
+ * Generates a consistent 10-character alphanumeric Linux username based on an email address.
+ * Uses a double-hash approach combined into base36 to ensure uniqueness and predictability.
+ */
+function generateUniqueUsername(email: string): string {
+  let hash = 5381;
+  const str = email.toLowerCase();
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) + hash) + str.charCodeAt(i); /* hash * 33 + c */
+  }
+  const hashNum = (hash >>> 0);
+  
+  let hash2 = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash2 = Math.imul(31, hash2) + str.charCodeAt(i) | 0;
+  }
+  const hashNum2 = (hash2 >>> 0);
+  
+  const base36Str = (hashNum.toString(36) + hashNum2.toString(36)).replace(/[^a-z0-9]/g, '');
+  return ('u' + base36Str.padEnd(9, '0')).substring(0, 10);
+}
+
+/**
  * Retrieves per-user settings (like Hetzner API Token) from KV.
  * Auto-generates an SSH keypair if missing.
  */
@@ -488,31 +464,7 @@ export async function getUserSettings() {
     contaboPassword: ''
   };
 
-  // Auto-generate SSH keys if missing or in old/invalid format
-  const isOldFormat = settings.sshPublicKey && (!settings.sshPublicKey.startsWith('ssh-rsa') || settings.sshKeyVersion !== 'v2');
 
-  if (!settings.sshPublicKey || !settings.sshPrivateKey || isOldFormat) {
-    try {
-      const keyPair = await crypto.subtle.generateKey(
-        {
-          name: "RSASSA-PKCS1-v1_5",
-          modulusLength: 2048,
-          publicExponent: new Uint8Array([1, 0, 1]),
-          hash: "SHA-256",
-        },
-        true,
-        ["sign", "verify"]
-      );
-
-      settings.sshPrivateKey = await formatPrivateKey(keyPair.privateKey);
-      settings.sshPublicKey = await formatRsaPublicKey(keyPair.publicKey);
-      settings.sshKeyVersion = 'v2';
-
-      await kv.put(`settings:${userEmail}`, JSON.stringify(settings));
-    } catch {
-      throw new Error("Secure key generation failed. Please try again or provide an SSH key in Settings.");
-    }
-  }
 
   return settings as {
     hetznerToken: string;
@@ -584,7 +536,7 @@ export async function provisionServer(
   const serverId = crypto.randomUUID();
   const shortId = serverId.slice(0, 8);
   const name = customName || `devbox-${shortId}`;
-  const userName = userEmail.split('@')[0].replace(/[^a-zA-Z0-9]/g, '_');
+  const userName = generateUniqueUsername(userEmail);
   const safeName = name.toLowerCase().replace(/[^a-z0-9]/g, '-');
   const hostname = `${safeName}-code.devboxui.com`;
 
@@ -830,7 +782,7 @@ export async function getServers() {
             try {
               const controller = new AbortController();
               const id = setTimeout(() => controller.abort(), 800); // Very fast probe
-              const probeResp = await fetch(`http://${s.ip}:8080`, {
+              const probeResp = await fetch(`http://${s.ip}:8000`, {
                 signal: controller.signal,
                 cache: 'no-store'
               });
@@ -936,7 +888,7 @@ export async function addProject(serverId: string, projectName: string, port: nu
   if (!config.tunnelId) throw new Error("Server is missing a Tunnel ID.");
 
   // 2. Generate Project Domain
-  const cleanName = projectName.toLowerCase().replace(/[^a-z0-9]/g, '-');
+  const cleanName = projectName.toLowerCase().replace(/[^a-z0-9.]/g, '-');
   const projectDomain = `${cleanName}.devboxui.com`; // Simplified domain generation
 
   // 3. Update Cloudflare Tunnel, DNS & Access
@@ -1009,9 +961,9 @@ export async function deleteDomain(serverId: string, projectDomain: string) {
 }
 
 /**
- * Updates an existing domain's configuration (e.g. changing the port).
+ * Updates an existing domain's configuration (e.g. changing the port or subdomain).
  */
-export async function updateDomain(serverId: string, projectDomain: string, newPort: number) {
+export async function updateDomain(serverId: string, oldDomain: string, newSubdomain: string, newPort: number) {
   const userEmail = await getIdentity();
   const env = await getCloudflareEnv();
   const kv = env.KV;
@@ -1037,14 +989,31 @@ export async function updateDomain(serverId: string, projectDomain: string, newP
   if (!config || !serverKey) throw new Error("Server not found.");
   if (!config.tunnelId) throw new Error("Server is missing a Tunnel ID.");
 
-  // 2. Update Cloudflare Tunnel Ingress
-  const service = `http://localhost:${newPort}`;
-  await cfApi.setupHostname(projectDomain, config.tunnelId, service);
+  // 2. Determine new domain
+  const cleanSubdomain = newSubdomain.toLowerCase().replace(/[^a-z0-9.]/g, '-');
+  const newDomain = `${cleanSubdomain}.devboxui.com`;
+  const domainChanged = oldDomain !== newDomain;
 
-  // 3. Update Server State
+  // 3. Update Cloudflare Tunnel Ingress
+  const service = `http://localhost:${newPort}`;
+  
+  if (domainChanged) {
+    console.log(`Domain changed from ${oldDomain} to ${newDomain}. Cleaning up old and creating new...`);
+    try {
+      await cfApi.removeHostname(oldDomain, config.tunnelId);
+      await cfApi.deleteAccess(oldDomain);
+    } catch (e) {
+      console.error("Cleanup of old domain failed (non-critical):", e);
+    }
+  }
+  
+  await cfApi.setupHostname(newDomain, config.tunnelId, service);
+  await cfApi.setupAccess(newDomain, userEmail);
+
+  // 4. Update Server State
   config.projects = (config.projects || []).map(p => {
-    if (p.domain === projectDomain) {
-      return { ...p, port: newPort }; // Note: Ensure port is in types
+    if (p.domain === oldDomain) {
+      return { ...p, domain: newDomain, name: newSubdomain, port: newPort };
     }
     return p;
   });
@@ -1407,13 +1376,47 @@ export async function getServerLogs(serverId: string) {
 
   if (!config) throw new Error("Server not found.");
 
-  const logsUrl = config.tunnelUrl?.replace('-code.', '-logs.') || `https://logs-${serverId.slice(0, 8)}.devboxui.com`;
+  const logsUrl = config.tunnelUrl?.split('?')[0].replace('-code.', '-logs.') || `https://logs-${serverId.slice(0, 8)}.devboxui.com`;
+
+  return { success: true, logsUrl };
+}
+
+/**
+ * Fetches live projects from the server via the secure logs tunnel.
+ * Performs the fetch on the server side to bypass Cloudflare Access and CORS.
+ */
+export async function getLiveProjects(serverId: string) {
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+  if (!kv) throw new Error("KV database missing.");
+
+  const servers = await getServers();
+  const config = servers.find(s => s.id === serverId);
+  if (!config) throw new Error("Server not found.");
+
+  const logsUrl = config.tunnelUrl?.split('?')[0].replace('-code.', '-logs.') || `https://logs-${serverId.slice(0, 8)}.devboxui.com`;
 
   try {
-    // In the dashboard, we will fetch from this URL directly from the browser
-    // to take advantage of the user's existing Cloudflare Access session.
-    return { success: true, logsUrl };
+    const cfApi = new CloudflareApiService(env);
+    const serviceToken = await cfApi.getOrCreateServiceToken(kv);
+
+    const resp = await fetch(logsUrl, {
+      headers: {
+        'CF-Access-Client-Id': serviceToken.id,
+        'CF-Access-Client-Secret': serviceToken.client_secret,
+      },
+      next: { revalidate: 0 },
+      cache: 'no-store'
+    });
+
+    if (resp.ok) {
+      const data = await resp.json() as { projects?: string[] };
+      return { success: true, projects: data.projects || [] };
+    }
+    
+    return { success: false, error: `Fetch failed: ${resp.status} ${resp.statusText}` };
   } catch (error) {
+    console.error("Failed to fetch live projects:", error);
     return { success: false, error: String(error) };
   }
 }
@@ -1436,7 +1439,7 @@ export async function provisionManualServer(customName: string, provider: string
   const serverId = crypto.randomUUID();
   const shortId = serverId.slice(0, 8);
   const name = customName || `devbox-${shortId}`;
-  const userName = userEmail.split('@')[0].replace(/[^a-zA-Z0-9]/g, '_');
+  const userName = generateUniqueUsername(userEmail);
   const safeName = name.toLowerCase().replace(/[^a-z0-9]/g, '-');
   const hostname = `${safeName}-code.devboxui.com`;
 
@@ -1554,7 +1557,7 @@ export async function provisionContaboServer(
   const serverId = crypto.randomUUID();
   const shortId = serverId.slice(0, 8);
   const name = customName || `devbox-${shortId}`;
-  const userName = userEmail.split('@')[0].replace(/[^a-zA-Z0-9]/g, '_');
+  const userName = generateUniqueUsername(userEmail);
   const safeName = name.toLowerCase().replace(/[^a-z0-9]/g, '-');
   const hostname = `${safeName}-code.devboxui.com`;
 

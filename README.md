@@ -14,7 +14,7 @@ Currently optimized for **Hetzner Cloud** (with more providers to come), DevBox 
 - **Smart User Management**: Automated user creation, SSH key synchronization, and tailored sudo access.
 
 ### 💻 Ready-to-Use Web IDE
-- **code-server (VS Code)**: Instant deployment of a containerized IDE, pre-configured with Xdebug and Vim extensions.
+- **Native VS Code Remote SSH**: Direct host integration for local VS Code Remote SSH development with Oh-My-Bash.
 - **Modern Developer Shell**:
     - **Oh My Bash**: Pre-configured with the premium `90210` theme.
     - **DDEV & Docker**: Automated setup for container-based development, including optimized PATHs and dependencies.

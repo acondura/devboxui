@@ -47,9 +47,7 @@ if ! id "$DEV_USER" &>/dev/null; then
 fi
 
 # --- 2.1 Install Oh My Bash for '$DEV_USER' ---
-sudo -u "$DEV_USER" bash -c "curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh | bash -s -- --unattended"
-# Ensure the theme is set to '90210'
-sed -i 's/OSH_THEME="[^"]*"/OSH_THEME="90210"/' /home/"$DEV_USER"/.bashrc
+
 
 # --- 3. Install Docker & Tools ---
 apt-get install -y ca-certificates curl gnupg lsb-release
@@ -76,101 +74,53 @@ if [ "$TUNNEL_TOKEN" != "REPLACE_WITH_YOUR_CLOUDFLARE_TUNNEL_TOKEN" ]; then
     cloudflared service install "$TUNNEL_TOKEN"
 fi
 
-# --- 6. Deploy Code-Server (Master Workspace) ---
-PUID=$(id -u "$DEV_USER")
-PGID=$(id -g "$DEV_USER")
-
-# Create the parent project directory
-mkdir -p /home/"$DEV_USER"/config /home/"$DEV_USER"/workspace
+# --- 6. Developer Tools (DDEV) ---
+# Create the parent workspace directory
+mkdir -p /home/"$DEV_USER"/workspace
 chown -R "$DEV_USER":"$DEV_USER" /home/"$DEV_USER"
 
-# --- 6.1 Pre-configure Container Environment (Host-side) ---
-echo "⚙️ Pre-configuring container environment..."
-
-# Pre-install Oh My Bash for the container user
-sudo -u "$DEV_USER" bash -c "export HOME=/home/$DEV_USER/config; curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh | bash -s -- --unattended"
-sed -i 's/OSH_THEME="[^"]*"/OSH_THEME="90210"/' /home/"$DEV_USER"/config/.bashrc
-sed -i "s|/home/$DEV_USER/config|/config|g" /home/"$DEV_USER"/config/.bashrc
-
-# Pre-configure Git for the container
-cat <<EOF > /home/"$DEV_USER"/config/.gitconfig
+# Pre-configure Git for the host user
+cat <<EOF > /home/"$DEV_USER"/.gitconfig
 [user]
     name = $GIT_USER_NAME
     email = $GIT_USER_EMAIL
 EOF
+chown "$DEV_USER":"$DEV_USER" /home/"$DEV_USER"/.gitconfig
 
-# Save the container sudo password
-echo "$DEV_USER" > /home/"$DEV_USER"/config/.pass
-chmod 600 /home/"$DEV_USER"/config/.pass
+echo "🐳 Installing DDEV..."
 
-# Pre-configure code-server
-cat <<EOF > /home/"$DEV_USER"/config/config.yaml
-bind-addr: 0.0.0.0:8443
-auth: none
-cert: false
-EOF
+# Install DDEV Repo
+apt-get update && apt-get install -y curl gnupg
+install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://pkg.ddev.com/apt/gpg.key | gpg --batch --yes --dearmor -o /etc/apt/keyrings/ddev.gpg
+echo 'deb [signed-by=/etc/apt/keyrings/ddev.gpg] https://pkg.ddev.com/apt/ * *' > /etc/apt/sources.list.d/ddev.list
 
-mkdir -p /home/"$DEV_USER"/config/data/User
-cat <<EOF > /home/"$DEV_USER"/config/data/User/settings.json
-{
-    "window.title": "${PROVIDER} - ${DISPLAY_URL} - DevBox",
-    "editor.fontSize": 15,
-    "terminal.integrated.fontSize": 15,
-    "workbench.colorTheme": "Default Dark+"
-}
-EOF
+# Install DDEV and essential tools
+apt-get update && apt-get install -y ddev git jq vim libnss3-tools mkcert
 
-# Final permission sync
-chown -R "$DEV_USER":"$DEV_USER" /home/"$DEV_USER"
+# Grant NOPASSWD so the developer can use sudo without a password (since they use SSH keys)
+echo "$DEV_USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/90-devbox-user
 
-docker run -d \
-  --name=code-server \
-  -e PUID=$PUID \
-  -e PGID=$PGID \
-  -e SUDO_PASSWORD="$DEV_USER" \
-  -e TZ=Europe/Bucharest \
-  -e DEFAULT_WORKSPACE=/home/"$DEV_USER"/workspace \
-  -v /home/"$DEV_USER"/config:/config \
-  -v /home/"$DEV_USER":/home/"$DEV_USER" \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -v /usr/bin/docker:/usr/bin/docker \
-  -v /usr/libexec/docker/cli-plugins:/usr/libexec/docker/cli-plugins \
-  -p 127.0.0.1:8443:8443 \
-  -p 9003:9003 \
-  --restart unless-stopped \
-  linuxserver/code-server:latest
+# Initialize mkcert for the host user
+sudo -u "$DEV_USER" mkcert -install || true
 
-# --- 7. Final Container Setup (Async) ---
-echo "🐳 Finalizing container tools (DDEV, Vim, extensions)..."
+# Oh My Bash for the host user
+if [ ! -d "/home/$DEV_USER/.oh-my-bash" ]; then
+    sudo -u "$DEV_USER" bash -c "curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh | bash -s -- --unattended" || true
+fi
 
-docker exec -d -u root code-server bash -c "
-    # Ensure Docker socket is accessible
-    chmod 666 /var/run/docker.sock
-    
-    # Install DDEV Repo
-    apt-get update && apt-get install -y curl gnupg
-    install -m 0755 -d /etc/apt/keyrings
-    curl -fsSL https://pkg.ddev.com/apt/gpg.key | gpg --batch --yes --dearmor -o /etc/apt/keyrings/ddev.gpg
-    echo 'deb [signed-by=/etc/apt/keyrings/ddev.gpg] https://pkg.ddev.com/apt/ * *' > /etc/apt/sources.list.d/ddev.list
-    
-    # Install DDEV and Vim
-    apt-get update && apt-get install -y ddev vim
-    
-    # Permissions & Initializations
-    echo 'abc ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/abc
-    sudo -u abc mkcert -install
-    
-    # Extensions
-    sudo -u abc code-server --install-extension xdebug.php-debug --install-extension vscodevim.vim
-"
+# Apply Theme and Fixes
+if [ -f "/home/$DEV_USER/.bashrc" ]; then
+    sed -i 's/OSH_THEME="[^"]*"/OSH_THEME="90210"/' "/home/$DEV_USER/.bashrc"
+    grep -q "enable-bracketed-paste" "/home/$DEV_USER/.bashrc" || echo "bind 'set enable-bracketed-paste off'" >> "/home/$DEV_USER/.bashrc"
+    grep -q "alias l=" "/home/$DEV_USER/.bashrc" || echo "alias l='ls -lah'" >> "/home/$DEV_USER/.bashrc"
+fi
 
 echo "------------------------------------------------"
 echo "✅ Setup Complete! Master Server is Ready."
 echo "------------------------------------------------"
 echo "User: $DEV_USER"
-echo "Sudo Password (Container): [NOT REQUIRED / NOPASSWD]"
 echo "Sudo Password (Host): [NOT REQUIRED / NOPASSWD]"
-echo "Code-Server: Auth Disabled (via Cloudflare)"
 echo "------------------------------------------------"
 
 # --- 8. Final Security (Firewall) ---

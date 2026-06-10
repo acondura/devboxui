@@ -10,6 +10,7 @@ interface SettingsModalProps {
 
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [hetznerToken, setHetznerToken] = useState('');
+  const [sshPublicKey, setSshPublicKey] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
@@ -18,6 +19,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       getUserSettings().then(settings => {
         if (settings) {
           setHetznerToken(settings.hetznerToken || '');
+          setSshPublicKey(settings.sshPublicKey || '');
         }
       });
     }
@@ -30,7 +32,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     setIsSaving(true);
     setStatus(null);
     try {
-      await saveUserSettings({ hetznerToken });
+      await saveUserSettings({ hetznerToken, sshPublicKey });
       setStatus({ type: 'success', message: 'Settings saved successfully!' });
       setTimeout(() => setStatus(null), 3000);
     } catch {
@@ -75,15 +77,17 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             </p>
           </div>
 
-          <div className="p-4 bg-indigo-500/5 border border-indigo-500/10 rounded-xl space-y-2">
-            <div className="flex items-center space-x-2 text-indigo-400">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <p className="text-[11px] font-bold uppercase tracking-wider">Automated SSH Keys</p>
-            </div>
-            <p className="text-[11px] text-slate-400 leading-relaxed">
-              We now automatically manage your SSH keypairs in the background. You no longer need to manually provide or sync public keys.
+          <div>
+            <label className="block text-sm font-medium text-slate-400 mb-2">Your Public SSH Key</label>
+            <textarea
+              placeholder="ssh-ed25519 AAAAC3Nza... user@computer"
+              value={sshPublicKey}
+              onChange={(e) => setSshPublicKey(e.target.value)}
+              className="w-full h-24 bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono text-xs"
+              required
+            />
+            <p className="mt-2 text-[11px] text-slate-500 leading-relaxed">
+              Paste your local public key here (e.g., from <code className="text-slate-400">~/.ssh/id_ed25519.pub</code>). This key will be automatically added to the server during provisioning so your local VS Code can connect securely.
             </p>
           </div>
 
