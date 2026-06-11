@@ -392,11 +392,11 @@ export async function getScheduledServers(): Promise<
  * Converts HH:MM in a given timezone to current UTC hour+minute,
  * then checks if it matches the current UTC time (within a 1-hour window).
  */
-export function shouldFireNow(
+export async function shouldFireNow(
   timeHHMM: string,
   timezone: string,
   nowUtc: Date = new Date()
-): boolean {
+): Promise<boolean> {
   try {
     // Get current local time in the target timezone
     const localStr = nowUtc.toLocaleString('en-US', {
