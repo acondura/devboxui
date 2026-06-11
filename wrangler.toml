@@ -17,8 +17,6 @@ id = ""  # Set KV_ID env var at deploy time via pages-build script
 # To customise: change cron expressions. UTC times below.
 # Default windows cover 04:00–12:00 UTC (morning) and 12:00–21:00 UTC (evening)
 # to accommodate any timezone from UTC-8 to UTC+12.
-[triggers]
-crons = ["0 * * * *"]  # Every hour — handler filters by per-server timezone
 
 # ─── Secrets (set via wrangler secret put or Cloudflare Dashboard) ────────────
 # CRON_SECRET          — shared secret to authenticate cron trigger calls
