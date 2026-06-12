@@ -106,9 +106,10 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
                 <pre className="p-3 bg-slate-950 border border-slate-850 rounded-lg text-[10px] font-mono text-indigo-300 select-all overflow-x-auto whitespace-pre leading-normal">
 {`Host *.devboxui.com
-    StrictHostKeyChecking accept-new
-    UserKnownHostsFile ~/.ssh/known_hosts`}
+    StrictHostKeyChecking no
+    UserKnownHostsFile /dev/null`}
                 </pre>
+
               </div>
             </details>
           </div>

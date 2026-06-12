@@ -840,14 +840,38 @@ export async function getServers() {
           if (isSettingUp) {
             try {
               const controller = new AbortController();
-              const id = setTimeout(() => controller.abort(), 800); // Very fast probe
-              const probeResp = await fetch(`http://${s.ip}:8000`, {
-                signal: controller.signal,
-                cache: 'no-store'
-              });
+              const id = setTimeout(() => controller.abort(), 1200); // 1.2s timeout
+              
+              let probeResp: Response | null = null;
+              try {
+                probeResp = await fetch(`http://${s.ip}:8000`, {
+                  signal: controller.signal,
+                  cache: 'no-store'
+                });
+              } catch (e) {
+                // If direct fetch fails (e.g. on Cloudflare Workers due to port 8000 limits),
+                // try via the secure logs tunnel if it has been established
+                if (s.tunnelUrl) {
+                  try {
+                    const cfApi = new CloudflareApiService(env);
+                    const logsUrl = s.tunnelUrl.split('?')[0].replace('-code.', '-logs.');
+                    const serviceToken = await cfApi.getOrCreateServiceToken(kv);
+                    probeResp = await fetch(logsUrl, {
+                      headers: {
+                        'CF-Access-Client-Id': serviceToken.id,
+                        'CF-Access-Client-Secret': serviceToken.client_secret,
+                      },
+                      signal: controller.signal,
+                      cache: 'no-store'
+                    });
+                  } catch (_tunnelErr) {
+                    // Ignore tunnel fetch errors
+                  }
+                }
+              }
               clearTimeout(id);
 
-              if (probeResp.ok) {
+              if (probeResp && probeResp.ok) {
                 const probeData = await probeResp.json() as { status: string };
                 if (probeData.status) {
                   s.detailedStatus = `(Live) ${probeData.status}`;
