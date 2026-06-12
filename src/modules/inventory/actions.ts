@@ -557,7 +557,8 @@ export async function provisionServer(
     updatedAt: new Date().toISOString(),
     logs: [`Starting Cloud-Init provisioning (${serverType} in ${location}) via Hetzner API...`],
     tunnelUrl: `https://${hostname}/?folder=/home/${userName}/workspace`,
-    projects: []
+    projects: [],
+    serverType: serverType
   };
 
   let tunnelId: string | undefined;
@@ -782,6 +783,7 @@ export async function getServers() {
           s.isLocked = hs.protection?.delete || false;
           s.hetznerStatus = hs.status;
           if (hs.public_net?.ipv4?.ip) s.ip = hs.public_net.ipv4.ip;
+          s.serverType = hs.server_type.name;
 
           // 2. Check for Heartbeat in name (e.g. "opis-Installing-Docker")
           // We look for the last part after the dash
@@ -1601,7 +1603,8 @@ export async function provisionContaboServer(
     logs: [`Starting Cloud-Init provisioning (${productId} in ${region}) via Contabo API...`],
     tunnelUrl: `https://${hostname}/?folder=/home/${userName}/workspace`,
     projects: [],
-    provider: 'contabo'
+    provider: 'contabo',
+    serverType: productId
   };
 
   try {

@@ -34,6 +34,7 @@ export interface ServerConfig {
   hostname?: string;
   scheduleConfig?: ScheduleConfig;
   allowedPeers?: string[];
+  serverType?: string;
 }
 
 export interface ScheduleConfig {

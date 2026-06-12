@@ -24,6 +24,24 @@ interface ServerListProps {
 type SortField = 'status' | 'type' | 'ip' | 'os' | 'created';
 type SortOrder = 'asc' | 'desc';
 
+const formatSpecs = (serverType?: string) => {
+  if (!serverType) return '';
+  const t = serverType.toLowerCase();
+  const specs: Record<string, string> = {
+    cx22: '2 vCPU / 4GB RAM',
+    cpx11: '2 vCPU / 2GB RAM',
+    cpx21: '3 vCPU / 4GB RAM',
+    cpx31: '4 vCPU / 8GB RAM',
+    cpx41: '8 vCPU / 16GB RAM',
+    cpx51: '16 vCPU / 32GB RAM',
+    v1: 'VPS S (4C / 8G)',
+    v2: 'VPS M (6C / 16G)',
+    v3: 'VPS L (8C / 30G)',
+    v4: 'VPS XL (10C / 60G)',
+  };
+  return specs[t] || serverType.toUpperCase();
+};
+
 export function ServerList(props: ServerListProps) {
   const [sortField, setSortField] = useState<SortField>('created');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
@@ -265,13 +283,20 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
 
       {/* Type */}
       <td className="py-6 px-4">
-        <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest ${
-          (server.hetznerServerId || server.contaboInstanceId) 
-            ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' 
-            : 'bg-slate-800 text-slate-400 border border-slate-700'
-        }`}>
-          {server.providerName || 'Custom'}
-        </span>
+        <div className="flex flex-col items-start gap-1">
+          <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest ${
+            (server.hetznerServerId || server.contaboInstanceId) 
+              ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' 
+              : 'bg-slate-800 text-slate-400 border border-slate-700'
+          }`}>
+            {server.providerName || 'Custom'}
+          </span>
+          {server.serverType && (
+            <span className="text-[9px] font-mono text-slate-500 font-bold uppercase tracking-wider pl-0.5">
+              {formatSpecs(server.serverType)}
+            </span>
+          )}
+        </div>
       </td>
 
       {/* Server Identification */}
@@ -505,7 +530,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
       <div className="p-6 border-b border-slate-800 bg-slate-950/50 space-y-4">
         <div className="flex justify-between items-start">
           <div className="space-y-1.5">
-            <div className="flex items-center space-x-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-[10px] font-bold text-slate-400 bg-slate-800 px-2 py-1 rounded uppercase tracking-widest border border-slate-700">Ubuntu 24.04</span>
               <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest ${
                 (server.hetznerServerId || server.contaboInstanceId) 
@@ -514,6 +539,11 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
               }`}>
                 {server.providerName || 'Custom'}
               </span>
+              {server.serverType && (
+                <span className="text-[10px] font-bold bg-slate-800/60 text-slate-400 border border-slate-750 px-2 py-1 rounded uppercase tracking-widest">
+                  {formatSpecs(server.serverType)}
+                </span>
+              )}
               {(server.hetznerServerId || server.contaboInstanceId) && (
                 <div className="flex items-center space-x-1.5 bg-slate-800/30 px-2 py-1 rounded border border-slate-800/80 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                   {server.status === 'ready' ? (
