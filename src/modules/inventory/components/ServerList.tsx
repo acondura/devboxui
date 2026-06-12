@@ -140,6 +140,8 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
               <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
             ) : server.status === 'waiting-for-bootstrap' ? (
               <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+            ) : ['provisioning', 'initializing', 'Initializing', 'starting'].includes(server.status) ? (
+              <span className="h-3 w-3 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
             ) : (
               <span className="h-2 w-2 rounded-full bg-slate-600" />
             )}
@@ -362,8 +364,19 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
               }`}>
                 {server.providerName || 'Custom'}
               </span>
-              {(server.hetznerServerId || server.contaboInstanceId) && server.status === 'ready' && (
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+              {(server.hetznerServerId || server.contaboInstanceId) && (
+                <div className="flex items-center space-x-1.5 bg-slate-800/30 px-2 py-1 rounded border border-slate-800/80 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  {server.status === 'ready' ? (
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                  ) : server.status === 'waiting-for-bootstrap' ? (
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                  ) : ['provisioning', 'initializing', 'Initializing', 'starting'].includes(server.status) ? (
+                    <span className="h-2 w-2 border border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <span className="h-1.5 w-1.5 rounded-full bg-slate-600" />
+                  )}
+                  <span>{server.status}</span>
+                </div>
               )}
             </div>
             <div className="flex flex-col">
