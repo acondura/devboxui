@@ -23,10 +23,32 @@ export DEBIAN_FRONTEND=noninteractive
 echo "⚠️ SETUP IN PROGRESS - Please wait a few minutes before using the server." > /etc/motd
 
 # Wait for any background APT locks to clear
-while fuser /var/lib/dpkg/lock-mirror >/dev/null 2>&1 || fuser /var/lib/apt/lists/lock >/dev/null 2>&1 || fuser /var/lib/dpkg/lock >/dev/null 2>&1; do
-   echo "Waiting for other software managers to finish..."
-   sleep 5
-done
+wait_for_apt_locks() {
+  local max_wait=300
+  local wait_count=0
+  echo "Checking for package manager locks..."
+  while [ $wait_count -lt $max_wait ]; do
+    local locked=false
+    if command -v pgrep >/dev/null 2>&1 && pgrep -f "apt-get|dpkg|unattended-upgrades" >/dev/null 2>&1; then
+      locked=true
+    elif command -v fuser >/dev/null 2>&1; then
+      if fuser /var/lib/dpkg/lock-mirror >/dev/null 2>&1 || \
+         fuser /var/lib/apt/lists/lock >/dev/null 2>&1 || \
+         fuser /var/lib/dpkg/lock >/dev/null 2>&1 || \
+         fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; then
+        locked=true
+      fi
+    fi
+    if [ "$locked" = "false" ]; then
+      break
+    fi
+    echo "Waiting for other software managers to finish (sleep 5s)..."
+    sleep 5
+    wait_count=$((wait_count + 5))
+  done
+}
+wait_for_apt_locks
+
 
 apt-get update
 

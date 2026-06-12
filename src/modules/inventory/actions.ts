@@ -98,11 +98,31 @@ hetzner_heartbeat() {
 hetzner_heartbeat "Booting-system"
 
 # CRITICAL: Wait for apt locks (background updates often lock apt on fresh boot)
-# We use a simple apt-get update retry loop instead of 'fuser' (which might be missing)
-echo -e "\x1b[33m[Waiting]\x1b[0m Ubuntu is finishing background updates (apt lock)..."
-while fuser /var/lib/dpkg/lock-mirror >/dev/null 2>&1 || fuser /var/lib/apt/lists/lock >/dev/null 2>&1 || fuser /var/lib/dpkg/lock >/dev/null 2>&1 || fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
-   sleep 5
-done
+wait_for_apt_locks() {
+  local max_wait=300
+  local wait_count=0
+  while [ $wait_count -lt $max_wait ]; do
+    local locked=false
+    if command -v pgrep >/dev/null 2>&1 && pgrep -f "apt-get|dpkg|unattended-upgrades" >/dev/null 2>&1; then
+      locked=true
+    elif command -v fuser >/dev/null 2>&1; then
+      if fuser /var/lib/dpkg/lock-mirror >/dev/null 2>&1 || \
+         fuser /var/lib/apt/lists/lock >/dev/null 2>&1 || \
+         fuser /var/lib/dpkg/lock >/dev/null 2>&1 || \
+         fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; then
+        locked=true
+      fi
+    fi
+    if [ "$locked" = "false" ]; then
+      break
+    fi
+    echo -e "\\x1b[33m[Waiting]\\x1b[0m Ubuntu is finishing background updates (apt lock)..."
+    sleep 5
+    wait_count=$((wait_count + 5))
+  done
+}
+wait_for_apt_locks
+
 
 # Install tools
 apt-get update && apt-get install -y curl wget || echo "Initial apt failed, will retry later"
@@ -171,8 +191,29 @@ with socketserver.TCPServer(("", PORT), DebugHandler) as httpd:
     httpd.serve_forever()
 PYEOF
 
-# Start the server in the background with nohup to ensure survival
-nohup env WORKSPACE_DIR="$WORKSPACE_DIR" python3 /var/www/debug/server.py > /var/log/debug-server.log 2>&1 &
+# Set up and start the debug status server as a systemd service
+cat <<EOF > /etc/systemd/system/devbox-debug.service
+[Unit]
+Description=DevBox Debug and Status Exporter
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/var/www/debug
+Environment="WORKSPACE_DIR=$WORKSPACE_DIR"
+ExecStart=/usr/bin/python3 /var/www/debug/server.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable devbox-debug.service
+systemctl start devbox-debug.service
+
 
 # --- 2. System Resilience & Immediate Reporting ---
 export DEBIAN_FRONTEND=noninteractive
@@ -244,14 +285,8 @@ report_status "Initializing system..."
 
 
 # Wait for apt locks (background updates often lock apt on fresh boot)
-MAX_WAIT=300
-WAIT_COUNT=0
-while fuser /var/lib/dpkg/lock-mirror >/dev/null 2>&1 || fuser /var/lib/apt/lists/lock >/dev/null 2>&1 || fuser /var/lib/dpkg/lock >/dev/null 2>&1; do
-   if [ $WAIT_COUNT -gt $MAX_WAIT ]; then echo "Apt lock timeout"; break; fi
-   echo -e "\\x1b[33m[Waiting]\\x1b[0m Ubuntu is finishing background updates (apt lock)..." >&3
-   sleep 5
-   WAIT_COUNT=$((WAIT_COUNT+5))
-done
+wait_for_apt_locks >&3
+
 
 report_status "Hardening server and setting up users..."
 chage -d $(date +%Y-%m-%d) root
@@ -800,7 +835,7 @@ export async function getServers() {
           }
 
           // ELEGANT PROBING: If in setup phase, try a direct "pull" from the IP:8080 exporter
-          const setupStatuses: string[] = ['provisioning', 'Initializing', 'initializing'];
+          const setupStatuses: string[] = ['provisioning', 'configuring', 'initializing', 'Initializing', 'starting'];
           const isSettingUp = setupStatuses.includes(s.status as string);
           if (isSettingUp) {
             try {
@@ -818,6 +853,8 @@ export async function getServers() {
                   s.detailedStatus = `(Live) ${probeData.status}`;
                   if (probeData.status === 'Ready') {
                     s.status = 'ready';
+                    // Persist the transition to KV so we don't need to probe next time
+                    await kv.put(`servers:${userEmail}:${s.id}`, JSON.stringify(s)).catch(() => {});
                   }
                 }
               }

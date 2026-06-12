@@ -77,19 +77,42 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             </p>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-400 mb-2">Your Public SSH Key</label>
-            <textarea
-              placeholder="ssh-ed25519 AAAAC3Nza... user@computer"
-              value={sshPublicKey}
-              onChange={(e) => setSshPublicKey(e.target.value)}
-              className="w-full h-24 bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono text-xs"
-              required
-            />
-            <p className="mt-2 text-[11px] text-slate-500 leading-relaxed">
-              Paste your local public key here (e.g., from <code className="text-slate-400">~/.ssh/id_ed25519.pub</code>). This key will be automatically added to the server during provisioning so your local VS Code can connect securely.
-            </p>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-400 mb-2">Your Public SSH Key</label>
+              <textarea
+                placeholder="ssh-ed25519 AAAAC3Nza... user@computer"
+                value={sshPublicKey}
+                onChange={(e) => setSshPublicKey(e.target.value)}
+                className="w-full h-24 bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-mono text-xs"
+                required
+              />
+              <p className="mt-2 text-[11px] text-slate-500 leading-relaxed">
+                Paste your local public key here (e.g., from <code className="text-slate-400">~/.ssh/id_ed25519.pub</code>). This key will be automatically added to the server during provisioning so your local VS Code can connect securely.
+              </p>
+            </div>
+
+            <details className="group border border-slate-800/80 rounded-xl overflow-hidden bg-slate-950/20">
+              <summary className="flex items-center justify-between p-3 text-xs font-bold text-slate-400 cursor-pointer hover:bg-slate-800/40 transition-all select-none">
+                <span>Bypass SSH Connection Prompts (Recommended)</span>
+                <svg className="w-4 h-4 transform group-open:rotate-180 transition-transform text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                </svg>
+              </summary>
+              <div className="p-4 border-t border-slate-800/60 text-[11px] text-slate-500 leading-relaxed space-y-2.5 bg-slate-950/40">
+                <p>
+                  To connect instantly without having to type <code className="text-slate-400">yes</code> when a server is created or restored, add the following configuration snippet to your computer&apos;s local <code className="text-slate-400">~/.ssh/config</code> file:
+                </p>
+
+                <pre className="p-3 bg-slate-950 border border-slate-850 rounded-lg text-[10px] font-mono text-indigo-300 select-all overflow-x-auto whitespace-pre leading-normal">
+{`Host *.devboxui.com
+    StrictHostKeyChecking accept-new
+    UserKnownHostsFile ~/.ssh/known_hosts`}
+                </pre>
+              </div>
+            </details>
           </div>
+
 
           {status && (
             <div className={`p-3 rounded-lg text-sm font-medium ${status.type === 'success' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'}`}>

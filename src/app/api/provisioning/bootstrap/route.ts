@@ -98,10 +98,31 @@ report_status() {
 }
 
 # Wait for apt locks (background updates often lock apt on fresh boot)
-echo -e "\x1b[33m[Waiting]\x1b[0m Ubuntu is finishing background updates (apt lock)..." >&3
-while fuser /var/lib/dpkg/lock-mirror >/dev/null 2>&1 || fuser /var/lib/apt/lists/lock >/dev/null 2>&1 || fuser /var/lib/dpkg/lock >/dev/null 2>&1 || fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
-   sleep 5
-done
+wait_for_apt_locks() {
+  local max_wait=300
+  local wait_count=0
+  while [ $wait_count -lt $max_wait ]; do
+    local locked=false
+    if command -v pgrep >/dev/null 2>&1 && pgrep -f "apt-get|dpkg|unattended-upgrades" >/dev/null 2>&1; then
+      locked=true
+    elif command -v fuser >/dev/null 2>&1; then
+      if fuser /var/lib/dpkg/lock-mirror >/dev/null 2>&1 || \
+         fuser /var/lib/apt/lists/lock >/dev/null 2>&1 || \
+         fuser /var/lib/dpkg/lock >/dev/null 2>&1 || \
+         fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; then
+        locked=true
+      fi
+    fi
+    if [ "$locked" = "false" ]; then
+      break
+    fi
+    echo -e "\\x1b[33m[Waiting]\\x1b[0m Ubuntu is finishing background updates (apt lock)..." >&3
+    sleep 5
+    wait_count=$((wait_count + 5))
+  done
+}
+wait_for_apt_locks
+
 
 report_status "Initializing System"
 
