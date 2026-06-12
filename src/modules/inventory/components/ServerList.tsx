@@ -90,17 +90,24 @@ export function ServerList(props: ServerListProps) {
         <div className="flex items-center space-x-2 w-full sm:w-auto justify-between sm:justify-end">
           <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">Sort by:</span>
           <div className="flex items-center space-x-1.5">
-            <select
-              value={sortField}
-              onChange={(e) => handleSort(e.target.value as SortField)}
-              className="bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-300 px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
-            >
-              <option value="created">Created Date</option>
-              <option value="status">Status</option>
-              <option value="type">Provider Type</option>
-              <option value="ip">IP Address</option>
-              <option value="os">OS</option>
-            </select>
+            <div className="relative">
+              <select
+                value={sortField}
+                onChange={(e) => handleSort(e.target.value as SortField)}
+                className="appearance-none bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-300 pl-3 pr-8 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer w-full"
+              >
+                <option value="created">Created Date</option>
+                <option value="status">Status</option>
+                <option value="type">Provider Type</option>
+                <option value="ip">IP Address</option>
+                <option value="os">OS</option>
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-500">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
             <button
               onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
               className="px-2.5 py-1.5 bg-slate-950 border border-slate-800 rounded-lg hover:border-slate-700 text-slate-400 hover:text-white transition-all text-xs"
