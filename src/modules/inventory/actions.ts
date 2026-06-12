@@ -29,6 +29,8 @@ function getBootstrapScript(
   // DERIVED VARIABLES
   const HOST_HOME = `/home/${userName}`;
   const HOST_WORKSPACE = `${HOST_HOME}/workspace`;
+  const serverName = displayUrl ? displayUrl.split('-code.')[0].split('-logs.')[0].split('.')[0] : 'devbox';
+
   return `#!/bin/bash
 set -e
 echo -e "\\x1b[32m🚀 Script decoded successfully. Starting setup...\\x1b[0m"
@@ -40,6 +42,7 @@ ROOT_PASSWORD="${rootPassword || ''}"
 SERVER_ID="${serverId}"
 PROV_TOKEN="${provisioningToken}"
 WORKSPACE_DIR="${HOST_WORKSPACE}"
+SERVER_NAME="${serverName}"
 
 # EXPORT SECRETS
 export TUNNEL_TOKEN="${tunnelToken}"
@@ -84,9 +87,9 @@ hetzner_heartbeat() {
     if [ -n "$HETZNER_TOKEN" ] && [ -n "$HETZNER_SERVER_ID" ]; then
         local clean_msg=$(echo "$status_msg" | tr ' ' '-')
         if command -v curl >/dev/null 2>&1; then
-            curl -s -X PUT "https://api.hetzner.cloud/v1/servers/$HETZNER_SERVER_ID" -H "Authorization: Bearer $HETZNER_TOKEN" -H "Content-Type: application/json" -d '{"name": "'"${userName}-\$clean_msg"'"}' || true
+            curl -s -X PUT "https://api.hetzner.cloud/v1/servers/$HETZNER_SERVER_ID" -H "Authorization: Bearer $HETZNER_TOKEN" -H "Content-Type: application/json" -d '{"name": "'"${serverName}-\$clean_msg"'"}' || true
         elif command -v wget >/dev/null 2>&1; then
-            wget -qO- --method=PUT --header="Authorization: Bearer $HETZNER_TOKEN" --header="Content-Type: application/json" --body-data='{"name": "'"${userName}-\$clean_msg"'"}' "https://api.hetzner.cloud/v1/servers/$HETZNER_SERVER_ID" || true
+            wget -qO- --method=PUT --header="Authorization: Bearer $HETZNER_TOKEN" --header="Content-Type: application/json" --body-data='{"name": "'"${serverName}-\$clean_msg"'"}' "https://api.hetzner.cloud/v1/servers/$HETZNER_SERVER_ID" || true
         fi
     fi
 }
@@ -679,6 +682,11 @@ export async function provisionServer(
     const ip = hetznerResult.server.public_net.ipv4.ip;
     config.ip = ip;
     config.logs = [...(config.logs || []), `Hetzner server created at ${ip}`];
+    config.status = 'provisioning';
+    config.detailedStatus = 'Initializing...';
+
+    const kvKey = `servers:${userEmail}:${serverId}`; // Use serverId instead of IP to be stable
+    await kv.put(kvKey, JSON.stringify(config));
 
     try {
       console.log(`[Provisioning] Server IP resolved as ${ip}. Triggering dependent policy sync...`);
@@ -698,13 +706,9 @@ export async function provisionServer(
       config.logs = [...(config.logs || []), `Warning: Failed to setup direct DNS record: ${err instanceof Error ? err.message : String(err)}`];
     }
 
-    // 5. Success! Commit to KV
-    config.status = 'provisioning'; // Stay in provisioning until callback
-    config.detailedStatus = 'Initializing...';
+    // 5. Success! Commit final state to KV
     config.updatedAt = new Date().toISOString();
     config.logs = [...(config.logs || []), 'Server creation triggered. Provisioning will continue in the background.'];
-
-    const kvKey = `servers:${userEmail}:${serverId}`; // Use serverId instead of IP to be stable
     await kv.put(kvKey, JSON.stringify(config));
 
     return { success: true, server: config };
@@ -818,7 +822,7 @@ export async function getServers() {
             } catch {
               // Probe failed (booting), ignore
             }
-          } else if (hs.status !== 'running') {
+          } else if (hs.status !== 'running' && s.status === 'ready') {
             // If KV says ready but Hetzner says off, sync it
             s.status = 'off';
           }
@@ -1650,6 +1654,11 @@ export async function provisionContaboServer(
     config.ip = instance.ipAddress;
     config.contaboInstanceId = instance.instanceId;
     config.contaboSecretId = secretId.id;
+    config.status = 'provisioning';
+    config.detailedStatus = 'Initializing...';
+
+    const kvKey = `servers:${userEmail}:${serverId}`;
+    await kv.put(kvKey, JSON.stringify(config));
 
     try {
       console.log(`[Provisioning Contabo] Server IP resolved as ${instance.ipAddress}. Triggering dependent policy sync...`);
@@ -1667,8 +1676,9 @@ export async function provisionContaboServer(
       console.error("Failed to setup Direct SSH DNS record for Contabo:", err);
     }
 
-    // 7. Save to KV
-    await kv.put(`servers:${userEmail}:${serverId}`, JSON.stringify(config));
+    // 7. Save final state to KV
+    config.updatedAt = new Date().toISOString();
+    await kv.put(kvKey, JSON.stringify(config));
 
     return { success: true, server: config };
   } catch (e: unknown) {

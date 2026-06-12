@@ -58,6 +58,8 @@ export async function POST(req: NextRequest) {
     
     if (status === 'Ready') {
       config.status = 'ready';
+    } else {
+      config.status = 'configuring';
     }
 
     // 4. Save back using the FOUND key

@@ -252,7 +252,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
               <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
             ) : server.status === 'waiting-for-bootstrap' ? (
               <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-            ) : ['provisioning', 'initializing', 'Initializing', 'starting'].includes(server.status) ? (
+            ) : ['provisioning', 'configuring', 'initializing', 'Initializing', 'starting'].includes(server.status) ? (
               <span className="h-3 w-3 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
             ) : (
               <span className="h-2 w-2 rounded-full bg-slate-600" />
@@ -518,7 +518,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
                   ) : server.status === 'waiting-for-bootstrap' ? (
                     <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
-                  ) : ['provisioning', 'initializing', 'Initializing', 'starting'].includes(server.status) ? (
+                  ) : ['provisioning', 'configuring', 'initializing', 'Initializing', 'starting'].includes(server.status) ? (
                     <span className="h-2 w-2 border border-indigo-500 border-t-transparent rounded-full animate-spin" />
                   ) : (
                     <span className="h-1.5 w-1.5 rounded-full bg-slate-600" />

@@ -3,7 +3,7 @@ export interface ServerConfig {
   ip: string;
   userName: string;
   userEmail: string;
-  status: 'provisioning' | 'Initializing' | 'initializing' | 'ready' | 'error' | 'off' | 'waiting-for-bootstrap';
+  status: 'provisioning' | 'configuring' | 'Initializing' | 'initializing' | 'ready' | 'error' | 'off' | 'waiting-for-bootstrap';
   sshPrivateKey: string;
   sshPublicKey: string;
   rootPassword?: string;
