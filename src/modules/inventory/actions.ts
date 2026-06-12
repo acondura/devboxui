@@ -680,6 +680,17 @@ export async function provisionServer(
     config.ip = ip;
     config.logs = [...(config.logs || []), `Hetzner server created at ${ip}`];
 
+    // Create Direct SSH DNS record in Cloudflare
+    try {
+      const directHostname = hostname.replace('-code.', '-direct.');
+      console.log(`Setting up Direct SSH DNS A record for ${directHostname} to ${ip}...`);
+      await cfApi.setupARecord(directHostname, ip);
+      config.logs = [...(config.logs || []), `Created Direct SSH DNS record: ${directHostname}`];
+    } catch (err) {
+      console.error("Failed to setup Direct SSH DNS record:", err);
+      config.logs = [...(config.logs || []), `Warning: Failed to setup direct DNS record: ${err instanceof Error ? err.message : String(err)}`];
+    }
+
     // 5. Success! Commit to KV
     config.status = 'provisioning'; // Stay in provisioning until callback
     config.detailedStatus = 'Initializing...';
@@ -1071,6 +1082,9 @@ export async function deleteServer(serverId: string) {
 
       await cfApi.deleteDnsRecord(logsHostname).catch(e => console.error("Logs DNS deletion failed:", e));
       await cfApi.deleteAccess(logsHostname).catch(e => console.error("Logs Access deletion failed:", e));
+
+      const directHostname = hostname.replace('-code.', '-direct.');
+      await cfApi.deleteDnsRecord(directHostname).catch(e => console.error("Direct DNS deletion failed:", e));
     }
 
     if (config.projects) {
@@ -1629,6 +1643,15 @@ export async function provisionContaboServer(
     config.ip = instance.ipAddress;
     config.contaboInstanceId = instance.instanceId;
     config.contaboSecretId = secretId.id;
+
+    // Create Direct SSH DNS record in Cloudflare
+    try {
+      const directHostname = hostname.replace('-code.', '-direct.');
+      console.log(`Setting up Direct SSH DNS A record for ${directHostname} to ${instance.ipAddress}...`);
+      await cfApi.setupARecord(directHostname, instance.ipAddress);
+    } catch (err) {
+      console.error("Failed to setup Direct SSH DNS record for Contabo:", err);
+    }
 
     // 7. Save to KV
     await kv.put(`servers:${userEmail}:${serverId}`, JSON.stringify(config));

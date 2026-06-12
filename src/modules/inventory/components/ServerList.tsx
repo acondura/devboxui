@@ -621,11 +621,13 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
 
   const getIdeUrl = (ideId: string, path: string) => {
     const user = server.userName || 'root';
+    const displayHostname = server.hostname ? server.hostname.replace('.devboxui.com', '') : '';
+    const host = displayHostname ? `${displayHostname.replace('-code', '-direct')}.devboxui.com` : server.ip;
     if (ideId === 'phpstorm') {
-      return `jetbrains://gateway/ssh/environment?h=${server.ip}&u=${user}&p=22&ideHint=PS&projectHint=${path}`;
+      return `jetbrains://gateway/ssh/environment?h=${host}&u=${user}&p=22&ideHint=PS&projectHint=${path}`;
     }
     const scheme = ideId === 'antigravity' ? 'antigravity' : (ideId === 'cursor' ? 'cursor' : 'vscode');
-    return `${scheme}://vscode-remote/ssh-remote+${user}@${server.ip}${path}?windowId=_blank`;
+    return `${scheme}://vscode-remote/ssh-remote+${user}@${host}${path}?windowId=_blank`;
   };
 
   const currentIde = ides.find(i => i.id === defaultIde) || ides.find(i => i.id === 'vscode')!;

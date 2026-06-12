@@ -112,6 +112,37 @@ export class CloudflareApiService {
     }
   }
 
+  async setupARecord(hostname: string, ip: string) {
+    const records = await this.request<{ id: string; name: string; content: string }[]>(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/dns_records?name=${hostname}&type=A`);
+    const existing = records.find(r => r.name === hostname);
+
+    if (existing) {
+      if (existing.content !== ip) {
+        console.log(`Updating existing DNS A record for ${hostname} to ${ip}...`);
+        await this.request(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/dns_records/${existing.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            content: ip,
+            proxied: false,
+          }),
+        });
+      } else {
+        console.log(`DNS A record for ${hostname} is already correct. Skipping.`);
+      }
+    } else {
+      console.log(`Creating new DNS A record for ${hostname} pointing to ${ip}...`);
+      await this.request(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/dns_records`, {
+        method: "POST",
+        body: JSON.stringify({
+          type: "A",
+          name: hostname,
+          content: ip,
+          proxied: false,
+        }),
+      });
+    }
+  }
+
   async removeHostname(hostname: string, tunnelId: string) {
     // 1. Fetch current configuration
     interface IngressRule { hostname?: string; service: string }

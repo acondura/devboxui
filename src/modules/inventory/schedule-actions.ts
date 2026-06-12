@@ -2,6 +2,7 @@
 
 import { getCloudflareEnv, getIdentity } from '@/lib/auth';
 import { HetznerApiService } from '@/lib/hetzner-api';
+import { CloudflareApiService } from '@/lib/cloudflare-api';
 import { ScheduleConfig, ServerConfig } from './types';
 import { getServers, getUserSettings } from './actions';
 
@@ -191,6 +192,18 @@ export async function runMorningWorkflow(
 
   const newHetznerServerId = result.server.id;
   const ip = result.server.public_net.ipv4.ip;
+
+  // Update Direct SSH DNS A record in Cloudflare
+  if (server.hostname) {
+    try {
+      const cfApi = new CloudflareApiService(env);
+      const directHostname = server.hostname.replace('-code.', '-direct.');
+      console.log(`[Morning] Updating Direct SSH DNS A record for ${directHostname} to ${ip}...`);
+      await cfApi.setupARecord(directHostname, ip);
+    } catch (err) {
+      console.error("[Morning] Failed to update Direct SSH DNS A record:", err);
+    }
+  }
 
   // Update KV server record
   server.hetznerServerId = newHetznerServerId;
