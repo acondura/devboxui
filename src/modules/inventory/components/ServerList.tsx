@@ -208,7 +208,8 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
   const [deletingDomain, setDeletingDomain] = useState<string | null>(null);
   const [debugData, setDebugData] = useState<{ docker: string, setup: string, timestamp: string } | null>(null);
 
-  // const safeTargetBase = `${userEmail}-${server.id}`.replace(/[^a-zA-Z0-9]/g, '_');
+  const isAutomated = !!(server.providerName === 'Hetzner' || server.providerName === 'Contabo' || server.provider === 'hetzner' || server.provider === 'contabo');
+  const isHetzner = !!(server.providerName === 'Hetzner' || server.provider === 'hetzner');
   const displayHostname = (server.hostname || 'devbox').replace('.devboxui.com', '');
 
   const handleFetchLogs = async () => {
@@ -248,7 +249,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
         serverName={server.hostname || server.ip}
         serverId={server.id}
         provider={server.providerName}
-        isAutomated={!!(server.hetznerServerId || server.contaboInstanceId)}
+        isAutomated={isAutomated}
       />
       {isScheduleOpen && (
         <ScheduleModal
@@ -263,7 +264,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
 
       {/* Status */}
       <td className="py-6 px-4">
-        {!(server.hetznerServerId || server.contaboInstanceId) ? (
+        {!isAutomated ? (
           <span className="text-xs font-bold text-slate-600">—</span>
         ) : (
           <div className="flex items-center space-x-2">
@@ -273,10 +274,14 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
               <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
             ) : ['provisioning', 'configuring', 'initializing', 'Initializing', 'starting'].includes(server.status) ? (
               <span className="h-3 w-3 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+            ) : server.status === 'off' && scheduleConfig?.enabled ? (
+              <span className="h-2 w-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)] animate-pulse" />
             ) : (
               <span className="h-2 w-2 rounded-full bg-slate-600" />
             )}
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">{server.status}</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              {server.status === 'off' && scheduleConfig?.enabled ? 'standby' : server.status}
+            </span>
           </div>
         )}
       </td>
@@ -285,7 +290,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
       <td className="py-6 px-4">
         <div className="flex flex-col items-start gap-1">
           <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest ${
-            (server.hetznerServerId || server.contaboInstanceId) 
+            isAutomated 
               ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' 
               : 'bg-slate-800 text-slate-400 border border-slate-700'
           }`}>
@@ -385,8 +390,8 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
           </button>
 
-          {/* API Auth Button */}
-          {(server.hetznerServerId || server.contaboInstanceId) && (
+          {/* AP          {/* API Auth Button */}
+          {isAutomated && (
             <button
               onClick={() => setIsApiAuthOpen(true)}
               className="p-2 text-slate-500 hover:text-indigo-400 hover:bg-slate-800 rounded-lg transition-all"
@@ -399,7 +404,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
           )}
 
           {/* Schedule button — only for Hetzner servers */}
-          {server.hetznerServerId && (
+          {isHetzner && (
             <button
               onClick={() => setIsScheduleOpen(true)}
               className={`relative p-2 rounded-lg transition-all ${
@@ -418,7 +423,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
             </button>
           )}
 
-          {(server.hetznerServerId || server.contaboInstanceId) && (
+          {isAutomated && (
             <button
               onClick={async () => { if (confirm("Delete server?")) await onDeleteServer(server.id); }}
               disabled={server.isLocked}
@@ -462,6 +467,8 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
   // const [isTogglingLock, setIsTogglingLock] = useState(false);
   const [debugData, setDebugData] = useState<{ docker: string, setup: string, timestamp: string } | null>(null);
 
+  const isAutomated = !!(server.hetznerServerId || server.contaboInstanceId || server.providerName === 'Hetzner' || server.providerName === 'Contabo' || server.provider === 'hetzner' || server.provider === 'contabo');
+  const isHetzner = !!(server.providerName === 'Hetzner' || server.provider === 'hetzner');
   const displayHostname = (server.hostname || 'devbox').replace('.devboxui.com', '');
 
   const handleFetchLogs = async () => {
@@ -513,7 +520,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
         serverName={server.hostname || server.ip}
         serverId={server.id}
         provider={server.providerName}
-        isAutomated={!!(server.hetznerServerId || server.contaboInstanceId)}
+        isAutomated={isAutomated}
       />
       {isScheduleOpen && (
         <ScheduleModal
@@ -533,7 +540,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[10px] font-bold text-slate-400 bg-slate-800 px-2 py-1 rounded uppercase tracking-widest border border-slate-700">Ubuntu 24.04</span>
               <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest ${
-                (server.hetznerServerId || server.contaboInstanceId) 
+                isAutomated 
                   ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' 
                   : 'bg-slate-800 text-slate-400 border border-slate-700'
               }`}>
@@ -544,7 +551,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
                   {formatSpecs(server.serverType)}
                 </span>
               )}
-              {(server.hetznerServerId || server.contaboInstanceId) && (
+              {isAutomated && (
                 <div className="flex items-center space-x-1.5 bg-slate-800/30 px-2 py-1 rounded border border-slate-800/80 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                   {server.status === 'ready' ? (
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
@@ -552,10 +559,12 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
                     <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
                   ) : ['provisioning', 'configuring', 'initializing', 'Initializing', 'starting'].includes(server.status) ? (
                     <span className="h-2 w-2 border border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                  ) : server.status === 'off' && scheduleConfig?.enabled ? (
+                    <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)] animate-pulse" />
                   ) : (
                     <span className="h-1.5 w-1.5 rounded-full bg-slate-600" />
                   )}
-                  <span>{server.status}</span>
+                  <span>{server.status === 'off' && scheduleConfig?.enabled ? 'standby' : server.status}</span>
                 </div>
               )}
             </div>
@@ -585,7 +594,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
             </div>
           </div>
           <div className="flex space-x-1">
-            {(server.hetznerServerId || server.contaboInstanceId) && (
+            {isAutomated && (
               <button onClick={handleDelete} disabled={server.isLocked} className="p-2 text-slate-500 hover:text-rose-500"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
             )}
           </div>
@@ -594,10 +603,10 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
         <div className="flex items-center space-x-2 pt-2 flex-wrap gap-y-2">
           <button onClick={handleFetchLogs} className="flex-1 py-2 text-xs font-bold uppercase bg-slate-800 text-slate-300 rounded-lg">Logs</button>
           <button onClick={() => setIsReinstallModalOpen(true)} className="flex-1 py-2 text-xs font-bold uppercase bg-slate-800 text-slate-300 rounded-lg">Reinstall</button>
-          {(server.hetznerServerId || server.contaboInstanceId) && (
+          {isAutomated && (
             <button onClick={() => setIsApiAuthOpen(true)} className="flex-1 py-2 text-xs font-bold uppercase bg-slate-800 text-slate-300 rounded-lg">API Auth</button>
           )}
-          {server.hetznerServerId && (
+          {isHetzner && (
             <button
               onClick={() => setIsScheduleOpen(true)}
               className={`relative flex-1 py-2 text-xs font-bold uppercase rounded-lg transition-all ${
