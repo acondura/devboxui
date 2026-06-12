@@ -54,6 +54,12 @@ export interface HetznerSSHKeyResponse {
   ssh_key: HetznerSSHKey;
 }
 
+export interface HetznerPrice {
+  location: string;
+  price_monthly: { gross: string; net?: string };
+  price_hourly: { gross: string; net?: string };
+}
+
 export interface HetznerServerType {
   id: number;
   name: string;
@@ -62,7 +68,7 @@ export interface HetznerServerType {
   memory: number;
   disk: number;
   deprecated: boolean;
-  prices: unknown[];
+  prices: HetznerPrice[];
   storage_type: string;
   cpu_type: string;
   architecture: string;
