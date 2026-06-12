@@ -19,7 +19,13 @@ interface ServerListProps {
   onReinstall?: (serverId: string) => Promise<void>;
 }
 
+type SortField = 'status' | 'type' | 'ip' | 'os' | 'created';
+type SortOrder = 'asc' | 'desc';
+
 export function ServerList(props: ServerListProps) {
+  const [sortField, setSortField] = useState<SortField>('created');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+
   if (props.servers.length === 0) {
     return (
       <div className="border border-dashed border-slate-700 rounded-xl p-12 text-center bg-slate-800/20">
@@ -34,23 +40,119 @@ export function ServerList(props: ServerListProps) {
     );
   }
 
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('desc');
+    }
+  };
+
+  const renderSortIcon = (field: SortField) => {
+    if (sortField !== field) {
+      return <span className="text-slate-600 ml-1">⇅</span>;
+    }
+    return sortOrder === 'asc' ? <span className="text-indigo-400 ml-1">▲</span> : <span className="text-indigo-400 ml-1">▼</span>;
+  };
+
+  const sortedServers = [...props.servers].sort((a, b) => {
+    let comparison = 0;
+    if (sortField === 'created') {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      comparison = dateA - dateB;
+    } else if (sortField === 'status') {
+      const statusA = a.status || '';
+      const statusB = b.status || '';
+      comparison = statusA.localeCompare(statusB);
+    } else if (sortField === 'type') {
+      const typeA = a.providerName || 'Custom';
+      const typeB = b.providerName || 'Custom';
+      comparison = typeA.localeCompare(typeB);
+    } else if (sortField === 'ip') {
+      const ipA = a.ip || '';
+      const ipB = b.ip || '';
+      comparison = ipA.localeCompare(ipB);
+    } else if (sortField === 'os') {
+      comparison = "Ubuntu 24.04".localeCompare("Ubuntu 24.04");
+    }
+    return sortOrder === 'asc' ? comparison : -comparison;
+  });
+
   return (
     <>
+      {/* Sort Toolbar */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 bg-slate-900/60 border border-slate-800 rounded-xl p-4 gap-4">
+        <span className="text-sm text-slate-400 font-medium">
+          Active Servers: <strong className="text-white">{props.servers.length}</strong>
+        </span>
+        <div className="flex items-center space-x-2 w-full sm:w-auto justify-between sm:justify-end">
+          <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">Sort by:</span>
+          <div className="flex items-center space-x-1.5">
+            <select
+              value={sortField}
+              onChange={(e) => handleSort(e.target.value as SortField)}
+              className="bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-300 px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+            >
+              <option value="created">Created Date</option>
+              <option value="status">Status</option>
+              <option value="type">Provider Type</option>
+              <option value="ip">IP Address</option>
+              <option value="os">OS</option>
+            </select>
+            <button
+              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+              className="px-2.5 py-1.5 bg-slate-950 border border-slate-800 rounded-lg hover:border-slate-700 text-slate-400 hover:text-white transition-all text-xs"
+              title="Toggle sort direction"
+            >
+              {sortOrder === 'asc' ? '▲' : '▼'}
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Desktop Table View */}
       <div className="hidden lg:block">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-slate-800">
-              <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Status</th>
-              <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Type</th>
-              <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Server Identification</th>
-              <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Environment</th>
+              <th onClick={() => handleSort('status')} className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest cursor-pointer select-none hover:text-slate-300 transition-colors">
+                <div className="flex items-center space-x-1">
+                  <span>Status</span>
+                  {renderSortIcon('status')}
+                </div>
+              </th>
+              <th onClick={() => handleSort('type')} className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest cursor-pointer select-none hover:text-slate-300 transition-colors">
+                <div className="flex items-center space-x-1">
+                  <span>Type</span>
+                  {renderSortIcon('type')}
+                </div>
+              </th>
+              <th onClick={() => handleSort('ip')} className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest cursor-pointer select-none hover:text-slate-300 transition-colors">
+                <div className="flex items-center space-x-1">
+                  <span>Server Identification</span>
+                  {renderSortIcon('ip')}
+                </div>
+              </th>
+              <th onClick={() => handleSort('os')} className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest cursor-pointer select-none hover:text-slate-300 transition-colors">
+                <div className="flex items-center space-x-1">
+                  <span>OS</span>
+                  {renderSortIcon('os')}
+                </div>
+              </th>
+              <th onClick={() => handleSort('created')} className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest cursor-pointer select-none hover:text-slate-300 transition-colors">
+                <div className="flex items-center space-x-1">
+                  <span>Created</span>
+                  {renderSortIcon('created')}
+                </div>
+              </th>
               <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Service URLs</th>
               <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/50">
-            {props.servers.map((server) => (
+            {sortedServers.map((server) => (
               <ServerRow key={server.id} server={server} {...props} />
             ))}
           </tbody>
@@ -59,7 +161,7 @@ export function ServerList(props: ServerListProps) {
 
       {/* Mobile Card View */}
       <div className="lg:hidden grid grid-cols-1 md:grid-cols-2 gap-6">
-        {props.servers.map((server) => (
+        {sortedServers.map((server) => (
           <ServerCard key={server.id} server={server} {...props} />
         ))}
       </div>
@@ -178,9 +280,22 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
         </div>
       </td>
 
-      {/* Environment */}
+      {/* OS */}
       <td className="py-6 px-4">
         <span className="text-[10px] font-bold text-slate-400 bg-slate-800 px-2 py-1 rounded uppercase tracking-widest">Ubuntu 24.04</span>
+      </td>
+
+      {/* Created */}
+      <td className="py-6 px-4">
+        <span className="text-xs font-bold text-slate-400 font-mono">
+          {server.createdAt ? new Date(server.createdAt).toLocaleString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+          }) : '—'}
+        </span>
       </td>
 
       {/* Service URLs */}
@@ -390,7 +505,18 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
                   </div>
                 )}
               </div>
-              <p className="text-xs text-slate-500 font-mono tracking-widest mt-0.5">{displayHostname}.devboxui.com</p>
+              <div className="flex flex-row justify-between items-center mt-1 text-[10px] font-mono text-slate-500 w-full">
+                <span>{displayHostname}.devboxui.com</span>
+                <span>
+                  {server.createdAt ? new Date(server.createdAt).toLocaleString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                  }) : ''}
+                </span>
+              </div>
             </div>
           </div>
           <div className="flex space-x-1">
