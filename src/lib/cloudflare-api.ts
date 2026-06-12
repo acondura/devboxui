@@ -143,6 +143,51 @@ export class CloudflareApiService {
     }
   }
 
+  async syncPeerBypassPolicy(hostname: string, peerIps: string[]) {
+    const apps = await this.request<{ id: string; domain: string }[]>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps`);
+    const app = apps.find(a => a.domain === hostname);
+    if (!app) {
+      console.warn(`No Access App found for ${hostname} during peer sync.`);
+      return;
+    }
+
+    interface Policy { id: string; name: string }
+    const policies = await this.request<Policy[]>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps/${app.id}/policies`);
+    const peerPolicy = policies.find(p => p.name === "Bypass Peer DevBoxes");
+
+    if (peerIps.length === 0) {
+      if (peerPolicy) {
+        console.log(`Deleting peer bypass policy for ${hostname}...`);
+        await this.request(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps/${app.id}/policies/${peerPolicy.id}`, {
+          method: "DELETE"
+        });
+      }
+      return;
+    }
+
+    const include = peerIps.map(ip => ({ ip: { ip: ip.includes('/') ? ip : `${ip}/32` } }));
+    const payload = {
+      name: "Bypass Peer DevBoxes",
+      decision: "bypass",
+      precedence: 2,
+      include
+    };
+
+    if (peerPolicy) {
+      console.log(`Updating peer bypass policy for ${hostname} with ${peerIps.length} IPs...`);
+      await this.request(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps/${app.id}/policies/${peerPolicy.id}`, {
+        method: "PUT",
+        body: JSON.stringify(payload)
+      });
+    } else {
+      console.log(`Creating new peer bypass policy for ${hostname} with ${peerIps.length} IPs...`);
+      await this.request(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps/${app.id}/policies`, {
+        method: "POST",
+        body: JSON.stringify(payload)
+      });
+    }
+  }
+
   async removeHostname(hostname: string, tunnelId: string) {
     // 1. Fetch current configuration
     interface IngressRule { hostname?: string; service: string }

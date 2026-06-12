@@ -4,7 +4,7 @@ import { getCloudflareEnv, getIdentity } from '@/lib/auth';
 import { HetznerApiService } from '@/lib/hetzner-api';
 import { CloudflareApiService } from '@/lib/cloudflare-api';
 import { ScheduleConfig, ServerConfig } from './types';
-import { getServers, getUserSettings } from './actions';
+import { getServers, getUserSettings, syncAllDependentPolicies } from './actions';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // KV key helpers
@@ -220,6 +220,14 @@ export async function runMorningWorkflow(
   sched.lastRunStatus = 'success';
   await kv.put(scheduleKey(userEmail, serverId), JSON.stringify(sched));
   await kv.put(serverKey(userEmail, serverId), JSON.stringify(server));
+
+  // Trigger policy sync for dependent servers (dynamic IP update)
+  try {
+    console.log(`[Morning Workflow] Server IP updated to ${ip}. Triggering dependent policy sync...`);
+    await syncAllDependentPolicies(serverId, ip);
+  } catch (err) {
+    console.error("[Morning Workflow] Failed to sync dependent policies on spin-up:", err);
+  }
 
   return {
     success: true,

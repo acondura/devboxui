@@ -5,6 +5,7 @@ import { ServerConfig } from '../types';
 import { AddDomainModal } from './AddDomainModal';
 import { ReinstallModal } from './ReinstallModal';
 import { ScheduleModal } from './ScheduleModal';
+import { ApiAuthModal } from './ApiAuthModal';
 import { getServerLogs, getLiveProjects } from '../actions';
 import { ScheduleConfig } from '../types';
 
@@ -17,6 +18,7 @@ interface ServerListProps {
   onDeleteServer: (serverId: string) => Promise<void>;
   onToggleLock?: (serverId: string, enableLock: boolean) => Promise<void>;
   onReinstall?: (serverId: string) => Promise<void>;
+  onUpdateAllowedPeers?: (serverId: string, allowedPeers: string[]) => Promise<void>;
 }
 
 type SortField = 'status' | 'type' | 'ip' | 'os' | 'created';
@@ -176,8 +178,9 @@ export function ServerList(props: ServerListProps) {
   );
 }
 
-function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDomain, onDeleteServer, onReinstall }: ServerListProps & { server: ServerConfig }) {
+function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDomain, onDeleteServer, onReinstall, onUpdateAllowedPeers, servers }: ServerListProps & { server: ServerConfig }) {
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [isApiAuthOpen, setIsApiAuthOpen] = useState(false);
   const [editingDomain, setEditingDomain] = useState<{ domain: string; port: number } | null>(null);
   const [isReinstallModalOpen, setIsReinstallModalOpen] = useState(false);
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
@@ -356,6 +359,19 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
           </button>
 
+          {/* API Auth Button */}
+          {(server.hetznerServerId || server.contaboInstanceId) && (
+            <button
+              onClick={() => setIsApiAuthOpen(true)}
+              className="p-2 text-slate-500 hover:text-indigo-400 hover:bg-slate-800 rounded-lg transition-all"
+              title="API Authorization"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </button>
+          )}
+
           {/* Schedule button — only for Hetzner servers */}
           {server.hetznerServerId && (
             <button
@@ -394,13 +410,23 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
         {isLogsModalOpen && (
           <LogsModal isOpen={isLogsModalOpen} onClose={() => setIsLogsModalOpen(false)} debugData={debugData} isFetching={isFetchingLogs} />
         )}
+        {isApiAuthOpen && onUpdateAllowedPeers && (
+          <ApiAuthModal
+            isOpen={isApiAuthOpen}
+            onClose={() => setIsApiAuthOpen(false)}
+            server={server}
+            allServers={servers}
+            onSave={onUpdateAllowedPeers}
+          />
+        )}
       </td>
     </tr>
   );
 }
 
-function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDeleteServer, onReinstall }: ServerListProps & { server: ServerConfig }) {
+function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDeleteServer, onReinstall, onUpdateAllowedPeers, servers }: ServerListProps & { server: ServerConfig }) {
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [isApiAuthOpen, setIsApiAuthOpen] = useState(false);
   const [editingDomain, setEditingDomain] = useState<{ domain: string; port: number } | null>(null);
   const [isReinstallModalOpen, setIsReinstallModalOpen] = useState(false);
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
@@ -533,9 +559,12 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
           </div>
         </div>
 
-        <div className="flex items-center space-x-2 pt-2">
+        <div className="flex items-center space-x-2 pt-2 flex-wrap gap-y-2">
           <button onClick={handleFetchLogs} className="flex-1 py-2 text-xs font-bold uppercase bg-slate-800 text-slate-300 rounded-lg">Logs</button>
           <button onClick={() => setIsReinstallModalOpen(true)} className="flex-1 py-2 text-xs font-bold uppercase bg-slate-800 text-slate-300 rounded-lg">Reinstall</button>
+          {(server.hetznerServerId || server.contaboInstanceId) && (
+            <button onClick={() => setIsApiAuthOpen(true)} className="flex-1 py-2 text-xs font-bold uppercase bg-slate-800 text-slate-300 rounded-lg">API Auth</button>
+          )}
           {server.hetznerServerId && (
             <button
               onClick={() => setIsScheduleOpen(true)}
@@ -577,6 +606,15 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
       </div>
 
       {isLogsModalOpen && <LogsModal isOpen={isLogsModalOpen} onClose={() => setIsLogsModalOpen(false)} debugData={debugData} isFetching={isFetchingLogs} />}
+      {isApiAuthOpen && onUpdateAllowedPeers && (
+        <ApiAuthModal
+          isOpen={isApiAuthOpen}
+          onClose={() => setIsApiAuthOpen(false)}
+          server={server}
+          allServers={servers}
+          onSave={onUpdateAllowedPeers}
+        />
+      )}
     </div>
   );
 }

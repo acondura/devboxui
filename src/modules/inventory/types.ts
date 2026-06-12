@@ -33,6 +33,7 @@ export interface ServerConfig {
   providerName?: string;
   hostname?: string;
   scheduleConfig?: ScheduleConfig;
+  allowedPeers?: string[];
 }
 
 export interface ScheduleConfig {

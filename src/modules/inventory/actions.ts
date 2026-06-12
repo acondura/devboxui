@@ -680,6 +680,13 @@ export async function provisionServer(
     config.ip = ip;
     config.logs = [...(config.logs || []), `Hetzner server created at ${ip}`];
 
+    try {
+      console.log(`[Provisioning] Server IP resolved as ${ip}. Triggering dependent policy sync...`);
+      await syncAllDependentPolicies(serverId, ip);
+    } catch (err) {
+      console.error("[Provisioning] Failed to sync dependent policies on provision:", err);
+    }
+
     // Create Direct SSH DNS record in Cloudflare
     try {
       const directHostname = hostname.replace('-code.', '-direct.');
@@ -1644,6 +1651,13 @@ export async function provisionContaboServer(
     config.contaboInstanceId = instance.instanceId;
     config.contaboSecretId = secretId.id;
 
+    try {
+      console.log(`[Provisioning Contabo] Server IP resolved as ${instance.ipAddress}. Triggering dependent policy sync...`);
+      await syncAllDependentPolicies(serverId, instance.ipAddress);
+    } catch (err) {
+      console.error("[Provisioning Contabo] Failed to sync dependent policies on provision:", err);
+    }
+
     // Create Direct SSH DNS record in Cloudflare
     try {
       const directHostname = hostname.replace('-code.', '-direct.');
@@ -1721,4 +1735,89 @@ export async function updateServerProvider(serverId: string, data: { hetznerServ
 
   await kv.put(kvKey, JSON.stringify(config));
   return config;
+}
+
+export async function syncServerAccessPolicies(serverId: string) {
+  const userEmail = await getIdentity();
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+  if (!kv) throw new Error("KV database missing.");
+
+  const kvKey = `servers:${userEmail}:${serverId}`;
+  const serverVal = await kv.get(kvKey);
+  if (!serverVal) throw new Error(`Server ${serverId} not found for sync.`);
+  const server = JSON.parse(serverVal) as ServerConfig;
+
+  const allowedPeers = server.allowedPeers || [];
+  const peerIps: string[] = [];
+
+  if (allowedPeers.length > 0) {
+    const allServers = await getServers();
+    for (const peerId of allowedPeers) {
+      const peer = allServers.find(s => s.id === peerId);
+      if (peer && peer.ip && peer.ip !== 'pending') {
+        peerIps.push(peer.ip);
+      }
+    }
+  }
+
+  const cfApi = new CloudflareApiService(env);
+  
+  if (server.hostname) {
+    console.log(`[Access Sync] Syncing peer bypass on ${server.hostname} with IPs:`, peerIps);
+    await cfApi.syncPeerBypassPolicy(server.hostname, peerIps);
+  }
+
+  if (server.projects) {
+    for (const project of server.projects) {
+      console.log(`[Access Sync] Syncing peer bypass on project ${project.domain} with IPs:`, peerIps);
+      await cfApi.syncPeerBypassPolicy(project.domain, peerIps);
+    }
+  }
+}
+
+export async function syncAllDependentPolicies(peerServerId: string, newIp: string) {
+  const userEmail = await getIdentity();
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+  if (!kv) return;
+
+  const list = await kv.list({ prefix: `servers:${userEmail}:` });
+  for (const key of list.keys) {
+    const val = await kv.get(key.name);
+    if (!val) continue;
+    const server = JSON.parse(val) as ServerConfig;
+
+    if (server.allowedPeers && server.allowedPeers.includes(peerServerId)) {
+      console.log(`[Access Sync] Server ${server.id} allows ${peerServerId} which got new IP ${newIp}. Syncing...`);
+      try {
+        await syncServerAccessPolicies(server.id);
+      } catch (err) {
+        console.error(`[Access Sync] Failed to sync dependent policy on ${server.id}:`, err);
+      }
+    }
+  }
+}
+
+export async function updateServerAllowedPeers(serverId: string, allowedPeers: string[]) {
+  const userEmail = await getIdentity();
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+  if (!kv) throw new Error("KV database missing.");
+
+  const kvKey = `servers:${userEmail}:${serverId}`;
+  const serverVal = await kv.get(kvKey);
+  if (!serverVal) throw new Error("Server not found.");
+  const server = JSON.parse(serverVal) as ServerConfig;
+
+  server.allowedPeers = allowedPeers;
+  server.updatedAt = new Date().toISOString();
+  if (!server.logs) server.logs = [];
+  server.logs.push(`Updated allowed peer DevBoxes to: ${allowedPeers.join(', ') || 'none'}`);
+
+  await kv.put(kvKey, JSON.stringify(server));
+
+  await syncServerAccessPolicies(serverId);
+
+  return server;
 }

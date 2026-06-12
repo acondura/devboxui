@@ -139,3 +139,55 @@ const host = displayHostname ? `${displayHostname.replace('-code', '-direct')}.d
 * **Zero Client Setup**: Developers do not need to install `cloudflared`, edit `~/.ssh/config`, or run command-line commands on their laptops.
 * **One-Click Connect**: Clicking "Open in VS Code" connects immediately.
 * **Zero Security Prompts (After Day 1)**: The one-time prompt to trust the host key is accepted on Day 1, and never shown again for the lifetime of that DevBox.
+
+---
+
+## 🔒 Part 3: Peer-to-Peer API Authorization via Cloudflare Access
+
+This section explains how DevBox UI manages secure, zero-config communication between applications running on different DevBoxes (e.g., separate VPS environments running Drupal or Node.js) while maintaining full protection against the public internet.
+
+### The Problem: Cross-DevBox API Blocks
+When running a multi-application stack where apps are distributed across separate DevBoxes (e.g., project `odb` on DevBox A communicating with projects `cma` and `cmm` on DevBox B):
+1. **Cloudflare Access Shields**: Every service domain created via DevBox UI is protected by Cloudflare Access.
+2. **Blocked Request Loops**: Standard HTTP calls (e.g., using `curl`, Guzzle, or `fetch`) made from application A to application B will hit Cloudflare Access's login portal, resulting in `302/403` response codes and breaking inter-app API integrations.
+3. **Application Modification Overhead**: Alternative security paths (like using custom Cloudflare Service Tokens) require developers to inject credentials and HTTP headers into their codebase. This forces developers to modify application code specifically for the local testing environment.
+
+---
+
+### The Solution: IP-Based Bypass Policies & Dynamic Synchronization
+
+DevBox UI automates Cloudflare Access bypass policies using IP-based routing rules on the server-side:
+
+```
+ [ DevBox A (cma-app) ]                     [ DevBox B (odb-app) ]
+         │                                             │
+         │ (Allowed Peer)                              │
+         ▼                                             ▼
+ [ Public IP: 192.0.2.1 ] ──(Direct API Request)──► [ Cloudflare Access ]
+                                                       │ (Bypasses Login Gate)
+                                                       ▼
+                                             [ Target DDEV/App Port ]
+```
+
+#### 1. Zero-Header IP Bypass Policies
+When DevBox B authorizes DevBox A to make API calls, DevBox UI dynamically configures a Cloudflare Access policy for DevBox B's application domains:
+* **Bypass Rule**: A policy with the `bypass` decision is created, matching the source IP address of DevBox A (`/32` CIDR block).
+* **Code-Free Integration**: DevBox A can call DevBox B's public domain (e.g., `https://odb-app.devboxui.com`) using standard, unmodified HTTP client requests (e.g., PHP Guzzle) without needing to configure or send any Cloudflare Access credentials.
+
+#### 2. Automatic Dynamic IP Alignment
+Because DevBoxes are spun down in the evening and recreated from snapshots in the morning, their public IP addresses are dynamic and change daily:
+* **IP Update Listener**: Whenever a DevBox (e.g., DevBox A) starts up (or is newly provisioned) and receives a new IP:
+  * The DevBox UI orchestrator scans all active DevBoxes to identify which ones have authorized DevBox A in their `allowedPeers` configuration.
+  * It automatically updates those target Cloudflare Access bypass policies with DevBox A's new IP address.
+* **Instant Re-alignment**: Connections remain authorized with zero manual updates or developer intervention required when IP addresses change.
+
+---
+
+### Dashboard Configuration & Controls
+
+To authorize inter-DevBox communication:
+1. Click the **API Auth** (padlock/key) button in the server row or card.
+2. Under the list of peer DevBoxes, select the checkboxes for the DevBoxes you wish to authorize to make API requests to the current DevBox.
+3. Click **Save Authorization**.
+4. The system immediately applies the Cloudflare Access bypass rules to the target server's base domain and all subdomains/projects configured on that server.
+
