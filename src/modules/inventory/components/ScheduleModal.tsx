@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { ScheduleConfig } from '../types';
 import { getScheduleConfig, saveScheduleConfig, triggerMorningSpinup, triggerEveningSnapshot } from '../schedule-actions';
 import { getHetznerOptions } from '../actions';
-import { HetznerServerType } from '@/lib/hetzner-api';
+import { HetznerServerType, HetznerLocation } from '@/lib/hetzner-api';
 
 // Common IANA timezones for the picker
 const TIMEZONES = [
@@ -37,6 +37,8 @@ interface Props {
 export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onClose, onSaved }: Props) {
   const [config, setConfig] = useState<ScheduleConfig>(DEFAULT_CONFIG);
   const [serverTypes, setServerTypes] = useState<HetznerServerType[]>([]);
+  const [locations, setLocations] = useState<HetznerLocation[]>([]);
+  const [originalDiskSize, setOriginalDiskSize] = useState<number>(80);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isTriggeringMorning, setIsTriggeringMorning] = useState(false);
@@ -51,15 +53,26 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
       getScheduleConfig(serverId),
       getHetznerOptions().catch(err => {
         console.error("Failed to fetch Hetzner options in modal:", err);
-        return { serverTypes: [] };
+        return { serverTypes: [], locations: [] };
       })
     ])
       .then(([cfg, options]) => {
-        if (cfg) setConfig(cfg);
-        else setConfig({ ...DEFAULT_CONFIG });
+        if (cfg) {
+          setConfig(cfg);
+          if (options && options.serverTypes) {
+            const initialType = options.serverTypes.find(t => t.name.toLowerCase() === (cfg.serverType || 'cpx21').toLowerCase());
+            if (initialType) {
+              setOriginalDiskSize(initialType.disk);
+            }
+          }
+        } else {
+          setConfig({ ...DEFAULT_CONFIG });
+          setOriginalDiskSize(80);
+        }
         
-        if (options && options.serverTypes) {
-          setServerTypes(options.serverTypes);
+        if (options) {
+          if (options.serverTypes) setServerTypes(options.serverTypes);
+          if (options.locations) setLocations(options.locations);
         }
       })
       .catch(console.error)
@@ -252,30 +265,78 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                 {/* Server type & location */}
                 <div className="space-y-4 bg-slate-950/20 border border-slate-800/60 p-4 rounded-xl">
                   <Label>Spin-up Configuration</Label>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Server Type</label>
-                      <input
-                        id={`server-type-${serverId}`}
-                        type="text"
-                        value={config.serverType}
-                        onChange={e => setConfig(c => ({ ...c, serverType: e.target.value }))}
-                        placeholder="cpx21"
-                        disabled={!config.enabled}
-                        className="w-full bg-slate-950 border border-slate-800 text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-40 font-mono"
-                      />
+                      <div className="relative">
+                        <select
+                          id={`server-type-${serverId}`}
+                          value={config.serverType}
+                          onChange={e => setConfig(c => ({ ...c, serverType: e.target.value }))}
+                          disabled={!config.enabled}
+                          className="w-full bg-slate-950 border border-slate-800 text-white text-sm rounded-lg px-3 py-2.5 pr-8 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-40 font-mono appearance-none cursor-pointer"
+                        >
+                          {serverTypes.map(t => {
+                            const priceObj = t.prices.find(p => p.location === (config.location || 'nbg1')) || t.prices[0];
+                            const monthlyGross = priceObj ? `${priceObj.price_monthly?.gross}€` : '';
+                            const isDisabled = t.disk < originalDiskSize;
+                            return (
+                              <option 
+                                key={t.id} 
+                                value={t.name} 
+                                disabled={isDisabled}
+                                className="bg-slate-900 text-white text-xs disabled:text-slate-600"
+                              >
+                                {t.name.toUpperCase()} ({t.cores}C / {t.memory}G / {t.disk}GB SSD) {monthlyGross ? `— ${monthlyGross}/mo` : ''} {isDisabled ? '(Disk too small)' : ''}
+                              </option>
+                            );
+                          })}
+                          {serverTypes.length === 0 && (
+                            <option value={config.serverType || 'cpx21'}>
+                              {(config.serverType || 'cpx21').toUpperCase()} (Loading...)
+                            </option>
+                          )}
+                        </select>
+                        <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-slate-500">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-slate-500 leading-normal">
+                        Choose the hardware capacity. Note: Downscaling to a size with a smaller SSD than your current snapshot ({originalDiskSize}GB) is disabled.
+                      </p>
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Location</label>
-                      <input
-                        id={`location-${serverId}`}
-                        type="text"
-                        value={config.location}
-                        onChange={e => setConfig(c => ({ ...c, location: e.target.value }))}
-                        placeholder="nbg1"
-                        disabled={!config.enabled}
-                        className="w-full bg-slate-950 border border-slate-800 text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-40 font-mono"
-                      />
+                      <div className="relative">
+                        <select
+                          id={`location-${serverId}`}
+                          value={config.location}
+                          onChange={e => setConfig(c => ({ ...c, location: e.target.value }))}
+                          disabled={!config.enabled}
+                          className="w-full bg-slate-950 border border-slate-800 text-white text-sm rounded-lg px-3 py-2.5 pr-8 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-40 font-mono appearance-none cursor-pointer"
+                        >
+                          {locations.map(loc => (
+                            <option key={loc.id} value={loc.name} className="bg-slate-900 text-white text-xs">
+                              {loc.name.toUpperCase()} ({loc.city})
+                            </option>
+                          ))}
+                          {locations.length === 0 && (
+                            <option value={config.location || 'nbg1'}>
+                              {(config.location || 'nbg1').toUpperCase()} (Loading...)
+                            </option>
+                          )}
+                        </select>
+                        <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-slate-500">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-slate-500 leading-normal">
+                        Caution: Relocating requires copying snapshot over WAN on boot, delaying startup by several minutes. Nuremberg (NBG1) is recommended.
+                      </p>
                     </div>
                   </div>
                 </div>
