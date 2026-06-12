@@ -28,12 +28,13 @@ const DEFAULT_CONFIG: ScheduleConfig = {
 interface Props {
   serverId: string;
   serverName: string;
+  serverStatus?: string;
   isOpen: boolean;
   onClose: () => void;
   onSaved?: (config: ScheduleConfig) => void;
 }
 
-export function ScheduleModal({ serverId, serverName, isOpen, onClose, onSaved }: Props) {
+export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onClose, onSaved }: Props) {
   const [config, setConfig] = useState<ScheduleConfig>(DEFAULT_CONFIG);
   const [serverTypes, setServerTypes] = useState<HetznerServerType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -111,6 +112,10 @@ export function ScheduleModal({ serverId, serverName, isOpen, onClose, onSaved }
   if (!isOpen) return null;
 
   // --- Pricing calculations ---
+  const formattedStatus = serverStatus
+    ? serverStatus.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+    : 'Ready';
+
   const currentType = serverTypes.find(t => t.name.toLowerCase() === (config.serverType || 'cpx21').toLowerCase());
   const selectedPrice = currentType?.prices.find((p) => p.location === (config.location || 'nbg1')) || currentType?.prices[0];
   
@@ -308,6 +313,9 @@ export function ScheduleModal({ serverId, serverName, isOpen, onClose, onSaved }
                         </button>
                       )}
                     </div>
+                    <p className="text-[11px] text-slate-400/80">
+                      It keeps the current server state (<span className="text-amber-400 font-medium">{formattedStatus}</span>) during that time.
+                    </p>
                     {config.pauseUntil && (
                       <p className="text-[10px] text-amber-400/80 flex items-center gap-1">
                         <span className="w-1.5 h-1.5 bg-amber-400 rounded-full inline-block" />
@@ -345,6 +353,9 @@ export function ScheduleModal({ serverId, serverName, isOpen, onClose, onSaved }
                         }}
                       />
                     </div>
+                    <p className="text-[11px] text-slate-400/80">
+                      It keeps the current server state (<span className="text-rose-400 font-medium">{formattedStatus}</span>) for the selected date.
+                    </p>
 
                     {/* Chip list */}
                     {config.blockedDates && config.blockedDates.length > 0 ? (

@@ -238,6 +238,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
           onClose={() => setIsScheduleOpen(false)}
           serverId={server.id}
           serverName={server.hostname || server.ip}
+          serverStatus={server.status}
           onSaved={(cfg) => setScheduleConfig(cfg)}
         />
       )}
@@ -495,6 +496,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
           onClose={() => setIsScheduleOpen(false)}
           serverId={server.id}
           serverName={server.hostname || server.ip}
+          serverStatus={server.status}
           onSaved={(cfg) => setScheduleConfig(cfg)}
         />
       )}
