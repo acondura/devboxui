@@ -248,7 +248,8 @@ export async function runMorningWorkflow(
 export async function runEveningWorkflow(
   serverId: string,
   userEmail: string,
-  isManual?: boolean
+  isManual?: boolean,
+  customPrefix?: string
 ): Promise<{ success: boolean; message: string; snapshotId?: number }> {
   const env = await getCloudflareEnv();
   const kv = env.KV;
@@ -330,7 +331,8 @@ export async function runEveningWorkflow(
 
   // ── Step 2: Create snapshot ───────────────────────────────────────────────
   const date = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-  const snapshotDescription = `devbox-auto-${serverId.slice(0, 8)}-${date}`;
+  const baseDescription = `devbox-auto-${serverId.slice(0, 8)}-${date}`;
+  const snapshotDescription = customPrefix ? `${customPrefix}-${baseDescription}` : baseDescription;
   const snapshotLabel = { 'devbox-server-id': serverId, 'devbox-auto': 'true' };
 
   console.log(`[Evening] Creating snapshot "${snapshotDescription}"…`);
@@ -403,9 +405,9 @@ export async function triggerMorningSpinup(serverId: string) {
   return runMorningWorkflow(serverId, userEmail, true);
 }
 
-export async function triggerEveningSnapshot(serverId: string) {
+export async function triggerEveningSnapshot(serverId: string, customPrefix?: string) {
   const userEmail = await getIdentity();
-  return runEveningWorkflow(serverId, userEmail, true);
+  return runEveningWorkflow(serverId, userEmail, true, customPrefix);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

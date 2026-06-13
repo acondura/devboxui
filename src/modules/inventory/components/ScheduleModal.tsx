@@ -5,6 +5,7 @@ import { ScheduleConfig } from '../types';
 import { getScheduleConfig, saveScheduleConfig, triggerMorningSpinup, triggerEveningSnapshot } from '../schedule-actions';
 import { getHetznerOptions } from '../actions';
 import { HetznerServerType, HetznerLocation, HetznerPricingResponse } from '@/lib/hetzner-api';
+import { ConfirmSnapshotModal } from './ConfirmSnapshotModal';
 
 // Common IANA timezones for the picker
 const TIMEZONES = [
@@ -80,6 +81,7 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
   const [isTriggeringMorning, setIsTriggeringMorning] = useState(false);
   const [isTriggeringEvening, setIsTriggeringEvening] = useState(false);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+  const [isConfirmSnapshotOpen, setIsConfirmSnapshotOpen] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -149,11 +151,10 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
     }
   };
 
-  const handleTriggerEvening = async () => {
-    if (!confirm('This will power off the server, create a snapshot, then DELETE the server. Proceed?')) return;
+  const handleTriggerEvening = async (customPrefix?: string) => {
     setIsTriggeringEvening(true);
     try {
-      const result = await triggerEveningSnapshot(serverId);
+      const result = await triggerEveningSnapshot(serverId, customPrefix);
       showToast(result.success ? 'success' : 'error', result.message);
       if (result.success && onRefresh) {
         await onRefresh();
@@ -199,6 +200,12 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+      <ConfirmSnapshotModal
+        isOpen={isConfirmSnapshotOpen}
+        onClose={() => setIsConfirmSnapshotOpen(false)}
+        onConfirm={handleTriggerEvening}
+        serverName={serverName}
+      />
       <div className="w-full max-w-lg lg:max-w-4xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col transition-all">
 
         {/* Header */}
@@ -625,7 +632,7 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
 
                     <button
                       id={`trigger-evening-${serverId}`}
-                      onClick={handleTriggerEvening}
+                      onClick={() => setIsConfirmSnapshotOpen(true)}
                       disabled={isTriggeringEvening}
                       className="flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-amber-400 text-xs font-bold rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                     >

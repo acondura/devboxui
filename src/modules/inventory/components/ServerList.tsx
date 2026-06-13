@@ -6,6 +6,7 @@ import { AddDomainModal } from './AddDomainModal';
 import { ReinstallModal } from './ReinstallModal';
 import { ScheduleModal } from './ScheduleModal';
 import { ApiAuthModal } from './ApiAuthModal';
+import { ConfirmSnapshotModal } from './ConfirmSnapshotModal';
 import { getServerLogs, getLiveProjects } from '../actions';
 import { ScheduleConfig } from '../types';
 import { triggerMorningSpinup, triggerEveningSnapshot } from '../schedule-actions';
@@ -211,6 +212,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
   const [debugData, setDebugData] = useState<{ docker: string, setup: string, timestamp: string } | null>(null);
   const [isSpinningUp, setIsSpinningUp] = useState(false);
   const [isSnapshotting, setIsSnapshotting] = useState(false);
+  const [isConfirmSnapshotOpen, setIsConfirmSnapshotOpen] = useState(false);
 
   const isAutomated = !!(server.providerName === 'Hetzner' || server.providerName === 'Contabo' || server.provider === 'hetzner' || server.provider === 'contabo');
   const isHetzner = !!(server.providerName === 'Hetzner' || server.provider === 'hetzner');
@@ -251,11 +253,10 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
     }
   };
 
-  const handleSnapshotShutdown = async () => {
-    if (!confirm('This will power off the server, create a snapshot, then DELETE the server to save costs. Proceed?')) return;
+  const handleSnapshotShutdown = async (customPrefix?: string) => {
     setIsSnapshotting(true);
     try {
-      const result = await triggerEveningSnapshot(server.id);
+      const result = await triggerEveningSnapshot(server.id, customPrefix);
       if (result.success) {
         if (onRefresh) await onRefresh();
       } else {
@@ -270,6 +271,12 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
 
   return (
     <tr className="group hover:bg-slate-800/30 transition-colors">
+      <ConfirmSnapshotModal
+        isOpen={isConfirmSnapshotOpen}
+        onClose={() => setIsConfirmSnapshotOpen(false)}
+        onConfirm={handleSnapshotShutdown}
+        serverName={server.hostname || server.ip}
+      />
       <AddDomainModal
         isOpen={isProjectModalOpen}
         onClose={() => { setIsProjectModalOpen(false); setEditingDomain(null); }}
@@ -465,7 +472,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
           {/* Snapshot & Shutdown button — only for Hetzner servers that are running/not off */}
           {isHetzner && server.status !== 'off' && (
             <button
-              onClick={handleSnapshotShutdown}
+              onClick={() => setIsConfirmSnapshotOpen(true)}
               disabled={isSnapshotting}
               className="p-2 text-slate-500 hover:text-indigo-400 hover:bg-slate-800 rounded-lg transition-all disabled:opacity-50"
               title="Snapshot & Shutdown (Saves costs)"
@@ -542,6 +549,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
   const [debugData, setDebugData] = useState<{ docker: string, setup: string, timestamp: string } | null>(null);
   const [isSpinningUp, setIsSpinningUp] = useState(false);
   const [isSnapshotting, setIsSnapshotting] = useState(false);
+  const [isConfirmSnapshotOpen, setIsConfirmSnapshotOpen] = useState(false);
 
   const isAutomated = !!(server.hetznerServerId || server.contaboInstanceId || server.providerName === 'Hetzner' || server.providerName === 'Contabo' || server.provider === 'hetzner' || server.provider === 'contabo');
   const isHetzner = !!(server.providerName === 'Hetzner' || server.provider === 'hetzner');
@@ -578,11 +586,10 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
     }
   };
 
-  const handleSnapshotShutdown = async () => {
-    if (!confirm('This will power off the server, create a snapshot, then DELETE the server to save costs. Proceed?')) return;
+  const handleSnapshotShutdown = async (customPrefix?: string) => {
     setIsSnapshotting(true);
     try {
-      const result = await triggerEveningSnapshot(server.id);
+      const result = await triggerEveningSnapshot(server.id, customPrefix);
       if (result.success) {
         if (onRefresh) await onRefresh();
       } else {
@@ -613,6 +620,12 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-xl hover:border-indigo-500/50 transition-all group relative overflow-hidden">
+      <ConfirmSnapshotModal
+        isOpen={isConfirmSnapshotOpen}
+        onClose={() => setIsConfirmSnapshotOpen(false)}
+        onConfirm={handleSnapshotShutdown}
+        serverName={server.hostname || server.ip}
+      />
       <AddDomainModal
         isOpen={isProjectModalOpen}
         onClose={() => { setIsProjectModalOpen(false); setEditingDomain(null); }}
@@ -733,7 +746,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
           )}
           {isHetzner && server.status !== 'off' && (
             <button
-              onClick={handleSnapshotShutdown}
+              onClick={() => setIsConfirmSnapshotOpen(true)}
               disabled={isSnapshotting}
               className="flex-1 py-2 text-xs font-bold uppercase bg-slate-800 hover:bg-slate-705 hover:bg-slate-800/80 text-slate-300 rounded-lg disabled:opacity-50 flex items-center justify-center"
             >
