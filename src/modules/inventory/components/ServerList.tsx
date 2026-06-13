@@ -942,13 +942,20 @@ function LogsModal({ isOpen, onClose, debugData, serverLogs, isFetching, tunnelI
                 )}
                 {tunnelToken && (
                   <div className="mt-2 pt-3 border-t border-slate-800/80 text-left">
-                    <span className="text-slate-500 block mb-1.5 font-medium">VPS Connector Setup Command:</span>
+                    <span className="text-slate-500 block mb-1.5 font-medium">VPS Setup & Connection Command:</span>
                     <div className="bg-slate-950 p-2.5 rounded border border-slate-800 flex justify-between items-center">
-                      <code className="text-emerald-400 select-all break-all pr-4 text-[10px]">
-                        {`sudo cloudflared service uninstall || true && sudo cloudflared service install ${tunnelToken} && sudo systemctl restart cloudflared`}
+                      <code className="text-emerald-400 select-all break-all pr-4 text-[10px] whitespace-pre-wrap leading-relaxed">
+                        {`if ! command -v cloudflared &> /dev/null; then
+  curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+  sudo dpkg -i cloudflared.deb
+  rm cloudflared.deb
+fi
+sudo cloudflared service uninstall || true
+sudo cloudflared service install ${tunnelToken}
+sudo systemctl restart cloudflared`}
                       </code>
                       <div className="flex-shrink-0">
-                        <CopyButton value={`sudo cloudflared service uninstall || true && sudo cloudflared service install ${tunnelToken} && sudo systemctl restart cloudflared`} />
+                        <CopyButton value={`if ! command -v cloudflared &> /dev/null; then\n  curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb && sudo dpkg -i cloudflared.deb && rm cloudflared.deb\nfi\nsudo cloudflared service uninstall || true\nsudo cloudflared service install ${tunnelToken}\nsudo systemctl restart cloudflared`} />
                       </div>
                     </div>
                   </div>
