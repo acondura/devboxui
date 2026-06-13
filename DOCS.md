@@ -126,10 +126,9 @@ Adds `setupARecord(hostname, ip)` to manage unproxied (`proxied: false`) DNS A r
 * The orchestrator automatically calls `cfApi.setupARecord` to point the existing `<safeName>-direct.devboxui.com` record to the new IP.
 
 #### 4. IDE Link Generation (`src/modules/inventory/components/ServerList.tsx`)
-The `getIdeUrl` function generates remote protocol URLs (for VS Code, Cursor, Antigravity, and JetBrains Gateway) targeting the direct hostname instead of the raw IP:
+The `getIdeUrl` function generates remote protocol URLs (for VS Code, Cursor, Antigravity, and JetBrains Gateway) targeting the server's raw IP address:
 ```typescript
-const displayHostname = server.hostname ? server.hostname.replace('.devboxui.com', '') : '';
-const host = displayHostname ? `${displayHostname.replace('-code', '-direct')}.devboxui.com` : server.ip;
+const host = server.ip;
 ```
 
 ---

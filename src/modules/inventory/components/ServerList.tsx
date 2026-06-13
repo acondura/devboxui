@@ -835,8 +835,7 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
 
   const getIdeUrl = (ideId: string, path: string) => {
     const user = server.userName || 'root';
-    const displayHostname = server.hostname ? server.hostname.replace('.devboxui.com', '') : '';
-    const host = displayHostname ? `${displayHostname.replace('-code', '-direct')}.devboxui.com` : server.ip;
+    const host = server.ip;
     if (ideId === 'phpstorm') {
       return `jetbrains://gateway/ssh/environment?h=${host}&u=${user}&p=22&ideHint=PS&projectHint=${path}`;
     }
