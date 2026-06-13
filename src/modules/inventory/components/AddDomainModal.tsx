@@ -11,14 +11,12 @@ interface AddDomainModalProps {
 
 export function AddDomainModal({ isOpen, onClose, onAdd, initialData }: AddDomainModalProps) {
   const [domainPrefix, setDomainPrefix] = useState(initialData?.prefix || '');
-  const [port, setPort] = useState<string>(initialData?.port?.toString() || '32768');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Sync state with initialData when modal opens
   useEffect(() => {
     if (isOpen) {
       setDomainPrefix(initialData?.prefix || '');
-      setPort(initialData?.port?.toString() || '32768');
     }
   }, [isOpen, initialData]);
 
@@ -27,7 +25,7 @@ export function AddDomainModal({ isOpen, onClose, onAdd, initialData }: AddDomai
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    await onAdd(domainPrefix, parseInt(port) || 80);
+    await onAdd(domainPrefix, 80);
     setIsSubmitting(false);
     setDomainPrefix('');
     onClose();
@@ -61,33 +59,20 @@ export function AddDomainModal({ isOpen, onClose, onAdd, initialData }: AddDomai
             </p>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-slate-400 mb-1.5">Subdomain</label>
-              <div className="relative">
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. odb-app"
-                  value={domainPrefix}
-                  onChange={(e) => setDomainPrefix(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-4 pr-32 py-2.5 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                />
-                <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
-                  <span className="text-slate-500 text-sm font-medium">-web.devboxui.com</span>
-                </div>
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1.5">Port</label>
+          <div>
+            <label className="block text-sm font-medium text-slate-400 mb-1.5">Subdomain</label>
+            <div className="relative">
               <input
-                type="number"
+                type="text"
                 required
-                placeholder="32768"
-                value={port}
-                onChange={(e) => setPort(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                placeholder="e.g. odb-app"
+                value={domainPrefix}
+                onChange={(e) => setDomainPrefix(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-4 pr-36 py-2.5 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
               />
+              <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
+                <span className="text-slate-500 text-sm font-medium">-web.devboxui.com</span>
+              </div>
             </div>
           </div>
 
@@ -100,11 +85,11 @@ export function AddDomainModal({ isOpen, onClose, onAdd, initialData }: AddDomai
              </div>
              <div className="flex items-center justify-between border-t border-slate-800/50 pt-3">
                 <div className="flex items-center space-x-2">
-                  <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Cloudflare Access + Tunnel</span>
+                   <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                   <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Cloudflare Access + Tunnel</span>
                 </div>
                 <span className="text-[10px] text-slate-500 font-mono">
-                   :localhost:{port || '80'}
+                   :localhost:80
                 </span>
              </div>
           </div>
