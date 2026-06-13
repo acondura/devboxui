@@ -410,7 +410,8 @@ function getHetznerBootstrapScript(
   provisioningToken: string,
   callbackUrl: string,
   serviceTokenId?: string,
-  serviceTokenSecret?: string
+  serviceTokenSecret?: string,
+  tunnelToken?: string
 ) {
   return `#!/bin/bash
 set -e
@@ -449,6 +450,23 @@ cat <<EOF > /home/"$DEV_USER"/.gitconfig
     email = ${userEmail}
 EOF
 chown "$DEV_USER":"$DEV_USER" /home/"$DEV_USER"/.gitconfig
+
+# Install and configure Cloudflare Tunnel if token is present
+if [ -n "${tunnelToken}" ]; then
+    echo "Installing Cloudflare Tunnel..."
+    ARCH=$(dpkg --print-architecture)
+    if [ "$ARCH" = "arm64" ]; then
+      CF_PKG="cloudflared-linux-arm64.deb"
+    else
+      CF_PKG="cloudflared-linux-amd64.deb"
+    fi
+    curl -L -s --output cloudflared.deb "https://github.com/cloudflare/cloudflared/releases/latest/download/$CF_PKG"
+    dpkg -i cloudflared.deb > /dev/null
+    rm cloudflared.deb
+    cloudflared service install "${tunnelToken}" > /dev/null 2>&1 || true
+    systemctl enable cloudflared || true
+    systemctl start cloudflared || true
+fi
 
 # Report Ready status back
 if command -v curl >/dev/null 2>&1; then
@@ -606,6 +624,21 @@ export async function provisionServer(
   const safeName = name.toLowerCase().replace(/[^a-z0-9]/g, '-');
   const directHostname = `${safeName}.devboxui.com`;
 
+  let tunnelId: string | undefined = undefined;
+  let tunnelToken: string | undefined = undefined;
+  const initLogs = [`Starting Hetzner server creation (${serverType} in ${location})...`];
+
+  try {
+    console.log(`Creating Cloudflare Tunnel for Hetzner server...`);
+    const tunnelResult = await cfApi.createTunnel(`tunnel-${serverId}`);
+    tunnelId = tunnelResult.id;
+    tunnelToken = tunnelResult.token;
+    initLogs.push(`Created Cloudflare Tunnel: ${tunnelId}`);
+  } catch (err) {
+    console.error("Failed to create Cloudflare Tunnel for Hetzner:", err);
+    initLogs.push(`Warning: Failed to create Cloudflare Tunnel: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
   const rootPassword = Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-6);
   const provisioningToken = crypto.randomUUID();
   const config: ServerConfig = {
@@ -620,8 +653,10 @@ export async function provisionServer(
     sshPublicKey: settings.sshPublicKey,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    logs: [`Starting Hetzner server creation (${serverType} in ${location})...`],
+    logs: initLogs,
     tunnelUrl: undefined,
+    tunnelId,
+    tunnelToken,
     projects: [],
     serverType: serverType,
     provider: 'hetzner',
@@ -693,7 +728,8 @@ export async function provisionServer(
       provisioningToken,
       callbackUrl,
       serviceToken.id,
-      serviceToken.client_secret
+      serviceToken.client_secret,
+      config.tunnelToken
     );
 
     console.log(`Requesting new ${serverType} server '${name}' in ${location} with ${sshKeyIds.length} keys...`);
@@ -735,6 +771,11 @@ export async function provisionServer(
     // Cleanup Hetzner resources
     if (hetznerServerId) {
       try { await hetznerApi.deleteServer(hetznerServerId); } catch (e) { console.error("Cleanup: Failed to delete Hetzner server", e); }
+    }
+    
+    // Cleanup Cloudflare Tunnel
+    if (tunnelId) {
+      try { await cfApi.deleteTunnel(tunnelId); } catch (e) { console.error("Cleanup: Failed to delete Cloudflare Tunnel", e); }
     }
 
     throw error;
