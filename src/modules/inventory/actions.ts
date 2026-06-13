@@ -948,7 +948,7 @@ export async function addProject(serverId: string, projectName: string, port: nu
   const projectDomain = `${cleanName}-web.devboxui.com`; // Simplified domain generation
 
   // 3. Update Cloudflare Tunnel, DNS & Access
-  const service = `http://localhost:${port}`;
+  const service = `http://127.0.0.1:${port}`;
   await cfApi.setupHostname(projectDomain, config.tunnelId, service);
   console.log(`Setting up Zero Trust Access for project ${projectDomain} -> ${service}...`);
   await cfApi.setupAccess(projectDomain, userEmail);
@@ -1062,7 +1062,7 @@ export async function updateDomain(serverId: string, oldDomain: string, newSubdo
   const domainChanged = oldDomain !== newDomain;
 
   // 3. Update Cloudflare Tunnel Ingress
-  const service = `http://localhost:${newPort}`;
+  const service = `http://127.0.0.1:${newPort}`;
   
   if (domainChanged) {
     console.log(`Domain changed from ${oldDomain} to ${newDomain}. Cleaning up old and creating new...`);
