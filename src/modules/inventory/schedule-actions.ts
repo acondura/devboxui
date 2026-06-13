@@ -306,11 +306,24 @@ export async function runEveningWorkflow(
   // ── Step 1: Power off ─────────────────────────────────────────────────────
   const currentStatus = await hetznerApi.getServerStatus(hetznerServerId);
   if (currentStatus !== 'off') {
-    console.log(`[Evening] Powering off server ${hetznerServerId} (currently: ${currentStatus})…`);
-    await hetznerApi.poweroffServer(hetznerServerId);
-    // Wait up to 3 minutes for server to reach 'off'
-    await hetznerApi.waitForServerStatus(hetznerServerId, 'off', 180_000, 5_000);
-    console.log(`[Evening] Server ${hetznerServerId} is now OFF.`);
+    console.log(`[Evening] Initiating graceful ACPI shutdown for server ${hetznerServerId} (currently: ${currentStatus})…`);
+    try {
+      await hetznerApi.shutdownServer(hetznerServerId);
+      // Wait up to 45 seconds for graceful shutdown to finish
+      await hetznerApi.waitForServerStatus(hetznerServerId, 'off', 45_000, 5_000);
+      console.log(`[Evening] Server ${hetznerServerId} gracefully shut down.`);
+    } catch (err) {
+      console.log(`[Evening] Graceful shutdown failed or timed out: ${err instanceof Error ? err.message : String(err)}. Falling back to hard poweroff…`);
+      try {
+        await hetznerApi.poweroffServer(hetznerServerId);
+        // Wait up to 2 minutes for hard poweroff
+        await hetznerApi.waitForServerStatus(hetznerServerId, 'off', 120_000, 5_000);
+        console.log(`[Evening] Server ${hetznerServerId} forced OFF.`);
+      } catch (forceErr) {
+        console.error(`[Evening] Hard poweroff also failed:`, forceErr);
+        throw new Error(`Failed to power off server ${hetznerServerId} even with hard poweroff.`);
+      }
+    }
   } else {
     console.log(`[Evening] Server ${hetznerServerId} already OFF.`);
   }

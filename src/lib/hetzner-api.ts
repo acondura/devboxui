@@ -356,7 +356,7 @@ export class HetznerApiService {
   }
 
   /**
-   * Sends an ACPI shutdown signal to a server (graceful poweroff).
+   * Cuts the power to a server hard (unclean shutdown).
    */
   async poweroffServer(serverId: number): Promise<HetznerAction> {
     const response = await fetch(`${this.baseUrl}/servers/${serverId}/actions/poweroff`, {
@@ -366,6 +366,22 @@ export class HetznerApiService {
     if (!response.ok) {
       const error = await response.text();
       throw new Error(`Hetzner Poweroff Error: ${response.status} - ${error}`);
+    }
+    const data = await response.json() as { action: HetznerAction };
+    return data.action;
+  }
+
+  /**
+   * Sends an ACPI shutdown signal to a server (graceful shutdown).
+   */
+  async shutdownServer(serverId: number): Promise<HetznerAction> {
+    const response = await fetch(`${this.baseUrl}/servers/${serverId}/actions/shutdown`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${this.token}` }
+    });
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Hetzner Shutdown Error: ${response.status} - ${error}`);
     }
     const data = await response.json() as { action: HetznerAction };
     return data.action;
