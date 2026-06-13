@@ -47,6 +47,7 @@ export interface ScheduleConfig {
   sshKeyIds?: number[];    // Hetzner SSH key IDs to attach on spin-up
   latestSnapshotId?: number;
   latestSnapshotDate?: string;
+  latestSnapshotDescription?: string;
   lastEveningRun?: string; // ISO timestamp
   lastMorningRun?: string; // ISO timestamp
   lastRunStatus?: 'success' | 'error' | 'running';

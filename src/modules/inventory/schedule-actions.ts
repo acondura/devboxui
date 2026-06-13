@@ -378,6 +378,7 @@ export async function runEveningWorkflow(
   // ── Step 5: Update KV records ─────────────────────────────────────────────
   sched.latestSnapshotId = snapshot.id;
   sched.latestSnapshotDate = date;
+  sched.latestSnapshotDescription = snapshotDescription;
   sched.lastEveningRun = new Date().toISOString();
   sched.lastRunStatus = 'success';
   sched.lastRunError = undefined;
