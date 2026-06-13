@@ -539,18 +539,19 @@ export async function provisionServer(
   const shortId = serverId.slice(0, 8);
   const name = customName || `devbox-${shortId}`;
   
-  // Under the new approved plan: SSH username is 'root'
-  const userName = 'root';
+  const userName = generateUniqueUsername(userEmail);
   const safeName = name.toLowerCase().replace(/[^a-z0-9]/g, '-');
   const directHostname = `${safeName}-direct.devboxui.com`;
 
   const rootPassword = Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-6);
+  const provisioningToken = crypto.randomUUID();
   const config: ServerConfig = {
     id: serverId,
     ip: 'pending',
     userName,
     userEmail,
     status: 'initializing',
+    provisioningToken,
     rootPassword: rootPassword,
     sshPrivateKey: settings.sshPrivateKey,
     sshPublicKey: settings.sshPublicKey,
@@ -617,9 +618,30 @@ export async function provisionServer(
       throw new Error("Failed to register any SSH keys with Hetzner. Aborting launch to prevent root password fallback.");
     }
 
+    const requestHost = env.NEXT_PUBLIC_APP_URL || 'https://devboxui.com';
+    const callbackUrl = `${requestHost}/api/provisioning/status`;
+    const serviceToken = await cfApi.getOrCreateServiceToken(kv);
+    await cfApi.authorizeServiceToken(requestHost.replace('https://', ''), serviceToken.id);
+
+    const bootstrapScript = getBootstrapScript(
+      userName,
+      userEmail,
+      "", // no tunnel token for Hetzner
+      managementKey,
+      userSSHKey,
+      serverId,
+      provisioningToken,
+      callbackUrl,
+      rootPassword,
+      serviceToken.id,
+      serviceToken.client_secret,
+      hetznerToken,
+      'Hetzner',
+      directHostname
+    );
+
     console.log(`Requesting new ${serverType} server '${name}' in ${location} with ${sshKeyIds.length} keys...`);
-    // Create server with user_data = "" (empty string) to bypass cloud-init/bootstrap script
-    const hetznerResult = await hetznerApi.createServer(name, "", serverType, location, image, sshKeyIds);
+    const hetznerResult = await hetznerApi.createServer(name, bootstrapScript, serverType, location, image, sshKeyIds);
     hetznerServerId = hetznerResult.server.id;
     config.hetznerServerId = hetznerServerId;
 
@@ -717,8 +739,13 @@ export async function getServers() {
           const oldDetailed = s.detailedStatus;
 
           if (hs.status === 'running') {
-            s.status = 'ready';
-            s.detailedStatus = 'Ready';
+            const setupStatuses = ['provisioning', 'configuring', 'initializing', 'Initializing', 'starting', 'waiting-for-bootstrap'];
+            if (s.status && setupStatuses.includes(s.status)) {
+              // Keep setup status intact
+            } else {
+              s.status = 'ready';
+              s.detailedStatus = 'Ready';
+            }
           } else if (hs.status === 'starting' || hs.status === 'initializing') {
             s.status = 'initializing';
             s.detailedStatus = 'Initializing...';
