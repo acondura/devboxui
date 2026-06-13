@@ -361,31 +361,33 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
 
       {/* Server Identification */}
       <td className="py-6 px-4">
-        <div className="flex flex-col">
-          {server.status === 'off' && scheduleConfig?.latestSnapshotDescription ? (
-            <div className="flex flex-col space-y-1">
-              <span className="text-base font-mono font-bold text-white leading-none">
-                {server.ip}
+        <div className="flex flex-col space-y-1 text-left">
+          <span className="text-sm font-bold text-white tracking-tight">{displayHostname}</span>
+          
+          <div className="flex items-center space-x-2 text-xs font-mono text-slate-400">
+            {server.status === 'off' && scheduleConfig?.latestSnapshotDescription ? (
+              <span className="text-slate-500">{server.ip}</span>
+            ) : (
+              <>
+                <span>{server.ip}</span>
+                <CopyButton value={server.ip} />
+                {server.rootPassword && (
+                  <div className="flex items-center space-x-1 pl-1.5 border-l border-slate-800">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase">PWD</span>
+                    <CopyButton value={server.rootPassword} />
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+          
+          {server.status === 'off' && scheduleConfig?.latestSnapshotDescription && (
+            <div className="flex items-center mt-1">
+              <span className="text-[9px] font-bold text-indigo-400 uppercase bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.5 rounded tracking-wide font-mono">
+                {scheduleConfig.latestSnapshotDescription}
               </span>
-              <div className="flex items-center space-x-1.5 mt-1">
-                <span className="text-[9px] font-bold text-indigo-400 uppercase bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.5 rounded tracking-wide font-mono">
-                  {scheduleConfig.latestSnapshotDescription}
-                </span>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center space-x-2">
-              <span className="text-base font-mono font-bold text-white leading-none">{server.ip}</span>
-              <CopyButton value={server.ip} />
-              {server.rootPassword && (
-                <div className="flex items-center space-x-1 pl-1 border-l border-slate-800 ml-1">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase">PWD</span>
-                  <CopyButton value={server.rootPassword} />
-                </div>
-              )}
             </div>
           )}
-          <span className="text-[10px] font-mono text-slate-500 mt-1">{displayHostname}.devboxui.com</span>
         </div>
       </td>
 
@@ -732,23 +734,18 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
                 </div>
               )}
             </div>
-            <div className="flex flex-col">
-              <div className="flex items-center space-x-2">
+            <div className="flex flex-col space-y-1">
+              <h3 className="text-base font-bold text-white tracking-tight text-left">{displayHostname}</h3>
+              
+              <div className="flex items-center space-x-2 text-xs font-mono text-slate-400">
                 {server.status === 'off' && scheduleConfig?.latestSnapshotDescription ? (
-                  <div className="flex flex-col space-y-1">
-                    <h3 className="text-sm font-mono font-bold text-white tracking-tight">{server.ip}</h3>
-                    <div className="flex items-center space-x-1.5 mt-1">
-                      <span className="text-[9px] font-bold text-indigo-400 uppercase bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.5 rounded tracking-wide font-mono">
-                        {scheduleConfig.latestSnapshotDescription}
-                      </span>
-                    </div>
-                  </div>
+                  <span className="text-slate-500">{server.ip}</span>
                 ) : (
                   <>
-                    <h3 className="text-xl font-mono font-bold text-white tracking-tight">{server.ip}</h3>
+                    <span>{server.ip}</span>
                     <CopyButton value={server.ip} />
                     {server.rootPassword && (
-                      <div className="flex items-center space-x-1 pl-1 border-l border-slate-800 ml-1">
+                      <div className="flex items-center space-x-1.5 pl-1.5 border-l border-slate-800">
                         <span className="text-[10px] font-bold text-slate-500 uppercase">PWD</span>
                         <CopyButton value={server.rootPassword} />
                       </div>
@@ -756,8 +753,15 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
                   </>
                 )}
               </div>
-              <div className="flex flex-row justify-between items-center mt-1 text-[10px] font-mono text-slate-500 w-full">
-                <span>{displayHostname}.devboxui.com</span>
+              
+              <div className="flex flex-row justify-between items-center mt-1 text-[10px] font-mono text-slate-500 w-full font-mono text-left">
+                {server.status === 'off' && scheduleConfig?.latestSnapshotDescription ? (
+                  <span className="text-[9px] font-bold text-indigo-400 uppercase bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.5 rounded tracking-wide">
+                    {scheduleConfig.latestSnapshotDescription}
+                  </span>
+                ) : (
+                  <span />
+                )}
                 <span>
                   {server.createdAt ? new Date(server.createdAt).toLocaleString('en-US', {
                     month: 'short',
