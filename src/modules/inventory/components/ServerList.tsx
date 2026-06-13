@@ -8,6 +8,7 @@ import { ScheduleModal } from './ScheduleModal';
 import { ApiAuthModal } from './ApiAuthModal';
 import { getServerLogs, getLiveProjects } from '../actions';
 import { ScheduleConfig } from '../types';
+import { triggerMorningSpinup, triggerEveningSnapshot } from '../schedule-actions';
 
 interface ServerListProps {
   servers: ServerConfig[];
@@ -19,6 +20,7 @@ interface ServerListProps {
   onToggleLock?: (serverId: string, enableLock: boolean) => Promise<void>;
   onReinstall?: (serverId: string) => Promise<void>;
   onUpdateAllowedPeers?: (serverId: string, allowedPeers: string[]) => Promise<void>;
+  onRefresh?: () => Promise<void>;
 }
 
 type SortField = 'status' | 'type' | 'ip' | 'os' | 'created';
@@ -196,7 +198,7 @@ export function ServerList(props: ServerListProps) {
   );
 }
 
-function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDomain, onDeleteServer, onReinstall, onUpdateAllowedPeers, servers }: ServerListProps & { server: ServerConfig }) {
+function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDomain, onDeleteServer, onReinstall, onUpdateAllowedPeers, servers, onRefresh }: ServerListProps & { server: ServerConfig }) {
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [isApiAuthOpen, setIsApiAuthOpen] = useState(false);
   const [editingDomain, setEditingDomain] = useState<{ domain: string; port: number } | null>(null);
@@ -207,6 +209,8 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
   const [deletingDomain, setDeletingDomain] = useState<string | null>(null);
   const [debugData, setDebugData] = useState<{ docker: string, setup: string, timestamp: string } | null>(null);
+  const [isSpinningUp, setIsSpinningUp] = useState(false);
+  const [isSnapshotting, setIsSnapshotting] = useState(false);
 
   const isAutomated = !!(server.providerName === 'Hetzner' || server.providerName === 'Contabo' || server.provider === 'hetzner' || server.provider === 'contabo');
   const isHetzner = !!(server.providerName === 'Hetzner' || server.provider === 'hetzner');
@@ -228,6 +232,39 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
       console.error("Failed to fetch logs", e);
     } finally {
       setIsFetchingLogs(false);
+    }
+  };
+
+  const handleSpinUp = async () => {
+    setIsSpinningUp(true);
+    try {
+      const result = await triggerMorningSpinup(server.id);
+      if (result.success) {
+        if (onRefresh) await onRefresh();
+      } else {
+        alert(result.message || 'Spin up failed.');
+      }
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Spin up failed.');
+    } finally {
+      setIsSpinningUp(false);
+    }
+  };
+
+  const handleSnapshotShutdown = async () => {
+    if (!confirm('This will power off the server, create a snapshot, then DELETE the server to save costs. Proceed?')) return;
+    setIsSnapshotting(true);
+    try {
+      const result = await triggerEveningSnapshot(server.id);
+      if (result.success) {
+        if (onRefresh) await onRefresh();
+      } else {
+        alert(result.message || 'Snapshot/shutdown failed.');
+      }
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Snapshot/shutdown failed.');
+    } finally {
+      setIsSnapshotting(false);
     }
   };
 
@@ -259,6 +296,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
           serverName={server.hostname || server.ip}
           serverStatus={server.status}
           onSaved={(cfg) => setScheduleConfig(cfg)}
+          onRefresh={onRefresh}
         />
       )}
 
@@ -404,6 +442,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
           )}
 
           {/* Schedule button — only for Hetzner servers */}
+          {/* Schedule button — only for Hetzner servers */}
           {isHetzner && (
             <button
               onClick={() => setIsScheduleOpen(true)}
@@ -423,6 +462,24 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
             </button>
           )}
 
+          {/* Snapshot & Shutdown button — only for Hetzner servers that are running/not off */}
+          {isHetzner && server.status !== 'off' && (
+            <button
+              onClick={handleSnapshotShutdown}
+              disabled={isSnapshotting}
+              className="p-2 text-slate-500 hover:text-indigo-400 hover:bg-slate-800 rounded-lg transition-all disabled:opacity-50"
+              title="Snapshot & Shutdown (Saves costs)"
+            >
+              {isSnapshotting ? (
+                <div className="h-4 w-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                </svg>
+              )}
+            </button>
+          )}
+
           {isAutomated && (
             <button
               onClick={async () => { if (confirm("Delete server?")) await onDeleteServer(server.id); }}
@@ -435,7 +492,24 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
           )}
 
           <div className="pl-2 ml-2 border-l border-slate-800 flex items-center space-x-2">
-            <IdeLaunchButton server={server} />
+            {server.status === 'off' ? (
+              <button
+                onClick={handleSpinUp}
+                disabled={isSpinningUp}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-all shadow-lg inline-flex items-center whitespace-nowrap"
+              >
+                {isSpinningUp ? (
+                  <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                ) : (
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                )}
+                <span>{isSpinningUp ? 'Spinning Up...' : 'Spin Up'}</span>
+              </button>
+            ) : (
+              <IdeLaunchButton server={server} />
+            )}
           </div>
         </div>
         {isLogsModalOpen && (
@@ -455,7 +529,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
   );
 }
 
-function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDeleteServer, onReinstall, onUpdateAllowedPeers, servers }: ServerListProps & { server: ServerConfig }) {
+function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDeleteServer, onReinstall, onUpdateAllowedPeers, servers, onRefresh }: ServerListProps & { server: ServerConfig }) {
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [isApiAuthOpen, setIsApiAuthOpen] = useState(false);
   const [editingDomain, setEditingDomain] = useState<{ domain: string; port: number } | null>(null);
@@ -466,6 +540,8 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
   // const [isTogglingLock, setIsTogglingLock] = useState(false);
   const [debugData, setDebugData] = useState<{ docker: string, setup: string, timestamp: string } | null>(null);
+  const [isSpinningUp, setIsSpinningUp] = useState(false);
+  const [isSnapshotting, setIsSnapshotting] = useState(false);
 
   const isAutomated = !!(server.hetznerServerId || server.contaboInstanceId || server.providerName === 'Hetzner' || server.providerName === 'Contabo' || server.provider === 'hetzner' || server.provider === 'contabo');
   const isHetzner = !!(server.providerName === 'Hetzner' || server.provider === 'hetzner');
@@ -484,6 +560,39 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
         }
       }
     } finally { setIsFetchingLogs(false); }
+  };
+
+  const handleSpinUp = async () => {
+    setIsSpinningUp(true);
+    try {
+      const result = await triggerMorningSpinup(server.id);
+      if (result.success) {
+        if (onRefresh) await onRefresh();
+      } else {
+        alert(result.message || 'Spin up failed.');
+      }
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Spin up failed.');
+    } finally {
+      setIsSpinningUp(false);
+    }
+  };
+
+  const handleSnapshotShutdown = async () => {
+    if (!confirm('This will power off the server, create a snapshot, then DELETE the server to save costs. Proceed?')) return;
+    setIsSnapshotting(true);
+    try {
+      const result = await triggerEveningSnapshot(server.id);
+      if (result.success) {
+        if (onRefresh) await onRefresh();
+      } else {
+        alert(result.message || 'Snapshot/shutdown failed.');
+      }
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Snapshot/shutdown failed.');
+    } finally {
+      setIsSnapshotting(false);
+    }
   };
 
   /*
@@ -530,6 +639,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
           serverName={server.hostname || server.ip}
           serverStatus={server.status}
           onSaved={(cfg) => setScheduleConfig(cfg)}
+          onRefresh={onRefresh}
         />
       )}
 
@@ -621,6 +731,18 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
               Schedule
             </button>
           )}
+          {isHetzner && server.status !== 'off' && (
+            <button
+              onClick={handleSnapshotShutdown}
+              disabled={isSnapshotting}
+              className="flex-1 py-2 text-xs font-bold uppercase bg-slate-800 hover:bg-slate-705 hover:bg-slate-800/80 text-slate-300 rounded-lg disabled:opacity-50 flex items-center justify-center"
+            >
+              {isSnapshotting && (
+                <div className="h-3.5 w-3.5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin mr-1.5" />
+              )}
+              {isSnapshotting ? 'Saving...' : 'Shutdown'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -642,7 +764,24 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
         </div>
 
         <div className="flex flex-col space-y-2 mt-4">
-          <IdeLaunchButton server={server} fullWidth />
+          {server.status === 'off' ? (
+            <button
+              onClick={handleSpinUp}
+              disabled={isSpinningUp}
+              className="w-full py-2.5 justify-center bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-all shadow-lg inline-flex items-center whitespace-nowrap"
+            >
+              {isSpinningUp ? (
+                <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+              ) : (
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              )}
+              <span>{isSpinningUp ? 'Spinning Up...' : 'Spin Up'}</span>
+            </button>
+          ) : (
+            <IdeLaunchButton server={server} fullWidth />
+          )}
         </div>
       </div>
 

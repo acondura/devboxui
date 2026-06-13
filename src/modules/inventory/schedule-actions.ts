@@ -4,7 +4,7 @@ import { getCloudflareEnv, getIdentity } from '@/lib/auth';
 import { HetznerApiService } from '@/lib/hetzner-api';
 import { CloudflareApiService } from '@/lib/cloudflare-api';
 import { ScheduleConfig, ServerConfig } from './types';
-import { getServers, getUserSettings, syncAllDependentPolicies } from './actions';
+import { getUserSettings, syncAllDependentPolicies } from './actions';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // KV key helpers
@@ -125,7 +125,8 @@ function isSchedulePaused(
 
 export async function runMorningWorkflow(
   serverId: string,
-  userEmail: string
+  userEmail: string,
+  isManual?: boolean
 ): Promise<{ success: boolean; message: string; newServerId?: number; ip?: string }> {
   const env = await getCloudflareEnv();
   const kv = env.KV;
@@ -141,12 +142,14 @@ export async function runMorningWorkflow(
   const schedConfig = await kv.get(scheduleKey(userEmail, serverId));
   if (!schedConfig) return { success: false, message: 'No schedule config found for server.' };
   const sched = JSON.parse(schedConfig) as ScheduleConfig;
-  if (!sched.enabled) return { success: false, message: 'Schedule is disabled.' };
+  if (!isManual && !sched.enabled) return { success: false, message: 'Schedule is disabled.' };
 
   // Check pause / vacation days
-  const pauseCheck = isSchedulePaused(sched);
-  if (pauseCheck.paused) {
-    return { success: true, message: `Skipped: ${pauseCheck.reason}` };
+  if (!isManual) {
+    const pauseCheck = isSchedulePaused(sched);
+    if (pauseCheck.paused) {
+      return { success: true, message: `Skipped: ${pauseCheck.reason}` };
+    }
   }
 
   // Load KV server record
@@ -244,7 +247,8 @@ export async function runMorningWorkflow(
 
 export async function runEveningWorkflow(
   serverId: string,
-  userEmail: string
+  userEmail: string,
+  isManual?: boolean
 ): Promise<{ success: boolean; message: string; snapshotId?: number }> {
   const env = await getCloudflareEnv();
   const kv = env.KV;
@@ -256,17 +260,6 @@ export async function runEveningWorkflow(
 
   const hetznerApi = new HetznerApiService(env, hetznerToken);
 
-  const schedData = await kv.get(scheduleKey(userEmail, serverId));
-  if (!schedData) return { success: false, message: 'No schedule config found for server.' };
-  const sched = JSON.parse(schedData) as ScheduleConfig;
-  if (!sched.enabled) return { success: false, message: 'Schedule is disabled.' };
-
-  // Check pause / vacation days
-  const pauseCheck = isSchedulePaused(sched);
-  if (pauseCheck.paused) {
-    return { success: true, message: `Skipped: ${pauseCheck.reason}` };
-  }
-
   const serverData = await kv.get(serverKey(userEmail, serverId));
   if (!serverData) return { success: false, message: 'Server KV record not found.' };
   const server = JSON.parse(serverData) as ServerConfig;
@@ -276,6 +269,38 @@ export async function runEveningWorkflow(
   }
 
   const hetznerServerId = server.hetznerServerId;
+
+  const schedData = await kv.get(scheduleKey(userEmail, serverId));
+  let sched: ScheduleConfig;
+  if (schedData) {
+    sched = JSON.parse(schedData) as ScheduleConfig;
+  } else {
+    // If no schedule config exists, query the server details from Hetzner API to set defaults
+    try {
+      const hs = await hetznerApi.getServer(hetznerServerId);
+      sched = {
+        enabled: false,
+        timezone: 'Europe/Bucharest',
+        spinupTime: '09:00',
+        snapshotTime: '18:00',
+        serverType: hs.server_type.name,
+        location: hs.datacenter.location.name,
+      };
+    } catch (e) {
+      return { success: false, message: `Failed to fetch server details from Hetzner API: ${e instanceof Error ? e.message : String(e)}` };
+    }
+  }
+
+  if (!isManual && !sched.enabled) return { success: false, message: 'Schedule is disabled.' };
+
+  // Check pause / vacation days
+  if (!isManual) {
+    const pauseCheck = isSchedulePaused(sched);
+    if (pauseCheck.paused) {
+      return { success: true, message: `Skipped: ${pauseCheck.reason}` };
+    }
+  }
+
   console.log(`[Evening] Starting evening workflow for Hetzner server ${hetznerServerId}…`);
 
   // ── Step 1: Power off ─────────────────────────────────────────────────────
@@ -362,12 +387,12 @@ export async function runEveningWorkflow(
 
 export async function triggerMorningSpinup(serverId: string) {
   const userEmail = await getIdentity();
-  return runMorningWorkflow(serverId, userEmail);
+  return runMorningWorkflow(serverId, userEmail, true);
 }
 
 export async function triggerEveningSnapshot(serverId: string) {
   const userEmail = await getIdentity();
-  return runEveningWorkflow(serverId, userEmail);
+  return runEveningWorkflow(serverId, userEmail, true);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -429,7 +454,7 @@ export async function shouldFireNow(
     });
     // localStr is "HH:MM" in 24h
     const [localH, localM] = localStr.split(':').map(Number);
-    const [targetH, targetM] = timeHHMM.split(':').map(Number);
+    const [targetH] = timeHHMM.split(':').map(Number);
     // Fire if we're within the same hour (cron runs every hour on the dot)
     return localH === targetH && localM < 60;
   } catch {

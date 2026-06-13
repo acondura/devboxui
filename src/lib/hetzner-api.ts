@@ -388,6 +388,22 @@ export class HetznerApiService {
   }
 
   /**
+   * Gets details of a single server.
+   */
+  async getServer(serverId: number): Promise<HetznerServer> {
+    const response = await fetch(`${this.baseUrl}/servers/${serverId}`, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${this.token}` }
+    });
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Hetzner GetServer Error: ${response.status} - ${error}`);
+    }
+    const data = await response.json() as { server: HetznerServer };
+    return data.server;
+  }
+
+  /**
    * Polls until the server reaches the target status or timeout.
    */
   async waitForServerStatus(

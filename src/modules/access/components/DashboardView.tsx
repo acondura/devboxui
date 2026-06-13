@@ -154,6 +154,15 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
     }
   };
 
+  const handleRefresh = async () => {
+    try {
+      const data = await getServers();
+      setServers(data || []);
+    } catch (error) {
+      console.error("Failed to refresh servers list:", error);
+    }
+  };
+
   const handleLogout = () => {
     const returnTo = encodeURIComponent(window.location.origin);
     window.location.href = `/cdn-cgi/access/logout?returnTo=${returnTo}`;
@@ -256,6 +265,7 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
               onToggleLock={handleToggleLock} 
               onReinstall={handleReinstall} 
               onUpdateAllowedPeers={handleUpdateAllowedPeers}
+              onRefresh={handleRefresh}
             />
           )}
         </div>

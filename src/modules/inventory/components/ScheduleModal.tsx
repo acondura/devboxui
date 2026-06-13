@@ -66,9 +66,10 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   onSaved?: (config: ScheduleConfig) => void;
+  onRefresh?: () => Promise<void> | void;
 }
 
-export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onClose, onSaved }: Props) {
+export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onClose, onSaved, onRefresh }: Props) {
   const [config, setConfig] = useState<ScheduleConfig>(DEFAULT_CONFIG);
   const [serverTypes, setServerTypes] = useState<HetznerServerType[]>([]);
   const [locations, setLocations] = useState<HetznerLocation[]>([]);
@@ -138,6 +139,9 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
     try {
       const result = await triggerMorningSpinup(serverId);
       showToast(result.success ? 'success' : 'error', result.message);
+      if (result.success && onRefresh) {
+        await onRefresh();
+      }
     } catch (e) {
       showToast('error', e instanceof Error ? e.message : 'Morning spin-up failed.');
     } finally {
@@ -151,6 +155,9 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
     try {
       const result = await triggerEveningSnapshot(serverId);
       showToast(result.success ? 'success' : 'error', result.message);
+      if (result.success && onRefresh) {
+        await onRefresh();
+      }
     } catch (e) {
       showToast('error', e instanceof Error ? e.message : 'Evening snapshot failed.');
     } finally {
