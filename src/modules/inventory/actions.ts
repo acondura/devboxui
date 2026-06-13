@@ -795,13 +795,8 @@ export async function getServers() {
           const oldDetailed = s.detailedStatus;
 
           if (hs.status === 'running') {
-            const setupStatuses = ['provisioning', 'configuring', 'initializing', 'Initializing', 'starting', 'waiting-for-bootstrap'];
-            if (s.status && setupStatuses.includes(s.status)) {
-              // Keep setup status intact
-            } else {
-              s.status = 'ready';
-              s.detailedStatus = 'Ready';
-            }
+            s.status = 'ready';
+            s.detailedStatus = 'Ready';
           } else if (hs.status === 'starting' || hs.status === 'initializing') {
             s.status = 'initializing';
             s.detailedStatus = 'Initializing...';
