@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { ScheduleConfig } from '../types';
 import { getScheduleConfig, saveScheduleConfig, triggerMorningSpinup, triggerEveningSnapshot } from '../schedule-actions';
 import { getHetznerOptions } from '../actions';
-import { HetznerServerType, HetznerLocation } from '@/lib/hetzner-api';
+import { HetznerServerType, HetznerLocation, HetznerPricingResponse } from '@/lib/hetzner-api';
 
 // Common IANA timezones for the picker
 const TIMEZONES = [
@@ -15,6 +15,40 @@ const TIMEZONES = [
   'Asia/Dubai', 'Asia/Kolkata', 'Asia/Singapore', 'Asia/Tokyo', 'Asia/Seoul',
   'Australia/Sydney', 'Pacific/Auckland', 'UTC'
 ];
+
+function getIpv4Pricing(pricing: HetznerPricingResponse | null | undefined, location: string) {
+  const defaults = { monthly: 0.60, hourly: 0.0008 };
+  if (pricing && pricing.pricing && pricing.pricing.primary_ips) {
+    const ipv4 = pricing.pricing.primary_ips.find((p) => p.type === 'ipv4');
+    if (ipv4 && ipv4.pricings) {
+      const locPricing = ipv4.pricings.find((lp) => lp.location === location) || ipv4.pricings[0];
+      if (locPricing) {
+        let monthly = 0.60;
+        let hourly = 0.0008;
+        if (locPricing.monthly) {
+          const monthlyGross = parseFloat(locPricing.monthly.gross);
+          if (!isNaN(monthlyGross)) {
+            monthly = monthlyGross;
+          } else {
+            const monthlyNet = parseFloat(locPricing.monthly.net);
+            if (!isNaN(monthlyNet)) monthly = monthlyNet * 1.19;
+          }
+        }
+        if (locPricing.hourly) {
+          const hourlyGross = parseFloat(locPricing.hourly.gross);
+          if (!isNaN(hourlyGross)) {
+            hourly = hourlyGross;
+          } else {
+            const hourlyNet = parseFloat(locPricing.hourly.net);
+            if (!isNaN(hourlyNet)) hourly = hourlyNet * 1.19;
+          }
+        }
+        return { monthly, hourly };
+      }
+    }
+  }
+  return defaults;
+}
 
 const DEFAULT_CONFIG: ScheduleConfig = {
   enabled: false,
@@ -39,6 +73,7 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
   const [serverTypes, setServerTypes] = useState<HetznerServerType[]>([]);
   const [locations, setLocations] = useState<HetznerLocation[]>([]);
   const [originalDiskSize, setOriginalDiskSize] = useState<number>(80);
+  const [pricing, setPricing] = useState<HetznerPricingResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isTriggeringMorning, setIsTriggeringMorning] = useState(false);
@@ -53,7 +88,7 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
       getScheduleConfig(serverId),
       getHetznerOptions().catch(err => {
         console.error("Failed to fetch Hetzner options in modal:", err);
-        return { serverTypes: [], locations: [] };
+        return { serverTypes: [], locations: [], images: [], pricing: null };
       })
     ])
       .then(([cfg, options]) => {
@@ -73,6 +108,7 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
         if (options) {
           if (options.serverTypes) setServerTypes(options.serverTypes);
           if (options.locations) setLocations(options.locations);
+          if (options.pricing) setPricing(options.pricing);
         }
       })
       .catch(console.error)
@@ -132,8 +168,9 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
   const currentType = serverTypes.find(t => t.name.toLowerCase() === (config.serverType || 'cpx21').toLowerCase());
   const selectedPrice = currentType?.prices.find((p) => p.location === (config.location || 'nbg1')) || currentType?.prices[0];
   
-  const monthlyPriceGross = selectedPrice ? parseFloat(selectedPrice.price_monthly?.gross || '0') : 8.50; 
-  const hourlyPriceGross = selectedPrice ? parseFloat(selectedPrice.price_hourly?.gross || '0') : 0.015; 
+  const ipv4Pricing = getIpv4Pricing(pricing, config.location || 'nbg1');
+  const monthlyPriceGross = (selectedPrice ? parseFloat(selectedPrice.price_monthly?.gross || '0') : 8.50) + ipv4Pricing.monthly; 
+  const hourlyPriceGross = (selectedPrice ? parseFloat(selectedPrice.price_hourly?.gross || '0') : 0.015) + ipv4Pricing.hourly; 
   const diskSizeGb = currentType ? currentType.disk : 80;
 
   const activeHoursPerDay = (() => {
@@ -278,7 +315,8 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                         >
                           {serverTypes.map(t => {
                             const priceObj = t.prices.find(p => p.location === (config.location || 'nbg1')) || t.prices[0];
-                            const monthlyGross = priceObj ? `${priceObj.price_monthly?.gross}€` : '';
+                            const ipv4 = getIpv4Pricing(pricing, config.location || 'nbg1');
+                            const monthlyGross = priceObj ? `${(parseFloat(priceObj.price_monthly?.gross || '0') + ipv4.monthly).toFixed(2)}€` : '';
                             const isDisabled = t.disk < originalDiskSize;
                             return (
                               <option 
@@ -506,6 +544,9 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                     <div className="flex justify-between">
                       <span className="text-slate-500">Snapshot Storage ({diskSizeGb}GB)</span>
                       <span className="text-slate-300">€{snapshotCostMonthly.toFixed(2)}/mo</span>
+                    </div>
+                    <div className="flex justify-between text-[9px] text-slate-500 italic pt-1 border-t border-slate-850">
+                      <span>* Prices include IPv4 address fee (€{getIpv4Pricing(pricing, config.location || 'nbg1').monthly.toFixed(2)}/mo or €{getIpv4Pricing(pricing, config.location || 'nbg1').hourly.toFixed(4)}/hr)</span>
                     </div>
                   </div>
                 </div>

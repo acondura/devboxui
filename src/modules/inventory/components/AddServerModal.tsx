@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getHetznerOptions, provisionManualServer } from '@/modules/inventory/actions';
+import type { HetznerPricingResponse } from '@/lib/hetzner-api';
 
 interface AddServerModalProps {
   isOpen: boolean;
@@ -39,6 +40,22 @@ interface HetznerImage {
 
 type CloudProvider = 'hetzner' | 'contabo' | 'digitalocean' | 'linode' | 'vultr';
 
+function getIpv4MonthlyPrice(pricing: HetznerPricingResponse | null | undefined, location: string): number {
+  if (pricing && pricing.pricing && pricing.pricing.primary_ips) {
+    const ipv4 = pricing.pricing.primary_ips.find((p) => p.type === 'ipv4');
+    if (ipv4 && ipv4.pricings) {
+      const locPricing = ipv4.pricings.find((lp) => lp.location === location) || ipv4.pricings[0];
+      if (locPricing && locPricing.monthly) {
+        const gross = parseFloat(locPricing.monthly.gross);
+        if (!isNaN(gross)) return gross;
+        const net = parseFloat(locPricing.monthly.net);
+        if (!isNaN(net)) return net * 1.19; // fallback
+      }
+    }
+  }
+  return 0.60; // default fallback if anything fails
+}
+
 export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) {
   const [provider, setProvider] = useState<CloudProvider>('hetzner');
   const [name, setName] = useState('');
@@ -51,7 +68,8 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
     serverTypes: HetznerServerType[];
     locations: HetznerLocation[];
     images: HetznerImage[];
-  }>({ serverTypes: [], locations: [], images: [] });
+    pricing?: HetznerPricingResponse | null;
+  }>({ serverTypes: [], locations: [], images: [], pricing: null });
   const [isLoadingOptions, setIsLoadingOptions] = useState(true);
   const [ip, setIp] = useState('');
   const [password, setPassword] = useState('');
@@ -81,7 +99,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
         
         const data = await getHetznerOptions();
         
-        setOptions(data as unknown as { serverTypes: HetznerServerType[]; locations: HetznerLocation[]; images: HetznerImage[] });
+        setOptions(data as unknown as { serverTypes: HetznerServerType[]; locations: HetznerLocation[]; images: HetznerImage[]; pricing?: HetznerPricingResponse | null });
         
         // Reset form values on open
         setName('');
@@ -92,7 +110,8 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
           const sorted = [...typedTypes].sort((a, b) => {
             const getPrice = (t: HetznerServerType) => {
               const p = t.prices.find((p) => p.location === location) || t.prices[0];
-              return parseFloat(p?.price_monthly?.gross || '0');
+              const ipv4 = getIpv4MonthlyPrice(data.pricing, location);
+              return parseFloat(p?.price_monthly?.gross || '0') + ipv4;
             };
             return getPrice(a) - getPrice(b);
           });
@@ -124,14 +143,16 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
   const sortedServerTypes = [...options.serverTypes].sort((a, b) => {
     const getPrice = (t: HetznerServerType) => {
       const p = t.prices.find((p) => p.location === location) || t.prices[0];
-      return parseFloat(p?.price_monthly?.gross || '0');
+      const ipv4 = getIpv4MonthlyPrice(options.pricing, location);
+      return parseFloat(p?.price_monthly?.gross || '0') + ipv4;
     };
     return getPrice(a) - getPrice(b);
   });
 
   // Find price for current selection
   const selectedPrice = currentType?.prices.find((p) => p.location === location) || currentType?.prices[0];
-  const monthlyPrice = selectedPrice?.price_monthly?.gross;
+  const ipv4Fee = getIpv4MonthlyPrice(options.pricing, location);
+  const monthlyPrice = selectedPrice ? (parseFloat(selectedPrice.price_monthly.gross) + ipv4Fee).toString() : undefined;
 
   // Auto-switch image if current image is not in filtered list
   useEffect(() => {
@@ -383,7 +404,8 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
                   >
                     {sortedServerTypes.map(t => {
                       const p = t.prices.find((p) => p.location === location) || t.prices[0];
-                      const priceLabel = p ? `€${parseFloat(p.price_monthly.gross).toFixed(2)}` : '';
+                      const ipv4 = getIpv4MonthlyPrice(options.pricing, location);
+                      const priceLabel = p ? `€${(parseFloat(p.price_monthly.gross) + ipv4).toFixed(2)}` : '';
                       const specs = `${t.cores} vCPU / ${t.memory}GB RAM / ${t.disk}GB / ${t.architecture.toUpperCase()}`;
                       return (
                         <option key={t.id} value={t.name}>
@@ -500,6 +522,9 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
                   <p className="text-2xl font-black text-white">
                     {monthlyPrice ? `€${parseFloat(monthlyPrice).toFixed(2)}` : '--'}
                     <span className="text-sm text-slate-400 font-normal ml-1">/ month</span>
+                  </p>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    Includes IPv4 address (€{getIpv4MonthlyPrice(options.pricing, location).toFixed(2)}/mo)
                   </p>
                 </div>
                 <div className="text-right">

@@ -60,6 +60,30 @@ export interface HetznerPrice {
   price_hourly: { gross: string; net?: string };
 }
 
+export interface HetznerPriceDetails {
+  net: string;
+  gross: string;
+}
+
+export interface HetznerPrimaryIPTypePricing {
+  location: string;
+  hourly: HetznerPriceDetails;
+  monthly: HetznerPriceDetails;
+}
+
+export interface HetznerPrimaryIPPricing {
+  type: string;
+  pricings: HetznerPrimaryIPTypePricing[];
+}
+
+export interface HetznerPricingResponse {
+  pricing: {
+    currency: string;
+    vat_rate: string;
+    primary_ips: HetznerPrimaryIPPricing[];
+  };
+}
+
 export interface HetznerServerType {
   id: number;
   name: string;
@@ -507,5 +531,20 @@ export class HetznerApiService {
       throw new Error(`Hetzner CreateFromSnapshot Error: ${response.status} - ${error}`);
     }
     return await response.json() as HetznerServerResponse;
+  }
+
+  /**
+   * Retrieves pricing for all available resources (including Primary IPs) from the Hetzner API.
+   */
+  async getPricing(): Promise<HetznerPricingResponse | null> {
+    if (!this.token) return null;
+    const response = await fetch(`${this.baseUrl}/pricing`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${this.token}`
+      }
+    });
+    if (!response.ok) return null;
+    return await response.json() as HetznerPricingResponse;
   }
 }

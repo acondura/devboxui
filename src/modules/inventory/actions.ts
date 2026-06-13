@@ -1388,18 +1388,18 @@ export async function getHetznerOptions() {
   const env = await getCloudflareEnv();
   const settings = await getUserSettings();
   const hetznerApi = new HetznerApiService(env, settings?.hetznerToken);
-
   try {
-    const [serverTypes, locations, images] = await Promise.all([
+    const [serverTypes, locations, images, pricing] = await Promise.all([
       hetznerApi.getServerTypes(),
       hetznerApi.getLocations(),
-      hetznerApi.getImages()
+      hetznerApi.getImages(),
+      hetznerApi.getPricing().catch(() => null)
     ]);
 
-    return { serverTypes, locations, images };
+    return { serverTypes, locations, images, pricing };
   } catch (error) {
     console.error("Failed to fetch Hetzner options:", error);
-    return { serverTypes: [], locations: [], images: [] };
+    return { serverTypes: [], locations: [], images: [], pricing: null };
   }
 }
 
