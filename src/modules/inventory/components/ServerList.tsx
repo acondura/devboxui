@@ -210,6 +210,9 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
   const [deletingDomain, setDeletingDomain] = useState<string | null>(null);
   const [debugData, setDebugData] = useState<{ docker: string, setup: string, timestamp: string } | null>(null);
+  const [serverLogs, setServerLogs] = useState<string[]>([]);
+  const [tunnelId, setTunnelId] = useState<string | undefined>(server.tunnelId);
+  const [tunnelToken, setTunnelToken] = useState<string | undefined>(server.tunnelToken);
   const [isSpinningUp, setIsSpinningUp] = useState(false);
   const [isSnapshotting, setIsSnapshotting] = useState(false);
   const [isConfirmSnapshotOpen, setIsConfirmSnapshotOpen] = useState(false);
@@ -225,11 +228,16 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
     setIsFetchingLogs(true);
     try {
       const result = await getServerLogs(server.id);
-      if (result.success && result.logsUrl) {
-        const resp = await fetch(result.logsUrl, { credentials: 'include' });
-        if (resp.ok) {
-          const data = await resp.json() as { docker: string, setup: string, timestamp: string };
-          setDebugData(data);
+      if (result.success) {
+        setServerLogs(result.serverLogs || []);
+        if (result.tunnelId) setTunnelId(result.tunnelId);
+        if (result.tunnelToken) setTunnelToken(result.tunnelToken);
+        if (result.logsUrl) {
+          const resp = await fetch(result.logsUrl, { credentials: 'include' });
+          if (resp.ok) {
+            const data = await resp.json() as { docker: string, setup: string, timestamp: string };
+            setDebugData(data);
+          }
         }
       }
     } catch (e) {
@@ -535,7 +543,15 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
           </div>
         </div>
         {isLogsModalOpen && (
-          <LogsModal isOpen={isLogsModalOpen} onClose={() => setIsLogsModalOpen(false)} debugData={debugData} isFetching={isFetchingLogs} />
+          <LogsModal
+            isOpen={isLogsModalOpen}
+            onClose={() => setIsLogsModalOpen(false)}
+            debugData={debugData}
+            serverLogs={serverLogs}
+            isFetching={isFetchingLogs}
+            tunnelId={tunnelId}
+            tunnelToken={tunnelToken}
+          />
         )}
         {isApiAuthOpen && onUpdateAllowedPeers && (
           <ApiAuthModal
@@ -562,6 +578,9 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
   // const [isTogglingLock, setIsTogglingLock] = useState(false);
   const [debugData, setDebugData] = useState<{ docker: string, setup: string, timestamp: string } | null>(null);
+  const [serverLogs, setServerLogs] = useState<string[]>([]);
+  const [tunnelId, setTunnelId] = useState<string | undefined>(server.tunnelId);
+  const [tunnelToken, setTunnelToken] = useState<string | undefined>(server.tunnelToken);
   const [isSpinningUp, setIsSpinningUp] = useState(false);
   const [isSnapshotting, setIsSnapshotting] = useState(false);
   const [isConfirmSnapshotOpen, setIsConfirmSnapshotOpen] = useState(false);
@@ -577,11 +596,16 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
     setIsFetchingLogs(true);
     try {
       const result = await getServerLogs(server.id);
-      if (result.success && result.logsUrl) {
-        const resp = await fetch(result.logsUrl, { credentials: 'include' });
-        if (resp.ok) {
-          const data = await resp.json() as { docker: string, setup: string, timestamp: string };
-          setDebugData(data);
+      if (result.success) {
+        setServerLogs(result.serverLogs || []);
+        if (result.tunnelId) setTunnelId(result.tunnelId);
+        if (result.tunnelToken) setTunnelToken(result.tunnelToken);
+        if (result.logsUrl) {
+          const resp = await fetch(result.logsUrl, { credentials: 'include' });
+          if (resp.ok) {
+            const data = await resp.json() as { docker: string, setup: string, timestamp: string };
+            setDebugData(data);
+          }
         }
       }
     } finally { setIsFetchingLogs(false); }
@@ -828,7 +852,17 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
         </div>
       </div>
 
-      {isLogsModalOpen && <LogsModal isOpen={isLogsModalOpen} onClose={() => setIsLogsModalOpen(false)} debugData={debugData} isFetching={isFetchingLogs} />}
+      {isLogsModalOpen && (
+        <LogsModal
+          isOpen={isLogsModalOpen}
+          onClose={() => setIsLogsModalOpen(false)}
+          debugData={debugData}
+          serverLogs={serverLogs}
+          isFetching={isFetchingLogs}
+          tunnelId={tunnelId}
+          tunnelToken={tunnelToken}
+        />
+      )}
       {isApiAuthOpen && onUpdateAllowedPeers && (
         <ApiAuthModal
           isOpen={isApiAuthOpen}
@@ -860,11 +894,14 @@ function CopyButton({ value }: { value: string }) {
   );
 }
 
-function LogsModal({ isOpen, onClose, debugData, isFetching }: {
+function LogsModal({ isOpen, onClose, debugData, serverLogs, isFetching, tunnelId, tunnelToken }: {
   isOpen: boolean,
   onClose: () => void,
   debugData: { docker: string, setup: string, timestamp: string } | null,
-  isFetching: boolean
+  serverLogs: string[],
+  isFetching: boolean,
+  tunnelId?: string,
+  tunnelToken?: string
 }) {
   if (!isOpen) return null;
   return (
@@ -874,16 +911,73 @@ function LogsModal({ isOpen, onClose, debugData, isFetching }: {
           <h3 className="text-lg font-bold text-white uppercase tracking-wider">System Logs</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
         </div>
-        <div className="flex-1 overflow-auto p-6 bg-slate-950 font-mono text-xs space-y-6">
+        <div className="flex-1 overflow-auto p-6 bg-slate-950 font-mono text-xs space-y-6 animate-in fade-in duration-200">
+          
+          {/* Cloudflare Tunnel Details */}
+          {(tunnelId || tunnelToken) && (
+            <div className="space-y-2 border-b border-slate-800/60 pb-6 text-left">
+              <div className="flex items-center space-x-2 text-indigo-400">
+                <span className="font-bold uppercase tracking-widest text-[10px]">Cloudflare Tunnel Configuration</span>
+              </div>
+              <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-800 space-y-3">
+                {tunnelId && (
+                  <div className="flex justify-between items-center text-slate-300">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-slate-500 font-medium">Tunnel ID:</span>
+                      <span className="font-mono text-indigo-300 select-all font-bold">{tunnelId}</span>
+                    </div>
+                    <CopyButton value={tunnelId} />
+                  </div>
+                )}
+                {tunnelToken && (
+                  <div className="flex justify-between items-start text-slate-300">
+                    <div className="mr-4 overflow-hidden text-left">
+                      <span className="text-slate-500 font-medium mr-2">Tunnel Token:</span>
+                      <span className="font-mono text-indigo-300 select-all break-all">{tunnelToken}</span>
+                    </div>
+                    <div className="flex-shrink-0 pt-0.5">
+                      <CopyButton value={tunnelToken} />
+                    </div>
+                  </div>
+                )}
+                {tunnelToken && (
+                  <div className="mt-2 pt-3 border-t border-slate-800/80 text-left">
+                    <span className="text-slate-500 block mb-1.5 font-medium">VPS Connector Setup Command:</span>
+                    <div className="bg-slate-950 p-2.5 rounded border border-slate-800 flex justify-between items-center">
+                      <code className="text-emerald-400 select-all break-all pr-4 text-[10px]">
+                        {`sudo cloudflared service uninstall || true && sudo cloudflared service install ${tunnelToken} && sudo systemctl restart cloudflared`}
+                      </code>
+                      <div className="flex-shrink-0">
+                        <CopyButton value={`sudo cloudflared service uninstall || true && sudo cloudflared service install ${tunnelToken} && sudo systemctl restart cloudflared`} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Orchestrator Event Logs */}
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2 text-indigo-400 border-b border-indigo-500/20 pb-1">
+              <span className="font-bold uppercase tracking-widest text-[10px]">Orchestrator Event Logs</span>
+            </div>
+            <pre className="text-slate-300 whitespace-pre-wrap leading-relaxed">
+              {serverLogs && serverLogs.length > 0 
+                ? serverLogs.join('\n') 
+                : 'No orchestrator events recorded.'}
+            </pre>
+          </div>
+
           {isFetching ? (
-            <div className="flex flex-col items-center justify-center py-20 space-y-4">
-              <div className="animate-spin h-8 w-8 border-4 border-indigo-500 border-t-transparent rounded-full" />
-              <p className="text-slate-500 animate-pulse">Streaming logs from VPS...</p>
+            <div className="flex flex-col items-center justify-center py-10 space-y-4 border-t border-slate-800/40">
+              <div className="animate-spin h-6 w-6 border-2 border-indigo-500 border-t-transparent rounded-full" />
+              <p className="text-slate-500 animate-pulse text-[10px] uppercase font-bold tracking-wider">Streaming logs from VPS...</p>
             </div>
           ) : debugData ? (
-            <>
+            <div className="space-y-6 border-t border-slate-800/40 pt-6">
               <div className="space-y-2">
-                <div className="flex items-center space-x-2 text-indigo-400 border-b border-indigo-500/20 pb-1">
+                <div className="flex items-center space-x-2 text-sky-400 border-b border-sky-500/20 pb-1">
                   <span className="font-bold uppercase tracking-widest text-[10px]">Cloud-Init Setup</span>
                 </div>
                 <pre className="text-slate-300 whitespace-pre-wrap leading-relaxed">{debugData.setup || 'No setup logs available.'}</pre>
@@ -894,9 +988,11 @@ function LogsModal({ isOpen, onClose, debugData, isFetching }: {
                 </div>
                 <pre className="text-slate-300 whitespace-pre-wrap leading-relaxed">{debugData.docker || 'No container logs available.'}</pre>
               </div>
-            </>
+            </div>
           ) : (
-            <div className="text-slate-500 text-center py-20">No logs found. Ensure the bootstrap script has started on the VPS.</div>
+            <div className="text-slate-600 text-center py-10 border-t border-slate-800/40 text-[10px] uppercase font-bold tracking-wider">
+              No VPS logs found. Ensure the bootstrap script has started on the VPS.
+            </div>
           )}
         </div>
       </div>

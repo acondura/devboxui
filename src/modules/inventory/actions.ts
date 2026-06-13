@@ -1457,7 +1457,13 @@ export async function getServerLogs(serverId: string) {
 
   const logsUrl = config.tunnelUrl?.split('?')[0].replace('-code.', '-logs.') || `https://logs-${serverId.slice(0, 8)}.devboxui.com`;
 
-  return { success: true, logsUrl };
+  return {
+    success: true,
+    logsUrl,
+    serverLogs: config.logs || [],
+    tunnelId: config.tunnelId,
+    tunnelToken: config.tunnelToken
+  };
 }
 
 /**
