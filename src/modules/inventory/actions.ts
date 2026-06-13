@@ -399,6 +399,69 @@ echo "✅ SETUP FINISHED - Server is ready for use." > /etc/motd
 }
 
 /**
+ * Generates a minimal, ultra-fast cloud-init script for Hetzner servers.
+ * Avoids slow package updates and installation, focusing only on user creation,
+ * workspace creation, SSH key sync, git configuration, and instant status reporting.
+ */
+function getHetznerBootstrapScript(
+  userName: string,
+  userEmail: string,
+  serverId: string,
+  provisioningToken: string,
+  callbackUrl: string,
+  serviceTokenId?: string,
+  serviceTokenSecret?: string
+) {
+  return `#!/bin/bash
+set -e
+
+# Configuration
+DEV_USER="${userName}"
+SERVER_ID="${serverId}"
+PROV_TOKEN="${provisioningToken}"
+CALLBACK_URL="${callbackUrl}"
+SERVICE_TOKEN_ID="${serviceTokenId || ''}"
+SERVICE_TOKEN_SECRET="${serviceTokenSecret || ''}"
+
+# Create User
+if ! id "$DEV_USER" &>/dev/null; then
+    useradd -m -s /bin/bash "$DEV_USER"
+    usermod -aG sudo "$DEV_USER"
+    echo "$DEV_USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/90-devbox-user
+fi
+
+# Set up workspace directory
+mkdir -p /home/"$DEV_USER"/workspace
+
+# Copy SSH keys
+mkdir -p /home/"$DEV_USER"/.ssh
+if [ -f /root/.ssh/authorized_keys ]; then
+    cp /root/.ssh/authorized_keys /home/"$DEV_USER"/.ssh/authorized_keys
+fi
+chown -R "$DEV_USER":"$DEV_USER" /home/"$DEV_USER"
+chmod 700 /home/"$DEV_USER"/.ssh
+chmod 600 /home/"$DEV_USER"/.ssh/authorized_keys || true
+
+# Configure Git
+cat <<EOF > /home/"$DEV_USER"/.gitconfig
+[user]
+    name = ${userName}
+    email = ${userEmail}
+EOF
+chown "$DEV_USER":"$DEV_USER" /home/"$DEV_USER"/.gitconfig
+
+# Report Ready status back
+if command -v curl >/dev/null 2>&1; then
+    curl -s -m 5 -X POST "$CALLBACK_URL" \
+      -H "Content-Type: application/json" \
+      -H "CF-Access-Client-Id: $SERVICE_TOKEN_ID" \
+      -H "CF-Access-Client-Secret: $SERVICE_TOKEN_SECRET" \
+      -d "{\\\"serverId\\\": \\\"$SERVER_ID\\\", \\\"token\\\": \\\"$PROV_TOKEN\\\", \\\"status\\\": \\\"Ready\\\"}" || true
+fi
+`;
+}
+
+/**
  * Synchronizes the user's SSH public key to all existing servers.
  */
 export async function syncSshKeys(newPublicKey: string) {
@@ -623,21 +686,14 @@ export async function provisionServer(
     const serviceToken = await cfApi.getOrCreateServiceToken(kv);
     await cfApi.authorizeServiceToken(requestHost.replace('https://', ''), serviceToken.id);
 
-    const bootstrapScript = getBootstrapScript(
+    const bootstrapScript = getHetznerBootstrapScript(
       userName,
       userEmail,
-      "", // no tunnel token for Hetzner
-      managementKey,
-      userSSHKey,
       serverId,
       provisioningToken,
       callbackUrl,
-      rootPassword,
       serviceToken.id,
-      serviceToken.client_secret,
-      hetznerToken,
-      'Hetzner',
-      directHostname
+      serviceToken.client_secret
     );
 
     console.log(`Requesting new ${serverType} server '${name}' in ${location} with ${sshKeyIds.length} keys...`);
