@@ -283,7 +283,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
         isOpen={isProjectModalOpen}
         onClose={() => { setIsProjectModalOpen(false); setEditingDomain(null); }}
         onAdd={(name, port) => editingDomain ? onUpdateDomain(server.id, editingDomain.domain, name, port) : onAddProject(server.id, name, port)}
-        initialData={editingDomain ? { prefix: editingDomain.domain.replace('.devboxui.com', ''), port: editingDomain.port || 80 } : undefined}
+        initialData={editingDomain ? { prefix: editingDomain.domain.replace('-web.devboxui.com', '').replace('.devboxui.com', ''), port: editingDomain.port || 80 } : undefined}
       />
       <ReinstallModal
         isOpen={isReinstallModalOpen}
@@ -634,7 +634,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
         isOpen={isProjectModalOpen}
         onClose={() => { setIsProjectModalOpen(false); setEditingDomain(null); }}
         onAdd={(name, port) => editingDomain ? onUpdateDomain(server.id, editingDomain.domain, name, port) : onAddProject(server.id, name, port)}
-        initialData={editingDomain ? { prefix: editingDomain.domain.replace('.devboxui.com', ''), port: editingDomain.port || 80 } : undefined}
+        initialData={editingDomain ? { prefix: editingDomain.domain.replace('-web.devboxui.com', '').replace('.devboxui.com', ''), port: editingDomain.port || 80 } : undefined}
       />
       <ReinstallModal
         isOpen={isReinstallModalOpen}

@@ -74,7 +74,7 @@ export function AddDomainModal({ isOpen, onClose, onAdd, initialData }: AddDomai
                   className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-4 pr-32 py-2.5 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                 />
                 <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
-                  <span className="text-slate-500 text-sm font-medium">.devboxui.com</span>
+                  <span className="text-slate-500 text-sm font-medium">-web.devboxui.com</span>
                 </div>
               </div>
             </div>
@@ -95,7 +95,7 @@ export function AddDomainModal({ isOpen, onClose, onAdd, initialData }: AddDomai
              <div className="flex flex-col space-y-1">
                 <span className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">Endpoint URL</span>
                 <span className="text-sm font-mono text-indigo-400 break-all">
-                   https://{domainPrefix ? `${domainPrefix}.devboxui.com` : 'prefix.devboxui.com'}
+                   https://{domainPrefix ? `${domainPrefix}-web.devboxui.com` : 'prefix-web.devboxui.com'}
                 </span>
              </div>
              <div className="flex items-center justify-between border-t border-slate-800/50 pt-3">

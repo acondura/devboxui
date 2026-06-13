@@ -893,7 +893,7 @@ export async function addProject(serverId: string, projectName: string, port: nu
 
   // 2. Generate Project Domain
   const cleanName = projectName.toLowerCase().replace(/[^a-z0-9.]/g, '-');
-  const projectDomain = `${cleanName}.devboxui.com`; // Simplified domain generation
+  const projectDomain = `${cleanName}-web.devboxui.com`; // Simplified domain generation
 
   // 3. Update Cloudflare Tunnel, DNS & Access
   const service = `http://localhost:${port}`;
@@ -995,7 +995,7 @@ export async function updateDomain(serverId: string, oldDomain: string, newSubdo
 
   // 2. Determine new domain
   const cleanSubdomain = newSubdomain.toLowerCase().replace(/[^a-z0-9.]/g, '-');
-  const newDomain = `${cleanSubdomain}.devboxui.com`;
+  const newDomain = `${cleanSubdomain}-web.devboxui.com`;
   const domainChanged = oldDomain !== newDomain;
 
   // 3. Update Cloudflare Tunnel Ingress
