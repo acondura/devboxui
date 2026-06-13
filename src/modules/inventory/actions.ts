@@ -889,7 +889,18 @@ export async function addProject(serverId: string, projectName: string, port: nu
   }
 
   if (!config || !serverKey) throw new Error("Server not found.");
-  if (!config.tunnelId) throw new Error("Server is missing a Tunnel ID.");
+
+  if (!config.tunnelId) {
+    console.log("Server is missing a Tunnel ID. Creating a new Cloudflare Tunnel...");
+    const tunnelResult = await cfApi.createTunnel(`tunnel-${serverId}`);
+    config.tunnelId = tunnelResult.id;
+    config.tunnelToken = tunnelResult.token;
+    config.logs = [
+      ...(config.logs || []),
+      `Created Cloudflare Tunnel: ${tunnelResult.id}`,
+      `To connect your VPS to this tunnel, run: sudo cloudflared service install ${tunnelResult.token}`
+    ];
+  }
 
   // 2. Generate Project Domain
   const cleanName = projectName.toLowerCase().replace(/[^a-z0-9.]/g, '-');
@@ -991,7 +1002,18 @@ export async function updateDomain(serverId: string, oldDomain: string, newSubdo
   }
 
   if (!config || !serverKey) throw new Error("Server not found.");
-  if (!config.tunnelId) throw new Error("Server is missing a Tunnel ID.");
+
+  if (!config.tunnelId) {
+    console.log("Server is missing a Tunnel ID. Creating a new Cloudflare Tunnel...");
+    const tunnelResult = await cfApi.createTunnel(`tunnel-${serverId}`);
+    config.tunnelId = tunnelResult.id;
+    config.tunnelToken = tunnelResult.token;
+    config.logs = [
+      ...(config.logs || []),
+      `Created Cloudflare Tunnel: ${tunnelResult.id}`,
+      `To connect your VPS to this tunnel, run: sudo cloudflared service install ${tunnelResult.token}`
+    ];
+  }
 
   // 2. Determine new domain
   const cleanSubdomain = newSubdomain.toLowerCase().replace(/[^a-z0-9.]/g, '-');
