@@ -182,7 +182,9 @@ export async function runMorningWorkflow(
   );
 
   // Create server from snapshot
-  const serverName = (server.hostname || `devbox-${serverId.slice(0, 8)}`).replace('.devboxui.com', '');
+  const serverName = (server.hostname || `devbox-${serverId.slice(0, 8)}`)
+    .replace('.devboxui.com', '')
+    .replace('-direct', '');
   console.log(`[Morning] Creating server "${serverName}" from snapshot ${sched.latestSnapshotId}…`);
 
   const result = await hetznerApi.createServerFromSnapshot(
@@ -200,7 +202,7 @@ export async function runMorningWorkflow(
   if (server.hostname) {
     try {
       const cfApi = new CloudflareApiService(env);
-      const directHostname = server.hostname.replace('-code.', '-direct.');
+      const directHostname = server.hostname.replace('-code.', '.').replace('-direct', '');
       console.log(`[Morning] Updating Direct SSH DNS A record for ${directHostname} to ${ip}...`);
       await cfApi.setupARecord(directHostname, ip);
     } catch (err) {

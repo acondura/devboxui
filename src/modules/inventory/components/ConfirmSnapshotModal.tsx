@@ -26,7 +26,13 @@ export function ConfirmSnapshotModal({ isOpen, onClose, onConfirm, serverName }:
   };
 
   const todayStr = new Date().toISOString().slice(0, 10);
-  const displaySuffix = `devbox-auto-${serverName.replace(/[^a-zA-Z0-9-]/g, '').slice(0, 8).toLowerCase()}-${todayStr}`;
+  const cleanServerName = serverName
+    .replace('.devboxui.com', '')
+    .replace('-direct', '')
+    .replace(/[^a-zA-Z0-9-]/g, '')
+    .slice(0, 8)
+    .toLowerCase();
+  const displaySuffix = `devbox-auto-${cleanServerName}-${todayStr}`;
   const finalPreview = customPrefix.trim() ? `${customPrefix.trim().toLowerCase().replace(/[^a-z0-9-]/g, '')}-${displaySuffix}` : displaySuffix;
 
   return (

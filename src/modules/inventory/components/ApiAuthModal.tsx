@@ -59,7 +59,7 @@ export function ApiAuthModal({ isOpen, onClose, server, allServers, onSave }: Ap
               <span>API Authorization</span>
             </h3>
             <p className="text-xs text-slate-500 uppercase tracking-widest font-bold mt-1">
-              {(server.hostname || 'DevBox').replace('.devboxui.com', '')} Access Controls
+              {(server.hostname || 'DevBox').replace('.devboxui.com', '').replace('-direct', '')} Access Controls
             </p>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
@@ -120,7 +120,7 @@ export function ApiAuthModal({ isOpen, onClose, server, allServers, onSave }: Ap
                         />
                         <div className="min-w-0">
                           <div className="font-mono text-sm font-bold truncate">
-                            {(peer.hostname || 'devbox').replace('.devboxui.com', '')}
+                            {(peer.hostname || 'devbox').replace('.devboxui.com', '').replace('-direct', '')}
                           </div>
                           <div className="text-[10px] text-slate-500 font-mono mt-0.5 flex items-center gap-1.5">
                             <span>{isPendingIp ? 'IP Pending' : peer.ip}</span>

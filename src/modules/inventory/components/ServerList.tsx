@@ -216,7 +216,9 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
 
   const isAutomated = !!(server.providerName === 'Hetzner' || server.providerName === 'Contabo' || server.provider === 'hetzner' || server.provider === 'contabo');
   const isHetzner = !!(server.providerName === 'Hetzner' || server.provider === 'hetzner');
-  const displayHostname = (server.hostname || 'devbox').replace('.devboxui.com', '');
+  const displayHostname = (server.hostname || 'devbox')
+    .replace('.devboxui.com', '')
+    .replace('-direct', '');
 
   const handleFetchLogs = async () => {
     setIsLogsModalOpen(true);
@@ -553,7 +555,9 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
 
   const isAutomated = !!(server.hetznerServerId || server.contaboInstanceId || server.providerName === 'Hetzner' || server.providerName === 'Contabo' || server.provider === 'hetzner' || server.provider === 'contabo');
   const isHetzner = !!(server.providerName === 'Hetzner' || server.provider === 'hetzner');
-  const displayHostname = (server.hostname || 'devbox').replace('.devboxui.com', '');
+  const displayHostname = (server.hostname || 'devbox')
+    .replace('.devboxui.com', '')
+    .replace('-direct', '');
 
   const handleFetchLogs = async () => {
     setIsLogsModalOpen(true);

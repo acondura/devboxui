@@ -604,7 +604,7 @@ export async function provisionServer(
   
   const userName = generateUniqueUsername(userEmail);
   const safeName = name.toLowerCase().replace(/[^a-z0-9]/g, '-');
-  const directHostname = `${safeName}-direct.devboxui.com`;
+  const directHostname = `${safeName}.devboxui.com`;
 
   const rootPassword = Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-6);
   const provisioningToken = crypto.randomUUID();
@@ -1076,8 +1076,12 @@ export async function deleteServer(serverId: string) {
       await cfApi.deleteDnsRecord(logsHostname).catch(e => console.error("Logs DNS deletion failed:", e));
       await cfApi.deleteAccess(logsHostname).catch(e => console.error("Logs Access deletion failed:", e));
 
-      const directHostname = hostname.replace('-code.', '-direct.');
+      const directHostname = hostname.replace('-code.', '.').replace('-direct', '');
       await cfApi.deleteDnsRecord(directHostname).catch(e => console.error("Direct DNS deletion failed:", e));
+      if (hostname.includes('-code.')) {
+        const legacyDirect = hostname.replace('-code.', '-direct.');
+        await cfApi.deleteDnsRecord(legacyDirect).catch(e => {});
+      }
     }
 
     if (config.hostname) {
@@ -1657,7 +1661,7 @@ export async function provisionContaboServer(
 
     // Create Direct SSH DNS record in Cloudflare
     try {
-      const directHostname = hostname.replace('-code.', '-direct.');
+      const directHostname = hostname.replace('-code.', '.').replace('-direct', '');
       console.log(`Setting up Direct SSH DNS A record for ${directHostname} to ${instance.ipAddress}...`);
       await cfApi.setupARecord(directHostname, instance.ipAddress);
     } catch (err) {
