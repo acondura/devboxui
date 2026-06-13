@@ -534,7 +534,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">
               {provider === 'hetzner' ? (
-                <>We&apos;ll create a fresh <strong className="text-slate-200">Hetzner</strong> instance and configure SSH keys and Cloudflare Access.</>
+                <>We&apos;ll create a clean <strong className="text-slate-200">Hetzner</strong> instance with your SSH key injected for instant connection.</>
               ) : (
                 <>We&apos;ll connect to your <strong className="text-slate-200">existing server</strong>.</>
               )} This sets up secure SSH access and dynamic DNS routing without installing extra software.

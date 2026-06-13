@@ -538,9 +538,11 @@ export async function provisionServer(
   const serverId = crypto.randomUUID();
   const shortId = serverId.slice(0, 8);
   const name = customName || `devbox-${shortId}`;
-  const userName = generateUniqueUsername(userEmail);
+  
+  // Under the new approved plan: SSH username is 'root'
+  const userName = 'root';
   const safeName = name.toLowerCase().replace(/[^a-z0-9]/g, '-');
-  const hostname = `${safeName}-code.devboxui.com`;
+  const directHostname = `${safeName}-direct.devboxui.com`;
 
   const rootPassword = Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-6);
   const config: ServerConfig = {
@@ -548,80 +550,28 @@ export async function provisionServer(
     ip: 'pending',
     userName,
     userEmail,
-    status: 'provisioning',
+    status: 'initializing',
     rootPassword: rootPassword,
     sshPrivateKey: settings.sshPrivateKey,
     sshPublicKey: settings.sshPublicKey,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    logs: [`Starting Cloud-Init provisioning (${serverType} in ${location}) via Hetzner API...`],
-    tunnelUrl: `https://${hostname}/?folder=/home/${userName}/workspace`,
+    logs: [`Starting Hetzner server creation (${serverType} in ${location})...`],
+    tunnelUrl: undefined,
     projects: [],
-    serverType: serverType
+    serverType: serverType,
+    provider: 'hetzner',
+    providerName: 'Hetzner',
+    hostname: directHostname
   };
 
-  let tunnelId: string | undefined;
   let hetznerServerId: number | undefined;
 
   try {
-    // 3. Cloudflare Automation: Create Tunnel & DNS
-    console.log("Creating Cloudflare Tunnel...");
-    const tunnelResult = await cfApi.createTunnel(`tunnel-${serverId}`);
-    tunnelId = tunnelResult.id;
-    config.tunnelId = tunnelId;
-    config.tunnelToken = tunnelResult.token;
-    config.providerName = 'Hetzner';
-    config.hostname = hostname;
-
-    console.log("Setting up DNS and Routing...");
-    await cfApi.setupHostname(hostname, tunnelResult.id);
-
-    console.log(`Setting up Zero Trust Access for ${userEmail}...`);
-    await cfApi.setupAccess(hostname, userEmail);
-
-    const logsHostname = `${name}-logs.devboxui.com`;
-    console.log(`Setting up Logs Tunnel for ${logsHostname}...`);
-    await cfApi.setupHostname(logsHostname, tunnelResult.id, "http://localhost:8000");
-    await cfApi.setupAccess(logsHostname, userEmail);
-
-    config.detailedStatus = 'Logs endpoint created';
-    config.logs = [...(config.logs || []), `Tunnel Token: ${tunnelResult.token}`];
-
-    // 4. Generate Cloud-Init Script
-    const provisioningToken = crypto.randomUUID();
-    config.provisioningToken = provisioningToken;
-    config.detailedStatus = 'Starting bootstrap...';
-
-    const requestHost = env.NEXT_PUBLIC_APP_URL || 'https://devboxui.com';
-    const callbackUrl = `${requestHost}/api/provisioning/status`;
-
-    const managementKey = env.MANAGEMENT_SSH_PUBLIC_KEY || '';
     const userSSHKey = settings.sshPublicKey;
+    const managementKey = env.MANAGEMENT_SSH_PUBLIC_KEY || '';
 
-    console.log("[Provisioning] Setting up Cloudflare Access Service Token...");
-    const serviceToken = await cfApi.getOrCreateServiceToken(kv);
-
-    await cfApi.authorizeServiceToken(requestHost.replace('https://', ''), serviceToken.id);
-    console.log("[Provisioning] Authorization step complete.");
-
-    const bootstrapScript = getBootstrapScript(
-      userName,
-      userEmail,
-      tunnelResult.token,
-      managementKey,
-      userSSHKey,
-      serverId,
-      provisioningToken,
-      callbackUrl,
-      rootPassword,
-      serviceToken.id,
-      serviceToken.client_secret,
-      hetznerToken,
-      'Hetzner',
-      hostname
-    );
-
-    // 5. Hetzner Automation: Manage SSH Keys
+    // 3. Hetzner Automation: Manage SSH Keys
     console.log(`Managing SSH keys on Hetzner...`);
     const sshKeyIds: (string | number)[] = [];
 
@@ -653,7 +603,6 @@ export async function provisionServer(
             console.log(`Successfully registered key '${k.name}' (ID: ${created.id})`);
             sshKeyIds.push(created.id);
           } else {
-            // If still null, maybe another conflict occurred or race condition
             const retryKeys = await hetznerApi.getSSHKeys();
             const lastDitchMatch = retryKeys.find(ex => ex.name === k.name);
             if (lastDitchMatch) sshKeyIds.push(lastDitchMatch.id);
@@ -669,11 +618,11 @@ export async function provisionServer(
     }
 
     console.log(`Requesting new ${serverType} server '${name}' in ${location} with ${sshKeyIds.length} keys...`);
-    const hetznerResult = await hetznerApi.createServer(name, bootstrapScript, serverType, location, image, sshKeyIds);
+    // Create server with user_data = "" (empty string) to bypass cloud-init/bootstrap script
+    const hetznerResult = await hetznerApi.createServer(name, "", serverType, location, image, sshKeyIds);
     hetznerServerId = hetznerResult.server.id;
     config.hetznerServerId = hetznerServerId;
 
-    // Capture the root password ONLY if we didn't generate one (rare)
     if (hetznerResult.root_password && !rootPassword) {
       console.log("Captured root password from Hetzner.");
       config.rootPassword = hetznerResult.root_password;
@@ -682,22 +631,9 @@ export async function provisionServer(
     const ip = hetznerResult.server.public_net.ipv4.ip;
     config.ip = ip;
     config.logs = [...(config.logs || []), `Hetzner server created at ${ip}`];
-    config.status = 'provisioning';
-    config.detailedStatus = 'Initializing...';
 
-    const kvKey = `servers:${userEmail}:${serverId}`; // Use serverId instead of IP to be stable
-    await kv.put(kvKey, JSON.stringify(config));
-
+    // Create Direct SSH DNS record in Cloudflare pointing to the public IP
     try {
-      console.log(`[Provisioning] Server IP resolved as ${ip}. Triggering dependent policy sync...`);
-      await syncAllDependentPolicies(serverId, ip);
-    } catch (err) {
-      console.error("[Provisioning] Failed to sync dependent policies on provision:", err);
-    }
-
-    // Create Direct SSH DNS record in Cloudflare
-    try {
-      const directHostname = hostname.replace('-code.', '-direct.');
       console.log(`Setting up Direct SSH DNS A record for ${directHostname} to ${ip}...`);
       await cfApi.setupARecord(directHostname, ip);
       config.logs = [...(config.logs || []), `Created Direct SSH DNS record: ${directHostname}`];
@@ -706,25 +642,17 @@ export async function provisionServer(
       config.logs = [...(config.logs || []), `Warning: Failed to setup direct DNS record: ${err instanceof Error ? err.message : String(err)}`];
     }
 
-    // 5. Success! Commit final state to KV
+    // Save initial state to KV
     config.updatedAt = new Date().toISOString();
-    config.logs = [...(config.logs || []), 'Server creation triggered. Provisioning will continue in the background.'];
+    config.logs = [...(config.logs || []), 'Server creation completed. Injected SSH key.'];
+
+    const kvKey = `servers:${userEmail}:${serverId}`;
     await kv.put(kvKey, JSON.stringify(config));
 
     return { success: true, server: config };
 
   } catch (error) {
     console.error("Provisioning failed, cleaning up...", error);
-
-    // Cleanup Cloudflare resources
-    if (tunnelId) {
-      try { await cfApi.deleteTunnel(tunnelId); } catch (e) { console.error("Cleanup: Failed to delete tunnel", e); }
-    }
-
-    // Cleanup DNS Record
-    if (hostname) {
-      try { await cfApi.deleteDnsRecord(hostname); } catch (e) { console.error("Cleanup: Failed to delete DNS record", e); }
-    }
 
     // Cleanup Hetzner resources
     if (hetznerServerId) {
@@ -784,74 +712,23 @@ export async function getServers() {
           if (hs.public_net?.ipv4?.ip) s.ip = hs.public_net.ipv4.ip;
           s.serverType = hs.server_type.name;
 
-          // 2. Check for Heartbeat in name (e.g. "opis-Installing-Docker")
-          // We look for the last part after the dash
-          if (hs.name.includes('-')) {
-            const parts = hs.name.split('-');
-            const statusStr = parts[parts.length - 1];
+          // Sync live Hetzner status to local config status
+          const oldStatus = s.status;
+          const oldDetailed = s.detailedStatus;
 
-            if (statusStr === 'Ready') {
-              s.status = 'ready';
-              s.detailedStatus = 'Ready';
-            } else if (['Booting', 'Installing', 'system', 'Docker', 'DDEV', 'Code'].some(st => statusStr.includes(st))) {
-              s.detailedStatus = 'Installing ' + statusStr;
-            }
+          if (hs.status === 'running') {
+            s.status = 'ready';
+            s.detailedStatus = 'Ready';
+          } else if (hs.status === 'starting' || hs.status === 'initializing') {
+            s.status = 'initializing';
+            s.detailedStatus = 'Initializing...';
+          } else {
+            s.status = 'off';
+            s.detailedStatus = `Server is ${hs.status}`;
           }
 
-          // ELEGANT PROBING: If in setup phase, try a direct "pull" from the IP:8080 exporter
-          const setupStatuses: string[] = ['provisioning', 'configuring', 'initializing', 'Initializing', 'starting'];
-          const isSettingUp = setupStatuses.includes(s.status as string);
-          if (isSettingUp) {
-            try {
-              const controller = new AbortController();
-              const id = setTimeout(() => controller.abort(), 1200); // 1.2s timeout
-              
-              let probeResp: Response | null = null;
-              try {
-                probeResp = await fetch(`http://${s.ip}:8000`, {
-                  signal: controller.signal,
-                  cache: 'no-store'
-                });
-              } catch (e) {
-                // If direct fetch fails (e.g. on Cloudflare Workers due to port 8000 limits),
-                // try via the secure logs tunnel if it has been established
-                if (s.tunnelUrl) {
-                  try {
-                    const cfApi = new CloudflareApiService(env);
-                    const logsUrl = s.tunnelUrl.split('?')[0].replace('-code.', '-logs.');
-                    const serviceToken = await cfApi.getOrCreateServiceToken(kv);
-                    probeResp = await fetch(logsUrl, {
-                      headers: {
-                        'CF-Access-Client-Id': serviceToken.id,
-                        'CF-Access-Client-Secret': serviceToken.client_secret,
-                      },
-                      signal: controller.signal,
-                      cache: 'no-store'
-                    });
-                  } catch (_tunnelErr) {
-                    // Ignore tunnel fetch errors
-                  }
-                }
-              }
-              clearTimeout(id);
-
-              if (probeResp && probeResp.ok) {
-                const probeData = await probeResp.json() as { status: string };
-                if (probeData.status) {
-                  s.detailedStatus = `(Live) ${probeData.status}`;
-                  if (probeData.status === 'Ready') {
-                    s.status = 'ready';
-                    // Persist the transition to KV so we don't need to probe next time
-                    await kv.put(`servers:${userEmail}:${s.id}`, JSON.stringify(s)).catch(() => {});
-                  }
-                }
-              }
-            } catch {
-              // Probe failed (booting), ignore
-            }
-          } else if (hs.status !== 'running' && s.status === 'ready') {
-            // If KV says ready but Hetzner says off, sync it
-            s.status = 'off';
+          if (s.status !== oldStatus || s.detailedStatus !== oldDetailed) {
+            await kv.put(`servers:${userEmail}:${s.id}`, JSON.stringify(s)).catch(() => {});
           }
 
           finalServers.push(s);
@@ -1123,6 +1000,11 @@ export async function deleteServer(serverId: string) {
 
       const directHostname = hostname.replace('-code.', '-direct.');
       await cfApi.deleteDnsRecord(directHostname).catch(e => console.error("Direct DNS deletion failed:", e));
+    }
+
+    if (config.hostname) {
+      console.log(`Cleaning up hostname DNS record: ${config.hostname}`);
+      await cfApi.deleteDnsRecord(config.hostname).catch(e => console.error("Hostname DNS deletion failed:", e));
     }
 
     if (config.projects) {

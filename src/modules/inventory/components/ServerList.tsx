@@ -724,7 +724,9 @@ function LogsModal({ isOpen, onClose, debugData, isFetching }: {
 
 function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, fullWidth?: boolean }) {
   const [defaultIde, setDefaultIde] = useState<string>('vscode');
-  const [selectedPath, setSelectedPath] = useState<string>(`/home/${server.userName || 'root'}/workspace`);
+  const [selectedPath, setSelectedPath] = useState<string>(
+    (server.userName === 'root' || !server.userName) ? '/root' : `/home/${server.userName}/workspace`
+  );
   const [liveProjects, setLiveProjects] = useState<string[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
@@ -845,7 +847,7 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
   const currentIde = ides.find(i => i.id === defaultIde) || ides.find(i => i.id === 'vscode')!;
   const currentUrl = getIdeUrl(currentIde.id, selectedPath);
 
-  const mainWorkspacePath = `/home/${server.userName || 'root'}/workspace`;
+  const mainWorkspacePath = (server.userName === 'root' || !server.userName) ? '/root' : `/home/${server.userName}/workspace`;
   
   const staticProjects = server.projects?.map(p => ({ name: p.name, path: `${mainWorkspacePath}/${p.name}`, isStatic: true })) || [];
   
@@ -869,7 +871,9 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
         <div className="flex flex-col items-start leading-tight">
           <span>Open in {currentIde.name}</span>
           <span className="text-[8px] opacity-80 font-mono tracking-tight mt-0.5 truncate max-w-[120px]">
-            {selectedPath === mainWorkspacePath ? '~/workspace' : `~/workspace/${selectedPath.split('/').pop()}`}
+            {mainWorkspacePath === '/root'
+              ? (selectedPath === '/root' ? '~' : `~/${selectedPath.split('/').pop()}`)
+              : (selectedPath === mainWorkspacePath ? '~/workspace' : `~/workspace/${selectedPath.split('/').pop()}`)}
           </span>
         </div>
       </a>
