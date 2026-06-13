@@ -209,8 +209,8 @@ export async function runMorningWorkflow(
   server.hetznerServerId = newHetznerServerId;
   server.hetznerStatus = 'starting';
   server.ip = ip;
-  server.status = 'initializing';
-  server.detailedStatus = 'Initializing...';
+  server.status = 'ready';
+  server.detailedStatus = 'Ready';
   server.updatedAt = new Date().toISOString();
   if (server.scheduleConfig) {
     server.scheduleConfig.lastMorningRun = new Date().toISOString();

@@ -506,78 +506,6 @@ export async function saveUserSettings(settings: {
 }
 
 /**
- * Helper to check if the SSH port (22) is open and responding on the target IP.
- * Supports both Node.js (via 'net') and Cloudflare Workers (via 'cloudflare:sockets').
- */
-async function isSshPortOpen(ip: string): Promise<boolean> {
-  if (!ip || ip === 'pending') return false;
-
-  // 1. Try Node.js 'net' module (local development / Node runtime)
-  try {
-    const netModule = 'net';
-    const net = await import(/* webpackIgnore: true */ netModule);
-    if (net && typeof net.connect === 'function') {
-      return await new Promise<boolean>((resolve) => {
-        const socket = net.connect({
-          port: 22,
-          host: ip,
-          timeout: 1200
-        });
-        socket.on('connect', () => {
-          socket.destroy();
-          resolve(true);
-        });
-        socket.on('error', () => {
-          socket.destroy();
-          resolve(false);
-        });
-        socket.on('timeout', () => {
-          socket.destroy();
-          resolve(false);
-        });
-      });
-    }
-  } catch {
-    // Ignore and proceed to Cloudflare Workers socket
-  }
-
-  // 2. Try Cloudflare Workers Socket API (production Edge environment)
-  try {
-    const socketModule = 'cloudflare:sockets';
-    const { connect } = await import(/* webpackIgnore: true */ socketModule);
-    if (typeof connect === 'function') {
-      const socket = connect({ hostname: ip, port: 22 });
-      
-      const timeoutPromise = new Promise<boolean>((resolve) => {
-        setTimeout(() => {
-          try { socket.close(); } catch {}
-          resolve(false);
-        }, 1200);
-      });
-      
-      const connectPromise = (async () => {
-        try {
-          const reader = socket.readable.getReader();
-          const { done } = await reader.read();
-          reader.releaseLock();
-          socket.close();
-          return !done;
-        } catch {
-          try { socket.close(); } catch {}
-          return false;
-        }
-      })();
-
-      return await Promise.race([connectPromise, timeoutPromise]);
-    }
-  } catch {
-    // Ignore
-  }
-
-  return false;
-}
-
-/**
  * Provisions a new server automatically via Cloud-Init.
  */
 export async function provisionServer(
@@ -789,14 +717,8 @@ export async function getServers() {
           const oldDetailed = s.detailedStatus;
 
           if (hs.status === 'running') {
-            const isSshOpen = await isSshPortOpen(s.ip);
-            if (isSshOpen) {
-              s.status = 'ready';
-              s.detailedStatus = 'Ready';
-            } else {
-              s.status = 'initializing';
-              s.detailedStatus = 'Booting OS...';
-            }
+            s.status = 'ready';
+            s.detailedStatus = 'Ready';
           } else if (hs.status === 'starting' || hs.status === 'initializing') {
             s.status = 'initializing';
             s.detailedStatus = 'Initializing...';
