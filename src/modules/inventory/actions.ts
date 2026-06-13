@@ -233,7 +233,7 @@ exec 3>&1
 exec 1>>"$LOG_FILE" 2>&1
 
 # Progress tracking
-TOTAL_STEPS=9
+TOTAL_STEPS=5
 CURRENT_STEP=0
 
 # Helper for clean titles
@@ -300,7 +300,7 @@ set -x
 
 # Retry apt-get update to be safe
 apt-get update || (sleep 10 && apt-get update)
-apt-get install -y ca-certificates curl gnupg lsb-release ufw
+apt-get install -y ca-certificates curl gnupg lsb-release ufw git jq vim
 
 # --- 3. Create User '$DEV_USER' & SSH ---
 if ! id "$DEV_USER" &>/dev/null; then
@@ -343,15 +343,6 @@ sort -u /home/"$DEV_USER"/.ssh/authorized_keys -o /home/"$DEV_USER"/.ssh/authori
 chown -R "$DEV_USER":"$DEV_USER" /home/"$DEV_USER"/.ssh
 chmod 600 /home/"$DEV_USER"/.ssh/authorized_keys
 
-# --- 3. Install Docker ---
-mkdir -p /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --batch --yes --dearmor -o /etc/apt/keyrings/docker.gpg
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list
-report_status "Installing Docker..."
-apt-get update
-apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
-usermod -aG docker "$DEV_USER"
-
 report_status "Setting up Cloudflare Tunnel..."
 # Detect architecture
 ARCH=$(dpkg --print-architecture)
@@ -368,12 +359,9 @@ if [ -n "$TUNNEL_TOKEN" ]; then
     systemctl start cloudflared || true
 fi
 
-# --- 5. Developer Tools (DDEV) ---
-# Build Timestamp: ${new Date().toISOString()}
+# Configure developer workspace environment
 mkdir -p "${HOST_WORKSPACE}"
 chown -R "$DEV_USER":"$DEV_USER" "${HOST_HOME}"
-
-report_status "Installing DDEV..."
 
 # Pre-configure Git for the host user
 cat <<EOF > /home/"$DEV_USER"/.gitconfig
@@ -383,32 +371,8 @@ cat <<EOF > /home/"$DEV_USER"/.gitconfig
 EOF
 chown "$DEV_USER":"$DEV_USER" /home/"$DEV_USER"/.gitconfig
 
-# Install DDEV Repo
-apt-get update && apt-get install -y curl gnupg
-install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://pkg.ddev.com/apt/gpg.key | gpg --batch --yes --dearmor -o /etc/apt/keyrings/ddev.gpg
-echo 'deb [signed-by=/etc/apt/keyrings/ddev.gpg] https://pkg.ddev.com/apt/ * *' > /etc/apt/sources.list.d/ddev.list
-
-# Install DDEV and essential tools
-apt-get update && apt-get install -y ddev git jq vim libnss3-tools mkcert
-
 # Grant NOPASSWD so the developer can use sudo without a password (since they use SSH keys)
 echo "$DEV_USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/90-devbox-user
-
-# Initialize mkcert for the host user
-sudo -u "$DEV_USER" mkcert -install || true
-
-# Oh My Bash for the host user
-if [ ! -d "/home/${userName}/.oh-my-bash" ]; then
-    sudo -u "$DEV_USER" bash -c "curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh | bash -s -- --unattended" || true
-fi
-
-# Apply Theme and Fixes
-if [ -f "/home/${userName}/.bashrc" ]; then
-    sed -i 's/OSH_THEME="[^"]*"/OSH_THEME="90210"/' "/home/${userName}/.bashrc"
-    grep -q "enable-bracketed-paste" "/home/${userName}/.bashrc" || echo "bind 'set enable-bracketed-paste off'" >> "/home/${userName}/.bashrc"
-    grep -q "alias l=" "/home/${userName}/.bashrc" || echo "alias l='ls -lah'" >> "/home/${userName}/.bashrc"
-fi
 
 # Firewall
 ufw allow 22/tcp

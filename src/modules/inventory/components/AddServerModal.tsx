@@ -547,10 +547,10 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">
               {provider === 'hetzner' ? (
-                <>We&apos;ll create a <strong className="text-slate-200">Hetzner</strong> instance and run our custom DevBox bootstrap.</>
+                <>We&apos;ll create a fresh <strong className="text-slate-200">Hetzner</strong> instance and configure SSH keys and Cloudflare Access.</>
               ) : (
-                <>We&apos;ll connect to your <strong className="text-slate-200">existing server</strong> and run our custom DevBox bootstrap.</>
-              )} This installs Docker, Oh-My-Bash, and configures your DDEV environment.
+                <>We&apos;ll connect to your <strong className="text-slate-200">existing server</strong>.</>
+              )} This sets up secure SSH access and dynamic DNS routing without installing extra software.
             </p>
           </div>
           
