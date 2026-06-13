@@ -154,12 +154,18 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
   const ipv4Fee = getIpv4MonthlyPrice(options.pricing, location);
   const monthlyPrice = selectedPrice ? (parseFloat(selectedPrice.price_monthly.gross) + ipv4Fee).toString() : undefined;
 
-  // Auto-switch image if current image is not in filtered list
+  // Auto-switch image to the latest Ubuntu image in the filtered list
   useEffect(() => {
-    if (filteredImages.length > 0 && !filteredImages.some(i => i.name === image)) {
-      setImage(filteredImages[0].name);
+    if (filteredImages.length > 0) {
+      const ubuntuImages = filteredImages.filter(i => i.name && i.name.toLowerCase().startsWith('ubuntu-'));
+      if (ubuntuImages.length > 0) {
+        const sorted = [...ubuntuImages].sort((a, b) => (b.name || '').localeCompare(a.name || ''));
+        setImage(sorted[0].name || filteredImages[0].name);
+      } else {
+        setImage(filteredImages[0].name);
+      }
     }
-  }, [serverType, options.images, image, filteredImages]);
+  }, [serverType, options.images, filteredImages]);
 
   if (!isOpen) return null;
 
@@ -495,27 +501,8 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
               </div>
             </div>
           )}
-
           {provider === 'hetzner' && (
             <>
-              <div>
-                <label className="block text-sm font-medium text-slate-400 mb-1.5">OS Image</label>
-                <select
-                  value={image}
-                  onChange={(e) => setImage(e.target.value)}
-                  disabled={isLoadingOptions}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer disabled:opacity-50 text-sm"
-                >
-                  {filteredImages.map(i => (
-                    <option key={i.id} value={i.name}>
-                      {i.description} ({i.architecture === 'arm' ? 'ARM' : 'x86'})
-                    </option>
-                  ))}
-                  {isLoadingOptions && <option>Loading images...</option>}
-                  {!isLoadingOptions && filteredImages.length === 0 && <option>No compatible images</option>}
-                </select>
-              </div>
-
               <div className="bg-slate-950/50 border border-slate-800/50 rounded-xl p-4 flex justify-between items-center group relative">
                 <div>
                   <p className="text-xs uppercase tracking-wider text-slate-500 font-bold">Cost</p>
