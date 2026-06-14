@@ -183,6 +183,32 @@ export async function runMorningWorkflow(
     env.MANAGEMENT_SSH_PUBLIC_KEY || ''
   );
 
+  // Generate bootstrap script to ensure correct tunnel/hostname mapping on boot
+  let bootstrapScript: string | undefined = undefined;
+  try {
+    const cfApi = new CloudflareApiService(env);
+    const requestHost = env.NEXT_PUBLIC_APP_URL || 'https://devboxui.com';
+    const callbackUrl = `${requestHost}/api/provisioning/status`;
+    const serviceToken = await cfApi.getOrCreateServiceToken(kv);
+    await cfApi.authorizeServiceToken(requestHost.replace('https://', ''), serviceToken.id);
+
+    // Import the script generator dynamically to avoid circular references
+    const { getHetznerBootstrapScript } = await import('./actions');
+
+    bootstrapScript = getHetznerBootstrapScript(
+      server.userName,
+      server.userEmail || userEmail,
+      serverId,
+      server.provisioningToken || crypto.randomUUID(),
+      callbackUrl,
+      serviceToken.id,
+      serviceToken.client_secret,
+      server.tunnelToken
+    );
+  } catch (err) {
+    console.error("[Morning] Failed to generate bootstrap script for snapshot restore:", err);
+  }
+
   // Create server from snapshot
   const serverName = (server.hostname || `devbox-${serverId.slice(0, 8)}`)
     .replace('.devboxui.com', '')
@@ -194,7 +220,8 @@ export async function runMorningWorkflow(
     snapshotToRestore,
     sched.serverType,
     sched.location,
-    sshKeyIds
+    sshKeyIds,
+    bootstrapScript
   );
 
   const newHetznerServerId = result.server.id;

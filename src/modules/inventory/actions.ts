@@ -403,7 +403,7 @@ echo "✅ SETUP FINISHED - Server is ready for use." > /etc/motd
  * Avoids slow package updates and installation, focusing only on user creation,
  * workspace creation, SSH key sync, git configuration, and instant status reporting.
  */
-function getHetznerBootstrapScript(
+export function getHetznerBootstrapScript(
   userName: string,
   userEmail: string,
   serverId: string,
@@ -460,9 +460,12 @@ if [ -n "${tunnelToken}" ]; then
     else
       CF_PKG="cloudflared-linux-amd64.deb"
     fi
-    curl -L -s --output cloudflared.deb "https://github.com/cloudflare/cloudflared/releases/latest/download/$CF_PKG"
-    dpkg -i cloudflared.deb > /dev/null
-    rm cloudflared.deb
+    if ! command -v cloudflared &>/dev/null; then
+        curl -L -s --output cloudflared.deb "https://github.com/cloudflare/cloudflared/releases/latest/download/$CF_PKG"
+        dpkg -i cloudflared.deb > /dev/null
+        rm cloudflared.deb
+    fi
+    cloudflared service uninstall > /dev/null 2>&1 || true
     cloudflared service install "${tunnelToken}" > /dev/null 2>&1 || true
     systemctl enable cloudflared || true
     systemctl start cloudflared || true
@@ -1920,8 +1923,49 @@ export async function getServerSnapshots(serverId: string) {
   if (!hetznerToken) return [];
   
   const hetznerApi = new HetznerApiService(env, hetznerToken);
+  const kv = env.KV;
+  if (!kv) return [];
+
   try {
-    return await hetznerApi.getSnapshots(`devbox-server-id=${serverId}`);
+    // 1. Fetch server config from KV to resolve its configured serverType
+    const list = await kv.list({ prefix: 'servers:' });
+    let serverConfig: ServerConfig | null = null;
+    for (const key of list.keys) {
+      const data = await kv.get(key.name);
+      if (data) {
+        const parsed = JSON.parse(data) as ServerConfig;
+        if (parsed.id === serverId) {
+          serverConfig = parsed;
+          break;
+        }
+      }
+    }
+
+    if (!serverConfig) {
+      // Fallback: if server not found in KV, return snapshots labeled for this server
+      return await hetznerApi.getSnapshots(`devbox-server-id=${serverId}`);
+    }
+
+    // 2. Fetch all snapshots and server types from Hetzner
+    const [allSnapshots, serverTypes] = await Promise.all([
+      hetznerApi.getSnapshots(),
+      hetznerApi.getServerTypes()
+    ]);
+
+    // Find the target server's specs
+    const targetType = serverTypes.find(t => t.name === serverConfig?.serverType);
+    const targetDisk = targetType?.disk || 20; // default fallback in GB
+    const targetArch = targetType?.architecture || 'x86';
+
+    // 3. Filter snapshots by disk size and architecture compatibility
+    const compatibleSnapshots = allSnapshots.filter(s => {
+      // Must match architecture (e.g. x86_64 vs ARM64)
+      if (s.architecture !== targetArch) return false;
+      // Snapshot disk size must fit inside the target server's disk size
+      return s.disk_size <= targetDisk;
+    });
+
+    return compatibleSnapshots;
   } catch (err) {
     console.error(`Failed to fetch snapshots for server ${serverId}:`, err);
     return [];

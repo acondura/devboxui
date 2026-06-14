@@ -118,6 +118,7 @@ export interface HetznerImage {
   created: string;
   disk_size: number;
   labels: Record<string, string>;
+  architecture: string;
 }
 
 export interface HetznerAction {
@@ -554,7 +555,8 @@ export class HetznerApiService {
     snapshotId: number,
     serverType: string = 'cpx21',
     location: string = 'nbg1',
-    sshKeys: (string | number)[] = []
+    sshKeys: (string | number)[] = [],
+    userData?: string
   ): Promise<HetznerServerResponse> {
     const response = await fetch(`${this.baseUrl}/servers`, {
       method: 'POST',
@@ -567,6 +569,7 @@ export class HetznerApiService {
         server_type: serverType,
         image: snapshotId,
         location,
+        user_data: userData,
         start_after_create: true,
         ssh_keys: sshKeys,
         public_net: {

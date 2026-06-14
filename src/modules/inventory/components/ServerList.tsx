@@ -565,11 +565,30 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
                       className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 appearance-none cursor-pointer max-w-[200px] pr-8 relative font-medium"
                     >
                       <option value="latest">Latest Snapshot (Auto)</option>
-                      {vpsSnapshots.map(s => (
-                        <option key={s.id} value={s.id.toString()}>
-                          {s.description || `Snapshot #${s.id}`}
-                        </option>
-                      ))}
+                      {vpsSnapshots.some(s => s.labels && s.labels['devbox-server-id'] === server.id) && (
+                        <optgroup label="This DevBox's Snapshots">
+                          {vpsSnapshots
+                            .filter(s => s.labels && s.labels['devbox-server-id'] === server.id)
+                            .map(s => (
+                              <option key={s.id} value={s.id.toString()}>
+                                {s.description || `Snapshot #${s.id}`}
+                              </option>
+                            ))
+                          }
+                        </optgroup>
+                      )}
+                      {vpsSnapshots.some(s => !s.labels || s.labels['devbox-server-id'] !== server.id) && (
+                        <optgroup label="Other Compatible Snapshots">
+                          {vpsSnapshots
+                            .filter(s => !s.labels || s.labels['devbox-server-id'] !== server.id)
+                            .map(s => (
+                              <option key={s.id} value={s.id.toString()}>
+                                {s.description || `Snapshot #${s.id}`}
+                              </option>
+                            ))
+                          }
+                        </optgroup>
+                      )}
                     </select>
                     <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-slate-500">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -931,11 +950,30 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
                       className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 w-full appearance-none cursor-pointer pr-10 font-medium"
                     >
                       <option value="latest">Latest Snapshot (Auto)</option>
-                      {vpsSnapshots.map(s => (
-                        <option key={s.id} value={s.id.toString()}>
-                          {s.description || `Snapshot #${s.id}`}
-                        </option>
-                      ))}
+                      {vpsSnapshots.some(s => s.labels && s.labels['devbox-server-id'] === server.id) && (
+                        <optgroup label="This DevBox's Snapshots">
+                          {vpsSnapshots
+                            .filter(s => s.labels && s.labels['devbox-server-id'] === server.id)
+                            .map(s => (
+                              <option key={s.id} value={s.id.toString()}>
+                                {s.description || `Snapshot #${s.id}`}
+                              </option>
+                            ))
+                          }
+                        </optgroup>
+                      )}
+                      {vpsSnapshots.some(s => !s.labels || s.labels['devbox-server-id'] !== server.id) && (
+                        <optgroup label="Other Compatible Snapshots">
+                          {vpsSnapshots
+                            .filter(s => !s.labels || s.labels['devbox-server-id'] !== server.id)
+                            .map(s => (
+                              <option key={s.id} value={s.id.toString()}>
+                                {s.description || `Snapshot #${s.id}`}
+                              </option>
+                            ))
+                          }
+                        </optgroup>
+                      )}
                     </select>
                     <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-500">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
