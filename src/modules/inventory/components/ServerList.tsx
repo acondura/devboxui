@@ -421,7 +421,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
           
           {server.status === 'off' && scheduleConfig?.latestSnapshotDescription && (
             <div className="flex items-center mt-1">
-              <span className="text-[9px] font-bold text-indigo-400 uppercase bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.5 rounded tracking-wide font-mono">
+              <span className="text-xs font-bold text-indigo-400 uppercase bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.5 rounded tracking-wide font-mono">
                 {scheduleConfig.latestSnapshotDescription}
               </span>
             </div>
@@ -915,7 +915,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
               
               <div className="flex flex-row justify-between items-center mt-1 text-[10px] font-mono text-slate-500 w-full font-mono text-left">
                 {server.status === 'off' && scheduleConfig?.latestSnapshotDescription ? (
-                  <span className="text-[9px] font-bold text-indigo-400 uppercase bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.5 rounded tracking-wide">
+                  <span className="text-xs font-bold text-indigo-400 uppercase bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.5 rounded tracking-wide">
                     {scheduleConfig.latestSnapshotDescription}
                   </span>
                 ) : (

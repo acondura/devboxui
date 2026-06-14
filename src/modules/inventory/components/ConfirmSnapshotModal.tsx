@@ -65,7 +65,7 @@ export function ConfirmSnapshotModal({ isOpen, onClose, onConfirm, serverName }:
             </svg>
             <div className="space-y-1">
               <p className="text-sm font-bold text-indigo-200 uppercase tracking-tight">How it works</p>
-              <p className="text-xs text-indigo-200/70 leading-relaxed">
+              <p className="text-sm text-indigo-200/85 leading-relaxed">
                 The VPS will be powered off and a snapshot image will be created. The VPS will then be deleted to stop hourly billing. The server configuration remains in the dashboard to spin it back up later.
               </p>
             </div>
@@ -73,7 +73,7 @@ export function ConfirmSnapshotModal({ isOpen, onClose, onConfirm, serverName }:
 
           {/* Snapshot custom name prefix input */}
           <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+            <label className="text-sm font-bold text-slate-300 uppercase tracking-widest">
               Snapshot Prefix (Optional)
             </label>
             <input
@@ -83,15 +83,15 @@ export function ConfirmSnapshotModal({ isOpen, onClose, onConfirm, serverName }:
               placeholder="e.g. pre-refactor, before-db-upgrade"
               className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 focus:outline-none rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 transition-all font-mono"
             />
-            <p className="text-[10px] text-slate-500 leading-normal">
+            <p className="text-xs text-slate-400 leading-normal">
               Final Snapshot Name: <br />
-              <span className="text-indigo-400 font-mono font-bold break-all">{finalPreview}</span>
+              <span className="text-sm text-indigo-400 font-mono font-bold break-all mt-1 block">{finalPreview}</span>
             </p>
           </div>
 
           <div className="space-y-2 bg-slate-950/30 border border-slate-800/50 rounded-xl p-4">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Target Server:</p>
-            <span className="text-sm font-mono font-bold text-white break-all">{serverName}</span>
+            <p className="text-sm font-bold text-slate-300 uppercase tracking-widest">Target Server:</p>
+            <span className="text-base font-mono font-bold text-white break-all">{serverName}</span>
           </div>
 
           <div className="flex space-x-3 pt-2">
