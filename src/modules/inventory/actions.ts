@@ -1182,10 +1182,23 @@ export async function deleteServer(serverId: string) {
       }
     }
 
-    // Delete Hetzner Server
-    if (config.hetznerServerId) {
-      console.log(`Deleting Hetzner server ${config.hetznerServerId}...`);
-      await hetznerApi.deleteServer(config.hetznerServerId).catch(e => console.error("Hetzner deletion failed:", e));
+    // Delete Hetzner Server and associated snapshots
+    if (config.provider === 'hetzner' || config.hetznerServerId) {
+      try {
+        console.log(`Searching for snapshots associated with server ${serverId}...`);
+        const snapshots = await hetznerApi.getSnapshots(`devbox-server-id=${serverId}`);
+        for (const snap of snapshots) {
+          console.log(`Deleting snapshot ${snap.id} (${snap.description})...`);
+          await hetznerApi.deleteSnapshot(snap.id).catch(e => console.error(`Failed to delete snapshot ${snap.id}:`, e));
+        }
+      } catch (e) {
+        console.error("Failed to clean up associated snapshots:", e);
+      }
+
+      if (config.hetznerServerId) {
+        console.log(`Deleting Hetzner server ${config.hetznerServerId}...`);
+        await hetznerApi.deleteServer(config.hetznerServerId).catch(e => console.error("Hetzner deletion failed:", e));
+      }
     }
 
     // Delete Contabo Instance and Secret
