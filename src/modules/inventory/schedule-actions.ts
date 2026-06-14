@@ -195,7 +195,7 @@ export async function runMorningWorkflow(
     // Import the script generator dynamically to avoid circular references
     const { getHetznerBootstrapScript } = await import('./actions');
 
-    bootstrapScript = getHetznerBootstrapScript(
+    bootstrapScript = await getHetznerBootstrapScript(
       server.userName,
       server.userEmail || userEmail,
       serverId,

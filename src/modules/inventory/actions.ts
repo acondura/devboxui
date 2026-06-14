@@ -403,7 +403,7 @@ echo "✅ SETUP FINISHED - Server is ready for use." > /etc/motd
  * Avoids slow package updates and installation, focusing only on user creation,
  * workspace creation, SSH key sync, git configuration, and instant status reporting.
  */
-export function getHetznerBootstrapScript(
+export async function getHetznerBootstrapScript(
   userName: string,
   userEmail: string,
   serverId: string,
@@ -724,7 +724,7 @@ export async function provisionServer(
     const serviceToken = await cfApi.getOrCreateServiceToken(kv);
     await cfApi.authorizeServiceToken(requestHost.replace('https://', ''), serviceToken.id);
 
-    const bootstrapScript = getHetznerBootstrapScript(
+    const bootstrapScript = await getHetznerBootstrapScript(
       userName,
       userEmail,
       serverId,
