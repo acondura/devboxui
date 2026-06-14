@@ -35,11 +35,11 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
     loadServers();
   }, []);
 
-  // Poll for updates if any Hetzner server is provisioning
+  // Poll for updates if any Hetzner server is provisioning or snapshotting
   useEffect(() => {
     const isPending = servers.some(s => 
       s.hetznerServerId &&
-      ['provisioning', 'waiting-for-bootstrap', 'initializing', 'Initializing'].includes(s.status as string)
+      ['provisioning', 'waiting-for-bootstrap', 'initializing', 'Initializing', 'snapshotting'].includes(s.status as string)
     );
     if (!isPending) return;
 
@@ -53,7 +53,7 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
         // Re-schedule only if still pending
         const stillPending = data && data.some(s => 
           s.hetznerServerId &&
-          ['provisioning', 'waiting-for-bootstrap', 'initializing', 'Initializing'].includes(s.status as string)
+          ['provisioning', 'waiting-for-bootstrap', 'initializing', 'Initializing', 'snapshotting'].includes(s.status as string)
         );
         if (stillPending) {
           timerId = setTimeout(poll, 5000);

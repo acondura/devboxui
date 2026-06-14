@@ -132,7 +132,7 @@ export async function runMorningWorkflow(
   const kv = env.KV;
   if (!kv) throw new Error('KV database missing.');
 
-  const settings = await getUserSettings();
+  const settings = await getUserSettings(userEmail);
   const hetznerToken = settings?.hetznerToken || env.HETZNER_API_TOKEN;
   if (!hetznerToken) throw new Error('Hetzner API Token missing.');
 
@@ -257,7 +257,7 @@ export async function runEveningWorkflow(
   const kv = env.KV;
   if (!kv) throw new Error('KV database missing.');
 
-  const settings = await getUserSettings();
+  const settings = await getUserSettings(userEmail);
   const hetznerToken = settings?.hetznerToken || env.HETZNER_API_TOKEN;
   if (!hetznerToken) throw new Error('Hetzner API Token missing.');
 
@@ -331,71 +331,38 @@ export async function runEveningWorkflow(
     console.log(`[Evening] Server ${hetznerServerId} already OFF.`);
   }
 
-  // ── Step 2: Create snapshot ───────────────────────────────────────────────
+  // ── Step 2: Create snapshot (Non-blocking) ────────────────────────────────
   const date = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
   const baseDescription = `devbox-auto-${serverId.slice(0, 8)}-${date}`;
   const snapshotDescription = customPrefix ? `${customPrefix}-${baseDescription}` : baseDescription;
   const snapshotLabel = { 'devbox-server-id': serverId, 'devbox-auto': 'true' };
 
   console.log(`[Evening] Creating snapshot "${snapshotDescription}"…`);
-  const snapshot = await hetznerApi.createSnapshot(hetznerServerId, snapshotDescription, snapshotLabel);
-  console.log(`[Evening] Snapshot ${snapshot.id} created, waiting for it to be available…`);
+  const { image: snapshotImage, action: snapshotAction } = await hetznerApi.createSnapshot(hetznerServerId, snapshotDescription, snapshotLabel);
+  console.log(`[Evening] Snapshot ${snapshotImage.id} creation action ${snapshotAction.id} initiated.`);
 
-  // Wait up to 10 minutes for the snapshot to be ready
-  await hetznerApi.waitForSnapshot(snapshot.id, 600_000, 10_000);
-  console.log(`[Evening] Snapshot ${snapshot.id} is available.`);
-
-  // ── Step 3: Delete old snapshots ──────────────────────────────────────────
-  const previousSnapshotId = sched.latestSnapshotId;
-  if (previousSnapshotId && previousSnapshotId !== snapshot.id) {
-    try {
-      console.log(`[Evening] Deleting old snapshot ${previousSnapshotId}…`);
-      await hetznerApi.deleteSnapshot(previousSnapshotId);
-      console.log(`[Evening] Old snapshot ${previousSnapshotId} deleted.`);
-    } catch (e) {
-      console.warn(`[Evening] Failed to delete old snapshot ${previousSnapshotId}:`, e);
-    }
-  }
-
-  // Also sweep any orphan snapshots with the same label (safety net)
-  try {
-    const orphans = await hetznerApi.getSnapshots(`devbox-server-id=${serverId}`);
-    for (const orphan of orphans) {
-      if (orphan.id !== snapshot.id) {
-        console.log(`[Evening] Sweeping orphan snapshot ${orphan.id}…`);
-        await hetznerApi.deleteSnapshot(orphan.id).catch(() => {});
-      }
-    }
-  } catch {
-    // Non-fatal
-  }
-
-  // ── Step 4: Delete the Hetzner server (cost saving) ──────────────────────
-  console.log(`[Evening] Deleting Hetzner server ${hetznerServerId}…`);
-  await hetznerApi.deleteServer(hetznerServerId);
-  console.log(`[Evening] Server ${hetznerServerId} deleted.`);
-
-  // ── Step 5: Update KV records ─────────────────────────────────────────────
-  sched.latestSnapshotId = snapshot.id;
-  sched.latestSnapshotDate = date;
-  sched.latestSnapshotDescription = snapshotDescription;
-  sched.lastEveningRun = new Date().toISOString();
-  sched.lastRunStatus = 'success';
-  sched.lastRunError = undefined;
-  await kv.put(scheduleKey(userEmail, serverId), JSON.stringify(sched));
-
-  server.hetznerServerId = undefined;
-  server.hetznerStatus = undefined;
-  server.ip = 'pending';
-  server.status = 'off';
-  server.scheduleConfig = sched;
+  // Update server state and store pending snapshot details
+  server.status = 'snapshotting';
+  server.detailedStatus = 'Saving snapshot (0%)';
+  server.pendingSnapshotId = snapshotImage.id;
+  server.pendingSnapshotActionId = snapshotAction.id;
+  server.pendingSnapshotDescription = snapshotDescription;
+  server.pendingSnapshotDate = date;
   server.updatedAt = new Date().toISOString();
+
+  if (sched) {
+    sched.lastEveningRun = new Date().toISOString();
+    sched.lastRunStatus = 'running';
+    sched.lastRunError = undefined;
+    server.scheduleConfig = sched;
+    await kv.put(scheduleKey(userEmail, serverId), JSON.stringify(sched));
+  }
   await kv.put(serverKey(userEmail, serverId), JSON.stringify(server));
 
   return {
     success: true,
-    message: `Evening workflow complete. Snapshot ${snapshot.id} saved, server deleted.`,
-    snapshotId: snapshot.id
+    message: `Evening workflow initiated. Snapshot action ${snapshotAction.id} started.`,
+    snapshotId: snapshotImage.id
   };
 }
 
@@ -478,4 +445,182 @@ export async function shouldFireNow(
   } catch {
     return false;
   }
+}
+
+export async function processPendingSnapshot(
+  server: ServerConfig,
+  userEmail: string,
+  kv: KVNamespace,
+  hetznerApi: HetznerApiService
+): Promise<ServerConfig> {
+  if (!server.pendingSnapshotId || !server.pendingSnapshotActionId) {
+    return server;
+  }
+
+  const actionId = server.pendingSnapshotActionId;
+  const snapshotId = server.pendingSnapshotId;
+
+  try {
+    console.log(`[processPendingSnapshot] Checking Hetzner action ${actionId} for server ${server.id}…`);
+    const action = await hetznerApi.getAction(actionId);
+    console.log(`[processPendingSnapshot] Action status: ${action.status}, progress: ${action.progress}%`);
+
+    if (action.status === 'running') {
+      const progress = action.progress || 0;
+      server.status = 'snapshotting';
+      server.detailedStatus = `Saving snapshot (${progress}%)`;
+      server.updatedAt = new Date().toISOString();
+      await kv.put(serverKey(userEmail, server.id), JSON.stringify(server));
+    } else if (action.status === 'success') {
+      console.log(`[processPendingSnapshot] Snapshot action ${actionId} succeeded. Cleaning up VM and old snapshots…`);
+
+      // Load schedule config
+      const schedData = await kv.get(scheduleKey(userEmail, server.id));
+      let sched: ScheduleConfig;
+      if (schedData) {
+        sched = JSON.parse(schedData) as ScheduleConfig;
+      } else {
+        sched = {
+          enabled: false,
+          timezone: 'Europe/Bucharest',
+          spinupTime: '09:00',
+          snapshotTime: '18:00',
+          serverType: server.serverType || 'cx22',
+          location: 'nbg1',
+        };
+      }
+
+      // Delete old snapshot
+      const previousSnapshotId = sched.latestSnapshotId;
+      if (previousSnapshotId && previousSnapshotId !== snapshotId) {
+        try {
+          console.log(`[processPendingSnapshot] Deleting old snapshot ${previousSnapshotId}…`);
+          await hetznerApi.deleteSnapshot(previousSnapshotId);
+        } catch (e) {
+          console.warn(`[processPendingSnapshot] Failed to delete old snapshot ${previousSnapshotId}:`, e);
+        }
+      }
+
+      // Sweep orphan snapshots
+      try {
+        const orphans = await hetznerApi.getSnapshots(`devbox-server-id=${server.id}`);
+        for (const orphan of orphans) {
+          if (orphan.id !== snapshotId) {
+            console.log(`[processPendingSnapshot] Sweeping orphan snapshot ${orphan.id}…`);
+            await hetznerApi.deleteSnapshot(orphan.id).catch(() => {});
+          }
+        }
+      } catch (e) {
+        console.warn(`[processPendingSnapshot] Orphan sweep failed:`, e);
+      }
+
+      // Delete the Hetzner server
+      if (server.hetznerServerId) {
+        try {
+          console.log(`[processPendingSnapshot] Deleting Hetzner server ${server.hetznerServerId}…`);
+          await hetznerApi.deleteServer(server.hetznerServerId);
+        } catch (e) {
+          console.error(`[processPendingSnapshot] Failed to delete server ${server.hetznerServerId}:`, e);
+        }
+      }
+
+      // Update schedule config
+      sched.latestSnapshotId = snapshotId;
+      sched.latestSnapshotDate = server.pendingSnapshotDate || new Date().toISOString().slice(0, 10);
+      sched.latestSnapshotDescription = server.pendingSnapshotDescription || '';
+      sched.lastEveningRun = new Date().toISOString();
+      sched.lastRunStatus = 'success';
+      sched.lastRunError = undefined;
+      await kv.put(scheduleKey(userEmail, server.id), JSON.stringify(sched));
+
+      // Update server record
+      server.hetznerServerId = undefined;
+      server.hetznerStatus = undefined;
+      server.ip = 'pending';
+      server.status = 'off';
+      server.detailedStatus = 'Server is off';
+      server.scheduleConfig = sched;
+      
+      // Clear pending fields
+      server.pendingSnapshotId = undefined;
+      server.pendingSnapshotActionId = undefined;
+      server.pendingSnapshotDescription = undefined;
+      server.pendingSnapshotDate = undefined;
+      server.updatedAt = new Date().toISOString();
+
+      await kv.put(serverKey(userEmail, server.id), JSON.stringify(server));
+      console.log(`[processPendingSnapshot] Server ${server.id} cleanup complete.`);
+    } else if (action.status === 'error') {
+      const errMsg = action.error?.message || 'unknown Hetzner error';
+      console.error(`[processPendingSnapshot] Snapshot action ${actionId} failed: ${errMsg}`);
+
+      // Load schedule config
+      const schedData = await kv.get(scheduleKey(userEmail, server.id));
+      let sched: ScheduleConfig | undefined;
+      if (schedData) {
+        sched = JSON.parse(schedData) as ScheduleConfig;
+        sched.lastEveningRun = new Date().toISOString();
+        sched.lastRunStatus = 'error';
+        sched.lastRunError = `Hetzner snapshot action failed: ${errMsg}`;
+        await kv.put(scheduleKey(userEmail, server.id), JSON.stringify(sched));
+      }
+
+      // Reset server status
+      server.status = 'ready';
+      server.detailedStatus = `Snapshot failed: ${errMsg}`;
+      if (sched) {
+        server.scheduleConfig = sched;
+      }
+
+      // Clear pending fields
+      server.pendingSnapshotId = undefined;
+      server.pendingSnapshotActionId = undefined;
+      server.pendingSnapshotDescription = undefined;
+      server.pendingSnapshotDate = undefined;
+      server.updatedAt = new Date().toISOString();
+
+      await kv.put(serverKey(userEmail, server.id), JSON.stringify(server));
+    }
+  } catch (err) {
+    console.error(`[processPendingSnapshot] Failed checking action ${actionId}:`, err);
+  }
+
+  return server;
+}
+
+export async function processAllPendingSnapshots(kv: KVNamespace) {
+  console.log('[processAllPendingSnapshots] Scanning KV for servers with pending snapshots...');
+  const list = await kv.list({ prefix: 'servers:' });
+  let count = 0;
+  for (const key of list.keys) {
+    const data = await kv.get(key.name);
+    if (!data) continue;
+    
+    let server: ServerConfig;
+    try {
+      server = JSON.parse(data) as ServerConfig;
+    } catch {
+      continue;
+    }
+    
+    if (server.pendingSnapshotId && server.pendingSnapshotActionId) {
+      count++;
+      const userEmail = server.userEmail;
+      
+      try {
+        const settings = await getUserSettings(userEmail);
+        const env = await getCloudflareEnv();
+        const hetznerToken = settings?.hetznerToken || env.HETZNER_API_TOKEN;
+        if (!hetznerToken) {
+          console.error(`[processAllPendingSnapshots] No Hetzner token found for ${userEmail}`);
+          continue;
+        }
+        const hetznerApi = new HetznerApiService(env, hetznerToken);
+        await processPendingSnapshot(server, userEmail, kv, hetznerApi);
+      } catch (err) {
+        console.error(`[processAllPendingSnapshots] Failed to process pending snapshot for ${server.id}:`, err);
+      }
+    }
+  }
+  console.log(`[processAllPendingSnapshots] Finished processing ${count} pending snapshots.`);
 }

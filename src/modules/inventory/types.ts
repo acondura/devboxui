@@ -3,7 +3,7 @@ export interface ServerConfig {
   ip: string;
   userName: string;
   userEmail: string;
-  status: 'provisioning' | 'configuring' | 'Initializing' | 'initializing' | 'ready' | 'error' | 'off' | 'waiting-for-bootstrap';
+  status: 'provisioning' | 'configuring' | 'Initializing' | 'initializing' | 'ready' | 'error' | 'off' | 'waiting-for-bootstrap' | 'snapshotting';
   sshPrivateKey: string;
   sshPublicKey: string;
   rootPassword?: string;
@@ -35,6 +35,10 @@ export interface ServerConfig {
   scheduleConfig?: ScheduleConfig;
   allowedPeers?: string[];
   serverType?: string;
+  pendingSnapshotId?: number;
+  pendingSnapshotActionId?: number;
+  pendingSnapshotDescription?: string;
+  pendingSnapshotDate?: string;
 }
 
 export interface ScheduleConfig {

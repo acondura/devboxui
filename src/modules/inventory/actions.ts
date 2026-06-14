@@ -530,8 +530,8 @@ function generateUniqueUsername(email: string): string {
  * Retrieves per-user settings (like Hetzner API Token) from KV.
  * Auto-generates an SSH keypair if missing.
  */
-export async function getUserSettings() {
-  const userEmail = await getIdentity();
+export async function getUserSettings(passedEmail?: string) {
+  const userEmail = passedEmail || await getIdentity();
   const env = await getCloudflareEnv();
   const kv = env.KV;
   if (!kv) return null;
@@ -792,6 +792,9 @@ export async function getServers() {
 
   if (!kv) return [];
 
+  const settings = await getUserSettings();
+  const hetznerToken = settings?.hetznerToken || env.HETZNER_API_TOKEN;
+
   const list = await kv.list({ prefix: `servers:${userEmail}:` });
   const kvServers = (await Promise.all(
     list.keys.map(async (key: { name: string }) => {
@@ -801,13 +804,21 @@ export async function getServers() {
         await kv.delete(key.name).catch(() => { });
         return null;
       }
-      return JSON.parse(val) as ServerConfig;
+      let s = JSON.parse(val) as ServerConfig;
+
+      if (s.pendingSnapshotId && s.pendingSnapshotActionId && hetznerToken) {
+        try {
+          const { processPendingSnapshot } = await import('./schedule-actions');
+          const hetznerApi = new HetznerApiService(env, hetznerToken);
+          s = await processPendingSnapshot(s, userEmail, kv, hetznerApi);
+        } catch (err) {
+          console.error(`Error processing pending snapshot for server ${s.id}:`, err);
+        }
+      }
+
+      return s;
     })
   )).filter((s): s is ServerConfig => s !== null);
-
-  // Fetch from Hetzner API if token is available
-  const settings = await getUserSettings();
-  const hetznerToken = settings?.hetznerToken || env.HETZNER_API_TOKEN;
 
   if (hetznerToken) {
     try {
@@ -818,6 +829,14 @@ export async function getServers() {
 
       // 1. Sync KV servers with live Hetzner data and cleanup "ghosts"
       for (const s of kvServers) {
+        if (s.status === 'snapshotting') {
+          finalServers.push(s);
+          if (s.hetznerServerId) {
+            hetznerMap.delete(s.hetznerServerId.toString());
+          }
+          continue;
+        }
+
         if (!s.hetznerServerId) {
           finalServers.push(s);
           continue;

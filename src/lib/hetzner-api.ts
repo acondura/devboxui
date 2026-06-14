@@ -445,7 +445,7 @@ export class HetznerApiService {
     serverId: number,
     description: string,
     labels: Record<string, string> = {}
-  ): Promise<HetznerImage> {
+  ): Promise<{ image: HetznerImage; action: HetznerAction }> {
     const response = await fetch(`${this.baseUrl}/servers/${serverId}/actions/create_image`, {
       method: 'POST',
       headers: {
@@ -463,7 +463,23 @@ export class HetznerApiService {
       throw new Error(`Hetzner Snapshot Error: ${response.status} - ${error}`);
     }
     const data = await response.json() as { image: HetznerImage; action: HetznerAction };
-    return data.image;
+    return { image: data.image, action: data.action };
+  }
+
+  /**
+   * Gets a single action by ID to check its progress/status.
+   */
+  async getAction(actionId: number): Promise<HetznerAction> {
+    const response = await fetch(`${this.baseUrl}/actions/${actionId}`, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${this.token}` }
+    });
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Hetzner GetAction Error: ${response.status} - ${error}`);
+    }
+    const data = await response.json() as { action: HetznerAction };
+    return data.action;
   }
 
   /**
