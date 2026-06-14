@@ -361,9 +361,23 @@ export async function runEveningWorkflow(
   }
 
   // ── Step 2: Create snapshot (Non-blocking) ────────────────────────────────
-  const date = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-  const baseDescription = `devbox-auto-${serverId.slice(0, 8)}-${date}`;
-  const snapshotDescription = customPrefix ? `${customPrefix}-${baseDescription}` : baseDescription;
+  const now = new Date();
+  const YYYY = now.getFullYear();
+  const MM = String(now.getMonth() + 1).padStart(2, '0');
+  const DD = String(now.getDate()).padStart(2, '0');
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  const ss = String(now.getSeconds()).padStart(2, '0');
+
+  const cleanServerName = (server.hostname || `devbox-${serverId.slice(0, 8)}`)
+    .replace('.devboxui.com', '')
+    .replace('-code', '')
+    .replace('-direct', '')
+    .replace(/[^a-zA-Z0-9-]/g, '')
+    .toLowerCase();
+
+  const baseDescription = `${cleanServerName}--${YYYY}-${MM}-${DD}-${hh}-${mm}-${ss}`;
+  const snapshotDescription = customPrefix ? `${customPrefix.toLowerCase().replace(/[^a-z0-9-]/g, '')}--${baseDescription}` : baseDescription;
   const snapshotLabel = { 'devbox-server-id': serverId, 'devbox-auto': 'true' };
 
   console.log(`[Evening] Creating snapshot "${snapshotDescription}"…`);
@@ -376,7 +390,7 @@ export async function runEveningWorkflow(
   server.pendingSnapshotId = snapshotImage.id;
   server.pendingSnapshotActionId = snapshotAction.id;
   server.pendingSnapshotDescription = snapshotDescription;
-  server.pendingSnapshotDate = date;
+  server.pendingSnapshotDate = `${YYYY}-${MM}-${DD}`;
   server.updatedAt = new Date().toISOString();
 
   if (sched) {

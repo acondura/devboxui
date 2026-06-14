@@ -400,7 +400,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
       {/* Server Identification */}
       <td className="py-6 px-4">
         <div className="flex flex-col space-y-1 text-left">
-          <span className="text-sm font-bold text-white tracking-tight">{displayHostname}</span>
+          <span className="text-lg font-extrabold text-white tracking-tight">{displayHostname}</span>
           
           <div className="flex items-center space-x-2 text-xs font-mono text-slate-400">
             {server.status === 'off' && scheduleConfig?.latestSnapshotDescription ? (
@@ -604,7 +604,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
                       value={selectedSnapshotId}
                       onChange={(e) => handleSnapshotChange(e.target.value)}
                       disabled={isSpinningUp}
-                      className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 appearance-none cursor-pointer max-w-[200px] pr-8 relative font-medium"
+                      className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 appearance-none cursor-pointer max-w-[280px] pr-8 relative font-medium"
                     >
                       <option value="latest">Latest Snapshot (Auto)</option>
                       {vpsSnapshots.some(s => s.labels && s.labels['devbox-server-id'] === server.id) && (
@@ -894,7 +894,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
               )}
             </div>
             <div className="flex flex-col space-y-1">
-              <h3 className="text-base font-bold text-white tracking-tight text-left">{displayHostname}</h3>
+              <h3 className="text-xl font-extrabold text-white tracking-tight text-left">{displayHostname}</h3>
               
               <div className="flex items-center space-x-2 text-xs font-mono text-slate-400">
                 {server.status === 'off' && scheduleConfig?.latestSnapshotDescription ? (
@@ -1058,7 +1058,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
                       value={selectedSnapshotId}
                       onChange={(e) => handleSnapshotChange(e.target.value)}
                       disabled={isSpinningUp}
-                      className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 w-full appearance-none cursor-pointer pr-10 font-medium"
+                      className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 w-full appearance-none cursor-pointer pr-10 font-medium"
                     >
                       <option value="latest">Latest Snapshot (Auto)</option>
                       {vpsSnapshots.some(s => s.labels && s.labels['devbox-server-id'] === server.id) && (

@@ -25,15 +25,23 @@ export function ConfirmSnapshotModal({ isOpen, onClose, onConfirm, serverName }:
     }
   };
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const YYYY = now.getFullYear();
+  const MM = String(now.getMonth() + 1).padStart(2, '0');
+  const DD = String(now.getDate()).padStart(2, '0');
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  const ss = String(now.getSeconds()).padStart(2, '0');
+
   const cleanServerName = serverName
     .replace('.devboxui.com', '')
+    .replace('-code', '')
     .replace('-direct', '')
     .replace(/[^a-zA-Z0-9-]/g, '')
-    .slice(0, 8)
     .toLowerCase();
-  const displaySuffix = `devbox-auto-${cleanServerName}-${todayStr}`;
-  const finalPreview = customPrefix.trim() ? `${customPrefix.trim().toLowerCase().replace(/[^a-z0-9-]/g, '')}-${displaySuffix}` : displaySuffix;
+
+  const basePreview = `${cleanServerName}--${YYYY}-${MM}-${DD}-${hh}-${mm}-${ss}`;
+  const finalPreview = customPrefix.trim() ? `${customPrefix.trim().toLowerCase().replace(/[^a-z0-9-]/g, '')}--${basePreview}` : basePreview;
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
