@@ -210,6 +210,8 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
   const [isFetchingLogs, setIsFetchingLogs] = useState(false);
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
   const [deletingDomain, setDeletingDomain] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isReinstalling, setIsReinstalling] = useState(false);
   const [debugData, setDebugData] = useState<{ docker: string, setup: string, timestamp: string } | null>(null);
   const [serverLogs, setServerLogs] = useState<string[]>([]);
   const [tunnelId, setTunnelId] = useState<string | undefined>(server.tunnelId);
@@ -327,8 +329,14 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
         isOpen={isReinstallModalOpen}
         onClose={() => setIsReinstallModalOpen(false)}
         onConfirm={async () => {
-          try { await onReinstall?.(server.id); }
-          finally { setIsReinstallModalOpen(false); }
+          setIsReinstalling(true);
+          try {
+            await onReinstall?.(server.id);
+            if (onRefresh) await onRefresh();
+          } finally {
+            setIsReinstalling(false);
+            setIsReinstallModalOpen(false);
+          }
         }}
         serverName={server.hostname || server.ip}
         serverId={server.id}
@@ -479,22 +487,37 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
       {/* Actions */}
       <td className="py-6 px-4 text-right">
         <div className="flex items-center justify-end space-x-1">
-          <button onClick={handleFetchLogs} disabled={isFetchingLogs} className="p-2 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition-all" title="Logs">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+          <button
+            onClick={handleFetchLogs}
+            disabled={isFetchingLogs || isDeleting || isReinstalling}
+            className="p-2 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition-all disabled:opacity-50"
+            title="Logs"
+          >
+            {isFetchingLogs ? (
+              <div className="h-4 w-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+            )}
           </button>
           <button
             onClick={() => setIsReinstallModalOpen(true)}
-            className="p-2 text-slate-500 hover:text-amber-500 hover:bg-slate-800 rounded-lg transition-all"
+            disabled={isFetchingLogs || isDeleting || isReinstalling}
+            className="p-2 text-slate-500 hover:text-amber-500 hover:bg-slate-800 rounded-lg transition-all disabled:opacity-50"
             title="Reinstall"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+            {isReinstalling ? (
+              <div className="h-4 w-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+            )}
           </button>
 
-          {/* AP          {/* API Auth Button */}
+          {/* API Auth Button */}
           {isAutomated && (
             <button
               onClick={() => setIsApiAuthOpen(true)}
-              className="p-2 text-slate-500 hover:text-indigo-400 hover:bg-slate-800 rounded-lg transition-all"
+              disabled={isDeleting || isReinstalling}
+              className="p-2 text-slate-500 hover:text-indigo-400 hover:bg-slate-800 rounded-lg transition-all disabled:opacity-50"
               title="API Authorization"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -504,11 +527,11 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
           )}
 
           {/* Schedule button — only for Hetzner servers */}
-          {/* Schedule button — only for Hetzner servers */}
           {isHetzner && (
             <button
               onClick={() => setIsScheduleOpen(true)}
-              className={`relative p-2 rounded-lg transition-all ${
+              disabled={isDeleting || isReinstalling}
+              className={`relative p-2 rounded-lg transition-all disabled:opacity-50 ${
                 scheduleConfig?.enabled
                   ? 'text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20'
                   : 'text-slate-500 hover:text-indigo-400 hover:bg-slate-800'
@@ -528,7 +551,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
           {isHetzner && server.status !== 'off' && (
             <button
               onClick={() => setIsConfirmSnapshotOpen(true)}
-              disabled={isSnapshotting}
+              disabled={isSnapshotting || isDeleting || isReinstalling}
               className="p-2 text-slate-500 hover:text-indigo-400 hover:bg-slate-800 rounded-lg transition-all disabled:opacity-50"
               title="Snapshot & Shutdown (Saves costs)"
             >
@@ -544,12 +567,31 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
 
           {isAutomated && (
             <button
-              onClick={async () => { if (confirm("Delete server?")) await onDeleteServer(server.id); }}
-              disabled={server.isLocked}
-              className={`p-2 rounded-lg transition-all ${server.isLocked ? 'text-slate-800' : 'text-slate-500 hover:text-rose-500 hover:bg-rose-500/10'}`}
+              onClick={async () => {
+                if (confirm("Delete server?")) {
+                  setIsDeleting(true);
+                  try {
+                    await onDeleteServer(server.id);
+                  } catch (e) {
+                    console.error("Failed to delete server:", e);
+                  } finally {
+                    setIsDeleting(false);
+                  }
+                }
+              }}
+              disabled={server.isLocked || isFetchingLogs || isDeleting || isReinstalling}
+              className={`p-2 rounded-lg transition-all ${
+                server.isLocked || isDeleting
+                  ? 'text-slate-850 opacity-40'
+                  : 'text-slate-500 hover:text-rose-500 hover:bg-rose-500/10'
+              }`}
               title="Delete Server"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+              {isDeleting ? (
+                <div className="h-4 w-4 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+              )}
             </button>
           )}
 
@@ -651,7 +693,9 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
   const [scheduleConfig, setScheduleConfig] = useState<ScheduleConfig | null>(server.scheduleConfig || null);
   const [isFetchingLogs, setIsFetchingLogs] = useState(false);
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
-  // const [isTogglingLock, setIsTogglingLock] = useState(false);
+  const [deletingDomain, setDeletingDomain] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isReinstalling, setIsReinstalling] = useState(false);
   const [debugData, setDebugData] = useState<{ docker: string, setup: string, timestamp: string } | null>(null);
   const [serverLogs, setServerLogs] = useState<string[]>([]);
   const [tunnelId, setTunnelId] = useState<string | undefined>(server.tunnelId);
@@ -759,7 +803,14 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
 
   const handleDelete = async () => {
     if (confirm("Delete this server?")) {
-      try { await onDeleteServer(server.id); } catch { console.error("Delete failed"); }
+      setIsDeleting(true);
+      try {
+        await onDeleteServer(server.id);
+      } catch (e) {
+        console.error("Delete failed:", e);
+      } finally {
+        setIsDeleting(false);
+      }
     }
   };
 
@@ -781,8 +832,14 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
         isOpen={isReinstallModalOpen}
         onClose={() => setIsReinstallModalOpen(false)}
         onConfirm={async () => {
-          try { await onReinstall?.(server.id); }
-          finally { setIsReinstallModalOpen(false); }
+          setIsReinstalling(true);
+          try {
+            await onReinstall?.(server.id);
+            if (onRefresh) await onRefresh();
+          } finally {
+            setIsReinstalling(false);
+            setIsReinstallModalOpen(false);
+          }
         }}
         serverName={server.hostname || server.ip}
         serverId={server.id}
@@ -878,21 +935,56 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
           </div>
           <div className="flex space-x-1">
             {isAutomated && (
-              <button onClick={handleDelete} disabled={server.isLocked} className="p-2 text-slate-500 hover:text-rose-500"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+              <button
+                onClick={handleDelete}
+                disabled={server.isLocked || isDeleting || isReinstalling || isFetchingLogs}
+                className="p-2 text-slate-500 hover:text-rose-500 disabled:opacity-50"
+              >
+                {isDeleting ? (
+                  <div className="h-5 w-5 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                )}
+              </button>
             )}
           </div>
         </div>
 
         <div className="flex items-center space-x-2 pt-2 flex-wrap gap-y-2">
-          <button onClick={handleFetchLogs} className="flex-1 py-2 text-xs font-bold uppercase bg-slate-800 text-slate-300 rounded-lg">Logs</button>
-          <button onClick={() => setIsReinstallModalOpen(true)} className="flex-1 py-2 text-xs font-bold uppercase bg-slate-800 text-slate-300 rounded-lg">Reinstall</button>
+          <button
+            onClick={handleFetchLogs}
+            disabled={isFetchingLogs || isDeleting || isReinstalling}
+            className="flex-1 py-2 text-xs font-bold uppercase bg-slate-800 text-slate-300 rounded-lg disabled:opacity-50 flex items-center justify-center"
+          >
+            {isFetchingLogs && (
+              <div className="h-3.5 w-3.5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin mr-1.5" />
+            )}
+            {isFetchingLogs ? 'Loading...' : 'Logs'}
+          </button>
+          <button
+            onClick={() => setIsReinstallModalOpen(true)}
+            disabled={isFetchingLogs || isDeleting || isReinstalling}
+            className="flex-1 py-2 text-xs font-bold uppercase bg-slate-800 text-slate-300 rounded-lg disabled:opacity-50 flex items-center justify-center"
+          >
+            {isReinstalling && (
+              <div className="h-3.5 w-3.5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mr-1.5" />
+            )}
+            {isReinstalling ? 'Reinstalling...' : 'Reinstall'}
+          </button>
           {isAutomated && (
-            <button onClick={() => setIsApiAuthOpen(true)} className="flex-1 py-2 text-xs font-bold uppercase bg-slate-800 text-slate-300 rounded-lg">API Auth</button>
+            <button
+              onClick={() => setIsApiAuthOpen(true)}
+              disabled={isDeleting || isReinstalling}
+              className="flex-1 py-2 text-xs font-bold uppercase bg-slate-800 text-slate-300 rounded-lg disabled:opacity-50"
+            >
+              API Auth
+            </button>
           )}
           {isHetzner && (
             <button
               onClick={() => setIsScheduleOpen(true)}
-              className={`relative flex-1 py-2 text-xs font-bold uppercase rounded-lg transition-all ${
+              disabled={isDeleting || isReinstalling}
+              className={`relative flex-1 py-2 text-xs font-bold uppercase rounded-lg transition-all disabled:opacity-50 ${
                 scheduleConfig?.enabled
                   ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
                   : 'bg-slate-800 text-slate-300'
@@ -907,7 +999,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
           {isHetzner && server.status !== 'off' && (
             <button
               onClick={() => setIsConfirmSnapshotOpen(true)}
-              disabled={isSnapshotting}
+              disabled={isSnapshotting || isDeleting || isReinstalling}
               className="flex-1 py-2 text-xs font-bold uppercase bg-slate-800 hover:bg-slate-705 hover:bg-slate-800/80 text-slate-300 rounded-lg disabled:opacity-50 flex items-center justify-center"
             >
               {isSnapshotting && (
@@ -930,7 +1022,26 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
               <span className="text-sm font-mono text-indigo-400 truncate max-w-[200px]">{p.domain}</span>
               <div className="flex space-x-2">
                 <button onClick={() => { setEditingDomain({ domain: p.domain, port: p.port || 80 }); setIsProjectModalOpen(true); }} className="text-slate-600 hover:text-white"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" /></svg></button>
-                <button onClick={() => onDeleteDomain(server.id, p.domain)} className="text-slate-600 hover:text-rose-500"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                <button
+                  onClick={async () => {
+                    if (confirm(`Delete ${p.domain}?`)) {
+                      setDeletingDomain(p.domain);
+                      try {
+                        await onDeleteDomain(server.id, p.domain);
+                      } finally {
+                        setDeletingDomain(null);
+                      }
+                    }
+                  }}
+                  disabled={deletingDomain === p.domain}
+                  className="text-slate-600 hover:text-rose-500 disabled:opacity-50"
+                >
+                  {deletingDomain === p.domain ? (
+                    <div className="w-3.5 h-3.5 border border-current border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  )}
+                </button>
               </div>
             </div>
           ))}
