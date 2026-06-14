@@ -530,6 +530,23 @@ function generateUniqueUsername(email: string): string {
 }
 
 /**
+ * Returns a safe POSIX/Linux-compliant username from a custom input,
+ * or falls back to the unique dynamic email-based username.
+ */
+function getSafeUsername(customUsername?: string, emailFallback?: string): string {
+  if (customUsername?.trim()) {
+    let cleaned = customUsername.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+    if (cleaned && !/^[a-z_]/.test(cleaned)) {
+      cleaned = cleaned.replace(/^[^a-z_]+/, '');
+    }
+    if (cleaned) {
+      return cleaned.substring(0, 32);
+    }
+  }
+  return generateUniqueUsername(emailFallback || '');
+}
+
+/**
  * Retrieves per-user settings (like Hetzner API Token) from KV.
  * Auto-generates an SSH keypair if missing.
  */
@@ -597,10 +614,11 @@ export async function provisionServer(
   serverType: string,
   location: string,
   image: string,
-  provider: 'hetzner' | 'contabo' = 'hetzner'
+  provider: 'hetzner' | 'contabo' = 'hetzner',
+  customUsername?: string
 ) {
   if (provider === 'contabo') {
-    return provisionContaboServer(customName, serverType, location, image);
+    return provisionContaboServer(customName, serverType, location, image, customUsername);
   }
   const userEmail = await getIdentity();
   const env = await getCloudflareEnv();
@@ -623,7 +641,7 @@ export async function provisionServer(
   const shortId = serverId.slice(0, 8);
   const name = customName || `devbox-${shortId}`;
   
-  const userName = generateUniqueUsername(userEmail);
+  const userName = getSafeUsername(customUsername, userEmail);
   const safeName = name.toLowerCase().replace(/[^a-z0-9]/g, '-');
   const directHostname = `${safeName}.devboxui.com`;
 
@@ -1546,7 +1564,13 @@ export async function getLiveProjects(serverId: string) {
  * Provisions a new server configuration for manual setup (e.g. Contabo).
  * Sets up Cloudflare resources and optionally bootstraps via SSH if credentials are provided.
  */
-export async function provisionManualServer(customName: string, provider: string = 'contabo', manualIp?: string, manualPassword?: string) {
+export async function provisionManualServer(
+  customName: string,
+  provider: string = 'contabo',
+  manualIp?: string,
+  manualPassword?: string,
+  customUsername?: string
+) {
   const userEmail = await getIdentity();
   const env = await getCloudflareEnv();
   const kv = env.KV;
@@ -1560,7 +1584,7 @@ export async function provisionManualServer(customName: string, provider: string
   const serverId = crypto.randomUUID();
   const shortId = serverId.slice(0, 8);
   const name = customName || `devbox-${shortId}`;
-  const userName = generateUniqueUsername(userEmail);
+  const userName = getSafeUsername(customUsername, userEmail);
   const safeName = name.toLowerCase().replace(/[^a-z0-9]/g, '-');
   const hostname = `${safeName}-code.devboxui.com`;
 
@@ -1650,7 +1674,8 @@ export async function provisionContaboServer(
   customName: string,
   productId: string = 'V1', // Standard VPS S
   region: string = 'EU',
-  imageId: string = 'ubuntu-24.04'
+  imageId: string = 'ubuntu-24.04',
+  customUsername?: string
 ) {
   const userEmail = await getIdentity();
   const env = await getCloudflareEnv();
@@ -1678,7 +1703,7 @@ export async function provisionContaboServer(
   const serverId = crypto.randomUUID();
   const shortId = serverId.slice(0, 8);
   const name = customName || `devbox-${shortId}`;
-  const userName = generateUniqueUsername(userEmail);
+  const userName = getSafeUsername(customUsername, userEmail);
   const safeName = name.toLowerCase().replace(/[^a-z0-9]/g, '-');
   const hostname = `${safeName}-code.devboxui.com`;
 

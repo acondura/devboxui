@@ -5,7 +5,7 @@ import type { HetznerPricingResponse } from '@/lib/hetzner-api';
 interface AddServerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (name: string, serverType: string, location: string, image: string) => Promise<void>;
+  onAdd: (name: string, serverType: string, location: string, image: string, customUsername?: string) => Promise<void>;
 }
 
 interface HetznerPrice {
@@ -59,6 +59,7 @@ function getIpv4MonthlyPrice(pricing: HetznerPricingResponse | null | undefined,
 export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) {
   const [provider, setProvider] = useState<CloudProvider>('hetzner');
   const [name, setName] = useState('');
+  const [customUsername, setCustomUsername] = useState('');
   const [serverType, setServerType] = useState('cpx21');
   const [location, setLocation] = useState('nbg1');
   const [image, setImage] = useState('ubuntu-24.04');
@@ -114,6 +115,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
         
         // Reset name on open
         setName('');
+        setCustomUsername('');
         
         // Set defaults only if no saved options exist
         const savedType = localStorage.getItem('devbox_last_server_type');
@@ -220,10 +222,10 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
     setIsSubmitting(true);
     try {
       if (provider === 'hetzner') {
-        await onAdd(name, serverType, location, image);
+        await onAdd(name, serverType, location, image, customUsername.trim() || undefined);
         onClose();
       } else {
-        const result = await provisionManualServer(name, provider, ip, password);
+        const result = await provisionManualServer(name, provider, ip, password, customUsername.trim() || undefined);
         if (result.success) {
           setBootstrapCommand(result.command || null);
           setShowSuccess(true);
@@ -432,7 +434,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
         
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
+            <div>
               <label className="block text-sm font-medium text-slate-400 mb-1.5">DevBox Name (Required)</label>
               <input
                 type="text"
@@ -440,7 +442,23 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-400 mb-1.5">SSH Username (Optional)</label>
+              <input
+                type="text"
+                placeholder="e.g. admin"
+                value={customUsername}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  // Clean on input to keep it POSIX-friendly (lowercase, no spaces/special chars)
+                  const cleaned = raw.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9_-]/g, '');
+                  setCustomUsername(cleaned);
+                }}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-sm"
               />
             </div>
             
