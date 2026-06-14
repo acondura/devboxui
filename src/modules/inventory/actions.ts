@@ -1399,14 +1399,15 @@ export async function getHetznerOptions() {
   const settings = await getUserSettings();
   const hetznerApi = new HetznerApiService(env, settings?.hetznerToken);
   try {
-    const [serverTypes, locations, images, pricing] = await Promise.all([
+    const [serverTypes, locations, images, snapshots, pricing] = await Promise.all([
       hetznerApi.getServerTypes(),
       hetznerApi.getLocations(),
       hetznerApi.getImages(),
+      hetznerApi.getSnapshots().catch(() => []),
       hetznerApi.getPricing().catch(() => null)
     ]);
 
-    return { serverTypes, locations, images, pricing };
+    return { serverTypes, locations, images, snapshots, pricing };
   } catch (error) {
     console.error("Failed to fetch Hetzner options:", error);
     return { serverTypes: [], locations: [], images: [], pricing: null };
@@ -1910,4 +1911,19 @@ export async function updateServerAllowedPeers(serverId: string, allowedPeers: s
   await syncServerAccessPolicies(serverId);
 
   return server;
+}
+
+export async function getServerSnapshots(serverId: string) {
+  const env = await getCloudflareEnv();
+  const settings = await getUserSettings();
+  const hetznerToken = settings?.hetznerToken || env.HETZNER_API_TOKEN;
+  if (!hetznerToken) return [];
+  
+  const hetznerApi = new HetznerApiService(env, hetznerToken);
+  try {
+    return await hetznerApi.getSnapshots(`devbox-server-id=${serverId}`);
+  } catch (err) {
+    console.error(`Failed to fetch snapshots for server ${serverId}:`, err);
+    return [];
+  }
 }

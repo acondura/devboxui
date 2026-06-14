@@ -126,7 +126,8 @@ function isSchedulePaused(
 export async function runMorningWorkflow(
   serverId: string,
   userEmail: string,
-  isManual?: boolean
+  isManual?: boolean,
+  customSnapshotId?: number
 ): Promise<{ success: boolean; message: string; newServerId?: number; ip?: string }> {
   const env = await getCloudflareEnv();
   const kv = env.KV;
@@ -169,7 +170,8 @@ export async function runMorningWorkflow(
     }
   }
 
-  if (!sched.latestSnapshotId) {
+  const snapshotToRestore = customSnapshotId || sched.latestSnapshotId;
+  if (!snapshotToRestore) {
     return { success: false, message: 'No snapshot available to restore from. Evening workflow must run first.' };
   }
 
@@ -185,11 +187,11 @@ export async function runMorningWorkflow(
   const serverName = (server.hostname || `devbox-${serverId.slice(0, 8)}`)
     .replace('.devboxui.com', '')
     .replace('-direct', '');
-  console.log(`[Morning] Creating server "${serverName}" from snapshot ${sched.latestSnapshotId}…`);
+  console.log(`[Morning] Creating server "${serverName}" from snapshot ${snapshotToRestore}…`);
 
   const result = await hetznerApi.createServerFromSnapshot(
     serverName,
-    sched.latestSnapshotId,
+    snapshotToRestore,
     sched.serverType,
     sched.location,
     sshKeyIds
@@ -370,9 +372,9 @@ export async function runEveningWorkflow(
 // Manual trigger server actions (called from UI buttons)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function triggerMorningSpinup(serverId: string) {
+export async function triggerMorningSpinup(serverId: string, customSnapshotId?: number) {
   const userEmail = await getIdentity();
-  return runMorningWorkflow(serverId, userEmail, true);
+  return runMorningWorkflow(serverId, userEmail, true, customSnapshotId);
 }
 
 export async function triggerEveningSnapshot(serverId: string, customPrefix?: string) {

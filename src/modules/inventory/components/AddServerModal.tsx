@@ -68,8 +68,9 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
     serverTypes: HetznerServerType[];
     locations: HetznerLocation[];
     images: HetznerImage[];
+    snapshots: HetznerImage[];
     pricing?: HetznerPricingResponse | null;
-  }>({ serverTypes: [], locations: [], images: [], pricing: null });
+  }>({ serverTypes: [], locations: [], images: [], snapshots: [], pricing: null });
   const [isLoadingOptions, setIsLoadingOptions] = useState(true);
   const [ip, setIp] = useState('');
   const [password, setPassword] = useState('');
@@ -79,10 +80,20 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const [hasLoadedProvider, setHasLoadedProvider] = useState(false);
   
-  // Load last provider on mount
+  // Load last provider and selections on mount
   useEffect(() => {
     const saved = localStorage.getItem('devbox_last_provider');
     if (saved) setProvider(saved as CloudProvider);
+    
+    const savedType = localStorage.getItem('devbox_last_server_type');
+    if (savedType) setServerType(savedType);
+    
+    const savedLoc = localStorage.getItem('devbox_last_location');
+    if (savedLoc) setLocation(savedLoc);
+    
+    const savedImg = localStorage.getItem('devbox_last_image');
+    if (savedImg) setImage(savedImg);
+
     setHasLoadedProvider(true);
   }, []);
 
@@ -99,13 +110,16 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
         
         const data = await getHetznerOptions();
         
-        setOptions(data as unknown as { serverTypes: HetznerServerType[]; locations: HetznerLocation[]; images: HetznerImage[]; pricing?: HetznerPricingResponse | null });
+        setOptions(data as unknown as { serverTypes: HetznerServerType[]; locations: HetznerLocation[]; images: HetznerImage[]; snapshots: HetznerImage[]; pricing?: HetznerPricingResponse | null });
         
-        // Reset form values on open
+        // Reset name on open
         setName('');
         
-        // Set defaults if data available
-        if (data.serverTypes.length > 0) {
+        // Set defaults only if no saved options exist
+        const savedType = localStorage.getItem('devbox_last_server_type');
+        if (savedType) {
+          setServerType(savedType);
+        } else if (data.serverTypes.length > 0) {
           const typedTypes = data.serverTypes as unknown as HetznerServerType[];
           const sorted = [...typedTypes].sort((a, b) => {
             const getPrice = (t: HetznerServerType) => {
@@ -117,13 +131,29 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
           });
           setServerType(sorted[0].name);
         }
-        if (data.locations.length > 0) {
+
+        const savedLoc = localStorage.getItem('devbox_last_location');
+        if (savedLoc) {
+          setLocation(savedLoc);
+        } else if (data.locations.length > 0) {
           const defaultLoc = data.locations.find(l => l.name === 'nbg1') || data.locations[0];
           setLocation(defaultLoc.name);
         }
-        if (data.images.length > 0) {
-          const defaultImg = data.images.find(i => i.name === 'ubuntu-24.04') || data.images[0];
-          setImage(defaultImg.name ?? '');
+
+        const savedImg = localStorage.getItem('devbox_last_image');
+        if (savedImg) {
+          setImage(savedImg);
+        } else {
+          if (data.snapshots && data.snapshots.length > 0) {
+            const initialImg = data.snapshots[0].id.toString();
+            setImage(initialImg);
+            localStorage.setItem('devbox_last_image', initialImg);
+          } else if (data.images.length > 0) {
+            const defaultImg = data.images.find(i => i.name === 'ubuntu-24.04') || data.images[0];
+            const initialImg = defaultImg.name ?? '';
+            setImage(initialImg);
+            localStorage.setItem('devbox_last_image', initialImg);
+          }
         }
         
         setIsLoadingOptions(false);
@@ -154,18 +184,34 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
   const ipv4Fee = getIpv4MonthlyPrice(options.pricing, location);
   const monthlyPrice = selectedPrice ? (parseFloat(selectedPrice.price_monthly.gross) + ipv4Fee).toString() : undefined;
 
-  // Auto-switch image to the latest Ubuntu image in the filtered list
+  // Auto-switch image if current selection is not compatible with the architecture
   useEffect(() => {
-    if (filteredImages.length > 0) {
-      const ubuntuImages = filteredImages.filter(i => i.name && i.name.toLowerCase().startsWith('ubuntu-'));
-      if (ubuntuImages.length > 0) {
-        const sorted = [...ubuntuImages].sort((a, b) => (b.name || '').localeCompare(a.name || ''));
-        setImage(sorted[0].name || filteredImages[0].name);
-      } else {
-        setImage(filteredImages[0].name);
+    if (!isOpen || isLoadingOptions) return;
+
+    const isImageValid = options.images.some(i => i.name === image && i.architecture === currentArch);
+    const isSnapshotValid = options.snapshots.some(s => s.id.toString() === image && s.architecture === currentArch);
+
+    if (!isImageValid && !isSnapshotValid) {
+      if (options.snapshots.length > 0) {
+        const validSnapshots = options.snapshots.filter(s => s.architecture === currentArch);
+        if (validSnapshots.length > 0) {
+          const newImg = validSnapshots[0].id.toString();
+          setImage(newImg);
+          localStorage.setItem('devbox_last_image', newImg);
+          return;
+        }
+      }
+
+      if (filteredImages.length > 0) {
+        const ubuntuImages = filteredImages.filter(i => i.name && i.name.toLowerCase().startsWith('ubuntu-'));
+        const newImg = ubuntuImages.length > 0
+          ? (ubuntuImages[0].name || filteredImages[0].name)
+          : filteredImages[0].name;
+        setImage(newImg);
+        localStorage.setItem('devbox_last_image', newImg);
       }
     }
-  }, [serverType, options.images, filteredImages]);
+  }, [serverType, image, options.images, options.snapshots, filteredImages, currentArch, isOpen, isLoadingOptions]);
 
   if (!isOpen) return null;
 
@@ -404,7 +450,10 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
                   <label className="block text-sm font-medium text-slate-400 mb-1.5">Server Type</label>
                   <select
                     value={serverType}
-                    onChange={(e) => setServerType(e.target.value)}
+                    onChange={(e) => {
+                      setServerType(e.target.value);
+                      localStorage.setItem('devbox_last_server_type', e.target.value);
+                    }}
                     disabled={isLoadingOptions}
                     className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer disabled:opacity-50 text-sm"
                   >
@@ -427,7 +476,10 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
                   <label className="block text-sm font-medium text-slate-400 mb-1.5">Location</label>
                   <select
                     value={location}
-                    onChange={(e) => setLocation(e.target.value)}
+                    onChange={(e) => {
+                      setLocation(e.target.value);
+                      localStorage.setItem('devbox_last_location', e.target.value);
+                    }}
                     disabled={isLoadingOptions}
                     className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer disabled:opacity-50 text-sm"
                   >
@@ -436,6 +488,47 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
                     ))}
                     {isLoadingOptions && <option>Loading locations...</option>}
                   </select>
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-slate-400 mb-1.5">OS Image / Snapshot</label>
+                  <div className="relative">
+                    <select
+                      value={image}
+                      onChange={(e) => {
+                        setImage(e.target.value);
+                        localStorage.setItem('devbox_last_image', e.target.value);
+                      }}
+                      disabled={isLoadingOptions}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer disabled:opacity-50 text-sm font-medium pr-10"
+                    >
+                      {options.snapshots && options.snapshots.length > 0 && (
+                        <optgroup label="Your Snapshots">
+                          {options.snapshots
+                            .filter(s => s.architecture === currentArch)
+                            .map(s => (
+                              <option key={s.id} value={s.id.toString()}>
+                                {s.description || `Snapshot #${s.id}`} (ID: {s.id})
+                              </option>
+                            ))
+                          }
+                        </optgroup>
+                      )}
+                      <optgroup label="System OS Images">
+                        {filteredImages.map(i => (
+                          <option key={i.id} value={i.name ?? ''}>
+                            {i.description || i.name} ({i.name})
+                          </option>
+                        ))}
+                      </optgroup>
+                      {isLoadingOptions && <option>Loading OS options...</option>}
+                    </select>
+                    <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-500">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
                 </div>
               </>
             )}

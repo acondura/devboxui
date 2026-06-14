@@ -7,9 +7,10 @@ import { ReinstallModal } from './ReinstallModal';
 import { ScheduleModal } from './ScheduleModal';
 import { ApiAuthModal } from './ApiAuthModal';
 import { ConfirmSnapshotModal } from './ConfirmSnapshotModal';
-import { getServerLogs, getLiveProjects } from '../actions';
+import { getServerLogs, getLiveProjects, getServerSnapshots } from '../actions';
 import { ScheduleConfig } from '../types';
 import { triggerMorningSpinup, triggerEveningSnapshot } from '../schedule-actions';
+import type { HetznerImage } from '@/lib/hetzner-api';
 
 interface ServerListProps {
   servers: ServerConfig[];
@@ -217,11 +218,39 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
   const [isSnapshotting, setIsSnapshotting] = useState(false);
   const [isConfirmSnapshotOpen, setIsConfirmSnapshotOpen] = useState(false);
 
+  const [vpsSnapshots, setVpsSnapshots] = useState<HetznerImage[]>([]);
+  const [selectedSnapshotId, setSelectedSnapshotId] = useState<string>('latest');
+
   const isAutomated = !!(server.providerName === 'Hetzner' || server.providerName === 'Contabo' || server.provider === 'hetzner' || server.provider === 'contabo');
   const isHetzner = !!(server.providerName === 'Hetzner' || server.provider === 'hetzner');
   const displayHostname = (server.hostname || 'devbox')
     .replace('.devboxui.com', '')
     .replace('-direct', '');
+
+  useEffect(() => {
+    if (server.status === 'off' && isHetzner) {
+      async function loadSnapshots() {
+        try {
+          const list = await getServerSnapshots(server.id);
+          setVpsSnapshots(list);
+          const savedSnapshot = localStorage.getItem(`devbox_last_snapshot_${server.id}`);
+          if (savedSnapshot && (savedSnapshot === 'latest' || list.some((s: HetznerImage) => s.id.toString() === savedSnapshot))) {
+            setSelectedSnapshotId(savedSnapshot);
+          } else {
+            setSelectedSnapshotId('latest');
+          }
+        } catch (e) {
+          console.warn("Failed to load snapshots for server", e);
+        }
+      }
+      loadSnapshots();
+    }
+  }, [server.id, server.status, isHetzner]);
+
+  const handleSnapshotChange = (id: string) => {
+    setSelectedSnapshotId(id);
+    localStorage.setItem(`devbox_last_snapshot_${server.id}`, id);
+  };
 
   const handleFetchLogs = async () => {
     setIsLogsModalOpen(true);
@@ -250,7 +279,8 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
   const handleSpinUp = async () => {
     setIsSpinningUp(true);
     try {
-      const result = await triggerMorningSpinup(server.id);
+      const snapId = selectedSnapshotId === 'latest' ? undefined : parseInt(selectedSnapshotId, 10);
+      const result = await triggerMorningSpinup(server.id, snapId);
       if (result.success) {
         if (onRefresh) await onRefresh();
       } else {
@@ -525,20 +555,44 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
 
           <div className="pl-2 ml-2 border-l border-slate-800 flex items-center space-x-2">
             {server.status === 'off' ? (
-              <button
-                onClick={handleSpinUp}
-                disabled={isSpinningUp}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-all shadow-lg inline-flex items-center whitespace-nowrap"
-              >
-                {isSpinningUp ? (
-                  <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                ) : (
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
+              <div className="flex items-center space-x-2">
+                {isHetzner && vpsSnapshots.length > 0 && (
+                  <div className="relative flex items-center">
+                    <select
+                      value={selectedSnapshotId}
+                      onChange={(e) => handleSnapshotChange(e.target.value)}
+                      disabled={isSpinningUp}
+                      className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 appearance-none cursor-pointer max-w-[200px] pr-8 relative font-medium"
+                    >
+                      <option value="latest">Latest Snapshot (Auto)</option>
+                      {vpsSnapshots.map(s => (
+                        <option key={s.id} value={s.id.toString()}>
+                          {s.description || `Snapshot #${s.id}`}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-slate-500">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
                 )}
-                <span>{isSpinningUp ? 'Spinning Up...' : 'Spin Up'}</span>
-              </button>
+                <button
+                  onClick={handleSpinUp}
+                  disabled={isSpinningUp}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-all shadow-lg inline-flex items-center whitespace-nowrap"
+                >
+                  {isSpinningUp ? (
+                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                  ) : (
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                  )}
+                  <span>{isSpinningUp ? 'Spinning Up...' : 'Spin Up'}</span>
+                </button>
+              </div>
             ) : (
               <IdeLaunchButton server={server} />
             )}
@@ -587,11 +641,39 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
   const [isSnapshotting, setIsSnapshotting] = useState(false);
   const [isConfirmSnapshotOpen, setIsConfirmSnapshotOpen] = useState(false);
 
+  const [vpsSnapshots, setVpsSnapshots] = useState<HetznerImage[]>([]);
+  const [selectedSnapshotId, setSelectedSnapshotId] = useState<string>('latest');
+
   const isAutomated = !!(server.hetznerServerId || server.contaboInstanceId || server.providerName === 'Hetzner' || server.providerName === 'Contabo' || server.provider === 'hetzner' || server.provider === 'contabo');
   const isHetzner = !!(server.providerName === 'Hetzner' || server.provider === 'hetzner');
   const displayHostname = (server.hostname || 'devbox')
     .replace('.devboxui.com', '')
     .replace('-direct', '');
+
+  useEffect(() => {
+    if (server.status === 'off' && isHetzner) {
+      async function loadSnapshots() {
+        try {
+          const list = await getServerSnapshots(server.id);
+          setVpsSnapshots(list);
+          const savedSnapshot = localStorage.getItem(`devbox_last_snapshot_${server.id}`);
+          if (savedSnapshot && (savedSnapshot === 'latest' || list.some((s: HetznerImage) => s.id.toString() === savedSnapshot))) {
+            setSelectedSnapshotId(savedSnapshot);
+          } else {
+            setSelectedSnapshotId('latest');
+          }
+        } catch (e) {
+          console.warn("Failed to load snapshots for server", e);
+        }
+      }
+      loadSnapshots();
+    }
+  }, [server.id, server.status, isHetzner]);
+
+  const handleSnapshotChange = (id: string) => {
+    setSelectedSnapshotId(id);
+    localStorage.setItem(`devbox_last_snapshot_${server.id}`, id);
+  };
 
   const handleFetchLogs = async () => {
     setIsLogsModalOpen(true);
@@ -616,7 +698,8 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
   const handleSpinUp = async () => {
     setIsSpinningUp(true);
     try {
-      const result = await triggerMorningSpinup(server.id);
+      const snapId = selectedSnapshotId === 'latest' ? undefined : parseInt(selectedSnapshotId, 10);
+      const result = await triggerMorningSpinup(server.id, snapId);
       if (result.success) {
         if (onRefresh) await onRefresh();
       } else {
@@ -836,20 +919,47 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
 
         <div className="flex flex-col space-y-2 mt-4">
           {server.status === 'off' ? (
-            <button
-              onClick={handleSpinUp}
-              disabled={isSpinningUp}
-              className="w-full py-2.5 justify-center bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-all shadow-lg inline-flex items-center whitespace-nowrap"
-            >
-              {isSpinningUp ? (
-                <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-              ) : (
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
+            <div className="flex flex-col space-y-2">
+              {isHetzner && vpsSnapshots.length > 0 && (
+                <div className="flex flex-col space-y-1">
+                  <label className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Restore Snapshot</label>
+                  <div className="relative flex items-center">
+                    <select
+                      value={selectedSnapshotId}
+                      onChange={(e) => handleSnapshotChange(e.target.value)}
+                      disabled={isSpinningUp}
+                      className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 w-full appearance-none cursor-pointer pr-10 font-medium"
+                    >
+                      <option value="latest">Latest Snapshot (Auto)</option>
+                      {vpsSnapshots.map(s => (
+                        <option key={s.id} value={s.id.toString()}>
+                          {s.description || `Snapshot #${s.id}`}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-500">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
               )}
-              <span>{isSpinningUp ? 'Spinning Up...' : 'Spin Up'}</span>
-            </button>
+              <button
+                onClick={handleSpinUp}
+                disabled={isSpinningUp}
+                className="w-full py-2.5 justify-center bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-all shadow-lg inline-flex items-center whitespace-nowrap"
+              >
+                {isSpinningUp ? (
+                  <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                ) : (
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                )}
+                <span>{isSpinningUp ? 'Spinning Up...' : 'Spin Up'}</span>
+              </button>
+            </div>
           ) : (
             <IdeLaunchButton server={server} fullWidth />
           )}

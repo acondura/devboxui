@@ -146,9 +146,10 @@ export class HetznerApiService {
     userData: string, 
     serverType: string = 'cpx21', 
     location: string = 'nbg1',
-    image: string = 'ubuntu-24.04',
+    image: string | number = 'ubuntu-24.04',
     sshKeys: (string | number)[] = []
   ): Promise<HetznerServerResponse> {
+    const imgParam = typeof image === 'string' && /^\d+$/.test(image) ? parseInt(image, 10) : image;
     const response = await fetch(`${this.baseUrl}/servers`, {
       method: 'POST',
       headers: {
@@ -158,7 +159,7 @@ export class HetznerApiService {
       body: JSON.stringify({
         name,
         server_type: serverType,
-        image: image,
+        image: imgParam,
         location: location,
         user_data: userData,
         start_after_create: true,
