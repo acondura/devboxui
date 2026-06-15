@@ -23,6 +23,7 @@ interface HetznerServerType {
   architecture: string;
   deprecation: string | null;
   prices: HetznerPrice[];
+  cpu_type: string;
 }
 
 interface HetznerLocation {
@@ -180,6 +181,57 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
     };
     return getPrice(a) - getPrice(b);
   });
+ 
+  // Categorization function for server types
+  const getCategorizedType = (t: HetznerServerType) => {
+    const name = t.name.toLowerCase();
+    
+    // Dedicated resources
+    if (t.cpu_type === 'dedicated' || name.startsWith('ccx')) {
+      return {
+        category: 'Dedicated Resources (General Purpose)',
+        tag: undefined
+      };
+    }
+    
+    // ARM architecture
+    if (t.architecture === 'arm' || name.startsWith('cax')) {
+      return {
+        category: 'Shared Resources - ARM64 (Ampere®)',
+        tag: undefined
+      };
+    }
+    
+    // x86 Shared resources
+    const isNewerShared = name.startsWith('cx23') || name.startsWith('cx33') || name.startsWith('cx43') || name.startsWith('cx53') || name.startsWith('cx63');
+    if (isNewerShared) {
+      return {
+        category: 'Shared Resources - Regular Performance (Intel/AMD)',
+        tag: undefined
+      };
+    }
+    
+    return {
+      category: 'Shared Resources - Cost-Optimized (Intel/AMD)',
+      tag: 'Limited availability'
+    };
+  };
+
+  // Group sorted types by category
+  const groupedServerTypes = sortedServerTypes.reduce((acc, t) => {
+    const { category, tag } = getCategorizedType(t);
+    const typeWithTag = { ...t, availabilityTag: tag };
+    if (!acc[category]) acc[category] = [];
+    acc[category].push(typeWithTag);
+    return acc;
+  }, {} as Record<string, (HetznerServerType & { availabilityTag?: string })[]>);
+
+  const categoryOrder = [
+    'Shared Resources - Regular Performance (Intel/AMD)',
+    'Shared Resources - Cost-Optimized (Intel/AMD)',
+    'Shared Resources - ARM64 (Ampere®)',
+    'Dedicated Resources (General Purpose)'
+  ];
 
   // Find price for current selection
   const selectedPrice = currentType?.prices.find((p) => p.location === location) || currentType?.prices[0];
@@ -475,18 +527,30 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
                     disabled={isLoadingOptions}
                     className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer disabled:opacity-50 text-sm"
                   >
-                    {sortedServerTypes.map(t => {
-                      const p = t.prices.find((p) => p.location === location) || t.prices[0];
-                      const ipv4 = getIpv4MonthlyPrice(options.pricing, location);
-                      const priceLabel = p ? `€${(parseFloat(p.price_monthly.gross) + ipv4).toFixed(2)}` : '';
-                      const specs = `${t.cores} vCPU / ${t.memory}GB RAM / ${t.disk}GB / ${t.architecture.toUpperCase()}`;
-                      return (
-                        <option key={t.id} value={t.name}>
-                          {t.name.toUpperCase()} - ({priceLabel}) - {specs}
-                        </option>
-                      );
-                    })}
-                    {isLoadingOptions && <option>Loading types...</option>}
+                    {isLoadingOptions ? (
+                      <option>Loading types...</option>
+                    ) : (
+                      categoryOrder.map(category => {
+                        const types = groupedServerTypes[category];
+                        if (!types || types.length === 0) return null;
+                        return (
+                          <optgroup key={category} label={category} className="bg-slate-900 text-slate-400 font-semibold text-xs py-1">
+                            {types.map(t => {
+                              const p = t.prices.find((p) => p.location === location) || t.prices[0];
+                              const ipv4 = getIpv4MonthlyPrice(options.pricing, location);
+                              const priceLabel = p ? `€${(parseFloat(p.price_monthly.gross) + ipv4).toFixed(2)}` : '';
+                              const specs = `${t.cores} vCPU / ${t.memory}GB RAM / ${t.disk}GB / ${t.architecture.toUpperCase()}`;
+                              const availability = t.availabilityTag ? ` (${t.availabilityTag})` : '';
+                              return (
+                                <option key={t.id} value={t.name} className="text-white font-normal bg-slate-950">
+                                  {t.name.toUpperCase()}{availability} — ({priceLabel}) — {specs}
+                                </option>
+                              );
+                            })}
+                          </optgroup>
+                        );
+                      })
+                    )}
                   </select>
                 </div>
 
