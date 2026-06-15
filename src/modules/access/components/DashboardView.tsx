@@ -74,9 +74,10 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
       if (result.success && result.server) {
         setServers(prev => [...prev, result.server]);
       }
+      return result;
     } catch (error) {
       console.error(error);
-      throw error;
+      return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
   };
 

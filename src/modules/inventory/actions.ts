@@ -799,7 +799,7 @@ export async function provisionServer(
       try { await cfApi.deleteTunnel(tunnelId); } catch (e) { console.error("Cleanup: Failed to delete Cloudflare Tunnel", e); }
     }
 
-    throw error;
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
 }
 
@@ -1662,8 +1662,7 @@ export async function provisionManualServer(
 
     return { success: true, server: config, command };
   } catch (error) {
-    console.error("Manual provisioning setup failed:", error);
-    throw error;
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
 }
 
@@ -1810,7 +1809,7 @@ export async function provisionContaboServer(
     if (!config.logs) config.logs = [];
     config.logs.push(`Error: ${error.message}`);
     await kv.put(`servers:${userEmail}:${serverId}`, JSON.stringify(config));
-    throw error;
+    return { success: false, error: error.message };
   }
 }
 

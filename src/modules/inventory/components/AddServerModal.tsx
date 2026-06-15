@@ -5,7 +5,7 @@ import type { HetznerPricingResponse } from '@/lib/hetzner-api';
 interface AddServerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (name: string, serverType: string, location: string, image: string, customUsername?: string) => Promise<void>;
+  onAdd: (name: string, serverType: string, location: string, image: string, customUsername?: string) => Promise<{ success: boolean; error?: string; server?: unknown } | void>;
 }
 
 interface HetznerPrice {
@@ -61,6 +61,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
   const [provider, setProvider] = useState<CloudProvider>('hetzner');
   const [name, setName] = useState('');
   const [customUsername, setCustomUsername] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const [serverType, setServerType] = useState('cpx21');
   const [location, setLocation] = useState('nbg1');
   const [image, setImage] = useState('ubuntu-24.04');
@@ -259,22 +260,29 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setError(null);
     try {
       if (provider === 'hetzner') {
-        await onAdd(name, serverType, location, image, customUsername.trim() || undefined);
-        onClose();
+        const result = await onAdd(name, serverType, location, image, customUsername.trim() || undefined);
+        if (result && !result.success) {
+          setError(result.error || "An unknown error occurred during provisioning.");
+        } else {
+          onClose();
+        }
       } else {
         const result = await provisionManualServer(name, provider, ip, password, customUsername.trim() || undefined);
         if (result.success) {
           setBootstrapCommand(result.command || null);
           setShowSuccess(true);
           setCreatedServerName(name);
+        } else {
+          setError(result.error || "An unknown error occurred during setup.");
         }
       }
     } catch (err) {
       console.error("Failed to add server:", err);
       const errMsg = err instanceof Error ? err.message : String(err);
-      alert(`Failed to provision server: ${errMsg}`);
+      setError(errMsg);
     } finally {
       setIsSubmitting(false);
     }
@@ -287,6 +295,34 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
     { id: 'vultr', name: 'Vultr', active: false },
     { id: 'contabo', name: 'Custom', active: true, info: 'Manual Provision' },
   ];
+
+  if (error) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="w-full max-w-md bg-slate-900 border border-red-500/20 rounded-2xl shadow-2xl overflow-hidden p-6 relative">
+          <div className="flex items-center space-x-3 text-red-500 mb-4">
+            <svg className="w-8 h-8 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <h3 className="text-lg font-bold text-white">Provisioning Failed</h3>
+          </div>
+          <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-6">
+            <p className="text-sm text-red-200 leading-relaxed font-mono break-all whitespace-pre-wrap text-left">
+              {error}
+            </p>
+          </div>
+          <div className="text-center">
+            <button
+              onClick={() => setError(null)}
+              className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-xl transition-all text-sm border border-slate-700"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (bootstrapCommand) {
     return (
