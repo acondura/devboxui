@@ -75,8 +75,8 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
         setServers(prev => [...prev, result.server]);
       }
     } catch (error) {
-      alert("Failed to provision server. Check console for details.");
       console.error(error);
+      throw error;
     }
   };
 

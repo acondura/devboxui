@@ -188,43 +188,30 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
     
     // Dedicated resources
     if (t.cpu_type === 'dedicated' || name.startsWith('ccx')) {
-      return {
-        category: 'Dedicated Resources (General Purpose)',
-        tag: undefined
-      };
+      return 'Dedicated Resources (General Purpose)';
     }
     
     // ARM architecture
     if (t.architecture === 'arm' || name.startsWith('cax')) {
-      return {
-        category: 'Shared Resources - ARM64 (Ampere®)',
-        tag: undefined
-      };
+      return 'Shared Resources - ARM64 (Ampere®)';
     }
     
     // x86 Shared resources
     const isNewerShared = name.startsWith('cx23') || name.startsWith('cx33') || name.startsWith('cx43') || name.startsWith('cx53') || name.startsWith('cx63');
     if (isNewerShared) {
-      return {
-        category: 'Shared Resources - Regular Performance (Intel/AMD)',
-        tag: undefined
-      };
+      return 'Shared Resources - Regular Performance (Intel/AMD)';
     }
     
-    return {
-      category: 'Shared Resources - Cost-Optimized (Intel/AMD)',
-      tag: 'Limited availability'
-    };
+    return 'Shared Resources - Cost-Optimized (Intel/AMD)';
   };
 
   // Group sorted types by category
   const groupedServerTypes = sortedServerTypes.reduce((acc, t) => {
-    const { category, tag } = getCategorizedType(t);
-    const typeWithTag = { ...t, availabilityTag: tag };
+    const category = getCategorizedType(t);
     if (!acc[category]) acc[category] = [];
-    acc[category].push(typeWithTag);
+    acc[category].push(t);
     return acc;
-  }, {} as Record<string, (HetznerServerType & { availabilityTag?: string })[]>);
+  }, {} as Record<string, HetznerServerType[]>);
 
   const categoryOrder = [
     'Shared Resources - Regular Performance (Intel/AMD)',
@@ -286,7 +273,8 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
       }
     } catch (err) {
       console.error("Failed to add server:", err);
-      alert("Failed to provision server. Check console for details.");
+      const errMsg = err instanceof Error ? err.message : String(err);
+      alert(`Failed to provision server: ${errMsg}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -540,10 +528,9 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
                               const ipv4 = getIpv4MonthlyPrice(options.pricing, location);
                               const priceLabel = p ? `€${(parseFloat(p.price_monthly.gross) + ipv4).toFixed(2)}` : '';
                               const specs = `${t.cores} vCPU / ${t.memory}GB RAM / ${t.disk}GB / ${t.architecture.toUpperCase()}`;
-                              const availability = t.availabilityTag ? ` (${t.availabilityTag})` : '';
                               return (
                                 <option key={t.id} value={t.name} className="text-white font-normal bg-slate-950">
-                                  {t.name.toUpperCase()}{availability} — ({priceLabel}) — {specs}
+                                  {t.name.toUpperCase()} — ({priceLabel}) — {specs}
                                 </option>
                               );
                             })}
