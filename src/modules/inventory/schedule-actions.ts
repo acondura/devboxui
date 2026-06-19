@@ -243,8 +243,9 @@ export async function runMorningWorkflow(
   server.hetznerServerId = newHetznerServerId;
   server.hetznerStatus = 'starting';
   server.ip = ip;
-  server.status = 'ready';
-  server.detailedStatus = 'Ready';
+  server.status = 'initializing';
+  server.detailedStatus = 'Initializing (0%)';
+  server.pendingCreateActionId = result.action.id;
   server.updatedAt = new Date().toISOString();
   if (server.scheduleConfig) {
     server.scheduleConfig.lastMorningRun = new Date().toISOString();
@@ -629,6 +630,89 @@ export async function processPendingSnapshot(
   }
 
   return server;
+}
+
+export async function processPendingCreate(
+  server: ServerConfig,
+  userEmail: string,
+  kv: KVNamespace,
+  hetznerApi: HetznerApiService
+): Promise<ServerConfig> {
+  if (!server.pendingCreateActionId) {
+    return server;
+  }
+
+  const actionId = server.pendingCreateActionId;
+
+  try {
+    console.log(`[processPendingCreate] Checking Hetzner create action ${actionId} for server ${server.id}…`);
+    const action = await hetznerApi.getAction(actionId);
+    console.log(`[processPendingCreate] Action status: ${action.status}, progress: ${action.progress}%`);
+
+    const now = new Date().toISOString();
+    if (action.status === 'running') {
+      const progress = action.progress || 0;
+      server.status = 'initializing';
+      server.detailedStatus = `Initializing (${progress}%)`;
+      server.updatedAt = now;
+      await kv.put(serverKey(userEmail, server.id), JSON.stringify(server));
+    } else if (action.status === 'success') {
+      console.log(`[processPendingCreate] Create action ${actionId} succeeded.`);
+      server.pendingCreateActionId = undefined;
+      server.status = 'ready';
+      server.detailedStatus = 'Ready';
+      server.updatedAt = now;
+      await kv.put(serverKey(userEmail, server.id), JSON.stringify(server));
+    } else if (action.status === 'error') {
+      console.error(`[processPendingCreate] Create action ${actionId} failed.`);
+      server.pendingCreateActionId = undefined;
+      server.status = 'error';
+      server.detailedStatus = 'Initialization failed';
+      server.updatedAt = now;
+      await kv.put(serverKey(userEmail, server.id), JSON.stringify(server));
+    }
+  } catch (err) {
+    console.error(`[processPendingCreate] Failed to process pending create action ${actionId}:`, err);
+  }
+
+  return server;
+}
+
+export async function processAllPendingCreates(kv: KVNamespace) {
+  console.log('[processAllPendingCreates] Scanning KV for servers with pending creations...');
+  const list = await kv.list({ prefix: 'servers:' });
+  let count = 0;
+  for (const key of list.keys) {
+    const data = await kv.get(key.name);
+    if (!data) continue;
+
+    let server: ServerConfig;
+    try {
+      server = JSON.parse(data) as ServerConfig;
+    } catch {
+      continue;
+    }
+
+    if (server.pendingCreateActionId) {
+      count++;
+      const userEmail = server.userEmail;
+
+      try {
+        const settings = await getUserSettings(userEmail);
+        const env = await getCloudflareEnv();
+        const hetznerToken = settings?.hetznerToken || env.HETZNER_API_TOKEN;
+        if (!hetznerToken) {
+          console.error(`[processAllPendingCreates] No Hetzner token found for ${userEmail}`);
+          continue;
+        }
+        const hetznerApi = new HetznerApiService(env, hetznerToken);
+        await processPendingCreate(server, userEmail, kv, hetznerApi);
+      } catch (err) {
+        console.error(`[processAllPendingCreates] Failed to process pending create for ${server.id}:`, err);
+      }
+    }
+  }
+  console.log(`[processAllPendingCreates] Finished processing ${count} pending creations.`);
 }
 
 export async function processAllPendingSnapshots(kv: KVNamespace) {

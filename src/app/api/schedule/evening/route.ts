@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCloudflareEnv } from '@/lib/auth';
-import { getScheduledServers, runEveningWorkflow, processAllPendingSnapshots } from '@/modules/inventory/schedule-actions';
+import { getScheduledServers, runEveningWorkflow, processAllPendingSnapshots, processAllPendingCreates } from '@/modules/inventory/schedule-actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,13 +27,18 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Self-healing processing of any pending snapshots
+  // Self-healing processing of any pending snapshots/creations
   const kv = env.KV;
   if (kv) {
     try {
       await processAllPendingSnapshots(kv);
     } catch (err) {
       console.error('[Cron Evening] Failed to process pending snapshots:', err);
+    }
+    try {
+      await processAllPendingCreates(kv);
+    } catch (err) {
+      console.error('[Cron Evening] Failed to process pending creations:', err);
     }
   }
 

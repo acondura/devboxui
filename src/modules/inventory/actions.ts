@@ -757,6 +757,8 @@ export async function provisionServer(
     const hetznerResult = await hetznerApi.createServer(name, bootstrapScript, serverType, location, image, sshKeyIds);
     hetznerServerId = hetznerResult.server.id;
     config.hetznerServerId = hetznerServerId;
+    config.pendingCreateActionId = hetznerResult.action.id;
+    config.detailedStatus = 'Initializing (0%)';
 
     if (hetznerResult.root_password && !rootPassword) {
       console.log("Captured root password from Hetzner.");
@@ -837,6 +839,16 @@ export async function getServers() {
         }
       }
 
+      if (s.pendingCreateActionId && hetznerToken) {
+        try {
+          const { processPendingCreate } = await import('./schedule-actions');
+          const hetznerApi = new HetznerApiService(env, hetznerToken);
+          s = await processPendingCreate(s, userEmail, kv, hetznerApi);
+        } catch (err) {
+          console.error(`Error processing pending create for server ${s.id}:`, err);
+        }
+      }
+
       return s;
     })
   )).filter((s): s is ServerConfig => s !== null);
@@ -850,7 +862,7 @@ export async function getServers() {
 
       // 1. Sync KV servers with live Hetzner data and cleanup "ghosts"
       for (const s of kvServers) {
-        if (s.status === 'snapshotting') {
+        if (s.status === 'snapshotting' || s.pendingCreateActionId) {
           finalServers.push(s);
           if (s.hetznerServerId) {
             hetznerMap.delete(s.hetznerServerId.toString());

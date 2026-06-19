@@ -39,6 +39,7 @@ export interface ServerConfig {
   pendingSnapshotActionId?: number;
   pendingSnapshotDescription?: string;
   pendingSnapshotDate?: string;
+  pendingCreateActionId?: number;
 }
 
 export interface ScheduleConfig {

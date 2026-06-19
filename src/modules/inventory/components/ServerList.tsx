@@ -380,7 +380,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
               <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
             ) : server.status === 'waiting-for-bootstrap' ? (
               <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-            ) : ['provisioning', 'configuring', 'initializing', 'Initializing', 'starting'].includes(server.status) ? (
+            ) : ['provisioning', 'configuring', 'initializing', 'Initializing', 'starting', 'snapshotting'].includes(server.status) ? (
               <span className="h-3 w-3 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
             ) : server.status === 'off' && scheduleConfig?.enabled ? (
               <span className="h-2 w-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)] animate-pulse" />
@@ -388,7 +388,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
               <span className="h-2 w-2 rounded-full bg-slate-600" />
             )}
             <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              {server.status === 'off' && scheduleConfig?.enabled ? 'standby' : server.status}
+              {server.status === 'off' && scheduleConfig?.enabled ? 'standby' : (server.detailedStatus || server.status)}
             </span>
           </div>
         )}
@@ -897,14 +897,14 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
                   ) : server.status === 'waiting-for-bootstrap' ? (
                     <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
-                  ) : ['provisioning', 'configuring', 'initializing', 'Initializing', 'starting'].includes(server.status) ? (
+                  ) : ['provisioning', 'configuring', 'initializing', 'Initializing', 'starting', 'snapshotting'].includes(server.status) ? (
                     <span className="h-2 w-2 border border-indigo-500 border-t-transparent rounded-full animate-spin" />
                   ) : server.status === 'off' && scheduleConfig?.enabled ? (
                     <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)] animate-pulse" />
                   ) : (
                     <span className="h-1.5 w-1.5 rounded-full bg-slate-600" />
                   )}
-                  <span>{server.status === 'off' && scheduleConfig?.enabled ? 'standby' : server.status}</span>
+                  <span>{server.status === 'off' && scheduleConfig?.enabled ? 'standby' : (server.detailedStatus || server.status)}</span>
                 </div>
               )}
             </div>
