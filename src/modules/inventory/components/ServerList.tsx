@@ -50,6 +50,13 @@ export function ServerList(props: ServerListProps) {
   const [sortField, setSortField] = useState<SortField>('created');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
+  useEffect(() => {
+    const savedField = localStorage.getItem('devboxui_sort_field') as SortField | null;
+    const savedOrder = localStorage.getItem('devboxui_sort_order') as SortOrder | null;
+    if (savedField) setSortField(savedField);
+    if (savedOrder) setSortOrder(savedOrder);
+  }, []);
+
   if (props.servers.length === 0) {
     return (
       <div className="border border-dashed border-slate-700 rounded-xl p-12 text-center bg-slate-800/20">
@@ -66,10 +73,14 @@ export function ServerList(props: ServerListProps) {
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+      const nextOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+      setSortOrder(nextOrder);
+      localStorage.setItem('devboxui_sort_order', nextOrder);
     } else {
       setSortField(field);
       setSortOrder('desc');
+      localStorage.setItem('devboxui_sort_field', field);
+      localStorage.setItem('devboxui_sort_order', 'desc');
     }
   };
 
@@ -133,7 +144,11 @@ export function ServerList(props: ServerListProps) {
               </div>
             </div>
             <button
-              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+              onClick={() => {
+                const nextOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+                setSortOrder(nextOrder);
+                localStorage.setItem('devboxui_sort_order', nextOrder);
+              }}
               className="px-2.5 py-1.5 bg-slate-950 border border-slate-800 rounded-lg hover:border-slate-700 text-slate-400 hover:text-white transition-all text-xs"
               title="Toggle sort direction"
             >
