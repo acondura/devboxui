@@ -417,6 +417,12 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
         <div className="flex flex-col space-y-1 text-left">
           <span className="text-lg font-extrabold text-white tracking-tight">{displayHostname}</span>
           
+          {server.serverSpecs && (
+            <span className="text-xs font-medium text-slate-400 leading-tight">
+              {server.serverSpecs}
+            </span>
+          )}
+          
           <div className="flex items-center space-x-2 text-xs font-mono text-slate-400">
             {server.status === 'off' && scheduleConfig?.latestSnapshotDescription ? (
               <span className="text-slate-500">{server.ip}</span>
@@ -910,6 +916,12 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
             </div>
             <div className="flex flex-col space-y-1">
               <h3 className="text-xl font-extrabold text-white tracking-tight text-left">{displayHostname}</h3>
+              
+              {server.serverSpecs && (
+                <span className="text-xs font-medium text-slate-400 leading-tight text-left">
+                  {server.serverSpecs}
+                </span>
+              )}
               
               <div className="flex items-center space-x-2 text-xs font-mono text-slate-400">
                 {server.status === 'off' && scheduleConfig?.latestSnapshotDescription ? (

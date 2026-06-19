@@ -10,7 +10,16 @@ export interface HetznerServer {
     };
   };
   server_type: {
+    id: number;
     name: string;
+    description: string;
+    cores: number;
+    memory: number;
+    disk: number;
+    architecture: string;
+    deprecated: boolean;
+    storage_type: string;
+    cpu_type: string;
   };
   datacenter: {
     location: {

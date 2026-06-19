@@ -4,7 +4,7 @@ import { getCloudflareEnv, getIdentity } from '@/lib/auth';
 import { HetznerApiService } from '@/lib/hetzner-api';
 import { CloudflareApiService } from '@/lib/cloudflare-api';
 import { ScheduleConfig, ServerConfig } from './types';
-import { getUserSettings, syncAllDependentPolicies } from './actions';
+import { getUserSettings, syncAllDependentPolicies, getNetworkZone } from './actions';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // KV key helpers
@@ -226,6 +226,18 @@ export async function runMorningWorkflow(
 
   const newHetznerServerId = result.server.id;
   const ip = result.server.public_net.ipv4.ip;
+
+  // Construct serverSpecs
+  const arch = result.server.server_type.architecture || 'x86';
+  const disk = result.server.server_type.disk ? `${result.server.server_type.disk} GB` : '';
+  const zone = await getNetworkZone(result.server.datacenter?.location?.name);
+  const specsParts = [
+    result.server.server_type.name.toUpperCase(),
+    arch,
+    disk,
+    zone
+  ].filter(Boolean);
+  server.serverSpecs = specsParts.join(' | ');
 
   // Update Direct SSH DNS A record in Cloudflare
   if (server.hostname) {

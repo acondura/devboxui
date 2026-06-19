@@ -530,6 +530,19 @@ function generateUniqueUsername(email: string): string {
 }
 
 /**
+ * Maps Hetzner location codes to network zone strings.
+ */
+export async function getNetworkZone(location?: string): Promise<string> {
+  if (!location) return '';
+  const loc = location.toLowerCase();
+  if (['fsn1', 'nbg1', 'hel1'].includes(loc)) return 'eu-central';
+  if (loc === 'ash') return 'us-east';
+  if (loc === 'hil') return 'us-west';
+  if (loc === 'sin') return 'ap-southeast';
+  return location;
+}
+
+/**
  * Returns a safe POSIX/Linux-compliant username from a custom input,
  * or falls back to the unique dynamic email-based username.
  */
@@ -760,6 +773,18 @@ export async function provisionServer(
     config.pendingCreateActionId = hetznerResult.action.id;
     config.detailedStatus = 'Initializing (0%)';
 
+    // Construct serverSpecs
+    const arch = hetznerResult.server.server_type.architecture || 'x86';
+    const disk = hetznerResult.server.server_type.disk ? `${hetznerResult.server.server_type.disk} GB` : '';
+    const zone = await getNetworkZone(hetznerResult.server.datacenter?.location?.name);
+    const specsParts = [
+      hetznerResult.server.server_type.name.toUpperCase(),
+      arch,
+      disk,
+      zone
+    ].filter(Boolean);
+    config.serverSpecs = specsParts.join(' | ');
+
     if (hetznerResult.root_password && !rootPassword) {
       console.log("Captured root password from Hetzner.");
       config.rootPassword = hetznerResult.root_password;
@@ -882,6 +907,18 @@ export async function getServers() {
           s.hetznerStatus = hs.status;
           if (hs.public_net?.ipv4?.ip) s.ip = hs.public_net.ipv4.ip;
           s.serverType = hs.server_type.name;
+
+          // Build serverSpecs
+          const arch = hs.server_type.architecture || 'x86';
+          const disk = hs.server_type.disk ? `${hs.server_type.disk} GB` : '';
+          const zone = await getNetworkZone(hs.datacenter?.location?.name);
+          const specsParts = [
+            hs.server_type.name.toUpperCase(),
+            arch,
+            disk,
+            zone
+          ].filter(Boolean);
+          s.serverSpecs = specsParts.join(' | ');
 
           // Sync live Hetzner status to local config status
           const oldStatus = s.status;
