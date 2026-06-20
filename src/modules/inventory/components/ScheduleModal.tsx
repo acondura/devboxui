@@ -244,7 +244,7 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                 <div className="flex items-center justify-between p-4 bg-slate-850/60 border border-slate-800 rounded-xl">
                   <div>
                     <p className="text-sm font-bold text-white">Enable daily automation</p>
-                    <p className="text-xs text-slate-400 mt-0.5">Automate morning spins and evening snaps</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Automate daily spin-up and shutdown cycles</p>
                   </div>
                   <button
                     id={`schedule-toggle-${serverId}`}
@@ -270,7 +270,7 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                       <div className="flex items-center justify-between">
                         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 select-none">
                           <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-                          Morning spin-up
+                          Spin-up Time (Start)
                         </label>
                         <input
                           id={`spinup-enabled-${serverId}`}
@@ -294,7 +294,7 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                       <div className="flex items-center justify-between">
                         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 select-none">
                           <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />
-                          Evening snapshot
+                          Snapshot Time (Stop)
                         </label>
                         <input
                           id={`snapshot-enabled-${serverId}`}
@@ -666,7 +666,7 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                       onClick={handleTriggerMorning}
                       disabled={isTriggeringMorning || !config.latestSnapshotId}
                       className="flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 text-xs font-bold rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                      title={!config.latestSnapshotId ? 'Run evening workflow first to create a snapshot' : ''}
+                      title={!config.latestSnapshotId ? 'Run shutdown/snapshot workflow first to create a snapshot' : ''}
                     >
                       {isTriggeringMorning ? (
                         <div className="w-3.5 h-3.5 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
