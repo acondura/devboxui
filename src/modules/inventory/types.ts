@@ -61,6 +61,9 @@ export interface ScheduleConfig {
   // Vacation / pause controls
   pauseUntil?: string;     // ISO date string 'YYYY-MM-DD' — skip ALL automation until this date (inclusive)
   blockedDates?: string[]; // Array of 'YYYY-MM-DD' strings — skip spin-up AND snapshot on these dates
+  spinupEnabled?: boolean;
+  snapshotEnabled?: boolean;
+  skipWeekends?: boolean;
 }
 
 export interface ProvisioningState {

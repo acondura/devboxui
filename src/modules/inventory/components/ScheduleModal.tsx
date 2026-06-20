@@ -267,30 +267,50 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-                        Morning spin-up
-                      </label>
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 select-none">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                          Morning spin-up
+                        </label>
+                        <input
+                          id={`spinup-enabled-${serverId}`}
+                          type="checkbox"
+                          checked={config.spinupEnabled !== false}
+                          onChange={e => setConfig(c => ({ ...c, spinupEnabled: e.target.checked }))}
+                          disabled={!config.enabled}
+                          className="rounded border-slate-800 bg-slate-950 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-slate-900 h-3.5 w-3.5 cursor-pointer disabled:opacity-40"
+                        />
+                      </div>
                       <input
                         id={`spinup-time-${serverId}`}
                         type="time"
                         value={config.spinupTime}
                         onChange={e => setConfig(c => ({ ...c, spinupTime: e.target.value }))}
-                        disabled={!config.enabled}
+                        disabled={!config.enabled || config.spinupEnabled === false}
                         className="w-full bg-slate-950 border border-slate-800 text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-40 font-mono"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />
-                        Evening snapshot
-                      </label>
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 select-none">
+                          <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />
+                          Evening snapshot
+                        </label>
+                        <input
+                          id={`snapshot-enabled-${serverId}`}
+                          type="checkbox"
+                          checked={config.snapshotEnabled !== false}
+                          onChange={e => setConfig(c => ({ ...c, snapshotEnabled: e.target.checked }))}
+                          disabled={!config.enabled}
+                          className="rounded border-slate-800 bg-slate-950 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-slate-900 h-3.5 w-3.5 cursor-pointer disabled:opacity-40"
+                        />
+                      </div>
                       <input
                         id={`snapshot-time-${serverId}`}
                         type="time"
                         value={config.snapshotTime}
                         onChange={e => setConfig(c => ({ ...c, snapshotTime: e.target.value }))}
-                        disabled={!config.enabled}
+                        disabled={!config.enabled || config.snapshotEnabled === false}
                         className="w-full bg-slate-950 border border-slate-800 text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-40 font-mono"
                       />
                     </div>
@@ -435,6 +455,34 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                         Automation paused until <strong>{config.pauseUntil}</strong> (inclusive)
                       </p>
                     )}
+                  </div>
+
+                  {/* Skip weekends toggle */}
+                  <div className="flex items-center justify-between p-3 bg-slate-950/40 border border-slate-800/80 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <div className="text-left">
+                        <span className="text-xs font-bold text-slate-300">Skip Weekends</span>
+                        <p className="text-[10px] text-slate-500 mt-0.5">Do not run automation on Saturdays and Sundays</p>
+                      </div>
+                    </div>
+                    <button
+                      id={`skip-weekends-toggle-${serverId}`}
+                      onClick={() => setConfig(c => ({ ...c, skipWeekends: !c.skipWeekends }))}
+                      disabled={!config.enabled}
+                      className={`relative w-10 h-5 rounded-full transition-all duration-300 focus:outline-none ${
+                        config.skipWeekends ? 'bg-rose-600 shadow-md shadow-rose-600/20' : 'bg-slate-700'
+                      } disabled:opacity-40`}
+                      role="switch"
+                      aria-checked={config.skipWeekends}
+                    >
+                      <span
+                        className="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-300"
+                        style={{ left: config.skipWeekends ? '22px' : '2px' }}
+                      />
+                    </button>
                   </div>
 
                   {/* Blocked / vacation dates */}

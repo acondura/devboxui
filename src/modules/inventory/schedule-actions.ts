@@ -119,6 +119,14 @@ function isSchedulePaused(
     return { paused: true, reason: `${localDateStr} is a blocked date` };
   }
 
+  // 3. Skip weekends
+  if (sched.skipWeekends) {
+    const dayOfWeekStr = nowUtc.toLocaleDateString('en-US', { timeZone: sched.timezone || 'UTC', weekday: 'long' });
+    if (dayOfWeekStr === 'Saturday' || dayOfWeekStr === 'Sunday') {
+      return { paused: true, reason: `today is weekend (${dayOfWeekStr})` };
+    }
+  }
+
   return { paused: false };
 }
 

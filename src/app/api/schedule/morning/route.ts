@@ -52,6 +52,16 @@ export async function GET(req: NextRequest) {
   const scheduledServers = await getScheduledServers();
 
   for (const { server, schedule, userEmail } of scheduledServers) {
+    if (schedule.spinupEnabled === false || !schedule.spinupTime) {
+      results.push({
+        serverId: server.id,
+        userEmail,
+        success: true,
+        message: 'Skipped — morning spin-up disabled for this server'
+      });
+      continue;
+    }
+
     // Only fire if the scheduled spinup time matches the current local time
     const nowUtc = new Date();
     const localStr = nowUtc.toLocaleString('en-US', {
@@ -60,10 +70,10 @@ export async function GET(req: NextRequest) {
       minute: '2-digit',
       hour12: false
     });
-    const [localH] = localStr.split(':').map(Number);
-    const [targetH] = schedule.spinupTime.split(':').map(Number);
+    const [localH, localM] = localStr.split(':').map(Number);
+    const [targetH, targetM] = schedule.spinupTime.split(':').map(Number);
 
-    if (localH !== targetH) {
+    if (localH !== targetH || localM !== targetM) {
       results.push({
         serverId: server.id,
         userEmail,

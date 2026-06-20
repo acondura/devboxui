@@ -53,6 +53,16 @@ export async function GET(req: NextRequest) {
   const scheduledServers = await getScheduledServers();
 
   for (const { server, schedule, userEmail } of scheduledServers) {
+    if (schedule.snapshotEnabled === false || !schedule.snapshotTime) {
+      results.push({
+        serverId: server.id,
+        userEmail,
+        success: true,
+        message: 'Skipped — evening snapshot disabled for this server'
+      });
+      continue;
+    }
+
     // Only fire if the scheduled snapshot time matches the current local hour
     const nowUtc = new Date();
     const localStr = nowUtc.toLocaleString('en-US', {
@@ -61,10 +71,10 @@ export async function GET(req: NextRequest) {
       minute: '2-digit',
       hour12: false
     });
-    const [localH] = localStr.split(':').map(Number);
-    const [targetH] = schedule.snapshotTime.split(':').map(Number);
+    const [localH, localM] = localStr.split(':').map(Number);
+    const [targetH, targetM] = schedule.snapshotTime.split(':').map(Number);
 
-    if (localH !== targetH) {
+    if (localH !== targetH || localM !== targetM) {
       results.push({
         serverId: server.id,
         userEmail,
