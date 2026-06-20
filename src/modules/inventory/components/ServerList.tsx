@@ -388,7 +388,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
               <span className="h-2 w-2 rounded-full bg-slate-600" />
             )}
             <span className="text-sm font-bold uppercase tracking-wider text-slate-400">
-              {server.status === 'off' && scheduleConfig?.enabled ? 'standby' : (server.detailedStatus || server.status)}
+              {server.status === 'off' ? 'standby' : (server.detailedStatus || server.status)}
             </span>
           </div>
         )}
@@ -442,7 +442,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
           
           {server.status === 'off' && scheduleConfig?.latestSnapshotDescription && (
             <div className="flex items-center mt-1">
-              <span className="text-sm font-bold text-indigo-400 uppercase bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.5 rounded tracking-wide font-mono">
+              <span className="text-sm font-bold text-indigo-400 uppercase tracking-wide font-mono">
                 {scheduleConfig.latestSnapshotDescription}
               </span>
             </div>
@@ -452,7 +452,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
 
       {/* OS */}
       <td className="py-2.5 px-4">
-        <span className="text-xs font-bold text-slate-400 bg-slate-800 px-2 py-1 rounded uppercase tracking-widest">Ubuntu 24.04</span>
+        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Ubuntu 24.04</span>
       </td>
 
       {/* Created */}
@@ -915,7 +915,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
         <div className="flex justify-between items-start">
           <div className="space-y-1.5">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[10px] font-bold text-slate-400 bg-slate-800 px-2 py-1 rounded uppercase tracking-widest border border-slate-700">Ubuntu 24.04</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ubuntu 24.04</span>
               <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest ${
                 isAutomated 
                   ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' 
@@ -941,7 +941,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
                   ) : (
                     <span className="h-1.5 w-1.5 rounded-full bg-slate-600" />
                   )}
-                  <span>{server.status === 'off' && scheduleConfig?.enabled ? 'standby' : (server.detailedStatus || server.status)}</span>
+                  <span>{server.status === 'off' ? 'standby' : (server.detailedStatus || server.status)}</span>
                 </div>
               )}
             </div>
@@ -973,7 +973,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
               
               <div className="flex flex-row justify-between items-center mt-1 text-[10px] font-mono text-slate-500 w-full font-mono text-left">
                 {server.status === 'off' && scheduleConfig?.latestSnapshotDescription ? (
-                  <span className="text-xs font-bold text-indigo-400 uppercase bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.5 rounded tracking-wide">
+                  <span className="text-xs font-bold text-indigo-400 uppercase tracking-wide font-mono">
                     {scheduleConfig.latestSnapshotDescription}
                   </span>
                 ) : (
