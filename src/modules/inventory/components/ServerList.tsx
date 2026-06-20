@@ -371,9 +371,9 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
       )}
 
       {/* Status */}
-      <td className="py-6 px-4">
+      <td className="py-2.5 px-4">
         {!isAutomated ? (
-          <span className="text-xs font-bold text-slate-600">—</span>
+          <span className="text-sm font-bold text-slate-600">—</span>
         ) : (
           <div className="flex items-center space-x-2">
             {server.status === 'ready' ? (
@@ -387,7 +387,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
             ) : (
               <span className="h-2 w-2 rounded-full bg-slate-600" />
             )}
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+            <span className="text-sm font-bold uppercase tracking-wider text-slate-400">
               {server.status === 'off' && scheduleConfig?.enabled ? 'standby' : (server.detailedStatus || server.status)}
             </span>
           </div>
@@ -395,9 +395,9 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
       </td>
 
       {/* Type */}
-      <td className="py-6 px-4">
+      <td className="py-2.5 px-4">
         <div className="flex flex-col items-start gap-1">
-          <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest ${
+          <span className={`text-xs font-bold px-2 py-1 rounded uppercase tracking-widest ${
             isAutomated 
               ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' 
               : 'bg-slate-800 text-slate-400 border border-slate-700'
@@ -405,7 +405,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
             {server.providerName || 'Custom'}
           </span>
           {server.serverType && (
-            <span className="text-[9px] font-mono text-slate-500 font-bold uppercase tracking-wider pl-0.5">
+            <span className="text-[11px] font-mono text-slate-500 font-bold uppercase tracking-wider pl-0.5">
               {formatSpecs(server.serverType)}
             </span>
           )}
@@ -413,17 +413,17 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
       </td>
 
       {/* Server Identification */}
-      <td className="py-6 px-4">
+      <td className="py-2.5 px-4">
         <div className="flex flex-col space-y-1 text-left">
           <span className="text-lg font-extrabold text-white tracking-tight">{displayHostname}</span>
           
           {server.serverSpecs && (
-            <span className="text-xs font-medium text-slate-400 leading-tight">
+            <span className="text-sm font-medium text-slate-400 leading-tight">
               {server.serverSpecs}
             </span>
           )}
           
-          <div className="flex items-center space-x-2 text-xs font-mono text-slate-400">
+          <div className="flex items-center space-x-2 text-sm font-mono text-slate-400">
             {server.status === 'off' && scheduleConfig?.latestSnapshotDescription ? (
               <span className="text-slate-500">{server.ip}</span>
             ) : (
@@ -432,7 +432,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
                 <CopyButton value={server.ip} />
                 {server.rootPassword && (
                   <div className="flex items-center space-x-1 pl-1.5 border-l border-slate-800">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase">PWD</span>
+                    <span className="text-xs font-bold text-slate-500 uppercase">PWD</span>
                     <CopyButton value={server.rootPassword} />
                   </div>
                 )}
@@ -442,7 +442,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
           
           {server.status === 'off' && scheduleConfig?.latestSnapshotDescription && (
             <div className="flex items-center mt-1">
-              <span className="text-xs font-bold text-indigo-400 uppercase bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.5 rounded tracking-wide font-mono">
+              <span className="text-sm font-bold text-indigo-400 uppercase bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.5 rounded tracking-wide font-mono">
                 {scheduleConfig.latestSnapshotDescription}
               </span>
             </div>
@@ -451,13 +451,13 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
       </td>
 
       {/* OS */}
-      <td className="py-6 px-4">
-        <span className="text-[10px] font-bold text-slate-400 bg-slate-800 px-2 py-1 rounded uppercase tracking-widest">Ubuntu 24.04</span>
+      <td className="py-2.5 px-4">
+        <span className="text-xs font-bold text-slate-400 bg-slate-800 px-2 py-1 rounded uppercase tracking-widest">Ubuntu 24.04</span>
       </td>
 
       {/* Created */}
-      <td className="py-6 px-4">
-        <span className="text-xs font-bold text-slate-400 font-mono">
+      <td className="py-2.5 px-4">
+        <span className="text-sm font-bold text-slate-400 font-mono">
           {server.createdAt ? new Date(server.createdAt).toLocaleString('en-US', {
             month: 'short',
             day: 'numeric',
@@ -469,14 +469,14 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
       </td>
 
       {/* Service URLs */}
-      <td className="py-6 px-4">
+      <td className="py-2.5 px-4">
         <div className="flex flex-col space-y-2 min-w-[200px]">
           {server.projects?.map((project) => (
             <div key={project.domain} className="flex items-center justify-between group/url">
               <a
                 href={`https://${project.domain}`}
                 target={`win_${project.domain.replace(/[^a-zA-Z0-9]/g, '_')}`}
-                className="text-[11px] font-mono text-indigo-400 hover:text-indigo-300 transition-colors flex items-center space-x-1"
+                className="text-xs font-mono text-indigo-400 hover:text-indigo-300 transition-colors flex items-center space-x-1"
               >
                 <span>{project.domain}</span>
                 <svg className="w-3 h-3 opacity-0 group-hover/url:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -501,119 +501,150 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
               </div>
             </div>
           ))}
-          <button onClick={() => setIsProjectModalOpen(true)} className="text-[10px] font-bold text-indigo-500 hover:text-indigo-400 transition-colors text-left">+ Add Domain</button>
+          <button onClick={() => setIsProjectModalOpen(true)} className="text-xs font-bold text-indigo-500 hover:text-indigo-400 transition-colors text-left">+ Add Domain</button>
         </div>
       </td>
 
       {/* Actions */}
-      <td className="py-6 px-4 text-right">
-        <div className="flex items-center justify-end space-x-1">
-          <button
-            onClick={handleFetchLogs}
-            disabled={isFetchingLogs || isDeleting || isReinstalling}
-            className="p-2 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition-all disabled:opacity-50"
-            title="Logs"
-          >
-            {isFetchingLogs ? (
-              <div className="h-4 w-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-            )}
-          </button>
-          <button
-            onClick={() => setIsReinstallModalOpen(true)}
-            disabled={isFetchingLogs || isDeleting || isReinstalling}
-            className="p-2 text-slate-500 hover:text-amber-500 hover:bg-slate-800 rounded-lg transition-all disabled:opacity-50"
-            title="Reinstall"
-          >
-            {isReinstalling ? (
-              <div className="h-4 w-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-            )}
-          </button>
+      <td className="py-2.5 px-4 text-right">
+        <div className="flex items-center justify-end space-x-2.5">
+          <div className="flex flex-col items-center">
+            <button
+              onClick={handleFetchLogs}
+              disabled={isFetchingLogs || isDeleting || isReinstalling}
+              className="p-2 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition-all disabled:opacity-50"
+              title="Logs"
+            >
+              {isFetchingLogs ? (
+                <div className="h-4 w-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+              )}
+            </button>
+            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mt-0.5 select-none text-center">
+              Logs
+            </span>
+          </div>
+
+          <div className="flex flex-col items-center">
+            <button
+              onClick={() => setIsReinstallModalOpen(true)}
+              disabled={isFetchingLogs || isDeleting || isReinstalling}
+              className="p-2 text-slate-500 hover:text-amber-500 hover:bg-slate-800 rounded-lg transition-all disabled:opacity-50"
+              title="Reinstall"
+            >
+              {isReinstalling ? (
+                <div className="h-4 w-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+              )}
+            </button>
+            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mt-0.5 select-none text-center">
+              Reinstall
+            </span>
+          </div>
 
           {/* API Auth Button */}
           {isAutomated && (
-            <button
-              onClick={() => setIsApiAuthOpen(true)}
-              disabled={isDeleting || isReinstalling}
-              className="p-2 text-slate-500 hover:text-indigo-400 hover:bg-slate-800 rounded-lg transition-all disabled:opacity-50"
-              title="API Authorization"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-            </button>
+            <div className="flex flex-col items-center">
+              <button
+                onClick={() => setIsApiAuthOpen(true)}
+                disabled={isDeleting || isReinstalling}
+                className="p-2 text-slate-500 hover:text-indigo-400 hover:bg-slate-800 rounded-lg transition-all disabled:opacity-50"
+                title="API Authorization"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </button>
+              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mt-0.5 select-none text-center">
+                Auth
+              </span>
+            </div>
           )}
 
           {/* Schedule button — only for Hetzner servers */}
           {isHetzner && (
-            <button
-              onClick={() => setIsScheduleOpen(true)}
-              disabled={isDeleting || isReinstalling}
-              className={`relative p-2 rounded-lg transition-all disabled:opacity-50 ${
-                scheduleConfig?.enabled
-                  ? 'text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20'
-                  : 'text-slate-500 hover:text-indigo-400 hover:bg-slate-800'
-              }`}
-              title={scheduleConfig?.enabled ? `Schedule active — ${scheduleConfig.spinupTime} / ${scheduleConfig.snapshotTime}` : 'Set daily schedule'}
-            >
-              {scheduleConfig?.enabled && (
-                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-indigo-500 rounded-full shadow-[0_0_6px_rgba(99,102,241,0.8)] animate-pulse" />
-              )}
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </button>
+            <div className="flex flex-col items-center">
+              <button
+                onClick={() => setIsScheduleOpen(true)}
+                disabled={isDeleting || isReinstalling}
+                className={`relative p-2 rounded-lg transition-all disabled:opacity-50 ${
+                  scheduleConfig?.enabled
+                    ? 'text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20'
+                    : 'text-slate-500 hover:text-indigo-400 hover:bg-slate-800'
+                }`}
+                title={scheduleConfig?.enabled ? `Schedule active — ${scheduleConfig.spinupTime} / ${scheduleConfig.snapshotTime}` : 'Set daily schedule'}
+              >
+                {scheduleConfig?.enabled && (
+                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-indigo-500 rounded-full shadow-[0_0_6px_rgba(99,102,241,0.8)] animate-pulse" />
+                )}
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </button>
+              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mt-0.5 select-none text-center">
+                Schedule
+              </span>
+            </div>
           )}
 
           {/* Snapshot & Shutdown button — only for Hetzner servers that are running/not off */}
           {isHetzner && server.status !== 'off' && (
-            <button
-              onClick={() => setIsConfirmSnapshotOpen(true)}
-              disabled={isSnapshotting || isDeleting || isReinstalling}
-              className="p-2 text-slate-500 hover:text-indigo-400 hover:bg-slate-800 rounded-lg transition-all disabled:opacity-50"
-              title="Snapshot & Shutdown (Saves costs)"
-            >
-              {isSnapshotting ? (
-                <div className="h-4 w-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                </svg>
-              )}
-            </button>
+            <div className="flex flex-col items-center">
+              <button
+                onClick={() => setIsConfirmSnapshotOpen(true)}
+                disabled={isSnapshotting || isDeleting || isReinstalling}
+                className="p-2 text-slate-500 hover:text-indigo-400 hover:bg-slate-800 rounded-lg transition-all disabled:opacity-50"
+                title="Snapshot & Shutdown (Saves costs)"
+              >
+                {isSnapshotting ? (
+                  <div className="h-4 w-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                  </svg>
+                )}
+              </button>
+              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mt-0.5 select-none text-center">
+                Snapshot
+              </span>
+            </div>
           )}
 
           {isAutomated && (
-            <button
-              onClick={async () => {
-                if (confirm("Delete server?")) {
-                  setIsDeleting(true);
-                  try {
-                    await onDeleteServer(server.id);
-                  } catch (e) {
-                    console.error("Failed to delete server:", e);
-                  } finally {
-                    setIsDeleting(false);
+            <div className="flex flex-col items-center">
+              <button
+                onClick={async () => {
+                  if (confirm("Delete server?")) {
+                    setIsDeleting(true);
+                    try {
+                      await onDeleteServer(server.id);
+                    } catch (e) {
+                      console.error("Failed to delete server:", e);
+                    } finally {
+                      setIsDeleting(false);
+                    }
                   }
-                }
-              }}
-              disabled={server.isLocked || isFetchingLogs || isDeleting || isReinstalling}
-              className={`p-2 rounded-lg transition-all ${
-                server.isLocked || isDeleting
-                  ? 'text-slate-850 opacity-40'
-                  : 'text-slate-500 hover:text-rose-500 hover:bg-rose-500/10'
-              }`}
-              title="Delete Server"
-            >
-              {isDeleting ? (
-                <div className="h-4 w-4 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-              )}
-            </button>
+                }}
+                disabled={server.isLocked || isFetchingLogs || isDeleting || isReinstalling}
+                className={`p-2 rounded-lg transition-all ${
+                  server.isLocked || isDeleting
+                    ? 'text-slate-850 opacity-40'
+                    : 'text-slate-500 hover:text-rose-500 hover:bg-rose-500/10'
+                }`}
+                title="Delete Server"
+              >
+                {isDeleting ? (
+                  <div className="h-4 w-4 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                )}
+              </button>
+              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mt-0.5 select-none text-center">
+                Delete
+              </span>
+            </div>
           )}
 
           <div className="pl-2 ml-2 border-l border-slate-800 flex items-center space-x-2">
