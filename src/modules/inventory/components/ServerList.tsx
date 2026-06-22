@@ -388,7 +388,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
               <span className="h-2 w-2 rounded-full bg-slate-600" />
             )}
             <span className="text-sm font-bold uppercase tracking-wider text-slate-400">
-              {server.status === 'off' ? 'standby' : (server.detailedStatus || server.status)}
+              {server.status === 'off' ? 'sleeping' : (server.detailedStatus || server.status)}
             </span>
           </div>
         )}
@@ -441,10 +441,8 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
           </div>
           
           {server.status === 'off' && scheduleConfig?.latestSnapshotDescription && (
-            <div className="flex items-center mt-1">
-              <span className="text-sm font-bold text-indigo-400 uppercase tracking-wide font-mono">
-                {scheduleConfig.latestSnapshotDescription}
-              </span>
+            <div className="text-xs text-indigo-400 font-mono mt-1">
+              {scheduleConfig.latestSnapshotDescription}
             </div>
           )}
         </div>
@@ -941,7 +939,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
                   ) : (
                     <span className="h-1.5 w-1.5 rounded-full bg-slate-600" />
                   )}
-                  <span>{server.status === 'off' ? 'standby' : (server.detailedStatus || server.status)}</span>
+                  <span>{server.status === 'off' ? 'sleeping' : (server.detailedStatus || server.status)}</span>
                 </div>
               )}
             </div>
