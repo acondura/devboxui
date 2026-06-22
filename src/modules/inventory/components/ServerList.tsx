@@ -414,22 +414,18 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
             </span>
           )}
           
-          <div className="flex items-center space-x-2 text-sm font-mono text-slate-400">
-            {server.status === 'off' ? (
-              <span className="text-slate-400">{server.ip}</span>
-            ) : (
-              <>
-                <span>{server.ip}</span>
-                <CopyButton value={server.ip} />
-                {server.rootPassword && (
-                  <div className="flex items-center space-x-1 pl-1.5 border-l border-slate-200">
-                    <span className="text-xs font-bold text-slate-500 uppercase">PWD</span>
-                    <CopyButton value={server.rootPassword} />
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+          {server.status !== 'off' && (
+            <div className="flex items-center space-x-2 text-sm font-mono text-slate-400">
+              <span>{server.ip}</span>
+              <CopyButton value={server.ip} />
+              {server.rootPassword && (
+                <div className="flex items-center space-x-1 pl-1.5 border-l border-slate-200">
+                  <span className="text-xs font-bold text-slate-500 uppercase">PWD</span>
+                  <CopyButton value={server.rootPassword} />
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </td>
 
@@ -901,22 +897,18 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
                 </span>
               )}
               
-              <div className="flex items-center space-x-2 text-xs font-mono text-slate-400">
-                {server.status === 'off' ? (
-                  <span className="text-slate-400">{server.ip}</span>
-                ) : (
-                  <>
-                    <span>{server.ip}</span>
-                    <CopyButton value={server.ip} />
-                    {server.rootPassword && (
-                      <div className="flex items-center space-x-1.5 pl-1.5 border-l border-slate-200">
-                        <span className="text-[10px] font-bold text-slate-500 uppercase">PWD</span>
-                        <CopyButton value={server.rootPassword} />
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
+              {server.status !== 'off' && (
+                <div className="flex items-center space-x-2 text-xs font-mono text-slate-400">
+                  <span>{server.ip}</span>
+                  <CopyButton value={server.ip} />
+                  {server.rootPassword && (
+                    <div className="flex items-center space-x-1.5 pl-1.5 border-l border-slate-200">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase">PWD</span>
+                      <CopyButton value={server.rootPassword} />
+                    </div>
+                  )}
+                </div>
+              )}
               
               <div className="flex flex-row justify-between items-center mt-1 text-[10px] font-mono text-slate-550 w-full font-mono text-left">
                 <span />
