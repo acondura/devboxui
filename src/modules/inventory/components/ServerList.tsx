@@ -7,7 +7,8 @@ import { ReinstallModal } from './ReinstallModal';
 import { ScheduleModal } from './ScheduleModal';
 import { ApiAuthModal } from './ApiAuthModal';
 import { ConfirmSnapshotModal } from './ConfirmSnapshotModal';
-import { getServerLogs, getLiveProjects, getServerSnapshots } from '../actions';
+import { getServerLogs, getLiveProjects, getServerSnapshots, getHetznerOptions } from '../actions';
+import { ConfirmSpinUpModal } from './ConfirmSpinUpModal';
 import { ScheduleConfig } from '../types';
 import { triggerMorningSpinup, triggerEveningSnapshot } from '../schedule-actions';
 import type { HetznerImage } from '@/lib/hetzner-api';
@@ -118,9 +119,9 @@ export function ServerList(props: ServerListProps) {
   return (
     <>
       {/* Sort Toolbar */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 bg-slate-900/60 border border-slate-800 rounded-xl p-4 gap-4">
-        <span className="text-sm text-slate-400 font-medium">
-          Active Servers: <strong className="text-white">{props.servers.length}</strong>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 bg-white border border-slate-200 rounded-xl p-4 gap-4 shadow-sm">
+        <span className="text-sm text-slate-650 font-medium">
+          Active Servers: <strong className="text-slate-900">{props.servers.length}</strong>
         </span>
         <div className="flex items-center space-x-2 w-full sm:w-auto justify-between sm:justify-end">
           <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">Sort by:</span>
@@ -129,11 +130,11 @@ export function ServerList(props: ServerListProps) {
               <select
                 value={sortField}
                 onChange={(e) => handleSort(e.target.value as SortField)}
-                className="appearance-none bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-300 pl-3 pr-8 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer w-full"
+                className="appearance-none bg-white border border-slate-250 rounded-lg text-xs text-slate-700 pl-3 pr-8 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer w-full"
               >
                 <option value="created">Created Date</option>
                 <option value="status">Status</option>
-                <option value="type">Provider Type</option>
+                <option value="type">Provider</option>
                 <option value="ip">IP Address</option>
                 <option value="os">OS</option>
               </select>
@@ -149,7 +150,7 @@ export function ServerList(props: ServerListProps) {
                 setSortOrder(nextOrder);
                 localStorage.setItem('devboxui_sort_order', nextOrder);
               }}
-              className="px-2.5 py-1.5 bg-slate-950 border border-slate-800 rounded-lg hover:border-slate-700 text-slate-400 hover:text-white transition-all text-xs"
+              className="px-2.5 py-1.5 bg-white border border-slate-250 rounded-lg hover:border-slate-400 text-slate-600 hover:text-slate-900 transition-all text-xs"
               title="Toggle sort direction"
             >
               {sortOrder === 'asc' ? '▲' : '▼'}
@@ -162,32 +163,32 @@ export function ServerList(props: ServerListProps) {
       <div className="hidden lg:block">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="border-b border-slate-800">
-              <th onClick={() => handleSort('status')} className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest cursor-pointer select-none hover:text-slate-300 transition-colors">
+            <tr className="border-b border-slate-200">
+              <th onClick={() => handleSort('status')} className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest cursor-pointer select-none hover:text-slate-800 transition-colors">
                 <div className="flex items-center space-x-1">
                   <span>Status</span>
                   {renderSortIcon('status')}
                 </div>
               </th>
-              <th onClick={() => handleSort('type')} className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest cursor-pointer select-none hover:text-slate-300 transition-colors">
+              <th onClick={() => handleSort('type')} className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest cursor-pointer select-none hover:text-slate-800 transition-colors">
                 <div className="flex items-center space-x-1">
-                  <span>Type</span>
+                  <span>Provider</span>
                   {renderSortIcon('type')}
                 </div>
               </th>
-              <th onClick={() => handleSort('ip')} className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest cursor-pointer select-none hover:text-slate-300 transition-colors">
+              <th onClick={() => handleSort('ip')} className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest cursor-pointer select-none hover:text-slate-800 transition-colors">
                 <div className="flex items-center space-x-1">
-                  <span>Server Identification</span>
+                  <span>Server ID</span>
                   {renderSortIcon('ip')}
                 </div>
               </th>
-              <th onClick={() => handleSort('os')} className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest cursor-pointer select-none hover:text-slate-300 transition-colors">
+              <th onClick={() => handleSort('os')} className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest cursor-pointer select-none hover:text-slate-800 transition-colors">
                 <div className="flex items-center space-x-1">
                   <span>OS</span>
                   {renderSortIcon('os')}
                 </div>
               </th>
-              <th onClick={() => handleSort('created')} className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest cursor-pointer select-none hover:text-slate-300 transition-colors">
+              <th onClick={() => handleSort('created')} className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest cursor-pointer select-none hover:text-slate-800 transition-colors">
                 <div className="flex items-center space-x-1">
                   <span>Created</span>
                   {renderSortIcon('created')}
@@ -197,7 +198,7 @@ export function ServerList(props: ServerListProps) {
               <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-800/50">
+          <tbody className="divide-y divide-slate-200">
             {sortedServers.map((server) => (
               <ServerRow key={server.id} server={server} {...props} />
             ))}
@@ -237,6 +238,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
 
   const [vpsSnapshots, setVpsSnapshots] = useState<HetznerImage[]>([]);
   const [selectedSnapshotId, setSelectedSnapshotId] = useState<string>('latest');
+  const [isSpinUpOpen, setIsSpinUpOpen] = useState(false);
 
   const isAutomated = !!(server.providerName === 'Hetzner' || server.providerName === 'Contabo' || server.provider === 'hetzner' || server.provider === 'contabo');
   const isHetzner = !!(server.providerName === 'Hetzner' || server.provider === 'hetzner');
@@ -293,11 +295,11 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
     }
   };
 
-  const handleSpinUp = async () => {
+  const handleSpinUp = async (customServerType?: string, snapshotIdStr?: string) => {
     setIsSpinningUp(true);
     try {
-      const snapId = selectedSnapshotId === 'latest' ? undefined : parseInt(selectedSnapshotId, 10);
-      const result = await triggerMorningSpinup(server.id, snapId);
+      const snapId = !snapshotIdStr || snapshotIdStr === 'latest' ? undefined : parseInt(snapshotIdStr, 10);
+      const result = await triggerMorningSpinup(server.id, snapId, customServerType);
       if (result.success) {
         if (onRefresh) await onRefresh();
       } else {
@@ -327,7 +329,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
   };
 
   return (
-    <tr className="group hover:bg-slate-800/30 transition-colors">
+    <tr className="group hover:bg-slate-50 transition-colors border-b border-slate-100">
       <ConfirmSnapshotModal
         isOpen={isConfirmSnapshotOpen}
         onClose={() => setIsConfirmSnapshotOpen(false)}
@@ -373,9 +375,9 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
       {/* Status */}
       <td className="py-2.5 px-4">
         {!isAutomated ? (
-          <span className="text-sm font-bold text-slate-600">—</span>
+          <span className="text-sm font-bold text-slate-400">—</span>
         ) : (
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2" title={server.status === 'off' ? "SLEEPING = Server powered off, snapshot taken, server deleted - this ensures you only pay for what you use." : undefined}>
             {server.status === 'ready' ? (
               <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
             ) : server.status === 'waiting-for-bootstrap' ? (
@@ -385,53 +387,42 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
             ) : server.status === 'off' && scheduleConfig?.enabled ? (
               <span className="h-2 w-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)] animate-pulse" />
             ) : (
-              <span className="h-2 w-2 rounded-full bg-slate-600" />
+              <span className="h-2 w-2 rounded-full bg-slate-400" />
             )}
-            <span className="text-sm font-bold uppercase tracking-wider text-slate-400">
+            <span className="text-sm font-bold uppercase tracking-wider text-slate-500">
               {server.status === 'off' ? 'sleeping' : (server.detailedStatus || server.status)}
             </span>
           </div>
         )}
       </td>
 
-      {/* Type */}
+      {/* Provider */}
       <td className="py-2.5 px-4">
-        <div className="flex flex-col items-start gap-1">
-          <span className={`text-xs font-bold px-2 py-1 rounded uppercase tracking-widest ${
-            isAutomated 
-              ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' 
-              : 'bg-slate-800 text-slate-400 border border-slate-700'
-          }`}>
-            {server.providerName || 'Custom'}
-          </span>
-          {server.serverType && (
-            <span className="text-[11px] font-mono text-slate-500 font-bold uppercase tracking-wider pl-0.5">
-              {formatSpecs(server.serverType)}
-            </span>
-          )}
-        </div>
+        <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+          {server.providerName || 'Custom'}
+        </span>
       </td>
 
-      {/* Server Identification */}
+      {/* Server ID */}
       <td className="py-2.5 px-4">
         <div className="flex flex-col space-y-1 text-left">
-          <span className="text-lg font-extrabold text-white tracking-tight">{displayHostname}</span>
+          <span className="text-lg font-extrabold text-slate-900 tracking-tight">{displayHostname}</span>
           
           {server.serverSpecs && (
-            <span className="text-sm font-medium text-slate-400 leading-tight">
+            <span className="text-sm font-medium text-slate-500 leading-tight">
               {server.serverSpecs}
             </span>
           )}
           
           <div className="flex items-center space-x-2 text-sm font-mono text-slate-400">
-            {server.status === 'off' && scheduleConfig?.latestSnapshotDescription ? (
-              <span className="text-slate-500">{server.ip}</span>
+            {server.status === 'off' ? (
+              <span className="text-slate-400">{server.ip}</span>
             ) : (
               <>
                 <span>{server.ip}</span>
                 <CopyButton value={server.ip} />
                 {server.rootPassword && (
-                  <div className="flex items-center space-x-1 pl-1.5 border-l border-slate-800">
+                  <div className="flex items-center space-x-1 pl-1.5 border-l border-slate-200">
                     <span className="text-xs font-bold text-slate-500 uppercase">PWD</span>
                     <CopyButton value={server.rootPassword} />
                   </div>
@@ -439,23 +430,17 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
               </>
             )}
           </div>
-          
-          {server.status === 'off' && scheduleConfig?.latestSnapshotDescription && (
-            <div className="text-xs text-indigo-400 font-mono mt-1">
-              {scheduleConfig.latestSnapshotDescription}
-            </div>
-          )}
         </div>
       </td>
 
       {/* OS */}
       <td className="py-2.5 px-4">
-        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Ubuntu 24.04</span>
+        <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Ubuntu 24.04</span>
       </td>
 
       {/* Created */}
       <td className="py-2.5 px-4">
-        <span className="text-sm font-bold text-slate-400 font-mono">
+        <span className="text-sm font-bold text-slate-500 font-mono">
           {server.createdAt ? new Date(server.createdAt).toLocaleString('en-US', {
             month: 'short',
             day: 'numeric',
@@ -645,65 +630,22 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
             </div>
           )}
 
-          <div className="pl-2 ml-2 border-l border-slate-800 flex items-center space-x-2">
+          <div className="pl-2 ml-2 border-l border-slate-200 flex items-center space-x-2">
             {server.status === 'off' ? (
-              <div className="flex items-center space-x-2">
-                {isHetzner && vpsSnapshots.length > 0 && (
-                  <div className="relative flex items-center">
-                    <select
-                      value={selectedSnapshotId}
-                      onChange={(e) => handleSnapshotChange(e.target.value)}
-                      disabled={isSpinningUp}
-                      className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 appearance-none cursor-pointer max-w-[280px] pr-8 relative font-medium"
-                    >
-                      <option value="latest">Latest Snapshot (Auto)</option>
-                      {vpsSnapshots.some(s => s.labels && s.labels['devbox-server-id'] === server.id) && (
-                        <optgroup label="This DevBox's Snapshots">
-                          {vpsSnapshots
-                            .filter(s => s.labels && s.labels['devbox-server-id'] === server.id)
-                            .map(s => (
-                              <option key={s.id} value={s.id.toString()}>
-                                {s.description || `Snapshot #${s.id}`}
-                              </option>
-                            ))
-                          }
-                        </optgroup>
-                      )}
-                      {vpsSnapshots.some(s => !s.labels || s.labels['devbox-server-id'] !== server.id) && (
-                        <optgroup label="Other Compatible Snapshots">
-                          {vpsSnapshots
-                            .filter(s => !s.labels || s.labels['devbox-server-id'] !== server.id)
-                            .map(s => (
-                              <option key={s.id} value={s.id.toString()}>
-                                {s.description || `Snapshot #${s.id}`}
-                              </option>
-                            ))
-                          }
-                        </optgroup>
-                      )}
-                    </select>
-                    <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-slate-500">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </div>
-                  </div>
+              <button
+                onClick={() => setIsSpinUpOpen(true)}
+                disabled={isSpinningUp}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-all shadow-lg inline-flex items-center whitespace-nowrap"
+              >
+                {isSpinningUp ? (
+                  <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                ) : (
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
                 )}
-                <button
-                  onClick={handleSpinUp}
-                  disabled={isSpinningUp}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-all shadow-lg inline-flex items-center whitespace-nowrap"
-                >
-                  {isSpinningUp ? (
-                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                  ) : (
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                  )}
-                  <span>{isSpinningUp ? 'Spinning Up...' : 'Spin Up'}</span>
-                </button>
-              </div>
+                <span>{isSpinningUp ? 'Spinning Up...' : 'Spin Up'}</span>
+              </button>
             ) : (
               <IdeLaunchButton server={server} />
             )}
@@ -727,6 +669,21 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
             server={server}
             allServers={servers}
             onSave={onUpdateAllowedPeers}
+          />
+        )}
+        {isSpinUpOpen && (
+          <ConfirmSpinUpModal
+            isOpen={isSpinUpOpen}
+            onClose={() => setIsSpinUpOpen(false)}
+            onConfirm={async (selectedType, selectedSnap) => {
+              await handleSpinUp(selectedType, selectedSnap);
+            }}
+            serverId={server.id}
+            serverName={server.hostname || server.ip}
+            defaultServerType={server.serverType || 'cpx21'}
+            vpsSnapshots={vpsSnapshots}
+            selectedSnapshotId={selectedSnapshotId}
+            onSnapshotChange={handleSnapshotChange}
           />
         )}
       </td>
@@ -756,6 +713,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
 
   const [vpsSnapshots, setVpsSnapshots] = useState<HetznerImage[]>([]);
   const [selectedSnapshotId, setSelectedSnapshotId] = useState<string>('latest');
+  const [isSpinUpOpen, setIsSpinUpOpen] = useState(false);
 
   const isAutomated = !!(server.hetznerServerId || server.contaboInstanceId || server.providerName === 'Hetzner' || server.providerName === 'Contabo' || server.provider === 'hetzner' || server.provider === 'contabo');
   const isHetzner = !!(server.providerName === 'Hetzner' || server.provider === 'hetzner');
@@ -808,11 +766,11 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
     } finally { setIsFetchingLogs(false); }
   };
 
-  const handleSpinUp = async () => {
+  const handleSpinUp = async (customServerType?: string, snapshotIdStr?: string) => {
     setIsSpinningUp(true);
     try {
-      const snapId = selectedSnapshotId === 'latest' ? undefined : parseInt(selectedSnapshotId, 10);
-      const result = await triggerMorningSpinup(server.id, snapId);
+      const snapId = !snapshotIdStr || snapshotIdStr === 'latest' ? undefined : parseInt(snapshotIdStr, 10);
+      const result = await triggerMorningSpinup(server.id, snapId, customServerType);
       if (result.success) {
         if (onRefresh) await onRefresh();
       } else {
@@ -865,7 +823,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl hover:border-indigo-500/50 transition-all group relative overflow-hidden">
+    <div className="bg-white border border-slate-200 rounded-xl hover:border-indigo-500/50 transition-all group relative overflow-hidden shadow-sm">
       <ConfirmSnapshotModal
         isOpen={isConfirmSnapshotOpen}
         onClose={() => setIsConfirmSnapshotOpen(false)}
@@ -909,25 +867,16 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
       )}
 
       {/* Mobile Card Header */}
-      <div className="p-6 border-b border-slate-800 bg-slate-950/50 space-y-4">
+      <div className="p-6 border-b border-slate-200 bg-slate-50 space-y-4">
         <div className="flex justify-between items-start">
           <div className="space-y-1.5">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ubuntu 24.04</span>
-              <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest ${
-                isAutomated 
-                  ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' 
-                  : 'bg-slate-800 text-slate-400 border border-slate-700'
-              }`}>
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Ubuntu 24.04</span>
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                 {server.providerName || 'Custom'}
               </span>
-              {server.serverType && (
-                <span className="text-[10px] font-bold bg-slate-800/60 text-slate-400 border border-slate-750 px-2 py-1 rounded uppercase tracking-widest">
-                  {formatSpecs(server.serverType)}
-                </span>
-              )}
               {isAutomated && (
-                <div className="flex items-center space-x-1.5 bg-slate-800/30 px-2 py-1 rounded border border-slate-800/80 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                <div className="flex items-center space-x-1.5 bg-slate-105 px-2 py-1 rounded border border-slate-200 text-[10px] font-bold uppercase tracking-wider text-slate-500" title={server.status === 'off' ? "SLEEPING = Server powered off, snapshot taken, server deleted - this ensures you only pay for what you use." : undefined}>
                   {server.status === 'ready' ? (
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
                   ) : server.status === 'waiting-for-bootstrap' ? (
@@ -937,30 +886,30 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
                   ) : server.status === 'off' && scheduleConfig?.enabled ? (
                     <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)] animate-pulse" />
                   ) : (
-                    <span className="h-1.5 w-1.5 rounded-full bg-slate-600" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
                   )}
                   <span>{server.status === 'off' ? 'sleeping' : (server.detailedStatus || server.status)}</span>
                 </div>
               )}
             </div>
             <div className="flex flex-col space-y-1">
-              <h3 className="text-xl font-extrabold text-white tracking-tight text-left">{displayHostname}</h3>
+              <h3 className="text-xl font-extrabold text-slate-900 tracking-tight text-left">{displayHostname}</h3>
               
               {server.serverSpecs && (
-                <span className="text-xs font-medium text-slate-400 leading-tight text-left">
+                <span className="text-xs font-medium text-slate-500 leading-tight text-left">
                   {server.serverSpecs}
                 </span>
               )}
               
               <div className="flex items-center space-x-2 text-xs font-mono text-slate-400">
-                {server.status === 'off' && scheduleConfig?.latestSnapshotDescription ? (
-                  <span className="text-slate-500">{server.ip}</span>
+                {server.status === 'off' ? (
+                  <span className="text-slate-400">{server.ip}</span>
                 ) : (
                   <>
                     <span>{server.ip}</span>
                     <CopyButton value={server.ip} />
                     {server.rootPassword && (
-                      <div className="flex items-center space-x-1.5 pl-1.5 border-l border-slate-800">
+                      <div className="flex items-center space-x-1.5 pl-1.5 border-l border-slate-200">
                         <span className="text-[10px] font-bold text-slate-500 uppercase">PWD</span>
                         <CopyButton value={server.rootPassword} />
                       </div>
@@ -969,14 +918,8 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
                 )}
               </div>
               
-              <div className="flex flex-row justify-between items-center mt-1 text-[10px] font-mono text-slate-500 w-full font-mono text-left">
-                {server.status === 'off' && scheduleConfig?.latestSnapshotDescription ? (
-                  <span className="text-xs font-bold text-indigo-400 uppercase tracking-wide font-mono">
-                    {scheduleConfig.latestSnapshotDescription}
-                  </span>
-                ) : (
-                  <span />
-                )}
+              <div className="flex flex-row justify-between items-center mt-1 text-[10px] font-mono text-slate-550 w-full font-mono text-left">
+                <span />
                 <span>
                   {server.createdAt ? new Date(server.createdAt).toLocaleString('en-US', {
                     month: 'short',
@@ -994,7 +937,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
               <button
                 onClick={handleDelete}
                 disabled={server.isLocked || isDeleting || isReinstalling || isFetchingLogs}
-                className="p-2 text-slate-500 hover:text-rose-500 disabled:opacity-50"
+                className="p-2 text-slate-400 hover:text-rose-500 disabled:opacity-50"
               >
                 {isDeleting ? (
                   <div className="h-5 w-5 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
@@ -1010,7 +953,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
           <button
             onClick={handleFetchLogs}
             disabled={isFetchingLogs || isDeleting || isReinstalling}
-            className="flex-1 py-2 text-xs font-bold uppercase bg-slate-800 text-slate-300 rounded-lg disabled:opacity-50 flex items-center justify-center"
+            className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg disabled:opacity-50 flex items-center justify-center"
           >
             {isFetchingLogs && (
               <div className="h-3.5 w-3.5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin mr-1.5" />
@@ -1020,7 +963,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
           <button
             onClick={() => setIsReinstallModalOpen(true)}
             disabled={isFetchingLogs || isDeleting || isReinstalling}
-            className="flex-1 py-2 text-xs font-bold uppercase bg-slate-800 text-slate-300 rounded-lg disabled:opacity-50 flex items-center justify-center"
+            className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg disabled:opacity-50 flex items-center justify-center"
           >
             {isReinstalling && (
               <div className="h-3.5 w-3.5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mr-1.5" />
@@ -1031,7 +974,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
             <button
               onClick={() => setIsApiAuthOpen(true)}
               disabled={isDeleting || isReinstalling}
-              className="flex-1 py-2 text-xs font-bold uppercase bg-slate-800 text-slate-300 rounded-lg disabled:opacity-50"
+              className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg disabled:opacity-50"
             >
               API Auth
             </button>
@@ -1042,8 +985,8 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
               disabled={isDeleting || isReinstalling}
               className={`relative flex-1 py-2 text-xs font-bold uppercase rounded-lg transition-all disabled:opacity-50 ${
                 scheduleConfig?.enabled
-                  ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
-                  : 'bg-slate-800 text-slate-300'
+                  ? 'bg-indigo-50 text-indigo-600 border border-indigo-200'
+                  : 'bg-slate-105 hover:bg-slate-200 text-slate-700'
               }`}
             >
               {scheduleConfig?.enabled && (
@@ -1056,7 +999,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
             <button
               onClick={() => setIsConfirmSnapshotOpen(true)}
               disabled={isSnapshotting || isDeleting || isReinstalling}
-              className="flex-1 py-2 text-xs font-bold uppercase bg-slate-800 hover:bg-slate-705 hover:bg-slate-800/80 text-slate-300 rounded-lg disabled:opacity-50 flex items-center justify-center"
+              className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg disabled:opacity-50 flex items-center justify-center"
             >
               {isSnapshotting && (
                 <div className="h-3.5 w-3.5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin mr-1.5" />
@@ -1071,13 +1014,13 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
         <div className="space-y-3">
           <div className="flex justify-between items-center">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Projects</span>
-            <button onClick={() => setIsProjectModalOpen(true)} className="text-xs font-bold text-indigo-500 hover:text-indigo-400 transition-colors">+ Add Domain</button>
+            <button onClick={() => setIsProjectModalOpen(true)} className="text-xs font-bold text-indigo-655 hover:text-indigo-800 transition-colors">+ Add Domain</button>
           </div>
           {server.projects?.map(p => (
-            <div key={p.domain} className="flex justify-between items-center bg-slate-950/30 p-2 rounded-lg border border-slate-800/50">
-              <span className="text-sm font-mono text-indigo-400 truncate max-w-[200px]">{p.domain}</span>
+            <div key={p.domain} className="flex justify-between items-center bg-slate-50 p-2 rounded-lg border border-slate-200">
+              <span className="text-sm font-mono text-indigo-600 hover:text-indigo-800 truncate max-w-[200px]">{p.domain}</span>
               <div className="flex space-x-2">
-                <button onClick={() => { setEditingDomain({ domain: p.domain, port: p.port || 80 }); setIsProjectModalOpen(true); }} className="text-slate-600 hover:text-white"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" /></svg></button>
+                <button onClick={() => { setEditingDomain({ domain: p.domain, port: p.port || 80 }); setIsProjectModalOpen(true); }} className="text-slate-400 hover:text-slate-700"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" /></svg></button>
                 <button
                   onClick={async () => {
                     if (confirm(`Delete ${p.domain}?`)) {
@@ -1090,7 +1033,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
                     }
                   }}
                   disabled={deletingDomain === p.domain}
-                  className="text-slate-600 hover:text-rose-500 disabled:opacity-50"
+                  className="text-slate-400 hover:text-rose-500 disabled:opacity-50"
                 >
                   {deletingDomain === p.domain ? (
                     <div className="w-3.5 h-3.5 border border-current border-t-transparent rounded-full animate-spin" />
@@ -1105,66 +1048,20 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
 
         <div className="flex flex-col space-y-2 mt-4">
           {server.status === 'off' ? (
-            <div className="flex flex-col space-y-2">
-              {isHetzner && vpsSnapshots.length > 0 && (
-                <div className="flex flex-col space-y-1">
-                  <label className="text-[10px] uppercase font-bold tracking-wider text-slate-500">Restore Snapshot</label>
-                  <div className="relative flex items-center">
-                    <select
-                      value={selectedSnapshotId}
-                      onChange={(e) => handleSnapshotChange(e.target.value)}
-                      disabled={isSpinningUp}
-                      className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500 w-full appearance-none cursor-pointer pr-10 font-medium"
-                    >
-                      <option value="latest">Latest Snapshot (Auto)</option>
-                      {vpsSnapshots.some(s => s.labels && s.labels['devbox-server-id'] === server.id) && (
-                        <optgroup label="This DevBox's Snapshots">
-                          {vpsSnapshots
-                            .filter(s => s.labels && s.labels['devbox-server-id'] === server.id)
-                            .map(s => (
-                              <option key={s.id} value={s.id.toString()}>
-                                {s.description || `Snapshot #${s.id}`}
-                              </option>
-                            ))
-                          }
-                        </optgroup>
-                      )}
-                      {vpsSnapshots.some(s => !s.labels || s.labels['devbox-server-id'] !== server.id) && (
-                        <optgroup label="Other Compatible Snapshots">
-                          {vpsSnapshots
-                            .filter(s => !s.labels || s.labels['devbox-server-id'] !== server.id)
-                            .map(s => (
-                              <option key={s.id} value={s.id.toString()}>
-                                {s.description || `Snapshot #${s.id}`}
-                              </option>
-                            ))
-                          }
-                        </optgroup>
-                      )}
-                    </select>
-                    <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-500">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
+            <button
+              onClick={() => setIsSpinUpOpen(true)}
+              disabled={isSpinningUp}
+              className="w-full py-2.5 justify-center bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-all shadow-lg inline-flex items-center whitespace-nowrap"
+            >
+              {isSpinningUp ? (
+                <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+              ) : (
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
               )}
-              <button
-                onClick={handleSpinUp}
-                disabled={isSpinningUp}
-                className="w-full py-2.5 justify-center bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-all shadow-lg inline-flex items-center whitespace-nowrap"
-              >
-                {isSpinningUp ? (
-                  <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                ) : (
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                )}
-                <span>{isSpinningUp ? 'Spinning Up...' : 'Spin Up'}</span>
-              </button>
-            </div>
+              <span>{isSpinningUp ? 'Spinning Up...' : 'Spin Up'}</span>
+            </button>
           ) : (
             <IdeLaunchButton server={server} fullWidth />
           )}
@@ -1189,6 +1086,21 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
           server={server}
           allServers={servers}
           onSave={onUpdateAllowedPeers}
+        />
+      )}
+      {isSpinUpOpen && (
+        <ConfirmSpinUpModal
+          isOpen={isSpinUpOpen}
+          onClose={() => setIsSpinUpOpen(false)}
+          onConfirm={async (selectedType, selectedSnap) => {
+            await handleSpinUp(selectedType, selectedSnap);
+          }}
+          serverId={server.id}
+          serverName={server.hostname || server.ip}
+          defaultServerType={server.serverType || 'cpx21'}
+          vpsSnapshots={vpsSnapshots}
+          selectedSnapshotId={selectedSnapshotId}
+          onSnapshotChange={handleSnapshotChange}
         />
       )}
     </div>

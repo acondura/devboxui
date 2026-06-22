@@ -135,7 +135,8 @@ export async function runMorningWorkflow(
   serverId: string,
   userEmail: string,
   isManual?: boolean,
-  customSnapshotId?: number
+  customSnapshotId?: number,
+  customServerType?: string
 ): Promise<{ success: boolean; message: string; newServerId?: number; ip?: string }> {
   const env = await getCloudflareEnv();
   const kv = env.KV;
@@ -226,7 +227,7 @@ export async function runMorningWorkflow(
   const result = await hetznerApi.createServerFromSnapshot(
     serverName,
     snapshotToRestore,
-    sched.serverType,
+    customServerType || sched.serverType,
     sched.location,
     sshKeyIds,
     bootstrapScript
@@ -434,9 +435,9 @@ export async function runEveningWorkflow(
 // Manual trigger server actions (called from UI buttons)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function triggerMorningSpinup(serverId: string, customSnapshotId?: number) {
+export async function triggerMorningSpinup(serverId: string, customSnapshotId?: number, customServerType?: string) {
   const userEmail = await getIdentity();
-  return runMorningWorkflow(serverId, userEmail, true, customSnapshotId);
+  return runMorningWorkflow(serverId, userEmail, true, customSnapshotId, customServerType);
 }
 
 export async function triggerEveningSnapshot(serverId: string, customPrefix?: string) {

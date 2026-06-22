@@ -170,7 +170,7 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-50 font-sans">
+    <div className="min-h-screen bg-white text-slate-900 font-sans">
       <AddServerModal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
@@ -188,8 +188,8 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
       />
 
       {/* Top Navigation */}
-      <nav className="border-b border-slate-800 bg-slate-950 px-6 py-4 flex justify-between items-center sticky top-0 z-40">
-        <Link href="/" className="font-bold text-xl tracking-tight text-white flex items-center space-x-2 hover:opacity-80 transition-opacity">
+      <nav className="border-b border-slate-200 bg-white px-6 py-4 flex justify-between items-center sticky top-0 z-40">
+        <Link href="/" className="font-bold text-xl tracking-tight text-slate-900 flex items-center space-x-2 hover:opacity-80 transition-opacity">
           <div className="h-8 w-8 bg-indigo-600 rounded-lg flex items-center justify-center">
             <span className="text-white text-lg font-black">D</span>
           </div>
@@ -197,14 +197,14 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
         </Link>
         
         <div className="flex items-center space-x-3">
-          <div className="hidden sm:block text-xs text-slate-400 font-mono bg-slate-800/50 px-3 py-1.5 rounded-md border border-slate-700">
+          <div className="hidden sm:block text-xs text-slate-650 font-mono bg-slate-50 px-3 py-1.5 rounded-md border border-slate-250">
             {userEmail}
           </div>
 
           {isAdmin && (
             <Link 
               href="/admin"
-              className="flex items-center space-x-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-indigo-400 hover:text-indigo-300 text-[10px] font-bold uppercase tracking-wider rounded-md border border-slate-700 transition-all group"
+              className="flex items-center space-x-2 px-3 py-1.5 bg-slate-105 hover:bg-slate-200 text-indigo-600 hover:text-indigo-700 text-[10px] font-bold uppercase tracking-wider rounded-md border border-slate-250 transition-all group"
               title="Admin Roadmap"
             >
               <svg className="w-3.5 h-3.5 group-hover:rotate-12 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -216,7 +216,7 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
 
           <button 
             onClick={() => setIsSettingsOpen(true)}
-            className="p-1.5 text-slate-400 hover:text-white rounded-md border border-slate-800 hover:bg-slate-800 transition-colors"
+            className="p-1.5 text-slate-500 hover:text-slate-900 rounded-md border border-slate-200 hover:bg-slate-100 transition-colors"
             title="Settings"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -227,7 +227,7 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
           
           <button 
             onClick={handleLogout}
-            className="text-xs font-bold text-slate-400 hover:text-white px-3 py-1.5 rounded-md border border-slate-800 hover:bg-slate-800 transition-colors"
+            className="text-xs font-bold text-slate-500 hover:text-slate-900 px-3 py-1.5 rounded-md border border-slate-200 hover:bg-slate-100 transition-colors"
           >
             Logout
           </button>
@@ -239,8 +239,8 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
           <div className="mb-10 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
             <div>
-              <h2 className="text-3xl font-extrabold text-white tracking-tight uppercase">Dashboard</h2>
-              <p className="text-slate-400 text-sm mt-1">Manage and provision your team&apos;s cloud development servers.</p>
+              <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight uppercase">Dashboard</h2>
+              <p className="text-slate-500 text-sm mt-1">Manage and provision your team&apos;s cloud development servers.</p>
             </div>
             
             <button 
