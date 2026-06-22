@@ -1,9 +1,9 @@
 'use server';
 
-import { ServerConfig } from './types';
+import { ServerConfig, ScheduleConfig } from './types';
 import { getCloudflareEnv, getIdentity } from '@/lib/auth';
 import { CloudflareApiService } from '@/lib/cloudflare-api';
-import { HetznerApiService } from '@/lib/hetzner-api';
+import { HetznerApiService, HetznerImage } from '@/lib/hetzner-api';
 import { ContaboApiService } from '@/lib/contabo-api';
 import { formatRsaPublicKey, formatPrivateKey } from '@/lib/ssh-utils';
 
@@ -881,6 +881,114 @@ export async function getServers() {
   if (hetznerToken) {
     try {
       const hetznerApi = new HetznerApiService(env, hetznerToken);
+
+      // Auto-healing: Discover and reconstruct missing servers from Hetzner snapshots
+      try {
+        const snapshots = await hetznerApi.getSnapshots().catch(() => []);
+        const kvServerIds = new Set(kvServers.map(s => s.id));
+        const missingSnapshots = snapshots.filter(snap => {
+          const sId = snap.labels?.['devbox-server-id'];
+          return sId && !kvServerIds.has(sId);
+        });
+
+        if (missingSnapshots.length > 0) {
+          const missingSnapshotsByServerId: Record<string, HetznerImage[]> = {};
+          for (const snap of missingSnapshots) {
+            const sId = snap.labels['devbox-server-id'];
+            if (!missingSnapshotsByServerId[sId]) {
+              missingSnapshotsByServerId[sId] = [];
+            }
+            missingSnapshotsByServerId[sId].push(snap);
+          }
+
+          const cfApi = new CloudflareApiService(env);
+
+          for (const sId of Object.keys(missingSnapshotsByServerId)) {
+            const serverSnaps = missingSnapshotsByServerId[sId];
+            // Sort descending by created date
+            serverSnaps.sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime());
+            const latestSnap = serverSnaps[0];
+
+            let cleanServerName = latestSnap.description.split('--')[0] || `devbox-${sId.slice(0, 8)}`;
+            cleanServerName = cleanServerName.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+            const hostname = `${cleanServerName}-code.devboxui.com`;
+            const userName = getSafeUsername(undefined, userEmail);
+
+            let tunnelId: string | undefined = undefined;
+            let tunnelToken: string | undefined = undefined;
+
+            try {
+              console.log(`Auto-healing: Recreating Cloudflare Tunnel for restored server ${sId}...`);
+              const tunnelResult = await cfApi.createTunnel(`tunnel-${sId}`);
+              tunnelId = tunnelResult.id;
+              tunnelToken = tunnelResult.token;
+
+              await cfApi.setupHostname(hostname, tunnelResult.id);
+              await cfApi.setupAccess(hostname, userEmail);
+
+              const logsHostname = `${cleanServerName}-logs.devboxui.com`;
+              await cfApi.setupHostname(logsHostname, tunnelResult.id, "http://localhost:8000");
+              await cfApi.setupAccess(logsHostname, userEmail);
+            } catch (err) {
+              console.error(`Failed to recreate Cloudflare tunnel for auto-healed server ${sId}:`, err);
+            }
+
+            const schedKey = `schedule:${userEmail}:${sId}`;
+            const existingSchedVal = await kv.get(schedKey);
+            let scheduleConfig: ScheduleConfig;
+            if (existingSchedVal) {
+              scheduleConfig = JSON.parse(existingSchedVal) as ScheduleConfig;
+              scheduleConfig.latestSnapshotId = latestSnap.id;
+              scheduleConfig.latestSnapshotDescription = latestSnap.description;
+              scheduleConfig.latestSnapshotDate = latestSnap.created.slice(0, 10);
+              await kv.put(schedKey, JSON.stringify(scheduleConfig));
+            } else {
+              scheduleConfig = {
+                enabled: false,
+                timezone: 'Europe/Bucharest',
+                spinupTime: '09:00',
+                snapshotTime: '18:00',
+                serverType: 'cpx21',
+                location: 'nbg1',
+                latestSnapshotId: latestSnap.id,
+                latestSnapshotDescription: latestSnap.description,
+                latestSnapshotDate: latestSnap.created.slice(0, 10)
+              };
+              await kv.put(schedKey, JSON.stringify(scheduleConfig));
+            }
+
+            const reconstructed: ServerConfig = {
+              id: sId,
+              ip: 'pending',
+              userName,
+              userEmail,
+              status: 'off',
+              detailedStatus: 'Server is off',
+              sshPrivateKey: settings?.sshPrivateKey || '',
+              sshPublicKey: settings?.sshPublicKey || '',
+              createdAt: latestSnap.created,
+              updatedAt: new Date().toISOString(),
+              tunnelUrl: `https://${hostname}/?folder=/home/${userName}/workspace`,
+              tunnelId,
+              tunnelToken,
+              provisioningToken: crypto.randomUUID(),
+              projects: [],
+              provider: 'hetzner',
+              providerName: 'Hetzner',
+              hostname,
+              scheduleConfig
+            };
+
+            const sKey = `servers:${userEmail}:${sId}`;
+            await kv.put(sKey, JSON.stringify(reconstructed));
+            kvServers.push(reconstructed);
+            console.log(`Auto-healing: Successfully reconstructed server config for ${sId}`);
+          }
+        }
+      } catch (err) {
+        console.error("Auto-healing missing servers failed:", err);
+      }
+
       const hetznerServers = await hetznerApi.getAllServers();
       const hetznerMap = new Map(hetznerServers.map(hs => [hs.id.toString(), hs]));
       const finalServers: ServerConfig[] = [];
@@ -1249,19 +1357,8 @@ export async function deleteServer(serverId: string) {
       }
     }
 
-    // Delete Hetzner Server and associated snapshots
+    // Delete Hetzner Server (Do NOT delete associated snapshots to prevent permanent data loss)
     if (config.provider === 'hetzner' || config.hetznerServerId) {
-      try {
-        console.log(`Searching for snapshots associated with server ${serverId}...`);
-        const snapshots = await hetznerApi.getSnapshots(`devbox-server-id=${serverId}`);
-        for (const snap of snapshots) {
-          console.log(`Deleting snapshot ${snap.id} (${snap.description})...`);
-          await hetznerApi.deleteSnapshot(snap.id).catch(e => console.error(`Failed to delete snapshot ${snap.id}:`, e));
-        }
-      } catch (e) {
-        console.error("Failed to clean up associated snapshots:", e);
-      }
-
       if (config.hetznerServerId) {
         console.log(`Deleting Hetzner server ${config.hetznerServerId}...`);
         await hetznerApi.deleteServer(config.hetznerServerId).catch(e => console.error("Hetzner deletion failed:", e));
