@@ -35,14 +35,14 @@ export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden transform transition-all animate-in zoom-in duration-200">
-        <div className="px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-gradient-to-r from-indigo-500/10 to-transparent">
-          <h3 className="text-lg font-bold text-white flex items-center space-x-2">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden transform transition-all animate-in zoom-in duration-200">
+        <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+          <h3 className="text-lg font-bold text-slate-900 flex items-center space-x-2">
             <span className="text-xl">🚀</span>
             <span>Share Feedback</span>
           </h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-900 transition-colors">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -51,13 +51,13 @@ export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
 
         {success ? (
           <div className="p-12 text-center space-y-4">
-            <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto animate-bounce">
-              <svg className="w-8 h-8 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mx-auto animate-bounce border border-emerald-100">
+              <svg className="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h4 className="text-xl font-bold text-white">Thank You!</h4>
-            <p className="text-slate-400 text-sm">Your feedback helps us build the future of DevBoxUI.</p>
+            <h4 className="text-xl font-bold text-slate-900">Thank You!</h4>
+            <p className="text-slate-500 text-sm">Your feedback helps us build the future of DevBoxUI.</p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="p-6 space-y-5">
@@ -66,14 +66,14 @@ export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
               <div className="grid grid-cols-3 gap-2">
                 {(['feature', 'bug', 'improvement'] as const).map((t) => (
                   <button
-                    key={t}
-                    type="button"
-                    onClick={() => setType(t)}
-                    className={`py-2.5 px-2 rounded-lg text-[10px] font-bold uppercase tracking-wide border transition-all ${
-                      type === t 
-                        ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-600/20' 
-                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
-                    }`}
+                     key={t}
+                     type="button"
+                     onClick={() => setType(t)}
+                     className={`py-2.5 px-2 rounded-lg text-[10px] font-bold uppercase tracking-wide border transition-all ${
+                       type === t 
+                         ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-600/20' 
+                         : 'bg-white border-slate-200 text-slate-600 hover:border-slate-350'
+                     }`}
                   >
                     {t === 'feature' ? 'New Feature' : t === 'improvement' ? 'Existing Feature' : t}
                   </button>
@@ -89,7 +89,7 @@ export function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="What's on your mind?"
                 rows={4}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-white text-sm placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all resize-none"
+                className="w-full bg-white border border-slate-300 rounded-xl p-4 text-slate-900 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all resize-none"
               />
             </div>
 
