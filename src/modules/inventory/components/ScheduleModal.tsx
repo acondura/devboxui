@@ -250,7 +250,7 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                     id={`schedule-toggle-${serverId}`}
                     onClick={() => setConfig(c => ({ ...c, enabled: !c.enabled }))}
                     className={`relative w-12 h-6 rounded-full transition-all duration-300 focus:outline-none ${
-                      config.enabled ? 'bg-indigo-600 shadow-lg shadow-indigo-600/30' : 'bg-slate-250'
+                      config.enabled ? 'bg-indigo-600 shadow-lg shadow-indigo-600/30' : 'bg-slate-200 border border-slate-300'
                     }`}
                     role="switch"
                     aria-checked={config.enabled}
@@ -278,7 +278,7 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                           checked={config.spinupEnabled !== false}
                           onChange={e => setConfig(c => ({ ...c, spinupEnabled: e.target.checked }))}
                           disabled={!config.enabled}
-                          className="rounded border-slate-300 bg-white text-indigo-600 focus:ring-indigo-500 focus:ring-offset-0 h-3.5 w-3.5 cursor-pointer disabled:opacity-40"
+                          className="rounded border-slate-300 bg-white text-indigo-600 focus:ring-indigo-500 focus:ring-offset-0 h-3.5 w-3.5 cursor-pointer disabled:bg-slate-100 disabled:border-slate-200 disabled:opacity-60 disabled:cursor-not-allowed"
                         />
                       </div>
                       <input
@@ -302,7 +302,7 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                           checked={config.snapshotEnabled !== false}
                           onChange={e => setConfig(c => ({ ...c, snapshotEnabled: e.target.checked }))}
                           disabled={!config.enabled}
-                          className="rounded border-slate-300 bg-white text-indigo-600 focus:ring-indigo-500 focus:ring-offset-0 h-3.5 w-3.5 cursor-pointer disabled:opacity-40"
+                          className="rounded border-slate-300 bg-white text-indigo-600 focus:ring-indigo-500 focus:ring-offset-0 h-3.5 w-3.5 cursor-pointer disabled:bg-slate-100 disabled:border-slate-200 disabled:opacity-60 disabled:cursor-not-allowed"
                         />
                       </div>
                       <input
@@ -473,8 +473,8 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                       onClick={() => setConfig(c => ({ ...c, skipWeekends: !c.skipWeekends }))}
                       disabled={!config.enabled}
                       className={`relative w-10 h-5 rounded-full transition-all duration-300 focus:outline-none ${
-                        config.skipWeekends ? 'bg-rose-600 shadow-md shadow-rose-600/20' : 'bg-slate-250'
-                      } disabled:opacity-40`}
+                        config.skipWeekends ? 'bg-rose-600 shadow-md shadow-rose-600/20' : 'bg-slate-200 border border-slate-300'
+                      } disabled:opacity-60 disabled:bg-slate-100 disabled:border-slate-200 disabled:cursor-not-allowed`}
                       role="switch"
                       aria-checked={config.skipWeekends}
                     >

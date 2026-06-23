@@ -330,47 +330,6 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
 
   return (
     <tr className="group hover:bg-slate-50 transition-colors border-b border-slate-100">
-      <ConfirmSnapshotModal
-        isOpen={isConfirmSnapshotOpen}
-        onClose={() => setIsConfirmSnapshotOpen(false)}
-        onConfirm={handleSnapshotShutdown}
-        serverName={server.hostname || server.ip}
-      />
-      <AddDomainModal
-        isOpen={isProjectModalOpen}
-        onClose={() => { setIsProjectModalOpen(false); setEditingDomain(null); }}
-        onAdd={(name, port) => editingDomain ? onUpdateDomain(server.id, editingDomain.domain, name, port) : onAddProject(server.id, name, port)}
-        initialData={editingDomain ? { prefix: editingDomain.domain.replace('-web.devboxui.com', '').replace('.devboxui.com', ''), port: editingDomain.port || 80 } : undefined}
-      />
-      <ReinstallModal
-        isOpen={isReinstallModalOpen}
-        onClose={() => setIsReinstallModalOpen(false)}
-        onConfirm={async () => {
-          setIsReinstalling(true);
-          try {
-            await onReinstall?.(server.id);
-            if (onRefresh) await onRefresh();
-          } finally {
-            setIsReinstalling(false);
-            setIsReinstallModalOpen(false);
-          }
-        }}
-        serverName={server.hostname || server.ip}
-        serverId={server.id}
-        provider={server.providerName}
-        isAutomated={isAutomated}
-      />
-      {isScheduleOpen && (
-        <ScheduleModal
-          isOpen={isScheduleOpen}
-          onClose={() => setIsScheduleOpen(false)}
-          serverId={server.id}
-          serverName={server.hostname || server.ip}
-          serverStatus={server.status}
-          onSaved={(cfg) => setScheduleConfig(cfg)}
-          onRefresh={onRefresh}
-        />
-      )}
 
       {/* Status */}
       <td className="py-2.5 px-4">
@@ -647,6 +606,47 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
             )}
           </div>
         </div>
+        <ConfirmSnapshotModal
+          isOpen={isConfirmSnapshotOpen}
+          onClose={() => setIsConfirmSnapshotOpen(false)}
+          onConfirm={handleSnapshotShutdown}
+          serverName={server.hostname || server.ip}
+        />
+        <AddDomainModal
+          isOpen={isProjectModalOpen}
+          onClose={() => { setIsProjectModalOpen(false); setEditingDomain(null); }}
+          onAdd={(name, port) => editingDomain ? onUpdateDomain(server.id, editingDomain.domain, name, port) : onAddProject(server.id, name, port)}
+          initialData={editingDomain ? { prefix: editingDomain.domain.replace('-web.devboxui.com', '').replace('.devboxui.com', ''), port: editingDomain.port || 80 } : undefined}
+        />
+        <ReinstallModal
+          isOpen={isReinstallModalOpen}
+          onClose={() => setIsReinstallModalOpen(false)}
+          onConfirm={async () => {
+            setIsReinstalling(true);
+            try {
+              await onReinstall?.(server.id);
+              if (onRefresh) await onRefresh();
+            } finally {
+              setIsReinstalling(false);
+              setIsReinstallModalOpen(false);
+            }
+          }}
+          serverName={server.hostname || server.ip}
+          serverId={server.id}
+          provider={server.providerName}
+          isAutomated={isAutomated}
+        />
+        {isScheduleOpen && (
+          <ScheduleModal
+            isOpen={isScheduleOpen}
+            onClose={() => setIsScheduleOpen(false)}
+            serverId={server.id}
+            serverName={server.hostname || server.ip}
+            serverStatus={server.status}
+            onSaved={(cfg) => setScheduleConfig(cfg)}
+            onRefresh={onRefresh}
+          />
+        )}
         {isLogsModalOpen && (
           <LogsModal
             isOpen={isLogsModalOpen}

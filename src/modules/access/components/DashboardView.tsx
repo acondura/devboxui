@@ -201,18 +201,7 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
             {userEmail}
           </div>
 
-          {isAdmin && (
-            <Link 
-              href="/admin"
-              className="flex items-center space-x-2 px-3 py-1.5 bg-slate-105 hover:bg-slate-200 text-indigo-600 hover:text-indigo-700 text-[10px] font-bold uppercase tracking-wider rounded-md border border-slate-250 transition-all group"
-              title="Admin Roadmap"
-            >
-              <svg className="w-3.5 h-3.5 group-hover:rotate-12 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
-              <span>Admin</span>
-            </Link>
-          )}
+
 
           <button 
             onClick={() => setIsSettingsOpen(true)}
