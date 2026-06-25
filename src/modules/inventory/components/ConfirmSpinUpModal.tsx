@@ -104,7 +104,7 @@ export function ConfirmSpinUpModal({
           {/* Target Server Details */}
           <div className="space-y-1 bg-slate-50 border border-slate-200 rounded-xl p-4">
             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Target Server</p>
-            <span className="text-base font-bold text-slate-900">{serverName}</span>
+            <span className="text-base font-bold text-slate-900">{serverName.replace('.devboxui.com', '').replace('-direct', '')}</span>
           </div>
 
           {/* VPS Type Selector */}

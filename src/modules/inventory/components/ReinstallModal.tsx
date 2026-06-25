@@ -14,6 +14,7 @@ interface ReinstallModalProps {
 }
 
 export function ReinstallModal({ isOpen, onClose, onConfirm, serverName, serverId, provider, isAutomated }: ReinstallModalProps) {
+  const cleanServerName = serverName.replace('.devboxui.com', '').replace('-direct', '');
   const [isConfirming, setIsConfirming] = useState(false);
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const [bootstrapCommand, setBootstrapCommand] = useState<string | null>(null);
@@ -81,14 +82,14 @@ export function ReinstallModal({ isOpen, onClose, onConfirm, serverName, serverI
               <div className="space-y-1">
                 <p className="text-sm font-bold text-amber-900 uppercase tracking-tight">Destructive Action</p>
                 <p className="text-xs text-amber-800 leading-relaxed">
-                  This will wipe <strong>{serverName}</strong> via API. All data will be permanently lost.
+                  This will wipe <strong>{cleanServerName}</strong> via API. All data will be permanently lost.
                 </p>
               </div>
             </div>
           ) : (
             <div className="space-y-4">
               <p className="text-sm text-slate-650 leading-relaxed">
-                Run this command on <strong>{serverName}</strong> to reinstall the DevBox environment.
+                Run this command on <strong>{cleanServerName}</strong> to reinstall the DevBox environment.
               </p>
               
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">

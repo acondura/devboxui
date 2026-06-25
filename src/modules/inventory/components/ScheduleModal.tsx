@@ -240,7 +240,7 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
             </div>
             <div>
               <h3 className="text-sm font-bold text-slate-900 uppercase tracking-widest">Daily Automation Schedule</h3>
-              <p className="text-[10px] text-slate-500 font-mono mt-0.5">{serverName}</p>
+              <p className="text-[10px] text-slate-500 font-mono mt-0.5">{serverName.replace('.devboxui.com', '').replace('-direct', '')}</p>
             </div>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-900 transition-colors p-1 rounded-md hover:bg-slate-100">
