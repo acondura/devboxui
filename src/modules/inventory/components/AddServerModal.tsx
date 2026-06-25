@@ -1,6 +1,9 @@
+'use client';
+
 import { useState, useEffect } from 'react';
 import { getHetznerOptions, provisionManualServer } from '@/modules/inventory/actions';
 import type { HetznerPricingResponse } from '@/lib/hetzner-api';
+import { Select2 } from './Select2';
 
 interface AddServerModalProps {
   isOpen: boolean;
@@ -480,27 +483,20 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
         {/* Provider Selector */}
         <div className="px-6 py-4 bg-slate-50 border-b border-slate-205">
           <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2.5">Select Cloud Provider</label>
-          <div className="relative">
-            <select
-              value={provider}
-              onChange={(e) => {
-                const selected = providers.find(p => p.id === e.target.value);
-                if (selected?.active) handleProviderSelect(e.target.value as CloudProvider);
-              }}
-              className="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer text-sm font-medium"
-            >
-              {providers.map((p) => (
-                <option key={p.id} value={p.id} disabled={!p.active}>
-                  {p.name} {p.info ? `(${p.info})` : ''} {!p.active ? '— Coming Soon' : ''}
-                </option>
-              ))}
-            </select>
-            <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-500">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </div>
-          </div>
+          <Select2
+            value={provider}
+            onValueChange={(val) => {
+              const selected = providers.find(p => p.id === val);
+              if (selected?.active) handleProviderSelect(val as CloudProvider);
+            }}
+            className="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm font-medium"
+          >
+            {providers.map((p) => (
+              <option key={p.id} value={p.id} disabled={!p.active}>
+                {p.name} {p.info ? `(${p.info})` : ''} {!p.active ? '— Coming Soon' : ''}
+              </option>
+            ))}
+          </Select2>
         </div>
         
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
@@ -537,14 +533,14 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
               <>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Server Type</label>
-                  <select
+                  <Select2
                     value={serverType}
-                    onChange={(e) => {
-                      setServerType(e.target.value);
-                      localStorage.setItem('devbox_last_server_type', e.target.value);
+                    onValueChange={(val) => {
+                      setServerType(val);
+                      localStorage.setItem('devbox_last_server_type', val);
                     }}
                     disabled={isLoadingOptions}
-                    className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer disabled:opacity-50 text-sm font-medium"
+                    className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all disabled:opacity-50 text-sm font-medium"
                   >
                     {isLoadingOptions ? (
                       <option>Loading types...</option>
@@ -569,66 +565,59 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
                         );
                       })
                     )}
-                  </select>
+                  </Select2>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Location</label>
-                  <select
+                  <Select2
                     value={location}
-                    onChange={(e) => {
-                      setLocation(e.target.value);
-                      localStorage.setItem('devbox_last_location', e.target.value);
+                    onValueChange={(val) => {
+                      setLocation(val);
+                      localStorage.setItem('devbox_last_location', val);
                     }}
                     disabled={isLoadingOptions}
-                    className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer disabled:opacity-50 text-sm font-medium"
+                    className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all disabled:opacity-50 text-sm font-medium"
                   >
                     {options.locations.map(l => (
                       <option key={l.id} value={l.name}>{l.city} ({l.name.toUpperCase()})</option>
                     ))}
                     {isLoadingOptions && <option>Loading locations...</option>}
-                  </select>
+                  </Select2>
                 </div>
 
                 <div className="col-span-2">
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">OS Image / Snapshot</label>
-                  <div className="relative">
-                    <select
-                      value={image}
-                      onChange={(e) => {
-                        setImage(e.target.value);
-                        localStorage.setItem('devbox_last_image', e.target.value);
-                      }}
-                      disabled={isLoadingOptions}
-                      className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none cursor-pointer disabled:opacity-50 text-sm font-medium pr-10"
-                    >
-                      {options.snapshots && options.snapshots.length > 0 && (
-                        <optgroup label="Your Snapshots">
-                          {options.snapshots
-                            .filter(s => s.architecture === currentArch)
-                            .map(s => (
-                              <option key={s.id} value={s.id.toString()}>
-                                {s.description || `Snapshot #${s.id}`} (ID: {s.id})
-                              </option>
-                            ))
-                          }
-                        </optgroup>
-                      )}
-                      <optgroup label="System OS Images">
-                        {filteredImages.map(i => (
-                          <option key={i.id} value={i.name ?? ''}>
-                            {i.description || i.name} ({i.name})
-                          </option>
-                        ))}
+                  <Select2
+                    value={image}
+                    onValueChange={(val) => {
+                      setImage(val);
+                      localStorage.setItem('devbox_last_image', val);
+                    }}
+                    disabled={isLoadingOptions}
+                    className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all disabled:opacity-50 text-sm font-medium"
+                  >
+                    {options.snapshots && options.snapshots.length > 0 && (
+                      <optgroup label="Your Snapshots">
+                        {options.snapshots
+                          .filter(s => s.architecture === currentArch)
+                          .map(s => (
+                            <option key={s.id} value={s.id.toString()}>
+                              {s.description || `Snapshot #${s.id}`} (ID: {s.id})
+                            </option>
+                          ))
+                        }
                       </optgroup>
-                      {isLoadingOptions && <option>Loading OS options...</option>}
-                    </select>
-                    <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-500">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </div>
-                  </div>
+                    )}
+                    <optgroup label="System OS Images">
+                      {filteredImages.map(i => (
+                        <option key={i.id} value={i.name ?? ''}>
+                          {i.description || i.name} ({i.name})
+                        </option>
+                      ))}
+                    </optgroup>
+                    {isLoadingOptions && <option>Loading OS options...</option>}
+                  </Select2>
                 </div>
               </>
             )}

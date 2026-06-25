@@ -12,6 +12,7 @@ import { ConfirmSpinUpModal } from './ConfirmSpinUpModal';
 import { ScheduleConfig } from '../types';
 import { triggerMorningSpinup, triggerEveningSnapshot } from '../schedule-actions';
 import type { HetznerImage } from '@/lib/hetzner-api';
+import { Select2 } from './Select2';
 
 interface ServerListProps {
   servers: ServerConfig[];
@@ -126,24 +127,19 @@ export function ServerList(props: ServerListProps) {
         <div className="flex items-center space-x-2 w-full sm:w-auto justify-between sm:justify-end">
           <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">Sort by:</span>
           <div className="flex items-center space-x-1.5">
-            <div className="relative">
-              <select
-                value={sortField}
-                onChange={(e) => handleSort(e.target.value as SortField)}
-                className="appearance-none bg-white border border-slate-250 rounded-lg text-xs text-slate-700 pl-3 pr-8 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer w-full"
-              >
-                <option value="created">Created Date</option>
-                <option value="status">Status</option>
-                <option value="type">Provider</option>
-                <option value="ip">IP Address</option>
-                <option value="os">OS</option>
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-500">
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-            </div>
+            <Select2
+              value={sortField}
+              onValueChange={(val) => handleSort(val as SortField)}
+              minimumResultsForSearch={-1}
+              containerClassName="select-small"
+              className="bg-white border border-slate-250 rounded-lg text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer w-full"
+            >
+              <option value="created">Created Date</option>
+              <option value="status">Status</option>
+              <option value="type">Provider</option>
+              <option value="ip">IP Address</option>
+              <option value="os">OS</option>
+            </Select2>
             <button
               onClick={() => {
                 const nextOrder = sortOrder === 'asc' ? 'desc' : 'asc';

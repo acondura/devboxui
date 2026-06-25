@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import type { HetznerImage } from '@/lib/hetzner-api';
 import { getHetznerOptions } from '../actions';
+import { Select2 } from './Select2';
 
 interface ConfirmSpinUpModalProps {
   isOpen: boolean;
@@ -111,25 +112,18 @@ export function ConfirmSpinUpModal({
             <label className="text-xs font-bold text-slate-700 uppercase tracking-widest block">
               VPS Size (Server Type)
             </label>
-            <div className="relative">
-              <select
-                value={serverType}
-                onChange={(e) => setServerType(e.target.value)}
-                disabled={isSpinningUp}
-                className="w-full bg-white border border-slate-300 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 rounded-xl px-4 py-2.5 text-sm text-slate-900 appearance-none cursor-pointer pr-10 font-medium"
-              >
-                {typesList.map((t) => (
-                  <option key={t.name} value={t.name}>
-                    {formatSpecs(t.name, t.cores, t.memory, t.disk, t.architecture)}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-slate-500">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-            </div>
+            <Select2
+              value={serverType}
+              onValueChange={val => setServerType(val)}
+              disabled={isSpinningUp}
+              className="w-full bg-white border border-slate-300 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 rounded-xl px-4 py-2.5 text-sm text-slate-900 font-medium"
+            >
+              {typesList.map((t) => (
+                <option key={t.name} value={t.name}>
+                  {formatSpecs(t.name, t.cores, t.memory, t.disk, t.architecture)}
+                </option>
+              ))}
+            </Select2>
             {isLoadingTypes && (
               <p className="text-[10px] text-slate-400 animate-pulse">Loading live options from Hetzner...</p>
             )}
@@ -140,43 +134,36 @@ export function ConfirmSpinUpModal({
             <label className="text-xs font-bold text-slate-700 uppercase tracking-widest block">
               Snapshot to Restore
             </label>
-            <div className="relative">
-              <select
-                value={selectedSnapshotId}
-                onChange={(e) => onSnapshotChange(e.target.value)}
-                disabled={isSpinningUp}
-                className="w-full bg-white border border-slate-300 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 rounded-xl px-4 py-2.5 text-sm text-slate-900 appearance-none cursor-pointer pr-10 font-medium"
-              >
-                <option value="latest">Latest Snapshot (Auto)</option>
-                {vpsSnapshots.some((s) => s.labels && s.labels['devbox-server-id'] === serverId) && (
-                  <optgroup label="This DevBox's Snapshots">
-                    {vpsSnapshots
-                      .filter((s) => s.labels && s.labels['devbox-server-id'] === serverId)
-                      .map((s) => (
-                        <option key={s.id} value={s.id.toString()}>
-                          {s.description || `Snapshot #${s.id}`}
-                        </option>
-                      ))}
-                  </optgroup>
-                )}
-                {vpsSnapshots.some((s) => !s.labels || s.labels['devbox-server-id'] !== serverId) && (
-                  <optgroup label="Other Compatible Snapshots">
-                    {vpsSnapshots
-                      .filter((s) => !s.labels || s.labels['devbox-server-id'] !== serverId)
-                      .map((s) => (
-                        <option key={s.id} value={s.id.toString()}>
-                          {s.description || `Snapshot #${s.id}`}
-                        </option>
-                      ))}
-                  </optgroup>
-                )}
-              </select>
-              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-slate-500">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-            </div>
+            <Select2
+              value={selectedSnapshotId}
+              onValueChange={val => onSnapshotChange(val)}
+              disabled={isSpinningUp}
+              className="w-full bg-white border border-slate-300 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 rounded-xl px-4 py-2.5 text-sm text-slate-900 font-medium"
+            >
+              <option value="latest">Latest Snapshot (Auto)</option>
+              {vpsSnapshots.some((s) => s.labels && s.labels['devbox-server-id'] === serverId) && (
+                <optgroup label="This DevBox's Snapshots">
+                  {vpsSnapshots
+                    .filter((s) => s.labels && s.labels['devbox-server-id'] === serverId)
+                    .map((s) => (
+                      <option key={s.id} value={s.id.toString()}>
+                        {s.description || `Snapshot #${s.id}`}
+                      </option>
+                    ))}
+                </optgroup>
+              )}
+              {vpsSnapshots.some((s) => !s.labels || s.labels['devbox-server-id'] !== serverId) && (
+                <optgroup label="Other Compatible Snapshots">
+                  {vpsSnapshots
+                    .filter((s) => !s.labels || s.labels['devbox-server-id'] !== serverId)
+                    .map((s) => (
+                      <option key={s.id} value={s.id.toString()}>
+                        {s.description || `Snapshot #${s.id}`}
+                      </option>
+                    ))}
+                </optgroup>
+              )}
+            </Select2>
           </div>
 
           {/* Action Buttons */}

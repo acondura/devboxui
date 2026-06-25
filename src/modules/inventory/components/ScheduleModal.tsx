@@ -6,16 +6,36 @@ import { getScheduleConfig, saveScheduleConfig, triggerMorningSpinup, triggerEve
 import { getHetznerOptions } from '../actions';
 import { HetznerServerType, HetznerLocation, HetznerPricingResponse } from '@/lib/hetzner-api';
 import { ConfirmSnapshotModal } from './ConfirmSnapshotModal';
+import { Select2 } from './Select2';
 
-// Common IANA timezones for the picker
-const TIMEZONES = [
-  'Europe/Bucharest', 'Europe/London', 'Europe/Paris', 'Europe/Berlin',
-  'Europe/Amsterdam', 'Europe/Warsaw', 'Europe/Kiev',
-  'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
-  'America/Toronto', 'America/Sao_Paulo',
-  'Asia/Dubai', 'Asia/Kolkata', 'Asia/Singapore', 'Asia/Tokyo', 'Asia/Seoul',
-  'Australia/Sydney', 'Pacific/Auckland', 'UTC'
-];
+// Dynamic full IANA timezone list with fallback
+const TIMEZONES = (() => {
+  try {
+    return Intl.supportedValuesOf('timeZone');
+  } catch {
+    return [
+      'UTC',
+      'Africa/Cairo', 'Africa/Johannesburg', 'Africa/Lagos', 'Africa/Nairobi',
+      'America/Anchorage', 'America/Argentina/Buenos_Aires', 'America/Bogota', 'America/Caracas',
+      'America/Chicago', 'America/Denver', 'America/Halifax', 'America/Los_Angeles',
+      'America/Mexico_City', 'America/New_York', 'America/Phoenix', 'America/Santiago',
+      'America/Sao_Paulo', 'America/Toronto', 'America/Vancouver',
+      'Asia/Almaty', 'Asia/Baghdad', 'Asia/Bangkok', 'Asia/Dubai', 'Asia/Hong_Kong',
+      'Asia/Jakarta', 'Asia/Jerusalem', 'Asia/Kabul', 'Asia/Kolkata', 'Asia/Riyadh',
+      'Asia/Seoul', 'Asia/Singapore', 'Asia/Taipei', 'Asia/Tashkent', 'Asia/Tokyo',
+      'Atlantic/Azores', 'Atlantic/Cape_Verde',
+      'Australia/Adelaide', 'Australia/Brisbane', 'Australia/Darwin', 'Australia/Melbourne',
+      'Australia/Perth', 'Australia/Sydney',
+      'Europe/Amsterdam', 'Europe/Athens', 'Europe/Belgrade', 'Europe/Berlin', 'Europe/Brussels',
+      'Europe/Bucharest', 'Europe/Budapest', 'Europe/Copenhagen', 'Europe/Dublin', 'Europe/Helsinki',
+      'Europe/Istanbul', 'Europe/Kiev', 'Europe/Lisbon', 'Europe/London', 'Europe/Madrid',
+      'Europe/Moscow', 'Europe/Paris', 'Europe/Prague', 'Europe/Rome', 'Europe/Stockholm',
+      'Europe/Vienna', 'Europe/Warsaw', 'Europe/Zurich',
+      'Pacific/Auckland', 'Pacific/Chatham', 'Pacific/Fakaofo', 'Pacific/Fiji', 'Pacific/Guam',
+      'Pacific/Honolulu', 'Pacific/Noumea', 'Pacific/Pago_Pago', 'Pacific/Port_Moresby'
+    ];
+  }
+})();
 
 function getIpv4Pricing(pricing: HetznerPricingResponse | null | undefined, location: string) {
   const defaults = { monthly: 0.60, hourly: 0.0008 };
@@ -194,8 +214,10 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
   const monthlyRunningHours = activeHoursPerDay * 30;
   const activeCostMonthly = monthlyRunningHours * hourlyPriceGross;
   const snapshotCostMonthly = diskSizeGb * 0.013; 
-  const totalScheduleCost = config.enabled ? (activeCostMonthly + snapshotCostMonthly) : monthlyPriceGross;
-  const monthlySavings = config.enabled ? Math.max(0, monthlyPriceGross - totalScheduleCost) : 0;
+
+  const bothTimesEnabled = config.enabled && config.spinupEnabled !== false && config.snapshotEnabled !== false;
+  const totalScheduleCost = bothTimesEnabled ? (activeCostMonthly + snapshotCostMonthly) : monthlyPriceGross;
+  const monthlySavings = bothTimesEnabled ? Math.max(0, monthlyPriceGross - totalScheduleCost) : 0;
   const savingsPercent = monthlyPriceGross > 0 ? (monthlySavings / monthlyPriceGross) * 100 : 0;
 
   return (
@@ -318,18 +340,18 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
 
                   {/* Timezone */}
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Timezone</label>
-                    <select
+                    <label className="text-[10px] font-bold text-slate-550 uppercase tracking-widest">Timezone</label>
+                    <Select2
                       id={`timezone-${serverId}`}
                       value={config.timezone}
-                      onChange={e => setConfig(c => ({ ...c, timezone: e.target.value }))}
+                      onValueChange={val => setConfig(c => ({ ...c, timezone: val }))}
                       disabled={!config.enabled}
                       className="w-full bg-white border border-slate-300 text-slate-900 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-45"
                     >
                       {TIMEZONES.map(tz => (
                         <option key={tz} value={tz}>{tz}</option>
                       ))}
-                    </select>
+                    </Select2>
                   </div>
                 </div>
 
@@ -338,74 +360,60 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                   <Label>Spin-up Configuration</Label>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Server Type</label>
-                      <div className="relative">
-                        <select
-                          id={`server-type-${serverId}`}
-                          value={config.serverType}
-                          onChange={e => setConfig(c => ({ ...c, serverType: e.target.value }))}
-                          disabled={!config.enabled}
-                          className="w-full bg-white border border-slate-300 text-slate-900 text-sm rounded-lg px-3 py-2.5 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-45 font-mono appearance-none cursor-pointer font-medium"
-                        >
-                          {serverTypes.map(t => {
-                            const priceObj = t.prices.find(p => p.location === (config.location || 'nbg1')) || t.prices[0];
-                            const ipv4 = getIpv4Pricing(pricing, config.location || 'nbg1');
-                            const monthlyGross = priceObj ? `${(parseFloat(priceObj.price_monthly?.gross || '0') + ipv4.monthly).toFixed(2)}€` : '';
-                            const isDisabled = t.disk < originalDiskSize;
-                            return (
-                              <option 
-                                key={t.id} 
-                                value={t.name} 
-                                disabled={isDisabled}
-                                className="bg-white text-slate-900 text-xs disabled:text-slate-400"
-                              >
-                                {t.name.toUpperCase()} ({t.cores}C / {t.memory}G / {t.disk}GB SSD) {monthlyGross ? `— ${monthlyGross}/mo` : ''} {isDisabled ? '(Disk too small)' : ''}
-                              </option>
-                            );
-                          })}
-                          {serverTypes.length === 0 && (
-                            <option value={config.serverType || 'cpx21'}>
-                              {(config.serverType || 'cpx21').toUpperCase()} (Loading...)
+                      <label className="text-[10px] font-bold text-slate-550 uppercase tracking-widest">Server Type</label>
+                      <Select2
+                        id={`server-type-${serverId}`}
+                        value={config.serverType}
+                        onValueChange={val => setConfig(c => ({ ...c, serverType: val }))}
+                        disabled={!config.enabled}
+                        className="w-full bg-white border border-slate-300 text-slate-900 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-45 font-mono font-medium"
+                      >
+                        {serverTypes.map(t => {
+                          const priceObj = t.prices.find(p => p.location === (config.location || 'nbg1')) || t.prices[0];
+                          const ipv4 = getIpv4Pricing(pricing, config.location || 'nbg1');
+                          const monthlyGross = priceObj ? `${(parseFloat(priceObj.price_monthly?.gross || '0') + ipv4.monthly).toFixed(2)}€` : '';
+                          const isDisabled = t.disk < originalDiskSize;
+                          return (
+                            <option 
+                              key={t.id} 
+                              value={t.name} 
+                              disabled={isDisabled}
+                              className="bg-white text-slate-900 text-xs disabled:text-slate-400"
+                            >
+                              {t.name.toUpperCase()} ({t.cores}C / {t.memory}G / {t.disk}GB SSD) {monthlyGross ? `— ${monthlyGross}/mo` : ''} {isDisabled ? '(Disk too small)' : ''}
                             </option>
-                          )}
-                        </select>
-                        <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-slate-500">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                          </svg>
-                        </div>
-                      </div>
+                          );
+                        })}
+                        {serverTypes.length === 0 && (
+                          <option value={config.serverType || 'cpx21'}>
+                            {(config.serverType || 'cpx21').toUpperCase()} (Loading...)
+                          </option>
+                        )}
+                      </Select2>
                       <p className="text-[10px] text-slate-500 leading-normal">
                         Choose the hardware capacity. Note: Downscaling to a size with a smaller SSD than your current snapshot ({originalDiskSize}GB) is disabled.
                       </p>
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Location</label>
-                      <div className="relative">
-                        <select
-                          id={`location-${serverId}`}
-                          value={config.location}
-                          onChange={e => setConfig(c => ({ ...c, location: e.target.value }))}
-                          disabled={!config.enabled}
-                          className="w-full bg-white border border-slate-300 text-slate-900 text-sm rounded-lg px-3 py-2.5 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-45 font-mono appearance-none cursor-pointer font-medium"
-                        >
-                          {locations.map(loc => (
-                            <option key={loc.id} value={loc.name} className="bg-white text-slate-900 text-xs">
-                              {loc.name.toUpperCase()} ({loc.city})
-                            </option>
-                          ))}
-                          {locations.length === 0 && (
-                            <option value={config.location || 'nbg1'}>
-                              {(config.location || 'nbg1').toUpperCase()} (Loading...)
-                            </option>
-                          )}
-                        </select>
-                        <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-slate-500">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                          </svg>
-                        </div>
-                      </div>
+                      <label className="text-[10px] font-bold text-slate-550 uppercase tracking-widest">Location</label>
+                      <Select2
+                        id={`location-${serverId}`}
+                        value={config.location}
+                        onValueChange={val => setConfig(c => ({ ...c, location: val }))}
+                        disabled={!config.enabled}
+                        className="w-full bg-white border border-slate-300 text-slate-900 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-45 font-mono font-medium"
+                      >
+                        {locations.map(loc => (
+                          <option key={loc.id} value={loc.name} className="bg-white text-slate-900 text-xs">
+                            {loc.name.toUpperCase()} ({loc.city})
+                          </option>
+                        ))}
+                        {locations.length === 0 && (
+                          <option value={config.location || 'nbg1'}>
+                            {(config.location || 'nbg1').toUpperCase()} (Loading...)
+                          </option>
+                        )}
+                      </Select2>
                       <p className="text-[10px] text-slate-500 leading-normal">
                         Caution: Relocating requires copying snapshot over WAN on boot, delaying startup by several minutes. Nuremberg (NBG1) is recommended.
                       </p>
@@ -564,53 +572,73 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                   <div className="absolute top-0 right-0 h-24 w-24 bg-indigo-500/5 rounded-full blur-xl pointer-events-none" />
                   
                   <Label>Cost & Savings Projection</Label>
-                  
-                  <div className="grid grid-cols-2 gap-4">
+                                 <div className="grid grid-cols-2 gap-4">
                     <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-1">
                       <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Always On (24/7)</span>
                       <span className="text-lg font-mono font-bold text-slate-700">€{monthlyPriceGross.toFixed(2)}<span className="text-xs text-slate-500">/mo</span></span>
-                      <span className="text-[9px] text-slate-500 font-mono block">€{hourlyPriceGross.toFixed(3)}/hr base</span>
+                      <span className="text-[9px] text-slate-550 font-mono block">€{hourlyPriceGross.toFixed(3)}/hr base</span>
                     </div>
                     <div className="p-3 bg-indigo-50/50 border border-indigo-100 rounded-xl space-y-1">
                       <span className="text-[9px] font-bold text-indigo-600 uppercase tracking-wider block">Automated Schedule</span>
-                      <span className="text-lg font-mono font-bold text-indigo-900">€{totalScheduleCost.toFixed(2)}<span className="text-xs text-indigo-750">/mo</span></span>
-                      <span className="text-[9px] text-indigo-600/70 font-mono block">Includes snapshot storage</span>
+                      <span className="text-lg font-mono font-bold text-indigo-900">
+                        {bothTimesEnabled ? `€${totalScheduleCost.toFixed(2)}` : '—'}
+                        {bothTimesEnabled && <span className="text-xs text-indigo-750">/mo</span>}
+                      </span>
+                      <span className="text-[9px] text-indigo-600/70 font-mono block">
+                        {bothTimesEnabled ? 'Includes snapshot storage' : 'Requires both start & stop'}
+                      </span>
                     </div>
                   </div>
 
-                  {/* Savings Highlight Box */}
-                  <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <span className="text-[9px] font-black text-emerald-700 uppercase tracking-widest">Monthly Savings Projection</span>
-                      <div className="text-xl font-mono font-black text-emerald-600">€{monthlySavings.toFixed(2)}<span className="text-xs text-emerald-500 font-normal">/mo</span></div>
+                  {/* Savings Highlight Box or warning */}
+                  {!config.enabled ? (
+                    <div className="p-4 bg-slate-100 border border-slate-200 rounded-xl text-center text-xs font-semibold text-slate-500 leading-normal">
+                      Enable daily automation to calculate potential savings.
                     </div>
-                    <div className="px-3 py-1.5 bg-emerald-100 border border-emerald-200 text-emerald-700 font-mono text-sm font-black rounded-lg">
-                      -{savingsPercent.toFixed(0)}%
+                  ) : !bothTimesEnabled ? (
+                    <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl text-center text-xs font-semibold text-amber-700 leading-normal">
+                      Savings projection requires both spin-up (start) and snapshot (stop) times to be checked.
                     </div>
-                  </div>
+                  ) : (
+                    <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <span className="text-[9px] font-black text-emerald-700 uppercase tracking-widest">Monthly Savings Projection</span>
+                        <div className="text-xl font-mono font-black text-emerald-600">€{monthlySavings.toFixed(2)}<span className="text-xs text-emerald-500 font-normal">/mo</span></div>
+                      </div>
+                      <div className="px-3 py-1.5 bg-emerald-100 border border-emerald-200 text-emerald-700 font-mono text-sm font-black rounded-lg">
+                        -{savingsPercent.toFixed(0)}%
+                      </div>
+                    </div>
+                  )}
 
                   {/* Cost Breakdown Details */}
-                  <div className="space-y-2 text-[11px] font-mono text-slate-600 border-t border-slate-200 pt-3">
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Daily Active Window</span>
-                      <span className="text-slate-700">{activeHoursPerDay.toFixed(1)} hours/day</span>
+                  {bothTimesEnabled ? (
+                    <div className="space-y-2 text-[11px] font-mono text-slate-600 border-t border-slate-200 pt-3">
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Daily Active Window</span>
+                        <span className="text-slate-700">{activeHoursPerDay.toFixed(1)} hours/day</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Monthly Run Hours</span>
+                        <span className="text-slate-700">~{monthlyRunningHours.toFixed(0)} hours/mo</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Server Run Cost</span>
+                        <span className="text-slate-700">€{activeCostMonthly.toFixed(2)}/mo</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Snapshot Storage ({diskSizeGb}GB)</span>
+                        <span className="text-slate-700">€{snapshotCostMonthly.toFixed(2)}/mo</span>
+                      </div>
+                      <div className="flex justify-between text-[9px] text-slate-500 italic pt-1 border-t border-slate-200">
+                        <span>* Prices include IPv4 address fee (€{getIpv4Pricing(pricing, config.location || 'nbg1').monthly.toFixed(2)}/mo or €{getIpv4Pricing(pricing, config.location || 'nbg1').hourly.toFixed(4)}/hr)</span>
+                      </div>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Monthly Run Hours</span>
-                      <span className="text-slate-700">~{monthlyRunningHours.toFixed(0)} hours/mo</span>
+                  ) : (
+                    <div className="text-[11px] font-mono text-slate-500 border-t border-slate-200 pt-3 italic text-center">
+                      Enable both start and stop times to view active runtime breakdown.
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Server Run Cost</span>
-                      <span className="text-slate-700">€{activeCostMonthly.toFixed(2)}/mo</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Snapshot Storage ({diskSizeGb}GB)</span>
-                      <span className="text-slate-700">€{snapshotCostMonthly.toFixed(2)}/mo</span>
-                    </div>
-                    <div className="flex justify-between text-[9px] text-slate-500 italic pt-1 border-t border-slate-200">
-                      <span>* Prices include IPv4 address fee (€{getIpv4Pricing(pricing, config.location || 'nbg1').monthly.toFixed(2)}/mo or €{getIpv4Pricing(pricing, config.location || 'nbg1').hourly.toFixed(4)}/hr)</span>
-                    </div>
-                  </div>
+                  )}
                 </div>
 
                 {/* Snapshot status */}
