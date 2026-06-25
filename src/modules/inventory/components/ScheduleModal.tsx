@@ -228,7 +228,7 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
         onConfirm={handleTriggerEvening}
         serverName={serverName}
       />
-      <div className="w-full max-w-lg lg:max-w-4xl bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden flex flex-col transition-all">
+      <div className="w-full max-w-lg lg:max-w-4xl bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden flex flex-col transition-all text-left">
 
         {/* Header */}
         <div className="px-6 py-5 border-b border-slate-200 bg-slate-50 flex items-center justify-between">

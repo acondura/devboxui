@@ -87,7 +87,7 @@ export function ConfirmSpinUpModal({
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden transform transition-all animate-in zoom-in duration-200">
+      <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden transform transition-all animate-in zoom-in duration-200 text-left">
         <div className="px-6 py-5 border-b border-slate-200 flex justify-between items-center bg-slate-50">
           <div>
             <h3 className="text-xl font-bold text-slate-900">Spin Up Server</h3>
