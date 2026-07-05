@@ -78,6 +78,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
     pricing?: HetznerPricingResponse | null;
   }>({ serverTypes: [], locations: [], images: [], snapshots: [], pricing: null });
   const [isLoadingOptions, setIsLoadingOptions] = useState(true);
+  const [optionsError, setOptionsError] = useState<string | null>(null);
   const [ip, setIp] = useState('');
   const [password, setPassword] = useState('');
   const [bootstrapCommand, setBootstrapCommand] = useState<string | null>(null);
@@ -110,8 +111,13 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
     if (isOpen && provider === 'hetzner') {
       async function loadOptions() {
         setIsLoadingOptions(true);
+        setOptionsError(null);
         
         const data = await getHetznerOptions();
+        const hetznerData = data as { error?: string };
+        if (hetznerData.error) {
+          setOptionsError(hetznerData.error);
+        }
         
         setOptions(data as unknown as { serverTypes: HetznerServerType[]; locations: HetznerLocation[]; images: HetznerImage[]; snapshots: HetznerImage[]; pricing?: HetznerPricingResponse | null });
         
@@ -498,6 +504,18 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
             ))}
           </Select2>
         </div>
+        
+        {optionsError && provider === 'hetzner' && (
+          <div className="mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start space-x-3 text-left">
+            <svg className="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <div className="text-sm text-red-700 leading-relaxed">
+              <p className="font-bold">Hetzner Connection Error</p>
+              <p>{optionsError}</p>
+            </div>
+          </div>
+        )}
         
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           <div className="grid grid-cols-2 gap-4">

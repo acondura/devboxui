@@ -337,8 +337,8 @@ export async function runEveningWorkflow(
         timezone: 'Europe/Bucharest',
         spinupTime: '09:00',
         snapshotTime: '18:00',
-        serverType: hs.server_type.name,
-        location: hs.datacenter.location.name,
+        serverType: hs.server_type?.name || 'cpx21',
+        location: hs.datacenter?.location?.name || 'nbg1',
       };
     } catch (e) {
       return { success: false, message: `Failed to fetch server details from Hetzner API: ${e instanceof Error ? e.message : String(e)}` };

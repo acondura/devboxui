@@ -1577,7 +1577,18 @@ export async function toggleServerLock(serverId: string, enableLock: boolean) {
 export async function getHetznerOptions() {
   const env = await getCloudflareEnv();
   const settings = await getUserSettings();
-  const hetznerApi = new HetznerApiService(env, settings?.hetznerToken);
+  const hetznerToken = settings?.hetznerToken || env.HETZNER_API_TOKEN;
+  if (!hetznerToken) {
+    return {
+      serverTypes: [],
+      locations: [],
+      images: [],
+      snapshots: [],
+      pricing: null,
+      error: 'Hetzner API Token is missing. Please configure it in your Settings (top-right gear icon).'
+    };
+  }
+  const hetznerApi = new HetznerApiService(env, hetznerToken);
   try {
     const [serverTypes, locations, images, snapshots, pricing] = await Promise.all([
       hetznerApi.getServerTypes(),
@@ -1587,10 +1598,28 @@ export async function getHetznerOptions() {
       hetznerApi.getPricing().catch(() => null)
     ]);
 
+    if (serverTypes.length === 0 && locations.length === 0) {
+      return {
+        serverTypes: [],
+        locations: [],
+        images: [],
+        snapshots: [],
+        pricing: null,
+        error: 'Failed to retrieve Hetzner options. Please verify that your API token is valid and not expired.'
+      };
+    }
+
     return { serverTypes, locations, images, snapshots, pricing };
   } catch (error) {
     console.error("Failed to fetch Hetzner options:", error);
-    return { serverTypes: [], locations: [], images: [], pricing: null };
+    return {
+      serverTypes: [],
+      locations: [],
+      images: [],
+      snapshots: [],
+      pricing: null,
+      error: error instanceof Error ? error.message : String(error)
+    };
   }
 }
 
