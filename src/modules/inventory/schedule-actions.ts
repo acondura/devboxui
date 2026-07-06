@@ -137,9 +137,10 @@ export async function runMorningWorkflow(
   customSnapshotId?: number,
   customServerType?: string
 ): Promise<{ success: boolean; message: string; newServerId?: number; ip?: string }> {
-  const env = await getCloudflareEnv();
-  const kv = env.KV;
-  if (!kv) throw new Error('KV database missing.');
+  try {
+    const env = await getCloudflareEnv();
+    const kv = env.KV;
+    if (!kv) throw new Error('KV database missing.');
 
   // 1. Load KV server record first
   const resolved = await getServerKeyAndConfig(kv, userEmail, serverId);
@@ -299,12 +300,19 @@ export async function runMorningWorkflow(
     console.error("[Morning Workflow] Failed to sync dependent policies on spin-up:", err);
   }
 
-  return {
-    success: true,
-    message: `Server created from snapshot. Hetzner ID: ${newHetznerServerId}, IP: ${ip}`,
-    newServerId: newHetznerServerId,
-    ip
-  };
+    return {
+      success: true,
+      message: `Server created from snapshot. Hetzner ID: ${newHetznerServerId}, IP: ${ip}`,
+      newServerId: newHetznerServerId,
+      ip
+    };
+  } catch (error: unknown) {
+    console.error("[runMorningWorkflow] Execution failed:", error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : String(error)
+    };
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -317,9 +325,10 @@ export async function runEveningWorkflow(
   isManual?: boolean,
   customPrefix?: string
 ): Promise<{ success: boolean; message: string; snapshotId?: number }> {
-  const env = await getCloudflareEnv();
-  const kv = env.KV;
-  if (!kv) throw new Error('KV database missing.');
+  try {
+    const env = await getCloudflareEnv();
+    const kv = env.KV;
+    if (!kv) throw new Error('KV database missing.');
 
   // 1. Load KV server record first
   const resolved = await getServerKeyAndConfig(kv, userEmail, serverId);
@@ -448,11 +457,18 @@ export async function runEveningWorkflow(
   }
   await kv.put(actualServerKey, JSON.stringify(server));
 
-  return {
-    success: true,
-    message: `Evening workflow initiated. Snapshot action ${snapshotAction.id} started.`,
-    snapshotId: snapshotImage.id
-  };
+    return {
+      success: true,
+      message: `Evening workflow initiated. Snapshot action ${snapshotAction.id} started.`,
+      snapshotId: snapshotImage.id
+    };
+  } catch (error: unknown) {
+    console.error("[runEveningWorkflow] Execution failed:", error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : String(error)
+    };
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

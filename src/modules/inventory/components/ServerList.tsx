@@ -14,6 +14,7 @@ import { triggerMorningSpinup, triggerEveningSnapshot } from '../schedule-action
 import type { HetznerImage } from '@/lib/hetzner-api';
 import { Select2 } from './Select2';
 import { InviteCollabModal } from './InviteCollabModal';
+import { ErrorModal } from './ErrorModal';
 
 interface ServerListProps {
   servers: ServerConfig[];
@@ -233,6 +234,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
   const [isSnapshotting, setIsSnapshotting] = useState(false);
   const [isConfirmSnapshotOpen, setIsConfirmSnapshotOpen] = useState(false);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [vpsSnapshots, setVpsSnapshots] = useState<HetznerImage[]>([]);
   const [selectedSnapshotId, setSelectedSnapshotId] = useState<string>('latest');
@@ -301,10 +303,10 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
       if (result.success) {
         if (onRefresh) await onRefresh();
       } else {
-        alert(result.message || 'Spin up failed.');
+        setErrorMessage(result.message || 'Spin up failed.');
       }
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Spin up failed.');
+      setErrorMessage(e instanceof Error ? e.message : 'Spin up failed.');
     } finally {
       setIsSpinningUp(false);
     }
@@ -317,10 +319,10 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
       if (result.success) {
         if (onRefresh) await onRefresh();
       } else {
-        alert(result.message || 'Snapshot/shutdown failed.');
+        setErrorMessage(result.message || 'Snapshot/shutdown failed.');
       }
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Snapshot/shutdown failed.');
+      setErrorMessage(e instanceof Error ? e.message : 'Snapshot/shutdown failed.');
     } finally {
       setIsSnapshotting(false);
     }
@@ -717,6 +719,11 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
           onClose={() => setIsInviteOpen(false)}
           onSuccess={onRefresh}
         />
+        <ErrorModal
+          isOpen={!!errorMessage}
+          onClose={() => setErrorMessage(null)}
+          message={errorMessage || ''}
+        />
       </td>
     </tr>
   );
@@ -742,6 +749,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
   const [isSnapshotting, setIsSnapshotting] = useState(false);
   const [isConfirmSnapshotOpen, setIsConfirmSnapshotOpen] = useState(false);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [vpsSnapshots, setVpsSnapshots] = useState<HetznerImage[]>([]);
   const [selectedSnapshotId, setSelectedSnapshotId] = useState<string>('latest');
@@ -806,10 +814,10 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
       if (result.success) {
         if (onRefresh) await onRefresh();
       } else {
-        alert(result.message || 'Spin up failed.');
+        setErrorMessage(result.message || 'Spin up failed.');
       }
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Spin up failed.');
+      setErrorMessage(e instanceof Error ? e.message : 'Spin up failed.');
     } finally {
       setIsSpinningUp(false);
     }
@@ -822,10 +830,10 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
       if (result.success) {
         if (onRefresh) await onRefresh();
       } else {
-        alert(result.message || 'Snapshot/shutdown failed.');
+        setErrorMessage(result.message || 'Snapshot/shutdown failed.');
       }
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Snapshot/shutdown failed.');
+      setErrorMessage(e instanceof Error ? e.message : 'Snapshot/shutdown failed.');
     } finally {
       setIsSnapshotting(false);
     }
@@ -1157,6 +1165,11 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
         isOpen={isInviteOpen}
         onClose={() => setIsInviteOpen(false)}
         onSuccess={onRefresh}
+      />
+      <ErrorModal
+        isOpen={!!errorMessage}
+        onClose={() => setErrorMessage(null)}
+        message={errorMessage || ''}
       />
     </div>
   );
