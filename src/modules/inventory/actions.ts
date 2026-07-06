@@ -926,7 +926,7 @@ export async function getServers() {
         try {
           const { processPendingSnapshot } = await import('./schedule-actions');
           const hetznerApi = new HetznerApiService(env, hetznerToken);
-          s = await processPendingSnapshot(s, userEmail, kv, hetznerApi);
+          s = await processPendingSnapshot(s, item.name, userEmail, kv, hetznerApi);
         } catch (err) {
           console.error(`Error processing pending snapshot for server ${s.id}:`, err);
         }
@@ -936,7 +936,7 @@ export async function getServers() {
         try {
           const { processPendingCreate } = await import('./schedule-actions');
           const hetznerApi = new HetznerApiService(env, hetznerToken);
-          s = await processPendingCreate(s, userEmail, kv, hetznerApi);
+          s = await processPendingCreate(s, item.name, userEmail, kv, hetznerApi);
         } catch (err) {
           console.error(`Error processing pending create for server ${s.id}:`, err);
         }

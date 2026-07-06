@@ -4,7 +4,7 @@ import { getCloudflareEnv, getIdentity } from '@/lib/auth';
 import { HetznerApiService } from '@/lib/hetzner-api';
 import { CloudflareApiService } from '@/lib/cloudflare-api';
 import { ScheduleConfig, ServerConfig } from './types';
-import { getUserSettings, syncAllDependentPolicies, getNetworkZone } from './actions';
+import { getUserSettings, syncAllDependentPolicies, getNetworkZone, getServerKeyAndConfig, getOrgSettings } from './actions';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // KV key helpers
@@ -48,13 +48,12 @@ export async function saveScheduleConfig(
   await kv.put(scheduleKey(userEmail, serverId), JSON.stringify(config));
 
   // Also persist scheduleConfig inside the server record so getServers() surfaces it
-  const sKey = serverKey(userEmail, serverId);
-  const serverData = await kv.get(sKey);
-  if (serverData) {
-    const server = JSON.parse(serverData) as ServerConfig;
+  const resolved = await getServerKeyAndConfig(kv, userEmail, serverId);
+  if (resolved) {
+    const { key: actualServerKey, config: server } = resolved;
     server.scheduleConfig = config;
     server.updatedAt = new Date().toISOString();
-    await kv.put(sKey, JSON.stringify(server));
+    await kv.put(actualServerKey, JSON.stringify(server));
   }
 
   return { success: true };
@@ -142,8 +141,27 @@ export async function runMorningWorkflow(
   const kv = env.KV;
   if (!kv) throw new Error('KV database missing.');
 
-  const settings = await getUserSettings(userEmail);
-  const hetznerToken = settings?.hetznerToken || env.HETZNER_API_TOKEN;
+  // 1. Load KV server record first
+  const resolved = await getServerKeyAndConfig(kv, userEmail, serverId);
+  if (!resolved) return { success: false, message: 'Server KV record not found.' };
+  const { key: actualServerKey, config: server } = resolved;
+
+  // 2. Resolve Hetzner API token and SSH Key
+  let hetznerToken = env.HETZNER_API_TOKEN;
+  let userSshKey = '';
+  if (server.orgId) {
+    const orgSettings = await getOrgSettings(server.orgId);
+    if (orgSettings?.hetznerToken) {
+      hetznerToken = orgSettings.hetznerToken;
+    }
+  }
+  if (userEmail) {
+    const settings = await getUserSettings(userEmail);
+    userSshKey = settings?.sshPublicKey || '';
+    if (!hetznerToken) {
+      hetznerToken = settings?.hetznerToken;
+    }
+  }
   if (!hetznerToken) throw new Error('Hetzner API Token missing.');
 
   const hetznerApi = new HetznerApiService(env, hetznerToken);
@@ -161,11 +179,6 @@ export async function runMorningWorkflow(
       return { success: true, message: `Skipped: ${pauseCheck.reason}` };
     }
   }
-
-  // Load KV server record
-  const serverData = await kv.get(serverKey(userEmail, serverId));
-  if (!serverData) return { success: false, message: 'Server KV record not found.' };
-  const server = JSON.parse(serverData) as ServerConfig;
 
   // Check if a server is already running on Hetzner for this config
   if (server.hetznerServerId) {
@@ -188,7 +201,7 @@ export async function runMorningWorkflow(
   const sshKeyIds = await resolveSSHKeyIds(
     hetznerApi,
     sched,
-    settings?.sshPublicKey || '',
+    userSshKey,
     env.MANAGEMENT_SSH_PUBLIC_KEY || ''
   );
 
@@ -276,7 +289,7 @@ export async function runMorningWorkflow(
   sched.lastMorningRun = new Date().toISOString();
   sched.lastRunStatus = 'success';
   await kv.put(scheduleKey(userEmail, serverId), JSON.stringify(sched));
-  await kv.put(serverKey(userEmail, serverId), JSON.stringify(server));
+  await kv.put(actualServerKey, JSON.stringify(server));
 
   // Trigger policy sync for dependent servers (dynamic IP update)
   try {
@@ -308,15 +321,26 @@ export async function runEveningWorkflow(
   const kv = env.KV;
   if (!kv) throw new Error('KV database missing.');
 
-  const settings = await getUserSettings(userEmail);
-  const hetznerToken = settings?.hetznerToken || env.HETZNER_API_TOKEN;
+  // 1. Load KV server record first
+  const resolved = await getServerKeyAndConfig(kv, userEmail, serverId);
+  if (!resolved) return { success: false, message: 'Server KV record not found.' };
+  const { key: actualServerKey, config: server } = resolved;
+
+  // 2. Resolve Hetzner API token
+  let hetznerToken = env.HETZNER_API_TOKEN;
+  if (server.orgId) {
+    const orgSettings = await getOrgSettings(server.orgId);
+    if (orgSettings?.hetznerToken) {
+      hetznerToken = orgSettings.hetznerToken;
+    }
+  }
+  if (!hetznerToken && userEmail) {
+    const settings = await getUserSettings(userEmail);
+    hetznerToken = settings?.hetznerToken;
+  }
   if (!hetznerToken) throw new Error('Hetzner API Token missing.');
 
   const hetznerApi = new HetznerApiService(env, hetznerToken);
-
-  const serverData = await kv.get(serverKey(userEmail, serverId));
-  if (!serverData) return { success: false, message: 'Server KV record not found.' };
-  const server = JSON.parse(serverData) as ServerConfig;
 
   if (!server.hetznerServerId) {
     return { success: false, message: 'No Hetzner server ID on record — nothing to snapshot.' };
@@ -422,7 +446,7 @@ export async function runEveningWorkflow(
     server.scheduleConfig = sched;
     await kv.put(scheduleKey(userEmail, serverId), JSON.stringify(sched));
   }
-  await kv.put(serverKey(userEmail, serverId), JSON.stringify(server));
+  await kv.put(actualServerKey, JSON.stringify(server));
 
   return {
     success: true,
@@ -514,6 +538,7 @@ export async function shouldFireNow(
 
 export async function processPendingSnapshot(
   server: ServerConfig,
+  actualServerKey: string,
   userEmail: string,
   kv: KVNamespace,
   hetznerApi: HetznerApiService
@@ -535,7 +560,7 @@ export async function processPendingSnapshot(
       server.status = 'snapshotting';
       server.detailedStatus = `Saving snapshot (${progress}%)`;
       server.updatedAt = new Date().toISOString();
-      await kv.put(serverKey(userEmail, server.id), JSON.stringify(server));
+      await kv.put(actualServerKey, JSON.stringify(server));
     } else if (action.status === 'success') {
       console.log(`[processPendingSnapshot] Snapshot action ${actionId} succeeded. Cleaning up VM and old snapshots…`);
 
@@ -613,7 +638,7 @@ export async function processPendingSnapshot(
       server.pendingSnapshotDate = undefined;
       server.updatedAt = new Date().toISOString();
 
-      await kv.put(serverKey(userEmail, server.id), JSON.stringify(server));
+      await kv.put(actualServerKey, JSON.stringify(server));
       console.log(`[processPendingSnapshot] Server ${server.id} cleanup complete.`);
     } else if (action.status === 'error') {
       const errMsg = action.error?.message || 'unknown Hetzner error';
@@ -644,7 +669,7 @@ export async function processPendingSnapshot(
       server.pendingSnapshotDate = undefined;
       server.updatedAt = new Date().toISOString();
 
-      await kv.put(serverKey(userEmail, server.id), JSON.stringify(server));
+      await kv.put(actualServerKey, JSON.stringify(server));
     }
   } catch (err) {
     console.error(`[processPendingSnapshot] Failed checking action ${actionId}:`, err);
@@ -655,6 +680,7 @@ export async function processPendingSnapshot(
 
 export async function processPendingCreate(
   server: ServerConfig,
+  actualServerKey: string,
   userEmail: string,
   kv: KVNamespace,
   hetznerApi: HetznerApiService
@@ -676,21 +702,21 @@ export async function processPendingCreate(
       server.status = 'initializing';
       server.detailedStatus = `Initializing (${progress}%)`;
       server.updatedAt = now;
-      await kv.put(serverKey(userEmail, server.id), JSON.stringify(server));
+      await kv.put(actualServerKey, JSON.stringify(server));
     } else if (action.status === 'success') {
       console.log(`[processPendingCreate] Create action ${actionId} succeeded.`);
       server.pendingCreateActionId = undefined;
       server.status = 'ready';
       server.detailedStatus = 'Ready';
       server.updatedAt = now;
-      await kv.put(serverKey(userEmail, server.id), JSON.stringify(server));
+      await kv.put(actualServerKey, JSON.stringify(server));
     } else if (action.status === 'error') {
       console.error(`[processPendingCreate] Create action ${actionId} failed.`);
       server.pendingCreateActionId = undefined;
       server.status = 'error';
       server.detailedStatus = 'Initialization failed';
       server.updatedAt = now;
-      await kv.put(serverKey(userEmail, server.id), JSON.stringify(server));
+      await kv.put(actualServerKey, JSON.stringify(server));
     }
   } catch (err) {
     console.error(`[processPendingCreate] Failed to process pending create action ${actionId}:`, err);
@@ -719,15 +745,24 @@ export async function processAllPendingCreates(kv: KVNamespace) {
       const userEmail = server.userEmail;
 
       try {
-        const settings = await getUserSettings(userEmail);
         const env = await getCloudflareEnv();
-        const hetznerToken = settings?.hetznerToken || env.HETZNER_API_TOKEN;
+        let hetznerToken = env.HETZNER_API_TOKEN;
+        if (server.orgId) {
+          const orgSettings = await getOrgSettings(server.orgId);
+          if (orgSettings?.hetznerToken) {
+            hetznerToken = orgSettings.hetznerToken;
+          }
+        }
+        if (!hetznerToken) {
+          const settings = await getUserSettings(userEmail);
+          hetznerToken = settings?.hetznerToken;
+        }
         if (!hetznerToken) {
           console.error(`[processAllPendingCreates] No Hetzner token found for ${userEmail}`);
           continue;
         }
         const hetznerApi = new HetznerApiService(env, hetznerToken);
-        await processPendingCreate(server, userEmail, kv, hetznerApi);
+        await processPendingCreate(server, key.name, userEmail, kv, hetznerApi);
       } catch (err) {
         console.error(`[processAllPendingCreates] Failed to process pending create for ${server.id}:`, err);
       }
@@ -756,15 +791,24 @@ export async function processAllPendingSnapshots(kv: KVNamespace) {
       const userEmail = server.userEmail;
       
       try {
-        const settings = await getUserSettings(userEmail);
         const env = await getCloudflareEnv();
-        const hetznerToken = settings?.hetznerToken || env.HETZNER_API_TOKEN;
+        let hetznerToken = env.HETZNER_API_TOKEN;
+        if (server.orgId) {
+          const orgSettings = await getOrgSettings(server.orgId);
+          if (orgSettings?.hetznerToken) {
+            hetznerToken = orgSettings.hetznerToken;
+          }
+        }
+        if (!hetznerToken) {
+          const settings = await getUserSettings(userEmail);
+          hetznerToken = settings?.hetznerToken;
+        }
         if (!hetznerToken) {
           console.error(`[processAllPendingSnapshots] No Hetzner token found for ${userEmail}`);
           continue;
         }
         const hetznerApi = new HetznerApiService(env, hetznerToken);
-        await processPendingSnapshot(server, userEmail, kv, hetznerApi);
+        await processPendingSnapshot(server, key.name, userEmail, kv, hetznerApi);
       } catch (err) {
         console.error(`[processAllPendingSnapshots] Failed to process pending snapshot for ${server.id}:`, err);
       }
