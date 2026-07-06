@@ -78,6 +78,8 @@ const DEFAULT_CONFIG: ScheduleConfig = {
   snapshotTime: '18:00',
   serverType: 'cpx21',
   location: 'nbg1',
+  shutdownAfterInactivity: false,
+  inactivityDurationMinutes: 30,
 };
 
 interface Props {
@@ -353,6 +355,56 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                       ))}
                     </Select2>
                   </div>
+                </div>
+
+                {/* Inactivity settings */}
+                <div className="space-y-4 bg-slate-50/50 border border-slate-200/80 p-4 rounded-xl">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="text-xs font-bold text-slate-900 block select-none">
+                        Inactivity Auto-Shutdown
+                      </label>
+                      <p className="text-[10px] text-slate-500 mt-0.5 leading-normal">
+                        Automatically stop and snapshot VM when not in use.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setConfig(c => ({ ...c, shutdownAfterInactivity: !c.shutdownAfterInactivity }))}
+                      disabled={!config.enabled}
+                      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed ${
+                        config.shutdownAfterInactivity ? 'bg-indigo-600' : 'bg-slate-250'
+                      }`}
+                    >
+                      <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        config.shutdownAfterInactivity ? 'translate-x-5' : 'translate-x-0'
+                      }`} />
+                    </button>
+                  </div>
+                  
+                  {config.shutdownAfterInactivity && (
+                    <div className="space-y-1.5 pt-2 border-t border-slate-200/60 animate-in fade-in slide-in-from-top-1 duration-200">
+                      <label className="text-[10px] font-bold text-slate-550 uppercase tracking-widest block">
+                        Inactivity Timeout (minutes)
+                      </label>
+                      <input
+                        id={`inactivity-duration-${serverId}`}
+                        type="number"
+                        min="5"
+                        max="1440"
+                        value={config.inactivityDurationMinutes || 30}
+                        onChange={e => {
+                          const val = parseInt(e.target.value) || 30;
+                          setConfig(c => ({ ...c, inactivityDurationMinutes: val }));
+                        }}
+                        disabled={!config.enabled}
+                        className="w-full bg-white border border-slate-300 text-slate-900 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-45 font-mono font-medium"
+                      />
+                      <p className="text-[10px] text-slate-500 leading-normal mt-1">
+                        The server will automatically snapshot and delete the instance after this many minutes of zero active SSH connections.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Server type & location */}

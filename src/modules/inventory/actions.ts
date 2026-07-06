@@ -135,7 +135,7 @@ chmod 600 /root/.ssh/authorized_keys
 ln -sf /var/log/cloud-init-output.log /var/www/debug/setup.log
 
 cat <<'PYEOF' > /var/www/debug/server.py
-import http.server, socketserver, json, subprocess, os
+import http.server, socketserver, json, subprocess, os, time
 class DebugHandler(http.server.BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         self.send_response(200)
@@ -183,12 +183,49 @@ class DebugHandler(http.server.BaseHTTPRequestHandler):
             with open("/var/www/debug/status.txt", "r") as f:
                 status_txt = f.read().strip()
 
+        has_active_ssh = False
+        try:
+            ssh_output = subprocess.getoutput("ss -t -n state established '( sport = :22 )'")
+            lines = [l for l in ssh_output.split('\n') if l.strip() and 'Recv-Q' not in l]
+            if len(lines) > 0:
+                has_active_ssh = True
+        except Exception:
+            pass
+
+        last_activity_file = "/var/www/debug/last_activity.txt"
+        now = int(time.time())
+        
+        if has_active_ssh:
+            last_activity = now
+            try:
+                with open(last_activity_file, "w") as f:
+                    f.write(str(now))
+            except Exception:
+                pass
+        else:
+            last_activity = now
+            if os.path.exists(last_activity_file):
+                try:
+                    with open(last_activity_file, "r") as f:
+                        last_activity = int(f.read().strip())
+                except Exception:
+                    pass
+            else:
+                try:
+                    with open(last_activity_file, "w") as f:
+                        f.write(str(now))
+                except Exception:
+                    pass
+                    
+        idle_seconds = now - last_activity
+
         data = {
             "docker": docker_status,
             "setup": setup_logs,
             "status": status_txt,
             "projects": projects_list,
             "workspace": workspace_dir,
+            "idle_seconds": idle_seconds,
             "timestamp": subprocess.getoutput('date')
         }
         self.wfile.write(json.dumps(data).encode())

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCloudflareEnv } from '@/lib/auth';
 import { getScheduledServers, runEveningWorkflow, processAllPendingSnapshots, processAllPendingCreates } from '@/modules/inventory/schedule-actions';
+import { CloudflareApiService } from '@/lib/cloudflare-api';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,6 +54,42 @@ export async function GET(req: NextRequest) {
   const scheduledServers = await getScheduledServers();
 
   for (const { server, schedule, userEmail } of scheduledServers) {
+    // Inactivity Auto-Shutdown check
+    if (schedule.shutdownAfterInactivity && server.status === 'ready') {
+      try {
+        const timeoutMinutes = schedule.inactivityDurationMinutes || 30;
+        const timeoutSeconds = timeoutMinutes * 60;
+        const logsUrl = server.tunnelUrl?.split('?')[0].replace('-code.', '-logs.') || `https://logs-${server.id.slice(0, 8)}.devboxui.com`;
+
+        const cfApi = new CloudflareApiService(env);
+        const serviceToken = await cfApi.getOrCreateServiceToken(kv);
+
+        const resp = await fetch(logsUrl, {
+          headers: {
+            'CF-Access-Client-Id': serviceToken.id,
+            'CF-Access-Client-Secret': serviceToken.client_secret,
+          },
+          next: { revalidate: 0 },
+          cache: 'no-store'
+        });
+
+        if (resp.ok) {
+          const data = await resp.json() as { idle_seconds?: number };
+          if (typeof data.idle_seconds === 'number') {
+            console.log(`[Cron Inactivity] Server ${server.id} (IP: ${server.ip}) idle for ${data.idle_seconds}s (limit: ${timeoutSeconds}s)`);
+            if (data.idle_seconds >= timeoutSeconds) {
+              console.log(`[Cron Inactivity] Idle limit exceeded. Shutting down server ${server.id}...`);
+              const result = await runEveningWorkflow(server.id, userEmail);
+              results.push({ serverId: server.id, userEmail, ...result, message: `Auto-shutdown due to inactivity (${timeoutMinutes}m): ${result.message}` });
+              continue;
+            }
+          }
+        }
+      } catch (err) {
+        console.error(`[Cron Inactivity] Failed checking inactivity for server ${server.id}:`, err);
+      }
+    }
+
     if (schedule.snapshotEnabled === false || !schedule.snapshotTime) {
       results.push({
         serverId: server.id,

@@ -91,6 +91,8 @@ export interface ScheduleConfig {
   spinupEnabled?: boolean;
   snapshotEnabled?: boolean;
   skipWeekends?: boolean;
+  shutdownAfterInactivity?: boolean;
+  inactivityDurationMinutes?: number;
 }
 
 export interface ProvisioningState {
