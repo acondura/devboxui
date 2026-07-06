@@ -1,6 +1,6 @@
 'use server';
 
-import { ServerConfig, ScheduleConfig } from './types';
+import { ServerConfig, ScheduleConfig, CollaboratorInfo, OrgSettings, UserMembership } from './types';
 import { getCloudflareEnv, getIdentity } from '@/lib/auth';
 import { CloudflareApiService } from '@/lib/cloudflare-api';
 import { HetznerApiService, HetznerImage } from '@/lib/hetzner-api';
@@ -628,7 +628,8 @@ export async function provisionServer(
   location: string,
   image: string,
   provider: 'hetzner' | 'contabo' = 'hetzner',
-  customUsername?: string
+  customUsername?: string,
+  orgId?: string
 ) {
   if (provider === 'contabo') {
     return provisionContaboServer(customName, serverType, location, image, customUsername);
@@ -680,6 +681,7 @@ export async function provisionServer(
     ip: 'pending',
     userName,
     userEmail,
+    orgId: orgId || userEmail,
     status: 'initializing',
     provisioningToken,
     rootPassword: rootPassword,
@@ -808,8 +810,11 @@ export async function provisionServer(
     config.updatedAt = new Date().toISOString();
     config.logs = [...(config.logs || []), 'Server creation completed. Injected SSH key.'];
 
-    const kvKey = `servers:${userEmail}:${serverId}`;
+    const targetOrgId = orgId || userEmail;
+    config.orgId = targetOrgId;
+    const kvKey = `servers:${targetOrgId}:${serverId}`;
     await kv.put(kvKey, JSON.stringify(config));
+    await kv.put(`server_lookup:${serverId}`, JSON.stringify({ orgId: targetOrgId, serverKey: kvKey }));
 
     return { success: true, server: config };
 
@@ -831,6 +836,36 @@ export async function provisionServer(
 }
 
 /**
+ * Helper to dynamically resolve a server's KV key and parsed config by scanning
+ * the user's personal organization and any team organization memberships.
+ */
+export async function getServerKeyAndConfig(
+  kv: KVNamespace,
+  userEmail: string,
+  serverId: string
+): Promise<{ key: string; config: ServerConfig } | null> {
+  // 1. Try personal key first (zero list scanning cost)
+  const personalKey = `servers:${userEmail}:${serverId}`;
+  const personalData = await kv.get(personalKey);
+  if (personalData) {
+    return { key: personalKey, config: JSON.parse(personalData) as ServerConfig };
+  }
+
+  // 2. Check team memberships
+  const orgList = await kv.list({ prefix: `user:org:${userEmail}:` });
+  const orgIds = orgList.keys.map((k: { name: string }) => k.name.split(':').pop()!);
+  for (const orgId of orgIds) {
+    if (orgId === userEmail) continue;
+    const key = `servers:${orgId}:${serverId}`;
+    const data = await kv.get(key);
+    if (data) {
+      return { key, config: JSON.parse(data) as ServerConfig };
+    }
+  }
+  return null;
+}
+
+/**
  * Retrieves the list of servers for the current authenticated user.
  */
 export async function getServers() {
@@ -840,19 +875,52 @@ export async function getServers() {
 
   if (!kv) return [];
 
-  const settings = await getUserSettings();
-  const hetznerToken = settings?.hetznerToken || env.HETZNER_API_TOKEN;
+  // Get all organizations the user belongs to
+  const orgList = await kv.list({ prefix: `user:org:${userEmail}:` });
+  const orgIds = orgList.keys.length > 0
+    ? orgList.keys.map((k: { name: string }) => k.name.split(':').pop()!)
+    : [userEmail]; // Default fallback to personal organization
 
-  const list = await kv.list({ prefix: `servers:${userEmail}:` });
+  const allServerKeys: { name: string; orgId: string }[] = [];
+
+  for (const orgId of orgIds) {
+    const list = await kv.list({ prefix: `servers:${orgId}:` });
+    for (const key of list.keys) {
+      allServerKeys.push({ name: key.name, orgId });
+    }
+  }
+
+  const personalSettings = await getUserSettings(userEmail);
+
   const kvServers = (await Promise.all(
-    list.keys.map(async (key: { name: string }) => {
-      const val = await kv.get(key.name);
+    allServerKeys.map(async (item) => {
+      const val = await kv.get(item.name);
       if (!val) {
-        console.warn(`Self-healing: Deleting ghost key ${key.name}`);
-        await kv.delete(key.name).catch(() => { });
+        console.warn(`Self-healing: Deleting ghost key ${item.name}`);
+        await kv.delete(item.name).catch(() => { });
         return null;
       }
       let s = JSON.parse(val) as ServerConfig;
+      s.orgId = s.orgId || item.orgId;
+
+      // Auto-heal lookup index if missing
+      const lookupKey = `server_lookup:${s.id}`;
+      const hasLookup = await kv.get(lookupKey);
+      if (!hasLookup) {
+        await kv.put(lookupKey, JSON.stringify({ orgId: s.orgId, serverKey: item.name }));
+      }
+
+      // Resolve Hetzner Token for this server's organization
+      let hetznerToken = env.HETZNER_API_TOKEN;
+      if (s.orgId === userEmail) {
+        hetznerToken = personalSettings?.hetznerToken || hetznerToken;
+      } else {
+        const orgData = await kv.get(`org:settings:${s.orgId}`);
+        if (orgData) {
+          const orgSettings = JSON.parse(orgData) as OrgSettings;
+          hetznerToken = orgSettings.hetznerToken || hetznerToken;
+        }
+      }
 
       if (s.pendingSnapshotId && s.pendingSnapshotActionId && hetznerToken) {
         try {
@@ -878,9 +946,33 @@ export async function getServers() {
     })
   )).filter((s): s is ServerConfig => s !== null);
 
-  if (hetznerToken) {
+  // Map of tokens to their corresponding organization IDs for auto-healing and discovery
+  const tokenToOrgIdMap = new Map<string, string>();
+  if (personalSettings?.hetznerToken) tokenToOrgIdMap.set(personalSettings.hetznerToken, userEmail);
+  if (env.HETZNER_API_TOKEN) tokenToOrgIdMap.set(env.HETZNER_API_TOKEN, userEmail);
+
+  for (const orgId of orgIds) {
+    if (orgId !== userEmail) {
+      const orgData = await kv.get(`org:settings:${orgId}`);
+      if (orgData) {
+        const orgSettings = JSON.parse(orgData) as OrgSettings;
+        if (orgSettings.hetznerToken) {
+          tokenToOrgIdMap.set(orgSettings.hetznerToken, orgId);
+        }
+      }
+    }
+  }
+
+  const finalServersMap = new Map<string, ServerConfig>();
+  // Start with known KV servers
+  for (const s of kvServers) {
+    finalServersMap.set(s.id, s);
+  }
+
+  // Run discovery and live sync for each distinct token
+  for (const [currentToken, targetOrgId] of tokenToOrgIdMap) {
     try {
-      const hetznerApi = new HetznerApiService(env, hetznerToken);
+      const hetznerApi = new HetznerApiService(env, currentToken);
 
       // Auto-healing: Discover and reconstruct missing servers from Hetzner snapshots
       try {
@@ -905,7 +997,6 @@ export async function getServers() {
 
           for (const sId of Object.keys(missingSnapshotsByServerId)) {
             const serverSnaps = missingSnapshotsByServerId[sId];
-            // Sort descending by created date
             serverSnaps.sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime());
             const latestSnap = serverSnaps[0];
 
@@ -962,10 +1053,11 @@ export async function getServers() {
               ip: 'pending',
               userName,
               userEmail,
+              orgId: targetOrgId,
               status: 'off',
               detailedStatus: 'Server is off',
-              sshPrivateKey: settings?.sshPrivateKey || '',
-              sshPublicKey: settings?.sshPublicKey || '',
+              sshPrivateKey: personalSettings?.sshPrivateKey || '',
+              sshPublicKey: personalSettings?.sshPublicKey || '',
               createdAt: latestSnap.created,
               updatedAt: new Date().toISOString(),
               tunnelUrl: `https://${hostname}/?folder=/home/${userName}/workspace`,
@@ -979,9 +1071,9 @@ export async function getServers() {
               scheduleConfig
             };
 
-            const sKey = `servers:${userEmail}:${sId}`;
+            const sKey = `servers:${targetOrgId}:${sId}`;
             await kv.put(sKey, JSON.stringify(reconstructed));
-            kvServers.push(reconstructed);
+            finalServersMap.set(sId, reconstructed);
             console.log(`Auto-healing: Successfully reconstructed server config for ${sId}`);
           }
         }
@@ -989,34 +1081,30 @@ export async function getServers() {
         console.error("Auto-healing missing servers failed:", err);
       }
 
+      // Sync active servers under this token
       const hetznerServers = await hetznerApi.getAllServers();
       const hetznerMap = new Map(hetznerServers.map(hs => [hs.id.toString(), hs]));
-      const finalServers: ServerConfig[] = [];
 
-      // 1. Sync KV servers with live Hetzner data and cleanup "ghosts"
       for (const s of kvServers) {
+        // Only sync if the server belongs to this token's target organization
+        if (s.orgId !== targetOrgId) continue;
+
         if (s.status === 'snapshotting' || s.pendingCreateActionId) {
-          finalServers.push(s);
           if (s.hetznerServerId) {
             hetznerMap.delete(s.hetznerServerId.toString());
           }
           continue;
         }
 
-        if (!s.hetznerServerId) {
-          finalServers.push(s);
-          continue;
-        }
+        if (!s.hetznerServerId) continue;
 
         const hs = hetznerMap.get(s.hetznerServerId.toString());
         if (hs) {
-          // Sync live data
           s.isLocked = hs.protection?.delete || false;
           s.hetznerStatus = hs.status;
           if (hs.public_net?.ipv4?.ip) s.ip = hs.public_net.ipv4.ip;
           s.serverType = hs.server_type.name;
 
-          // Build serverSpecs
           const arch = hs.server_type.architecture || 'x86';
           const disk = hs.server_type.disk ? `${hs.server_type.disk} GB` : '';
           const zone = await getNetworkZone(hs.datacenter?.location?.name);
@@ -1028,7 +1116,6 @@ export async function getServers() {
           ].filter(Boolean);
           s.serverSpecs = specsParts.join(' | ');
 
-          // Sync live Hetzner status to local config status
           const oldStatus = s.status;
           const oldDetailed = s.detailedStatus;
 
@@ -1044,37 +1131,34 @@ export async function getServers() {
           }
 
           if (s.status !== oldStatus || s.detailedStatus !== oldDetailed) {
-            await kv.put(`servers:${userEmail}:${s.id}`, JSON.stringify(s)).catch(() => {});
+            await kv.put(`servers:${s.orgId || targetOrgId}:${s.id}`, JSON.stringify(s)).catch(() => {});
           }
 
-          finalServers.push(s);
-          // Remove from map so we don't add it as "discovered" later
+          finalServersMap.set(s.id, s);
           hetznerMap.delete(hs.id.toString());
         } else {
-          // GHOST DETECTION WITH GRACE PERIOD
+          // GHOST DETECTION
           const serverAgeMinutes = (Date.now() - new Date(s.createdAt).getTime()) / (1000 * 60);
-
           if (serverAgeMinutes > 2) {
             console.log(`Self-healing: Removing ghost server ${s.id} (not in Hetzner after ${Math.round(serverAgeMinutes)}m)`);
-            await kv.delete(`servers:${userEmail}:${s.id}`).catch(() => { });
-            // Skip adding to final list
-          } else {
-            // Give it more time to show up in Hetzner API
-            finalServers.push(s);
+            await kv.delete(`servers:${s.orgId || targetOrgId}:${s.id}`).catch(() => { });
+            finalServersMap.delete(s.id);
           }
         }
       }
 
-      // 2. Add discovered Hetzner servers not in KV
+      // Add discovered Hetzner servers not in KV
       for (const [, hs] of hetznerMap) {
         if (!hs.public_net?.ipv4?.ip) continue;
         const ip = hs.public_net.ipv4.ip;
 
-        finalServers.push({
-          id: `hetzner-${hs.id}`,
+        const discoveredId = `hetzner-${hs.id}`;
+        finalServersMap.set(discoveredId, {
+          id: discoveredId,
           ip: ip,
           userName: 'unknown',
           userEmail: userEmail,
+          orgId: targetOrgId,
           status: hs.status === 'running' ? 'ready' : 'off',
           sshPrivateKey: '',
           sshPublicKey: '',
@@ -1088,15 +1172,12 @@ export async function getServers() {
           projects: []
         });
       }
-
-      return finalServers;
-
     } catch (_e) {
-      console.error("Failed to fetch/sync Hetzner servers:", _e);
+      console.error("Failed to fetch/sync Hetzner servers for token:", _e);
     }
   }
 
-  return kvServers;
+  return Array.from(finalServersMap.values());
 }
 
 /**
@@ -1112,21 +1193,10 @@ export async function addProject(serverId: string, projectName: string, port: nu
   if (!kv) throw new Error("KV database missing.");
 
   // 1. Find the server
-  const list = await kv.list({ prefix: `servers:${userEmail}:` });
-  let serverKey = "";
-  let config: ServerConfig | null = null;
-
-  for (const key of list.keys) {
-    const val = await kv.get(key.name);
-    const c = JSON.parse(val!) as ServerConfig;
-    if (c.id === serverId) {
-      serverKey = key.name;
-      config = c;
-      break;
-    }
-  }
-
-  if (!config || !serverKey) throw new Error("Server not found.");
+  const serverRes = await getServerKeyAndConfig(kv, userEmail, serverId);
+  if (!serverRes) throw new Error("Server not found.");
+  const serverKey = serverRes.key;
+  const config = serverRes.config;
 
   if (!config.tunnelId) {
     console.log("Server is missing a Tunnel ID. Creating a new Cloudflare Tunnel...");
@@ -1178,21 +1248,10 @@ export async function deleteDomain(serverId: string, projectDomain: string) {
   if (!kv) throw new Error("KV database missing.");
 
   // 1. Find the server
-  const list = await kv.list({ prefix: `servers:${userEmail}:` });
-  let serverKey = "";
-  let config: ServerConfig | null = null;
-
-  for (const key of list.keys) {
-    const val = await kv.get(key.name);
-    const c = JSON.parse(val!) as ServerConfig;
-    if (c.id === serverId) {
-      serverKey = key.name;
-      config = c;
-      break;
-    }
-  }
-
-  if (!config || !serverKey) throw new Error("Server not found.");
+  const serverRes = await getServerKeyAndConfig(kv, userEmail, serverId);
+  if (!serverRes) throw new Error("Server not found.");
+  const serverKey = serverRes.key;
+  const config = serverRes.config;
   if (!config.tunnelId) throw new Error("Server is missing a Tunnel ID.");
 
   // 2. Remove from Cloudflare (Tunnel, DNS, Access)
@@ -1225,21 +1284,10 @@ export async function updateDomain(serverId: string, oldDomain: string, newSubdo
   if (!kv) throw new Error("KV database missing.");
 
   // 1. Find the server
-  const list = await kv.list({ prefix: `servers:${userEmail}:` });
-  let serverKey = "";
-  let config: ServerConfig | null = null;
-
-  for (const key of list.keys) {
-    const val = await kv.get(key.name);
-    const c = JSON.parse(val!) as ServerConfig;
-    if (c.id === serverId) {
-      serverKey = key.name;
-      config = c;
-      break;
-    }
-  }
-
-  if (!config || !serverKey) throw new Error("Server not found.");
+  const serverRes = await getServerKeyAndConfig(kv, userEmail, serverId);
+  if (!serverRes) throw new Error("Server not found.");
+  const serverKey = serverRes.key;
+  const config = serverRes.config;
 
   if (!config.tunnelId) {
     console.log("Server is missing a Tunnel ID. Creating a new Cloudflare Tunnel...");
@@ -1380,7 +1428,7 @@ export async function deleteServer(serverId: string) {
   }
 
   // 3. Remove from KV
-  const kvKey = `servers:${userEmail}:${serverId}`;
+  const kvKey = `servers:${config.orgId || userEmail}:${serverId}`;
   await kv.delete(kvKey);
 
   return { success: true };
@@ -1442,7 +1490,7 @@ export async function reinstallServer(serverId: string) {
   config.updatedAt = new Date().toISOString();
   config.logs = [`OS Reinstallation triggered at ${config.updatedAt}`];
 
-  const serverKey = `servers:${userEmail}:${serverId}`;
+  const serverKey = `servers:${config.orgId || userEmail}:${serverId}`;
   await kv.put(serverKey, JSON.stringify(config));
 
   try {
@@ -1547,12 +1595,10 @@ export async function toggleServerLock(serverId: string, enableLock: boolean) {
   if (!kv) throw new Error("KV database missing.");
 
   // 1. Find the server in KV
-  const servers = await getServers();
-  const config = servers.find(s => s.id === serverId);
-
-  if (!config) {
-    throw new Error("Server not found.");
-  }
+  const serverRes = await getServerKeyAndConfig(kv, userEmail, serverId);
+  if (!serverRes) throw new Error("Server not found.");
+  const serverKey = serverRes.key;
+  const config = serverRes.config;
 
   if (!config.hetznerServerId) {
     throw new Error("Cannot lock/unlock a server not managed by Hetzner.");
@@ -1565,8 +1611,7 @@ export async function toggleServerLock(serverId: string, enableLock: boolean) {
   config.isLocked = enableLock;
   config.updatedAt = new Date().toISOString();
 
-  const kvKey = `servers:${userEmail}:${config.ip}`;
-  await kv.put(kvKey, JSON.stringify(config));
+  await kv.put(serverKey, JSON.stringify(config));
 
   return { success: true, isLocked: enableLock };
 }
@@ -1666,7 +1711,7 @@ export async function getLatestBootstrapCommand(serverId: string) {
   
   // Optionally update KV with the latest command
   config.bootstrapCommand = command;
-  await kv.put(`servers:${userEmail}:${serverId}`, JSON.stringify(config));
+  await kv.put(`servers:${config.orgId || userEmail}:${serverId}`, JSON.stringify(config));
 
   return { success: true, command };
 }
@@ -1744,7 +1789,8 @@ export async function provisionManualServer(
   provider: string = 'contabo',
   manualIp?: string,
   manualPassword?: string,
-  customUsername?: string
+  customUsername?: string,
+  orgId?: string
 ) {
   const userEmail = await getIdentity();
   const env = await getCloudflareEnv();
@@ -1769,6 +1815,7 @@ export async function provisionManualServer(
     ip: manualIp || 'manual-setup',
     userName,
     userEmail,
+    orgId: orgId || userEmail,
     status: manualIp ? 'provisioning' : 'waiting-for-bootstrap',
     detailedStatus: manualIp ? 'Starting automated SSH bootstrap...' : 'Waiting for manual bootstrap...',
     rootPassword,
@@ -1829,8 +1876,11 @@ export async function provisionManualServer(
     config.bootstrapCommand = command;
 
     // 4. Save to KV (Multi-tenant listing)
-    const serverKey = `servers:${userEmail}:${serverId}`;
+    const targetOrgId = orgId || userEmail;
+    config.orgId = targetOrgId;
+    const serverKey = `servers:${targetOrgId}:${serverId}`;
     await kv.put(serverKey, JSON.stringify(config));
+    await kv.put(`server_lookup:${serverId}`, JSON.stringify({ orgId: targetOrgId, serverKey }));
 
     // Fast-lookup index for the bootstrap API
     await kv.put(`token:${provisioningToken}`, JSON.stringify({ serverKey, serverId }));
@@ -2019,11 +2069,10 @@ export async function updateServerProvider(serverId: string, data: { hetznerServ
   const kv = env.KV;
   if (!kv) throw new Error("KV database missing.");
 
-  const kvKey = `servers:${userEmail}:${serverId}`;
-  const existing = await kv.get(kvKey);
-  if (!existing) throw new Error("Server not found.");
-
-  const config = JSON.parse(existing) as ServerConfig;
+  const serverRes = await getServerKeyAndConfig(kv, userEmail, serverId);
+  if (!serverRes) throw new Error("Server not found.");
+  const kvKey = serverRes.key;
+  const config = serverRes.config;
   
   if (data.hetznerServerId) {
     config.hetznerServerId = data.hetznerServerId;
@@ -2049,10 +2098,9 @@ export async function syncServerAccessPolicies(serverId: string) {
   const kv = env.KV;
   if (!kv) throw new Error("KV database missing.");
 
-  const kvKey = `servers:${userEmail}:${serverId}`;
-  const serverVal = await kv.get(kvKey);
-  if (!serverVal) throw new Error(`Server ${serverId} not found for sync.`);
-  const server = JSON.parse(serverVal) as ServerConfig;
+  const serverRes = await getServerKeyAndConfig(kv, userEmail, serverId);
+  if (!serverRes) throw new Error(`Server ${serverId} not found for sync.`);
+  const server = serverRes.config;
 
   const allowedPeers = server.allowedPeers || [];
   const peerIps: string[] = [];
@@ -2088,18 +2136,25 @@ export async function syncAllDependentPolicies(peerServerId: string, newIp: stri
   const kv = env.KV;
   if (!kv) return;
 
-  const list = await kv.list({ prefix: `servers:${userEmail}:` });
-  for (const key of list.keys) {
-    const val = await kv.get(key.name);
-    if (!val) continue;
-    const server = JSON.parse(val) as ServerConfig;
+  const orgList = await kv.list({ prefix: `user:org:${userEmail}:` });
+  const orgIds = orgList.keys.length > 0
+    ? orgList.keys.map((k: { name: string }) => k.name.split(':').pop()!)
+    : [userEmail];
 
-    if (server.allowedPeers && server.allowedPeers.includes(peerServerId)) {
-      console.log(`[Access Sync] Server ${server.id} allows ${peerServerId} which got new IP ${newIp}. Syncing...`);
-      try {
-        await syncServerAccessPolicies(server.id);
-      } catch (err) {
-        console.error(`[Access Sync] Failed to sync dependent policy on ${server.id}:`, err);
+  for (const orgId of orgIds) {
+    const list = await kv.list({ prefix: `servers:${orgId}:` });
+    for (const key of list.keys) {
+      const val = await kv.get(key.name);
+      if (!val) continue;
+      const server = JSON.parse(val) as ServerConfig;
+
+      if (server.allowedPeers && server.allowedPeers.includes(peerServerId)) {
+        console.log(`[Access Sync] Server ${server.id} allows ${peerServerId} which got new IP ${newIp}. Syncing...`);
+        try {
+          await syncServerAccessPolicies(server.id);
+        } catch (err) {
+          console.error(`[Access Sync] Failed to sync dependent policy on ${server.id}:`, err);
+        }
       }
     }
   }
@@ -2111,10 +2166,10 @@ export async function updateServerAllowedPeers(serverId: string, allowedPeers: s
   const kv = env.KV;
   if (!kv) throw new Error("KV database missing.");
 
-  const kvKey = `servers:${userEmail}:${serverId}`;
-  const serverVal = await kv.get(kvKey);
-  if (!serverVal) throw new Error("Server not found.");
-  const server = JSON.parse(serverVal) as ServerConfig;
+  const serverRes = await getServerKeyAndConfig(kv, userEmail, serverId);
+  if (!serverRes) throw new Error("Server not found.");
+  const kvKey = serverRes.key;
+  const server = serverRes.config;
 
   server.allowedPeers = allowedPeers;
   server.updatedAt = new Date().toISOString();
@@ -2182,4 +2237,99 @@ export async function getServerSnapshots(serverId: string) {
     console.error(`Failed to fetch snapshots for server ${serverId}:`, err);
     return [];
   }
+}
+
+/**
+ * Retrieves settings for a specific organization.
+ */
+export async function getOrgSettings(orgId: string): Promise<OrgSettings | null> {
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+  if (!kv) return null;
+  const data = await kv.get(`org:settings:${orgId}`);
+  return data ? JSON.parse(data) : null;
+}
+
+/**
+ * Saves settings for a specific organization.
+ */
+export async function saveOrgSettings(settings: OrgSettings) {
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+  if (!kv) throw new Error("KV database missing.");
+  await kv.put(`org:settings:${settings.orgId}`, JSON.stringify(settings));
+}
+
+/**
+ * Retrieves all memberships for a user.
+ */
+export async function getUserMemberships(passedEmail?: string): Promise<UserMembership[]> {
+  const userEmail = passedEmail || await getIdentity();
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+  if (!kv) return [];
+  const list = await kv.list({ prefix: `user:org:${userEmail}:` });
+  const memberships: UserMembership[] = [];
+  for (const key of list.keys) {
+    const val = await kv.get(key.name);
+    if (val) memberships.push(JSON.parse(val));
+  }
+  return memberships;
+}
+
+/**
+ * Invites a colleague to collaborate on an existing server.
+ */
+export async function inviteCollaborator(serverId: string, orgId: string, email: string) {
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+  if (!kv) throw new Error("KV database missing.");
+
+  const serverKey = `servers:${orgId}:${serverId}`;
+  const data = await kv.get(serverKey);
+  if (!data) throw new Error("Server not found.");
+
+  const server = JSON.parse(data) as ServerConfig;
+  const username = email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  if (!server.collaborators) server.collaborators = [];
+  const exists = server.collaborators.some(c => c.email === email);
+  if (exists) throw new Error("Collaborator already added.");
+
+  const newCollab: CollaboratorInfo = {
+    email,
+    username,
+    status: 'pending'
+  };
+
+  server.collaborators.push(newCollab);
+  await kv.put(serverKey, JSON.stringify(server));
+
+  // Update Access for main hostname and logs
+  const cfApi = new CloudflareApiService(env);
+  if (server.hostname) {
+    await cfApi.setupAccess(server.hostname, email).catch(e => console.error("Access error:", e));
+    const cleanPrefix = server.hostname.split('-code.')[0].split('-logs.')[0].split('.')[0];
+    await cfApi.setupAccess(`${cleanPrefix}-logs.devboxui.com`, email).catch(e => console.error("Access error:", e));
+  }
+  
+  if (server.projects) {
+    for (const project of server.projects) {
+      await cfApi.setupAccess(project.domain, email).catch(e => console.error("Access error on project:", e));
+    }
+  }
+
+  // Create membership placeholder for the user in KV
+  const membershipKey = `user:org:${email}:${orgId}`;
+  const existingMembership = await kv.get(membershipKey);
+  if (!existingMembership) {
+    const newMembership: UserMembership = {
+      orgId,
+      role: 'member',
+      permissions: { canCreateServers: false, canAssignServers: false }
+    };
+    await kv.put(membershipKey, JSON.stringify(newMembership));
+  }
+
+  return server;
 }

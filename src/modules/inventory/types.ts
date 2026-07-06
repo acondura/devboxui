@@ -41,6 +41,31 @@ export interface ServerConfig {
   pendingSnapshotDate?: string;
   pendingCreateActionId?: number;
   serverSpecs?: string;
+  orgId?: string;
+  assignedTo?: string;
+  collaborators?: CollaboratorInfo[];
+}
+
+export interface CollaboratorInfo {
+  email: string;
+  username: string; // Sanitized POSIX username (e.g. 'john')
+  status: 'pending' | 'active';
+}
+
+export interface OrgSettings {
+  orgId: string;
+  orgName: string;
+  hetznerToken: string; // Team-wide Hetzner billing token
+  adminEmails: string[]; // Administrators who can manage members/billing
+}
+
+export interface UserMembership {
+  orgId: string;
+  role: 'owner' | 'admin' | 'member';
+  permissions: {
+    canCreateServers: boolean; // Custom flag to grant VM creation rights
+    canAssignServers: boolean; // Custom flag to let members assign VMs to others
+  };
 }
 
 export interface ScheduleConfig {

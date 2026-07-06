@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { AddServerModal } from '@/modules/inventory/components/AddServerModal';
 import { SettingsModal } from '@/modules/access/components/SettingsModal';
+import { SshKeyOnboardingModal } from '@/modules/access/components/SshKeyOnboardingModal';
 import { FeedbackModal } from '@/modules/feedback/components/FeedbackModal';
 import { ServerList } from '@/modules/inventory/components/ServerList';
-import { provisionServer, getServers, addProject, deleteServer, reinstallServer, deleteDomain, updateDomain, updateServerProvider, updateServerAllowedPeers } from '@/modules/inventory/actions';
+import { provisionServer, getServers, addProject, deleteServer, reinstallServer, deleteDomain, updateDomain, updateServerAllowedPeers, getUserSettings } from '@/modules/inventory/actions';
 import { ServerConfig } from '@/modules/inventory/types';
 
 interface DashboardViewProps {
@@ -14,12 +15,27 @@ interface DashboardViewProps {
   isAdmin: boolean;
 }
 
-export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
+export function DashboardView({ userEmail }: DashboardViewProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [servers, setServers] = useState<ServerConfig[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function checkSshKey() {
+      try {
+        const settings = await getUserSettings();
+        if (settings && !settings.sshPublicKey) {
+          setIsOnboardingOpen(true);
+        }
+      } catch (error) {
+        console.error("Failed to check user settings:", error);
+      }
+    }
+    checkSshKey();
+  }, []);
 
   useEffect(() => {
     async function loadServers() {
@@ -58,7 +74,7 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
         if (stillPending) {
           timerId = setTimeout(poll, 5000);
         }
-      } catch (error) {
+      } catch {
         // Silently retry polling on network/auth errors to avoid console drama
         timerId = setTimeout(poll, 10000); 
       }
@@ -185,6 +201,11 @@ export function DashboardView({ userEmail, isAdmin }: DashboardViewProps) {
       <FeedbackModal
         isOpen={isFeedbackOpen}
         onClose={() => setIsFeedbackOpen(false)}
+      />
+
+      <SshKeyOnboardingModal
+        isOpen={isOnboardingOpen}
+        onClose={() => setIsOnboardingOpen(false)}
       />
 
       {/* Top Navigation */}

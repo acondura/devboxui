@@ -126,6 +126,9 @@ echo "$DEV_USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/90-devbox-user
 # Initialize mkcert for the host user
 sudo -u "$DEV_USER" mkcert -install || true
 
+# Configure DDEV global settings
+sudo -u "$DEV_USER" ddev config --global router-bind-all-interfaces=true || true
+
 # Oh My Bash for the host user
 if [ ! -d "/home/$DEV_USER/.oh-my-bash" ]; then
     sudo -u "$DEV_USER" bash -c "curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh | bash -s -- --unattended" || true
@@ -138,6 +141,97 @@ if [ -f "/home/$DEV_USER/.bashrc" ]; then
     grep -q "alias l=" "/home/$DEV_USER/.bashrc" || echo "alias l='ls -lah'" >> "/home/$DEV_USER/.bashrc"
 fi
 
+# --- 7. Write and Configure Collaborator Sync Daemon ---
+echo "🔄 Setting up collaborator sync daemon..."
+cat << 'EOF' > /usr/local/bin/sync-devbox-users.sh
+#!/bin/bash
+# Sync script running on the VM to poll devboxui API and sync collaborators/SSH keys
+
+SERVER_ID="SERVER_ID_PLACEHOLDER"
+CALLBACK_URL="CALLBACK_URL_PLACEHOLDER"
+SERVICE_TOKEN_ID="SERVICE_TOKEN_ID_PLACEHOLDER"
+SERVICE_TOKEN_SECRET="SERVICE_TOKEN_SECRET_PLACEHOLDER"
+
+API_URL="${CALLBACK_URL%/provisioning/status}/servers/${SERVER_ID}/users"
+
+# Fetch users from the devboxui API
+RESPONSE=$(curl -s -m 10 \
+  -H "CF-Access-Client-Id: ${SERVICE_TOKEN_ID}" \
+  -H "CF-Access-Client-Secret: ${SERVICE_TOKEN_SECRET}" \
+  "${API_URL}")
+
+if [ -z "${RESPONSE}" ]; then
+  exit 0
+fi
+
+# Parse users using jq
+echo "${RESPONSE}" | jq -c '.users[]' | while read -r user_json; do
+  username=$(echo "${user_json}" | jq -r '.username')
+  email=$(echo "${user_json}" | jq -r '.email')
+  
+  if [ -z "${username}" ] || [ "${username}" = "null" ]; then
+    continue
+  fi
+
+  # Create user if they don't exist
+  if ! id "${username}" &>/dev/null; then
+    useradd -m -s /bin/bash "${username}"
+    usermod -aG sudo "${username}"
+    usermod -aG docker "${username}"
+    echo "${username} ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/${username}"
+    
+    # Pre-configure Git for user
+    sudo -u "${username}" git config --global user.name "${username}"
+    sudo -u "${username}" git config --global user.email "${email}"
+    
+    # Setup workspace for user
+    mkdir -p "/home/${username}/workspace"
+    chown -R "${username}":"${username}" "/home/${username}/workspace"
+    
+    # Initialize mkcert local CA for user
+    sudo -u "${username}" mkcert -install || true
+    # Configure DDEV global settings for user
+    sudo -u "${username}" ddev config --global router-bind-all-interfaces=true || true
+  fi
+  
+  # Sync SSH keys
+  mkdir -p "/home/${username}/.ssh"
+  chmod 700 "/home/${username}/.ssh"
+  chown "${username}":"${username}" "/home/${username}/.ssh"
+  
+  # Read keys array and join with newlines
+  echo "${user_json}" | jq -r '.sshKeys[]' > "/home/${username}/.ssh/authorized_keys.tmp"
+  
+  # Add management SSH key if present
+  if [ -f /root/.ssh/authorized_keys ]; then
+    grep -v '^#' /root/.ssh/authorized_keys >> "/home/${username}/.ssh/authorized_keys.tmp" || true
+  fi
+  
+  # Only overwrite if contents changed to prevent resetting permissions
+  if ! diff -q "/home/${username}/.ssh/authorized_keys.tmp" "/home/${username}/.ssh/authorized_keys" &>/dev/null; then
+    mv "/home/${username}/.ssh/authorized_keys.tmp" "/home/${username}/.ssh/authorized_keys"
+    chmod 600 "/home/${username}/.ssh/authorized_keys"
+    chown "${username}":"${username}" "/home/${username}/.ssh/authorized_keys"
+  else
+    rm "/home/${username}/.ssh/authorized_keys.tmp"
+  fi
+done
+EOF
+
+# Inject variables into the sync script
+sed -i "s|SERVER_ID_PLACEHOLDER|${SERVER_ID}|g" /usr/local/bin/sync-devbox-users.sh
+sed -i "s|CALLBACK_URL_PLACEHOLDER|${CALLBACK_URL}|g" /usr/local/bin/sync-devbox-users.sh
+sed -i "s|SERVICE_TOKEN_ID_PLACEHOLDER|${SERVICE_TOKEN_ID}|g" /usr/local/bin/sync-devbox-users.sh
+sed -i "s|SERVICE_TOKEN_SECRET_PLACEHOLDER|${SERVICE_TOKEN_SECRET}|g" /usr/local/bin/sync-devbox-users.sh
+
+chmod +x /usr/local/bin/sync-devbox-users.sh
+
+# Run sync immediately
+/usr/local/bin/sync-devbox-users.sh || true
+
+# Setup cron job to run every minute
+echo "* * * * * root /usr/local/bin/sync-devbox-users.sh >/dev/null 2>&1" > /etc/cron.d/sync-devbox-users
+
 echo "------------------------------------------------"
 echo "✅ Setup Complete! Master Server is Ready."
 echo "------------------------------------------------"
@@ -149,6 +243,8 @@ echo "------------------------------------------------"
 echo "🔒 Hardening server firewall..."
 apt-get install -y ufw
 ufw allow 22/tcp
+ufw allow 80/tcp
+ufw allow 443/tcp
 ufw --force enable
 
 # Signal that the setup is done

@@ -13,6 +13,7 @@ import { ScheduleConfig } from '../types';
 import { triggerMorningSpinup, triggerEveningSnapshot } from '../schedule-actions';
 import type { HetznerImage } from '@/lib/hetzner-api';
 import { Select2 } from './Select2';
+import { InviteCollabModal } from './InviteCollabModal';
 
 interface ServerListProps {
   servers: ServerConfig[];
@@ -231,6 +232,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
   const [isSpinningUp, setIsSpinningUp] = useState(false);
   const [isSnapshotting, setIsSnapshotting] = useState(false);
   const [isConfirmSnapshotOpen, setIsConfirmSnapshotOpen] = useState(false);
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
 
   const [vpsSnapshots, setVpsSnapshots] = useState<HetznerImage[]>([]);
   const [selectedSnapshotId, setSelectedSnapshotId] = useState<string>('latest');
@@ -381,6 +383,17 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
               )}
             </div>
           )}
+
+          {server.collaborators && server.collaborators.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1.5 max-w-[280px]">
+              {server.collaborators.map((c) => (
+                <span key={c.email} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-650 border border-slate-200" title={`${c.email} (${c.status})`}>
+                  👤 {c.username || c.email.split('@')[0]}
+                  {c.status === 'pending' && <span className="ml-1 text-[8px] text-amber-500 font-extrabold uppercase">(pending)</span>}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </td>
 
@@ -493,6 +506,25 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
               </button>
               <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mt-0.5 select-none text-center">
                 Auth
+              </span>
+            </div>
+          )}
+
+          {/* Share/Collaborators Button */}
+          {isAutomated && (
+            <div className="flex flex-col items-center">
+              <button
+                onClick={() => setIsInviteOpen(true)}
+                disabled={isDeleting || isReinstalling}
+                className="p-2 text-slate-500 hover:text-indigo-400 hover:bg-slate-800 rounded-lg transition-all disabled:opacity-50"
+                title="Share & Invite Collaborators"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+              </button>
+              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mt-0.5 select-none text-center">
+                Share
               </span>
             </div>
           )}
@@ -678,6 +710,13 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
             onSnapshotChange={handleSnapshotChange}
           />
         )}
+        <InviteCollabModal
+          serverId={server.id}
+          orgId={server.orgId || userEmail}
+          isOpen={isInviteOpen}
+          onClose={() => setIsInviteOpen(false)}
+          onSuccess={onRefresh}
+        />
       </td>
     </tr>
   );
@@ -702,6 +741,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
   const [isSpinningUp, setIsSpinningUp] = useState(false);
   const [isSnapshotting, setIsSnapshotting] = useState(false);
   const [isConfirmSnapshotOpen, setIsConfirmSnapshotOpen] = useState(false);
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
 
   const [vpsSnapshots, setVpsSnapshots] = useState<HetznerImage[]>([]);
   const [selectedSnapshotId, setSelectedSnapshotId] = useState<string>('latest');
@@ -905,6 +945,17 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
                   )}
                 </div>
               )}
+
+              {server.collaborators && server.collaborators.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1.5 justify-start">
+                  {server.collaborators.map((c) => (
+                    <span key={c.email} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-650 border border-slate-200" title={`${c.email} (${c.status})`}>
+                      👤 {c.username || c.email.split('@')[0]}
+                      {c.status === 'pending' && <span className="ml-1 text-[8px] text-amber-500 font-extrabold uppercase">(pending)</span>}
+                    </span>
+                  ))}
+                </div>
+              )}
               
               <div className="flex flex-row justify-between items-center mt-1 text-[10px] font-mono text-slate-550 w-full font-mono text-left">
                 <span />
@@ -965,6 +1016,15 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
               className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg disabled:opacity-50"
             >
               API Auth
+            </button>
+          )}
+          {isAutomated && (
+            <button
+              onClick={() => setIsInviteOpen(true)}
+              disabled={isDeleting || isReinstalling}
+              className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg disabled:opacity-50"
+            >
+              Share
             </button>
           )}
           {isHetzner && (
@@ -1091,6 +1151,13 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
           onSnapshotChange={handleSnapshotChange}
         />
       )}
+      <InviteCollabModal
+        serverId={server.id}
+        orgId={server.orgId || 'personal'}
+        isOpen={isInviteOpen}
+        onClose={() => setIsInviteOpen(false)}
+        onSuccess={onRefresh}
+      />
     </div>
   );
 }
