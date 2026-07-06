@@ -29,6 +29,42 @@ export async function GET(
 
   const server = JSON.parse(data) as ServerConfig;
 
+  // --- Authentication and Authorization Check ---
+  const headersList = req.headers;
+  const clientIdHeader = headersList.get('cf-access-client-id');
+  let isAuthorized = false;
+
+  // 1. Check if the requester is the VM using the Cloudflare Access Service Token
+  const cachedToken = await kv.get('cloudflare:service_token');
+  if (cachedToken) {
+    const tokenInfo = JSON.parse(cachedToken) as { id: string; client_id: string; client_secret: string };
+    if (clientIdHeader && clientIdHeader === tokenInfo.client_id) {
+      isAuthorized = true;
+    }
+  }
+
+  // 2. Otherwise, check if the requester is a logged-in user who owns or collaborates on this server
+  if (!isAuthorized) {
+    try {
+      const { getIdentity } = await import('@/lib/auth');
+      const userEmail = await getIdentity();
+      if (userEmail) {
+        const isOwner = server.userEmail === userEmail;
+        const isCollaborator = server.collaborators?.some(c => c.email === userEmail);
+        if (isOwner || isCollaborator) {
+          isAuthorized = true;
+        }
+      }
+    } catch {
+      // Ignore and fall through to unauthorized
+    }
+  }
+
+  if (!isAuthorized) {
+    return NextResponse.json({ error: 'Unauthorized access.' }, { status: 403 });
+  }
+  // ----------------------------------------------
+
   // Compile list of users
   const usersList: { username: string; email: string; sshKeys: string[] }[] = [];
 
