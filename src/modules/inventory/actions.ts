@@ -159,9 +159,17 @@ class DebugHandler(http.server.BaseHTTPRequestHandler):
         # Live Project Discovery
         workspace_dir = os.environ.get('WORKSPACE_DIR')
         if not workspace_dir:
-            # Try to auto-detect if env var is missing
-            possible_home = subprocess.getoutput('echo /home/$(ls /home | head -n 1)/workspace')
-            workspace_dir = possible_home if os.path.exists(possible_home) else '/home/root/workspace'
+            found_dir = None
+            if os.path.exists('/home'):
+                try:
+                    for u in os.listdir('/home'):
+                        p = os.path.join('/home', u, 'workspace')
+                        if os.path.exists(p) and os.path.isdir(p):
+                            found_dir = p
+                            break
+                except Exception:
+                    pass
+            workspace_dir = found_dir or '/home/root/workspace'
             
         projects_list = []
         if os.path.exists(workspace_dir):
