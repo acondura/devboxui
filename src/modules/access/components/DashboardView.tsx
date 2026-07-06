@@ -84,11 +84,18 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
     return () => clearTimeout(timerId);
   }, [servers]); // Simplified dependency to avoid complex expression warnings
 
-  const handleAddServer = async (name: string, serverType: string, location: string, image: string, customUsername?: string) => {
+  const handleAddServer = async (
+    name: string,
+    serverType: string,
+    location: string,
+    image: string,
+    customUsername?: string,
+    provider: 'hetzner' | 'digitalocean' = 'hetzner'
+  ) => {
     try {
-      const result = await provisionServer(name, serverType, location, image, 'hetzner', customUsername);
+      const result = await provisionServer(name, serverType, location, image, provider, customUsername) as { success: boolean; server?: ServerConfig; error?: string };
       if (result.success && result.server) {
-        setServers(prev => [...prev, result.server]);
+        setServers(prev => [...prev, result.server!]);
       }
       return result;
     } catch (error) {

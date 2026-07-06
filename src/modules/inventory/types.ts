@@ -29,6 +29,7 @@ export interface ServerConfig {
   bootstrapCommand?: string;
   contaboInstanceId?: number;
   contaboSecretId?: number;
+  digitalOceanDropletId?: number;
   tunnelToken?: string;
   providerName?: string;
   hostname?: string;
@@ -56,6 +57,7 @@ export interface OrgSettings {
   orgId: string;
   orgName: string;
   hetznerToken: string; // Team-wide Hetzner billing token
+  digitalOceanToken?: string; // Team-wide DigitalOcean billing token
   adminEmails: string[]; // Administrators who can manage members/billing
 }
 

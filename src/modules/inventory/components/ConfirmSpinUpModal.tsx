@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import type { HetznerImage } from '@/lib/hetzner-api';
 import { getHetznerOptions } from '../actions';
 import { Select2 } from './Select2';
 
@@ -12,7 +11,7 @@ interface ConfirmSpinUpModalProps {
   serverId: string;
   serverName: string;
   defaultServerType?: string;
-  vpsSnapshots: HetznerImage[];
+  vpsSnapshots: Array<{ id: number | string; name?: string | null; description?: string; labels?: Record<string, string> }>;
   selectedSnapshotId: string;
   onSnapshotChange: (id: string) => void;
 }
@@ -141,24 +140,48 @@ export function ConfirmSpinUpModal({
               className="w-full bg-white border border-slate-300 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 rounded-xl px-4 py-2.5 text-sm text-slate-900 font-medium"
             >
               <option value="latest">Latest Snapshot (Auto)</option>
-              {vpsSnapshots.some((s) => s.labels && s.labels['devbox-server-id'] === serverId) && (
+              {vpsSnapshots.some((s) => {
+                if (s.labels && s.labels['devbox-server-id'] === serverId) return true;
+                const cleanName = serverName.replace('.devboxui.com', '').replace('-direct', '').replace('-code', '').toLowerCase();
+                if (s.name && s.name.toLowerCase().includes(cleanName)) return true;
+                if (s.description && s.description.toLowerCase().includes(cleanName)) return true;
+                return false;
+              }) && (
                 <optgroup label="This DevBox's Snapshots">
                   {vpsSnapshots
-                    .filter((s) => s.labels && s.labels['devbox-server-id'] === serverId)
+                    .filter((s) => {
+                      if (s.labels && s.labels['devbox-server-id'] === serverId) return true;
+                      const cleanName = serverName.replace('.devboxui.com', '').replace('-direct', '').replace('-code', '').toLowerCase();
+                      if (s.name && s.name.toLowerCase().includes(cleanName)) return true;
+                      if (s.description && s.description.toLowerCase().includes(cleanName)) return true;
+                      return false;
+                    })
                     .map((s) => (
                       <option key={s.id} value={s.id.toString()}>
-                        {s.description || `Snapshot #${s.id}`}
+                        {s.description || s.name || `Snapshot #${s.id}`}
                       </option>
                     ))}
                 </optgroup>
               )}
-              {vpsSnapshots.some((s) => !s.labels || s.labels['devbox-server-id'] !== serverId) && (
+              {vpsSnapshots.some((s) => {
+                if (s.labels && s.labels['devbox-server-id'] === serverId) return false;
+                const cleanName = serverName.replace('.devboxui.com', '').replace('-direct', '').replace('-code', '').toLowerCase();
+                if (s.name && s.name.toLowerCase().includes(cleanName)) return false;
+                if (s.description && s.description.toLowerCase().includes(cleanName)) return false;
+                return true;
+              }) && (
                 <optgroup label="Other Compatible Snapshots">
                   {vpsSnapshots
-                    .filter((s) => !s.labels || s.labels['devbox-server-id'] !== serverId)
+                    .filter((s) => {
+                      if (s.labels && s.labels['devbox-server-id'] === serverId) return false;
+                      const cleanName = serverName.replace('.devboxui.com', '').replace('-direct', '').replace('-code', '').toLowerCase();
+                      if (s.name && s.name.toLowerCase().includes(cleanName)) return false;
+                      if (s.description && s.description.toLowerCase().includes(cleanName)) return false;
+                      return true;
+                    })
                     .map((s) => (
                       <option key={s.id} value={s.id.toString()}>
-                        {s.description || `Snapshot #${s.id}`}
+                        {s.description || s.name || `Snapshot #${s.id}`}
                       </option>
                     ))}
                 </optgroup>

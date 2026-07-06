@@ -5,7 +5,7 @@ import { getCloudflareEnv, getIdentity } from '@/lib/auth';
 import { CloudflareApiService } from '@/lib/cloudflare-api';
 import { HetznerApiService, HetznerImage } from '@/lib/hetzner-api';
 import { ContaboApiService } from '@/lib/contabo-api';
-import { formatRsaPublicKey, formatPrivateKey } from '@/lib/ssh-utils';
+import { DigitalOceanApiService } from '@/lib/digitalocean-api';
 
 /**
  * Generates the full sequence of bash commands to bootstrap the server.
@@ -23,7 +23,7 @@ function getBootstrapScript(
   serviceTokenId?: string,
   serviceTokenSecret?: string,
   hetznerToken?: string,
-  providerName: string = 'DevBox',
+  _providerName: string = 'DevBox',
   displayUrl: string = 'Server'
 ) {
   // DERIVED VARIABLES
@@ -485,7 +485,7 @@ fi
 /**
  * Synchronizes the user's SSH public key to all existing servers.
  */
-export async function syncSshKeys(newPublicKey: string) {
+export async function syncSshKeys(_newPublicKey: string) {
   const servers = await getServers();
   const results = [];
 
@@ -574,6 +574,7 @@ export async function getUserSettings(passedEmail?: string) {
     hetznerToken: '',
     sshPublicKey: '',
     sshPrivateKey: '',
+    digitalOceanToken: '',
     contaboClientId: '',
     contaboClientSecret: '',
     contaboUsername: '',
@@ -586,6 +587,7 @@ export async function getUserSettings(passedEmail?: string) {
     hetznerToken: string;
     sshPublicKey: string;
     sshPrivateKey: string;
+    digitalOceanToken?: string;
     contaboClientId?: string;
     contaboClientSecret?: string;
     contaboUsername?: string;
@@ -601,6 +603,7 @@ export async function saveUserSettings(settings: {
   hetznerToken?: string;
   sshPublicKey?: string;
   sshPrivateKey?: string;
+  digitalOceanToken?: string;
   contaboClientId?: string;
   contaboClientSecret?: string;
   contaboUsername?: string;
@@ -627,12 +630,15 @@ export async function provisionServer(
   serverType: string,
   location: string,
   image: string,
-  provider: 'hetzner' | 'contabo' = 'hetzner',
+  provider: 'hetzner' | 'contabo' | 'digitalocean' = 'hetzner',
   customUsername?: string,
   orgId?: string
 ) {
   if (provider === 'contabo') {
     return provisionContaboServer(customName, serverType, location, image, customUsername);
+  }
+  if (provider === 'digitalocean') {
+    return provisionDigitalOceanServer(customName, serverType, location, image, customUsername, orgId);
   }
   const userEmail = await getIdentity();
   const env = await getCloudflareEnv();
@@ -1344,15 +1350,6 @@ export async function deleteServer(serverId: string) {
   const kv = env.KV;
   const settings = await getUserSettings();
 
-  const cfApi = new CloudflareApiService(env);
-  const hetznerApi = new HetznerApiService(env, settings?.hetznerToken);
-  const contaboApi = new ContaboApiService(env, {
-    clientId: settings?.contaboClientId || env.CONTABO_CLIENT_ID || '',
-    clientSecret: settings?.contaboClientSecret || env.CONTABO_CLIENT_SECRET || '',
-    apiUsername: settings?.contaboUsername || env.CONTABO_API_USERNAME || '',
-    apiPassword: settings?.contaboPassword || env.CONTABO_API_PASSWORD || ''
-  });
-
   if (!kv) throw new Error("KV database missing.");
 
   // 1. Find the server in KV
@@ -1362,6 +1359,29 @@ export async function deleteServer(serverId: string) {
   if (!config) {
     throw new Error("Server not found.");
   }
+
+  // Resolve Tokens
+  let hetznerToken = settings?.hetznerToken || env.HETZNER_API_TOKEN;
+  let digitalOceanToken = settings?.digitalOceanToken || env.CLOUDFLARE_API_TOKEN; // fallback
+  if (config.orgId) {
+    const orgSettings = await getOrgSettings(config.orgId);
+    if (orgSettings?.hetznerToken) {
+      hetznerToken = orgSettings.hetznerToken;
+    }
+    if (orgSettings?.digitalOceanToken) {
+      digitalOceanToken = orgSettings.digitalOceanToken;
+    }
+  }
+
+  const cfApi = new CloudflareApiService(env);
+  const hetznerApi = new HetznerApiService(env, hetznerToken);
+  const doApi = new DigitalOceanApiService(env, digitalOceanToken);
+  const contaboApi = new ContaboApiService(env, {
+    clientId: settings?.contaboClientId || env.CONTABO_CLIENT_ID || '',
+    clientSecret: settings?.contaboClientSecret || env.CONTABO_CLIENT_SECRET || '',
+    apiUsername: settings?.contaboUsername || env.CONTABO_API_USERNAME || '',
+    apiPassword: settings?.contaboPassword || env.CONTABO_API_PASSWORD || ''
+  });
 
   // 2. Automated Cleanup
   console.log(`Starting cleanup for server ${config.ip || 'pending'}...`);
@@ -1388,7 +1408,7 @@ export async function deleteServer(serverId: string) {
       await cfApi.deleteDnsRecord(directHostname).catch(e => console.error("Direct DNS deletion failed:", e));
       if (hostname.includes('-code.')) {
         const legacyDirect = hostname.replace('-code.', '-direct.');
-        await cfApi.deleteDnsRecord(legacyDirect).catch(e => {});
+        await cfApi.deleteDnsRecord(legacyDirect).catch(() => {});
       }
     }
 
@@ -1410,6 +1430,14 @@ export async function deleteServer(serverId: string) {
       if (config.hetznerServerId) {
         console.log(`Deleting Hetzner server ${config.hetznerServerId}...`);
         await hetznerApi.deleteServer(config.hetznerServerId).catch(e => console.error("Hetzner deletion failed:", e));
+      }
+    }
+
+    // Delete DigitalOcean Droplet
+    if (config.provider === 'digitalocean' || config.digitalOceanDropletId) {
+      if (config.digitalOceanDropletId) {
+        console.log(`Deleting DigitalOcean Droplet ${config.digitalOceanDropletId}...`);
+        await doApi.deleteDroplet(config.digitalOceanDropletId).catch(e => console.error("DigitalOcean Droplet deletion failed:", e));
       }
     }
 
@@ -1663,6 +1691,76 @@ export async function getHetznerOptions() {
       images: [],
       snapshots: [],
       pricing: null,
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+}
+
+export async function getDigitalOceanOptions() {
+  const env = await getCloudflareEnv();
+  const settings = await getUserSettings();
+  const digitalOceanToken = settings?.digitalOceanToken || env.CLOUDFLARE_API_TOKEN; // fallback
+  if (!digitalOceanToken) {
+    return {
+      serverTypes: [],
+      locations: [],
+      images: [],
+      snapshots: [],
+      error: 'DigitalOcean API Token is missing. Please configure it in your Settings (top-right gear icon).'
+    };
+  }
+
+  const doApi = new DigitalOceanApiService(env, digitalOceanToken);
+  try {
+    const [sizes, regions, distributions, privateImages] = await Promise.all([
+      doApi.getSizes(),
+      doApi.getRegions(),
+      doApi.getImages('distribution'),
+      doApi.getImages('private').catch(() => [])
+    ]);
+
+    const serverTypes = sizes.map(s => ({
+      id: s.slug,
+      name: s.slug,
+      description: `${s.vcpus} vCPU / ${s.memory / 1024} GB RAM / ${s.disk} GB SSD`,
+      cores: s.vcpus,
+      memory: s.memory / 1024,
+      disk: s.disk,
+      architecture: 'x86',
+      prices: s.regions.map(r => ({
+        location: r,
+        price_monthly: { gross: s.price_monthly.toString() }
+      }))
+    }));
+
+    const locations = regions.map(r => ({
+      name: r.slug,
+      description: r.name,
+      city: r.name
+    }));
+
+    const images = distributions.map(i => ({
+      id: i.id.toString(),
+      name: i.slug || i.name,
+      description: `${i.distribution} ${i.name}`,
+      architecture: 'x86'
+    }));
+
+    const snapshots = privateImages.map(i => ({
+      id: i.id.toString(),
+      name: i.name,
+      description: i.name,
+      architecture: 'x86'
+    }));
+
+    return { serverTypes, locations, images, snapshots };
+  } catch (error) {
+    console.error("Failed to fetch DigitalOcean options:", error);
+    return {
+      serverTypes: [],
+      locations: [],
+      images: [],
+      snapshots: [],
       error: error instanceof Error ? error.message : String(error)
     };
   }
@@ -2184,51 +2282,70 @@ export async function updateServerAllowedPeers(serverId: string, allowedPeers: s
 }
 
 export async function getServerSnapshots(serverId: string) {
+  const userEmail = await getIdentity();
   const env = await getCloudflareEnv();
-  const settings = await getUserSettings();
-  const hetznerToken = settings?.hetznerToken || env.HETZNER_API_TOKEN;
-  if (!hetznerToken) return [];
-  
-  const hetznerApi = new HetznerApiService(env, hetznerToken);
+  const settings = await getUserSettings(userEmail);
   const kv = env.KV;
   if (!kv) return [];
 
-  try {
-    // 1. Fetch server config from KV to resolve its configured serverType
-    const list = await kv.list({ prefix: 'servers:' });
-    let serverConfig: ServerConfig | null = null;
-    for (const key of list.keys) {
-      const data = await kv.get(key.name);
-      if (data) {
-        const parsed = JSON.parse(data) as ServerConfig;
-        if (parsed.id === serverId) {
-          serverConfig = parsed;
-          break;
-        }
+  // Find server config to check provider
+  const resolved = await getServerKeyAndConfig(kv, userEmail, serverId);
+  if (!resolved) return [];
+  const { config: serverConfig } = resolved;
+
+  if (serverConfig.provider === 'digitalocean') {
+    let digitalOceanToken = settings?.digitalOceanToken;
+    if (serverConfig.orgId) {
+      const orgSettings = await getOrgSettings(serverConfig.orgId);
+      if (orgSettings?.digitalOceanToken) {
+        digitalOceanToken = orgSettings.digitalOceanToken;
       }
     }
-
-    if (!serverConfig) {
-      // Fallback: if server not found in KV, return snapshots labeled for this server
-      return await hetznerApi.getSnapshots(`devbox-server-id=${serverId}`);
+    if (!digitalOceanToken) return [];
+    const doApi = new DigitalOceanApiService(env, digitalOceanToken);
+    try {
+      const allPrivate = await doApi.getImages('private');
+      const serverPrefix = serverConfig.hostname?.split('.')[0] || `devbox-${serverId.slice(0, 8)}`;
+      const matched = allPrivate.filter(img => 
+        img.name.toLowerCase().includes(serverId.toLowerCase()) || 
+        img.name.toLowerCase().includes(serverPrefix.toLowerCase())
+      );
+      // Map to interchangeable shape expected by dropdown selection
+      return matched.map(img => ({
+        id: img.id,
+        name: img.name,
+        created: new Date().toISOString(),
+        disk_size: img.min_disk_size,
+        architecture: 'x86'
+      }));
+    } catch (e) {
+      console.error("Failed to load DigitalOcean snapshots:", e);
+      return [];
     }
+  }
 
-    // 2. Fetch all snapshots and server types from Hetzner
+  let hetznerToken = settings?.hetznerToken || env.HETZNER_API_TOKEN;
+  if (serverConfig.orgId) {
+    const orgSettings = await getOrgSettings(serverConfig.orgId);
+    if (orgSettings?.hetznerToken) {
+      hetznerToken = orgSettings.hetznerToken;
+    }
+  }
+  if (!hetznerToken) return [];
+  
+  const hetznerApi = new HetznerApiService(env, hetznerToken);
+  try {
     const [allSnapshots, serverTypes] = await Promise.all([
       hetznerApi.getSnapshots(),
       hetznerApi.getServerTypes()
     ]);
 
-    // Find the target server's specs
     const targetType = serverTypes.find(t => t.name === serverConfig?.serverType);
-    const targetDisk = targetType?.disk || 20; // default fallback in GB
+    const targetDisk = targetType?.disk || 20;
     const targetArch = targetType?.architecture || 'x86';
 
-    // 3. Filter snapshots by disk size and architecture compatibility
     const compatibleSnapshots = allSnapshots.filter(s => {
-      // Must match architecture (e.g. x86_64 vs ARM64)
       if (s.architecture !== targetArch) return false;
-      // Snapshot disk size must fit inside the target server's disk size
       return s.disk_size <= targetDisk;
     });
 
@@ -2332,4 +2449,199 @@ export async function inviteCollaborator(serverId: string, orgId: string, email:
   }
 
   return server;
+}
+
+export async function provisionDigitalOceanServer(
+  customName: string,
+  serverType: string,
+  location: string,
+  image: string,
+  customUsername?: string,
+  orgId?: string
+) {
+  const userEmail = await getIdentity();
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+  if (!kv) throw new Error("KV database missing.");
+
+  const settings = await getUserSettings();
+  if (!settings) throw new Error("Could not retrieve or generate user settings.");
+
+  let digitalOceanToken = settings.digitalOceanToken;
+  if (orgId) {
+    const orgSettings = await getOrgSettings(orgId);
+    if (orgSettings?.digitalOceanToken) {
+      digitalOceanToken = orgSettings.digitalOceanToken;
+    }
+  }
+  if (!digitalOceanToken) {
+    throw new Error("DigitalOcean API Token is missing. Please set it in Settings.");
+  }
+
+  const cfApi = new CloudflareApiService(env);
+  const doApi = new DigitalOceanApiService(env, digitalOceanToken);
+
+  const serverId = crypto.randomUUID();
+  const shortId = serverId.slice(0, 8);
+  const name = customName || `devbox-${shortId}`;
+  
+  const userName = getSafeUsername(customUsername, userEmail);
+  const safeName = name.toLowerCase().replace(/[^a-z0-9]/g, '-');
+  const directHostname = `${safeName}.devboxui.com`;
+
+  let tunnelId: string | undefined = undefined;
+  let tunnelToken: string | undefined = undefined;
+  const initLogs = [`Starting DigitalOcean Droplet creation (${serverType} in ${location})...`];
+
+  try {
+    console.log(`Creating Cloudflare Tunnel for DigitalOcean Droplet...`);
+    const tunnelResult = await cfApi.createTunnel(`tunnel-${serverId}`);
+    tunnelId = tunnelResult.id;
+    tunnelToken = tunnelResult.token;
+    initLogs.push(`Created Cloudflare Tunnel: ${tunnelId}`);
+  } catch (err) {
+    console.error("Failed to create Cloudflare Tunnel for DigitalOcean:", err);
+    initLogs.push(`Warning: Failed to create Cloudflare Tunnel: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
+  const rootPassword = Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-6);
+  const provisioningToken = crypto.randomUUID();
+  const config: ServerConfig = {
+    id: serverId,
+    ip: 'pending',
+    userName,
+    userEmail,
+    orgId: orgId || userEmail,
+    status: 'initializing',
+    provisioningToken,
+    rootPassword: rootPassword,
+    sshPrivateKey: settings.sshPrivateKey,
+    sshPublicKey: settings.sshPublicKey,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    logs: initLogs,
+    tunnelUrl: undefined,
+    tunnelId,
+    tunnelToken,
+    projects: [],
+    serverType: serverType,
+    provider: 'digitalocean',
+    providerName: 'DigitalOcean',
+    hostname: directHostname
+  };
+
+  let dropletId: number | undefined;
+
+  try {
+    const userSSHKey = settings.sshPublicKey;
+    const managementKey = env.MANAGEMENT_SSH_PUBLIC_KEY || '';
+
+    console.log(`Managing SSH keys on DigitalOcean...`);
+    const sshKeyIds: (string | number)[] = [];
+
+    const keysToRegister = [
+      { name: `devbox-${userName}`, key: userSSHKey },
+      { name: 'devbox-mgmt', key: managementKey }
+    ].filter(k => k.key);
+
+    for (const k of keysToRegister) {
+      try {
+        const existingKeys = await doApi.getSSHKeys();
+        const cleanedKey = k.key.trim().split(' ').slice(0, 2).join(' ');
+
+        const contentMatch = existingKeys.find(ex => ex.public_key.trim().includes(cleanedKey));
+        const nameMatch = existingKeys.find(ex => ex.name === k.name);
+
+        if (contentMatch) {
+          console.log(`Key '${k.name}' already exists on DigitalOcean (ID: ${contentMatch.id})`);
+          sshKeyIds.push(contentMatch.id);
+        } else {
+          if (nameMatch) {
+            console.warn(`Key '${k.name}' exists but content differs. Deleting old key to recreate...`);
+            await doApi.deleteSSHKey(nameMatch.id);
+          }
+
+          console.log(`Registering key '${k.name}' with DigitalOcean...`);
+          const created = await doApi.createSSHKey(k.name, k.key);
+          if (created) {
+            console.log(`Successfully registered key '${k.name}' (ID: ${created.id})`);
+            sshKeyIds.push(created.id);
+          }
+        }
+      } catch (e) {
+        console.error(`Warning: Failed to register SSH key ${k.name}:`, e);
+      }
+    }
+
+    if (sshKeyIds.length === 0) {
+      throw new Error("Failed to register any SSH keys with DigitalOcean.");
+    }
+
+    const requestHost = env.NEXT_PUBLIC_APP_URL || 'https://devboxui.com';
+    const callbackUrl = `${requestHost}/api/provisioning/status`;
+    const serviceToken = await cfApi.getOrCreateServiceToken(kv);
+    await cfApi.authorizeServiceToken(requestHost.replace('https://', ''), serviceToken.id);
+
+    const bootstrapScript = await getHetznerBootstrapScript(
+      userName,
+      userEmail,
+      serverId,
+      provisioningToken,
+      callbackUrl,
+      serviceToken.id,
+      serviceToken.client_secret,
+      config.tunnelToken
+    );
+
+    console.log(`Requesting new droplet '${name}' in ${location}...`);
+    const doResult = await doApi.createDroplet(name, location, serverType, image, sshKeyIds, bootstrapScript);
+    dropletId = doResult.droplet.id;
+    config.digitalOceanDropletId = dropletId;
+    config.detailedStatus = 'Initializing (0%)';
+
+    const specsParts = [
+      serverType.toUpperCase(),
+      'X86',
+      location.toUpperCase()
+    ];
+    config.serverSpecs = specsParts.join(' | ');
+
+    try {
+      const activeDroplet = await doApi.waitForDropletStatus(dropletId, 'active', 15000, 2000);
+      const publicIp = activeDroplet.networks.v4?.find(n => n.type === 'public')?.ip_address;
+      if (publicIp) {
+        config.ip = publicIp;
+        config.logs = [...(config.logs || []), `Droplet active at IP: ${publicIp}`];
+        
+        const directHostname = config.hostname?.replace('-code.', '.').replace('-direct', '');
+        if (directHostname) {
+          await cfApi.setupARecord(directHostname, publicIp);
+        }
+      }
+    } catch {
+      // droplet active takes longer
+    }
+
+    const actualKey = `servers:${config.orgId}:${serverId}`;
+    await kv.put(actualKey, JSON.stringify(config));
+
+    await kv.put(`server_lookup:${serverId}`, JSON.stringify({
+      orgId: config.orgId,
+      serverKey: actualKey
+    }));
+
+    return {
+      success: true,
+      message: `Droplet created successfully (ID: ${dropletId}).`,
+      ip: config.ip,
+      command: bootstrapScript
+    };
+
+  } catch (error) {
+    console.error("Failed to provision Droplet:", error);
+    if (tunnelId) {
+      try { await cfApi.deleteTunnel(tunnelId); } catch (e) { console.error("Cleanup: Failed to delete Cloudflare Tunnel", e); }
+    }
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
+  }
 }

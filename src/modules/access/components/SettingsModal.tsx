@@ -20,6 +20,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   
   // Personal settings state
   const [personalHetznerToken, setPersonalHetznerToken] = useState('');
+  const [personalDigitalOceanToken, setPersonalDigitalOceanToken] = useState('');
   const [sshPublicKey, setSshPublicKey] = useState('');
   
   // Org settings state
@@ -27,6 +28,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [selectedOrgId, setSelectedOrgId] = useState<string>('');
   const [orgName, setOrgName] = useState('');
   const [orgHetznerToken, setOrgHetznerToken] = useState('');
+  const [orgDigitalOceanToken, setOrgDigitalOceanToken] = useState('');
 
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
@@ -38,6 +40,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       getUserSettings().then(settings => {
         if (settings) {
           setPersonalHetznerToken(settings.hetznerToken || '');
+          setPersonalDigitalOceanToken(settings.digitalOceanToken || '');
           setSshPublicKey(settings.sshPublicKey || '');
         }
       });
@@ -59,9 +62,11 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         if (settings) {
           setOrgName(settings.orgName || '');
           setOrgHetznerToken(settings.hetznerToken || '');
+          setOrgDigitalOceanToken(settings.digitalOceanToken || '');
         } else {
           setOrgName(selectedOrgId);
           setOrgHetznerToken('');
+          setOrgDigitalOceanToken('');
         }
       });
     }
@@ -74,7 +79,11 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     setIsSaving(true);
     setStatus(null);
     try {
-      await saveUserSettings({ hetznerToken: personalHetznerToken, sshPublicKey });
+      await saveUserSettings({
+        hetznerToken: personalHetznerToken,
+        digitalOceanToken: personalDigitalOceanToken,
+        sshPublicKey
+      });
       setStatus({ type: 'success', message: 'Personal settings saved successfully!' });
       setTimeout(() => setStatus(null), 3000);
     } catch {
@@ -94,6 +103,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         orgId: selectedOrgId,
         orgName,
         hetznerToken: orgHetznerToken,
+        digitalOceanToken: orgDigitalOceanToken,
         adminEmails: []
       });
       setStatus({ type: 'success', message: 'Organization settings saved successfully!' });
@@ -163,6 +173,21 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               />
               <p className="mt-2 text-xs text-slate-500">
                 Optional. If not set, the global organization or system token will be used.
+              </p>
+            </div>
+
+            {/* DigitalOcean Token */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Personal DigitalOcean API Token</label>
+              <input
+                type="password"
+                placeholder="dop_..."
+                value={personalDigitalOceanToken}
+                onChange={(e) => setPersonalDigitalOceanToken(e.target.value)}
+                className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+              />
+              <p className="mt-2 text-xs text-slate-500">
+                Optional. If not set, the organization or system token will be used.
               </p>
             </div>
 
@@ -240,6 +265,21 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               />
               <p className="mt-2 text-xs text-slate-500">
                 Shared Hetzner API Token used by all members to launch DevBoxes under this organization.
+              </p>
+            </div>
+
+            {/* Org DigitalOcean Token */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Organization DigitalOcean Token</label>
+              <input
+                type="password"
+                placeholder="dop_..."
+                value={orgDigitalOceanToken}
+                onChange={(e) => setOrgDigitalOceanToken(e.target.value)}
+                className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+              />
+              <p className="mt-2 text-xs text-slate-500">
+                Shared DigitalOcean API Token used by all members to launch Droplets under this organization.
               </p>
             </div>
 

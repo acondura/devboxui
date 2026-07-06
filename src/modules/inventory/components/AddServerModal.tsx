@@ -1,14 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getHetznerOptions, provisionManualServer } from '@/modules/inventory/actions';
+import { getHetznerOptions, getDigitalOceanOptions, provisionManualServer } from '@/modules/inventory/actions';
 import type { HetznerPricingResponse } from '@/lib/hetzner-api';
 import { Select2 } from './Select2';
 
 interface AddServerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (name: string, serverType: string, location: string, image: string, customUsername?: string) => Promise<{ success: boolean; error?: string; server?: unknown } | void>;
+  onAdd: (name: string, serverType: string, location: string, image: string, customUsername?: string, provider?: 'hetzner' | 'digitalocean') => Promise<{ success: boolean; error?: string; server?: unknown } | void>;
 }
 
 interface HetznerPrice {
@@ -108,15 +108,15 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
   };
 
   useEffect(() => {
-    if (isOpen && provider === 'hetzner') {
+    if (isOpen && (provider === 'hetzner' || provider === 'digitalocean')) {
       async function loadOptions() {
         setIsLoadingOptions(true);
         setOptionsError(null);
         
-        const data = await getHetznerOptions();
-        const hetznerData = data as { error?: string };
-        if (hetznerData.error) {
-          setOptionsError(hetznerData.error);
+        const data = provider === 'hetzner' ? await getHetznerOptions() : await getDigitalOceanOptions();
+        const responseData = data as { error?: string };
+        if (responseData.error) {
+          setOptionsError(responseData.error);
         }
         
         setOptions(data as unknown as { serverTypes: HetznerServerType[]; locations: HetznerLocation[]; images: HetznerImage[]; snapshots: HetznerImage[]; pricing?: HetznerPricingResponse | null });
@@ -126,15 +126,21 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
         setCustomUsername('');
         
         // Set defaults only if no saved options exist
-        const savedType = localStorage.getItem('devbox_last_server_type');
+        const savedType = localStorage.getItem(`devbox_last_${provider}_server_type`);
         if (savedType) {
           setServerType(savedType);
         } else if (data.serverTypes.length > 0) {
           const typedTypes = data.serverTypes as unknown as HetznerServerType[];
+          const typedData = data as unknown as { pricing?: HetznerPricingResponse | null };
           const sorted = [...typedTypes].sort((a, b) => {
+            if (provider === 'digitalocean') {
+              const priceA = parseFloat(a.prices[0]?.price_monthly?.gross || '0');
+              const priceB = parseFloat(b.prices[0]?.price_monthly?.gross || '0');
+              return priceA - priceB;
+            }
             const getPrice = (t: HetznerServerType) => {
               const p = t.prices.find((p) => p.location === location) || t.prices[0];
-              const ipv4 = getIpv4MonthlyPrice(data.pricing, location);
+              const ipv4 = getIpv4MonthlyPrice(typedData.pricing || null, location);
               return parseFloat(p?.price_monthly?.gross || '0') + ipv4;
             };
             return getPrice(a) - getPrice(b);
@@ -142,27 +148,31 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
           setServerType(sorted[0].name);
         }
 
-        const savedLoc = localStorage.getItem('devbox_last_location');
+        const savedLoc = localStorage.getItem(`devbox_last_${provider}_location`);
         if (savedLoc) {
           setLocation(savedLoc);
         } else if (data.locations.length > 0) {
-          const defaultLoc = data.locations.find(l => l.name === 'nbg1') || data.locations[0];
+          const defaultLoc = provider === 'hetzner'
+            ? (data.locations.find(l => l.name === 'nbg1') || data.locations[0])
+            : (data.locations.find(l => l.name === 'nyc1') || data.locations[0]);
           setLocation(defaultLoc.name);
         }
 
-        const savedImg = localStorage.getItem('devbox_last_image');
+        const savedImg = localStorage.getItem(`devbox_last_${provider}_image`);
         if (savedImg) {
           setImage(savedImg);
         } else {
           if (data.snapshots && data.snapshots.length > 0) {
             const initialImg = data.snapshots[0].id.toString();
             setImage(initialImg);
-            localStorage.setItem('devbox_last_image', initialImg);
+            localStorage.setItem(`devbox_last_${provider}_image`, initialImg);
           } else if (data.images.length > 0) {
-            const defaultImg = data.images.find(i => i.name === 'ubuntu-24.04') || data.images[0];
-            const initialImg = defaultImg.name ?? '';
+            const defaultImg = provider === 'hetzner'
+              ? (data.images.find(i => i.name === 'ubuntu-24.04') || data.images[0])
+              : (data.images.find(i => i.name?.includes('24-04')) || data.images[0]);
+            const initialImg = defaultImg.name ?? defaultImg.id.toString();
             setImage(initialImg);
-            localStorage.setItem('devbox_last_image', initialImg);
+            localStorage.setItem(`devbox_last_${provider}_image`, initialImg);
           }
         }
         
@@ -183,6 +193,9 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
   const sortedServerTypes = [...options.serverTypes].sort((a, b) => {
     const getPrice = (t: HetznerServerType) => {
       const p = t.prices.find((p) => p.location === location) || t.prices[0];
+      if (provider === 'digitalocean') {
+        return parseFloat(p?.price_monthly?.gross || '0');
+      }
       const ipv4 = getIpv4MonthlyPrice(options.pricing, location);
       return parseFloat(p?.price_monthly?.gross || '0') + ipv4;
     };
@@ -193,6 +206,13 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
   const getCategorizedType = (t: HetznerServerType) => {
     const name = t.name.toLowerCase();
     
+    if (provider === 'digitalocean') {
+      if (name.startsWith('s-')) {
+        return 'Shared Resources - Cost-Optimized (Intel/AMD)';
+      }
+      return 'Dedicated Resources (General Purpose)';
+    }
+
     // Dedicated resources
     if (t.cpu_type === 'dedicated' || name.startsWith('ccx')) {
       return 'Dedicated Resources (General Purpose)';
@@ -268,8 +288,8 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
     setIsSubmitting(true);
     setError(null);
     try {
-      if (provider === 'hetzner') {
-        const result = await onAdd(name, serverType, location, image, customUsername.trim() || undefined);
+      if (provider === 'hetzner' || provider === 'digitalocean') {
+        const result = await onAdd(name, serverType, location, image, customUsername.trim() || undefined, provider);
         if (result && !result.success) {
           setError(result.error || "An unknown error occurred during provisioning.");
         } else {
@@ -296,7 +316,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
 
   const providers: {id: CloudProvider, name: string, active: boolean, info?: string}[] = [
     { id: 'hetzner', name: 'Hetzner', active: true },
-    { id: 'digitalocean', name: 'DigitalOcean', active: false },
+    { id: 'digitalocean', name: 'DigitalOcean', active: true },
     { id: 'linode', name: 'Linode', active: false },
     { id: 'vultr', name: 'Vultr', active: false },
     { id: 'contabo', name: 'Custom', active: true, info: 'Manual Provision' },
@@ -505,13 +525,13 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
           </Select2>
         </div>
         
-        {optionsError && provider === 'hetzner' && (
+        {optionsError && (provider === 'hetzner' || provider === 'digitalocean') && (
           <div className="mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start space-x-3 text-left">
             <svg className="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
             <div className="text-sm text-red-700 leading-relaxed">
-              <p className="font-bold">Hetzner Connection Error</p>
+              <p className="font-bold">{provider === 'hetzner' ? 'Hetzner' : 'DigitalOcean'} Connection Error</p>
               <p>{optionsError}</p>
             </div>
           </div>
@@ -547,7 +567,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
               />
             </div>
             
-            {provider === 'hetzner' && (
+            {(provider === 'hetzner' || provider === 'digitalocean') && (
               <>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Server Type</label>
@@ -555,7 +575,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
                     value={serverType}
                     onValueChange={(val) => {
                       setServerType(val);
-                      localStorage.setItem('devbox_last_server_type', val);
+                      localStorage.setItem(`devbox_last_${provider}_server_type`, val);
                     }}
                     disabled={isLoadingOptions}
                     className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all disabled:opacity-50 text-sm font-medium"
@@ -570,8 +590,9 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
                           <optgroup key={category} label={category} className="bg-white text-slate-500 font-semibold text-xs py-1">
                             {types.map(t => {
                               const p = t.prices.find((p) => p.location === location) || t.prices[0];
-                              const ipv4 = getIpv4MonthlyPrice(options.pricing, location);
-                              const priceLabel = p ? `€${(parseFloat(p.price_monthly.gross) + ipv4).toFixed(2)}` : '';
+                              const ipv4 = provider === 'digitalocean' ? 0 : getIpv4MonthlyPrice(options.pricing, location);
+                              const priceSymbol = provider === 'digitalocean' ? '$' : '€';
+                              const priceLabel = p ? `${priceSymbol}${(parseFloat(p.price_monthly.gross) + ipv4).toFixed(2)}` : '';
                               const specs = `${t.cores} vCPU / ${t.memory}GB RAM / ${t.disk}GB / ${t.architecture.toUpperCase()}`;
                               return (
                                 <option key={t.id} value={t.name} className="text-slate-900 font-normal bg-white">
@@ -592,13 +613,13 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
                     value={location}
                     onValueChange={(val) => {
                       setLocation(val);
-                      localStorage.setItem('devbox_last_location', val);
+                      localStorage.setItem(`devbox_last_${provider}_location`, val);
                     }}
                     disabled={isLoadingOptions}
                     className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all disabled:opacity-50 text-sm font-medium"
                   >
                     {options.locations.map(l => (
-                      <option key={l.id} value={l.name}>{l.city} ({l.name.toUpperCase()})</option>
+                      <option key={l.name} value={l.name}>{l.city} ({l.name.toUpperCase()})</option>
                     ))}
                     {isLoadingOptions && <option>Loading locations...</option>}
                   </Select2>
@@ -610,7 +631,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
                     value={image}
                     onValueChange={(val) => {
                       setImage(val);
-                      localStorage.setItem('devbox_last_image', val);
+                      localStorage.setItem(`devbox_last_${provider}_image`, val);
                     }}
                     disabled={isLoadingOptions}
                     className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all disabled:opacity-50 text-sm font-medium"
@@ -629,7 +650,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
                     )}
                     <optgroup label="System OS Images">
                       {filteredImages.map(i => (
-                        <option key={i.id} value={i.name ?? ''}>
+                        <option key={i.id || i.name} value={i.name ?? ''}>
                           {i.description || i.name} ({i.name})
                         </option>
                       ))}
@@ -642,7 +663,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
           </div>
 
           {/* Specs Summary */}
-          {!isLoadingOptions && currentType && provider === 'hetzner' && (
+          {!isLoadingOptions && currentType && (provider === 'hetzner' || provider === 'digitalocean') && (
             <div className="grid grid-cols-4 gap-2">
               <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5 text-center group relative cursor-help">
                 <p className="text-[11px] uppercase tracking-wider text-slate-500 font-bold mb-0.5">Cores</p>
@@ -701,18 +722,20 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
               </div>
             </div>
           )}
-          {provider === 'hetzner' && (
+          {(provider === 'hetzner' || provider === 'digitalocean') && (
             <>
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex justify-between items-center group relative">
                 <div>
                   <p className="text-xs uppercase tracking-wider text-slate-500 font-bold">Cost</p>
                   <p className="text-2xl font-black text-slate-900">
-                    {monthlyPrice ? `€${parseFloat(monthlyPrice).toFixed(2)}` : '--'}
+                    {monthlyPrice ? `${provider === 'digitalocean' ? '$' : '€'}${parseFloat(monthlyPrice).toFixed(2)}` : '--'}
                     <span className="text-sm text-slate-500 font-normal ml-1">/ month</span>
                   </p>
-                  <p className="text-[10px] text-slate-500 mt-1">
-                    Includes IPv4 address (€{getIpv4MonthlyPrice(options.pricing, location).toFixed(2)}/mo)
-                  </p>
+                  {provider === 'hetzner' && (
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      Includes IPv4 address (€{getIpv4MonthlyPrice(options.pricing, location).toFixed(2)}/mo)
+                    </p>
+                  )}
                 </div>
                 <div className="text-right">
                   <p className="text-xs uppercase tracking-wider text-slate-500 font-bold">Billing Model</p>
@@ -733,8 +756,8 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
               <p className="text-xs font-bold uppercase tracking-wider">How it works</p>
             </div>
             <p className="text-xs text-slate-650 leading-relaxed">
-              {provider === 'hetzner' ? (
-                <>We&apos;ll create a clean <strong className="text-slate-800 font-bold">Hetzner</strong> instance with your SSH key injected for instant connection.</>
+              {provider === 'hetzner' || provider === 'digitalocean' ? (
+                <>We&apos;ll create a clean <strong className="text-slate-800 font-bold">{provider === 'hetzner' ? 'Hetzner' : 'DigitalOcean'}</strong> instance with your SSH key injected for instant connection.</>
               ) : (
                 <>We&apos;ll connect to your <strong className="text-slate-800 font-bold">existing server</strong>.</>
               )} This sets up secure SSH access and dynamic DNS routing without installing extra software.
@@ -744,7 +767,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
           <div className="pt-2">
             <button
               type="submit"
-              disabled={isSubmitting || (provider === 'hetzner' && isLoadingOptions) || !name.trim()}
+              disabled={isSubmitting || ((provider === 'hetzner' || provider === 'digitalocean') && isLoadingOptions) || !name.trim()}
               className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-100 disabled:text-slate-400 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-indigo-500/20 flex items-center justify-center space-x-2"
             >
               {isSubmitting ? (

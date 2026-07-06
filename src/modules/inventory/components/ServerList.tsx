@@ -7,11 +7,10 @@ import { ReinstallModal } from './ReinstallModal';
 import { ScheduleModal } from './ScheduleModal';
 import { ApiAuthModal } from './ApiAuthModal';
 import { ConfirmSnapshotModal } from './ConfirmSnapshotModal';
-import { getServerLogs, getLiveProjects, getServerSnapshots, getHetznerOptions } from '../actions';
+import { getServerLogs, getLiveProjects, getServerSnapshots } from '../actions';
 import { ConfirmSpinUpModal } from './ConfirmSpinUpModal';
 import { ScheduleConfig } from '../types';
 import { triggerMorningSpinup, triggerEveningSnapshot } from '../schedule-actions';
-import type { HetznerImage } from '@/lib/hetzner-api';
 import { Select2 } from './Select2';
 import { InviteCollabModal } from './InviteCollabModal';
 import { ErrorModal } from './ErrorModal';
@@ -32,23 +31,7 @@ interface ServerListProps {
 type SortField = 'status' | 'type' | 'ip' | 'os' | 'created';
 type SortOrder = 'asc' | 'desc';
 
-const formatSpecs = (serverType?: string) => {
-  if (!serverType) return '';
-  const t = serverType.toLowerCase();
-  const specs: Record<string, string> = {
-    cx22: '2 vCPU / 4GB RAM',
-    cpx11: '2 vCPU / 2GB RAM',
-    cpx21: '3 vCPU / 4GB RAM',
-    cpx31: '4 vCPU / 8GB RAM',
-    cpx41: '8 vCPU / 16GB RAM',
-    cpx51: '16 vCPU / 32GB RAM',
-    v1: 'VPS S (4C / 8G)',
-    v2: 'VPS M (6C / 16G)',
-    v3: 'VPS L (8C / 30G)',
-    v4: 'VPS XL (10C / 60G)',
-  };
-  return specs[t] || serverType.toUpperCase();
-};
+
 
 export function ServerList(props: ServerListProps) {
   const [sortField, setSortField] = useState<SortField>('created');
@@ -236,24 +219,25 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const [vpsSnapshots, setVpsSnapshots] = useState<HetznerImage[]>([]);
+  const [vpsSnapshots, setVpsSnapshots] = useState<Array<{ id: number | string; description?: string; name?: string | null }>>([]);
   const [selectedSnapshotId, setSelectedSnapshotId] = useState<string>('latest');
   const [isSpinUpOpen, setIsSpinUpOpen] = useState(false);
 
   const isAutomated = !!(server.providerName === 'Hetzner' || server.providerName === 'Contabo' || server.provider === 'hetzner' || server.provider === 'contabo');
   const isHetzner = !!(server.providerName === 'Hetzner' || server.provider === 'hetzner');
+  const isDigitalOcean = server.provider === 'digitalocean';
   const displayHostname = (server.hostname || 'devbox')
     .replace('.devboxui.com', '')
     .replace('-direct', '');
 
   useEffect(() => {
-    if (server.status === 'off' && isHetzner) {
+    if (server.status === 'off' && (isHetzner || isDigitalOcean)) {
       async function loadSnapshots() {
         try {
           const list = await getServerSnapshots(server.id);
           setVpsSnapshots(list);
           const savedSnapshot = localStorage.getItem(`devbox_last_snapshot_${server.id}`);
-          if (savedSnapshot && (savedSnapshot === 'latest' || list.some((s: HetznerImage) => s.id.toString() === savedSnapshot))) {
+          if (savedSnapshot && (savedSnapshot === 'latest' || list.some((s: { id: number | string }) => s.id.toString() === savedSnapshot))) {
             setSelectedSnapshotId(savedSnapshot);
           } else {
             setSelectedSnapshotId('latest');
@@ -264,7 +248,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
       }
       loadSnapshots();
     }
-  }, [server.id, server.status, isHetzner]);
+  }, [server.id, server.status, isHetzner, isDigitalOcean]);
 
   const handleSnapshotChange = (id: string) => {
     setSelectedSnapshotId(id);
@@ -751,24 +735,25 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const [vpsSnapshots, setVpsSnapshots] = useState<HetznerImage[]>([]);
+  const [vpsSnapshots, setVpsSnapshots] = useState<Array<{ id: number | string; description?: string; name?: string | null }>>([]);
   const [selectedSnapshotId, setSelectedSnapshotId] = useState<string>('latest');
   const [isSpinUpOpen, setIsSpinUpOpen] = useState(false);
 
   const isAutomated = !!(server.hetznerServerId || server.contaboInstanceId || server.providerName === 'Hetzner' || server.providerName === 'Contabo' || server.provider === 'hetzner' || server.provider === 'contabo');
   const isHetzner = !!(server.providerName === 'Hetzner' || server.provider === 'hetzner');
+  const isDigitalOcean = server.provider === 'digitalocean';
   const displayHostname = (server.hostname || 'devbox')
     .replace('.devboxui.com', '')
     .replace('-direct', '');
 
   useEffect(() => {
-    if (server.status === 'off' && isHetzner) {
+    if (server.status === 'off' && (isHetzner || isDigitalOcean)) {
       async function loadSnapshots() {
         try {
           const list = await getServerSnapshots(server.id);
           setVpsSnapshots(list);
           const savedSnapshot = localStorage.getItem(`devbox_last_snapshot_${server.id}`);
-          if (savedSnapshot && (savedSnapshot === 'latest' || list.some((s: HetznerImage) => s.id.toString() === savedSnapshot))) {
+          if (savedSnapshot && (savedSnapshot === 'latest' || list.some((s: { id: number | string }) => s.id.toString() === savedSnapshot))) {
             setSelectedSnapshotId(savedSnapshot);
           } else {
             setSelectedSnapshotId('latest');
@@ -779,7 +764,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
       }
       loadSnapshots();
     }
-  }, [server.id, server.status, isHetzner]);
+  }, [server.id, server.status, isHetzner, isDigitalOcean]);
 
   const handleSnapshotChange = (id: string) => {
     setSelectedSnapshotId(id);
@@ -1350,6 +1335,7 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [server.id, server.status]);
 
   // Refresh live projects whenever the dropdown is opened
@@ -1357,6 +1343,7 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
     if (isOpen && server.status === 'ready') {
       fetchLiveProjects();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, server.status]);
 
   const handleSelectIde = (ideId: string) => {

@@ -2,6 +2,7 @@
 
 import { getCloudflareEnv, getIdentity } from '@/lib/auth';
 import { HetznerApiService } from '@/lib/hetzner-api';
+import { DigitalOceanApiService } from '@/lib/digitalocean-api';
 import { CloudflareApiService } from '@/lib/cloudflare-api';
 import { ScheduleConfig, ServerConfig } from './types';
 import { getUserSettings, syncAllDependentPolicies, getNetworkZone, getServerKeyAndConfig, getOrgSettings } from './actions';
@@ -69,24 +70,37 @@ export async function saveScheduleConfig(
  * sshKeyIds from the schedule config.
  */
 async function resolveSSHKeyIds(
-  hetznerApi: HetznerApiService,
+  hetznerApi: HetznerApiService | null,
+  doApi: DigitalOceanApiService | null,
   schedConfig: ScheduleConfig,
   userSSHKey: string,
   managementKey: string
-): Promise<number[]> {
+): Promise<(number | string)[]> {
   if (schedConfig.sshKeyIds && schedConfig.sshKeyIds.length > 0) {
     return schedConfig.sshKeyIds;
   }
-  // Auto-discover from Hetzner account
+  // Auto-discover from provider account
   try {
-    const keys = await hetznerApi.getSSHKeys();
-    const ids: number[] = [];
-    for (const key of keys) {
-      const trimmed = key.public_key.trim().split(' ').slice(0, 2).join(' ');
-      if (userSSHKey && userSSHKey.trim().includes(trimmed)) ids.push(key.id);
-      else if (managementKey && managementKey.trim().includes(trimmed)) ids.push(key.id);
+    if (doApi) {
+      const keys = await doApi.getSSHKeys();
+      const ids: (number | string)[] = [];
+      for (const key of keys) {
+        const trimmed = key.public_key.trim().split(' ').slice(0, 2).join(' ');
+        if (userSSHKey && userSSHKey.trim().includes(trimmed)) ids.push(key.id);
+        else if (managementKey && managementKey.trim().includes(trimmed)) ids.push(key.id);
+      }
+      return ids.length > 0 ? ids : [];
+    } else if (hetznerApi) {
+      const keys = await hetznerApi.getSSHKeys();
+      const ids: number[] = [];
+      for (const key of keys) {
+        const trimmed = key.public_key.trim().split(' ').slice(0, 2).join(' ');
+        if (userSSHKey && userSSHKey.trim().includes(trimmed)) ids.push(key.id);
+        else if (managementKey && managementKey.trim().includes(trimmed)) ids.push(key.id);
+      }
+      return ids.length > 0 ? ids : [];
     }
-    return ids.length > 0 ? ids : [];
+    return [];
   } catch {
     return [];
   }
@@ -147,13 +161,17 @@ export async function runMorningWorkflow(
   if (!resolved) return { success: false, message: 'Server KV record not found.' };
   const { key: actualServerKey, config: server } = resolved;
 
-  // 2. Resolve Hetzner API token and SSH Key
+  // 2. Resolve provider API token and SSH Key
   let hetznerToken = env.HETZNER_API_TOKEN;
+  let digitalOceanToken = env.CLOUDFLARE_API_TOKEN; // fallback
   let userSshKey = '';
   if (server.orgId) {
     const orgSettings = await getOrgSettings(server.orgId);
     if (orgSettings?.hetznerToken) {
       hetznerToken = orgSettings.hetznerToken;
+    }
+    if (orgSettings?.digitalOceanToken) {
+      digitalOceanToken = orgSettings.digitalOceanToken;
     }
   }
   if (userEmail) {
@@ -162,10 +180,17 @@ export async function runMorningWorkflow(
     if (!hetznerToken) {
       hetznerToken = settings?.hetznerToken;
     }
+    if (settings?.digitalOceanToken) {
+      digitalOceanToken = settings.digitalOceanToken;
+    }
   }
-  if (!hetznerToken) throw new Error('Hetzner API Token missing.');
 
-  const hetznerApi = new HetznerApiService(env, hetznerToken);
+  const isDO = server.provider === 'digitalocean';
+  if (isDO && !digitalOceanToken) throw new Error('DigitalOcean API Token missing.');
+  if (!isDO && !hetznerToken) throw new Error('Hetzner API Token missing.');
+
+  const hetznerApi = isDO ? null : new HetznerApiService(env, hetznerToken);
+  const doApi = isDO ? new DigitalOceanApiService(env, digitalOceanToken) : null;
 
   // Load schedule config
   const schedConfig = await kv.get(scheduleKey(userEmail, serverId));
@@ -181,15 +206,28 @@ export async function runMorningWorkflow(
     }
   }
 
-  // Check if a server is already running on Hetzner for this config
-  if (server.hetznerServerId) {
-    try {
-      const currentStatus = await hetznerApi.getServerStatus(server.hetznerServerId);
-      if (currentStatus === 'running') {
-        return { success: true, message: `Server already running (Hetzner ID: ${server.hetznerServerId}).` };
+  // Check if server is already running
+  if (isDO) {
+    if (server.digitalOceanDropletId && doApi) {
+      try {
+        const d = await doApi.getDroplet(server.digitalOceanDropletId);
+        if (d.status === 'active') {
+          return { success: true, message: `Droplet already active (ID: ${server.digitalOceanDropletId}).` };
+        }
+      } catch {
+        // proceed
       }
-    } catch {
-      // Server probably deleted; proceed to create
+    }
+  } else {
+    if (server.hetznerServerId && hetznerApi) {
+      try {
+        const currentStatus = await hetznerApi.getServerStatus(server.hetznerServerId);
+        if (currentStatus === 'running') {
+          return { success: true, message: `Server already running (Hetzner ID: ${server.hetznerServerId}).` };
+        }
+      } catch {
+        // proceed
+      }
     }
   }
 
@@ -201,6 +239,7 @@ export async function runMorningWorkflow(
   // Resolve SSH keys
   const sshKeyIds = await resolveSSHKeyIds(
     hetznerApi,
+    doApi,
     sched,
     userSshKey,
     env.MANAGEMENT_SSH_PUBLIC_KEY || ''
@@ -238,32 +277,73 @@ export async function runMorningWorkflow(
     .replace('-direct', '');
   console.log(`[Morning] Creating server "${serverName}" from snapshot ${snapshotToRestore}…`);
 
-  const result = await hetznerApi.createServerFromSnapshot(
-    serverName,
-    snapshotToRestore,
-    customServerType || sched.serverType,
-    sched.location,
-    sshKeyIds,
-    bootstrapScript
-  );
+  let newHetznerServerId: number | undefined;
+  let newDropletId: number | undefined;
+  let ip = 'pending';
+  let actionId: number;
 
-  const newHetznerServerId = result.server.id;
-  const ip = result.server.public_net.ipv4.ip;
+  if (isDO) {
+    const doResult = await doApi!.createDroplet(
+      serverName,
+      sched.location,
+      customServerType || sched.serverType,
+      snapshotToRestore,
+      sshKeyIds,
+      bootstrapScript || ''
+    );
+    newDropletId = doResult.droplet.id;
+    actionId = doResult.links?.actions?.[0]?.id || 999999;
+  } else {
+    const result = await hetznerApi!.createServerFromSnapshot(
+      serverName,
+      snapshotToRestore,
+      customServerType || sched.serverType,
+      sched.location,
+      sshKeyIds,
+      bootstrapScript
+    );
+    newHetznerServerId = result.server.id;
+    ip = result.server.public_net.ipv4.ip;
+    actionId = result.action.id;
+  }
 
   // Construct serverSpecs
-  const arch = result.server.server_type.architecture || 'x86';
-  const disk = result.server.server_type.disk ? `${result.server.server_type.disk} GB` : '';
-  const zone = await getNetworkZone(result.server.datacenter?.location?.name);
-  const specsParts = [
-    result.server.server_type.name.toUpperCase(),
-    arch,
-    disk,
-    zone
-  ].filter(Boolean);
-  server.serverSpecs = specsParts.join(' | ');
+  if (isDO) {
+    const specsParts = [
+      (customServerType || sched.serverType || '').toUpperCase(),
+      'X86',
+      sched.location.toUpperCase()
+    ];
+    server.serverSpecs = specsParts.join(' | ');
+  } else {
+    const result = await hetznerApi!.getServer(newHetznerServerId!);
+    const arch = result.server_type.architecture || 'x86';
+    const disk = result.server_type.disk ? `${result.server_type.disk} GB` : '';
+    const zone = await getNetworkZone(result.datacenter?.location?.name);
+    const specsParts = [
+      result.server_type.name.toUpperCase(),
+      arch,
+      disk,
+      zone
+    ].filter(Boolean);
+    server.serverSpecs = specsParts.join(' | ');
+  }
+
+  // Try to resolve DO droplet IP immediately if possible
+  if (isDO && newDropletId) {
+    try {
+      const activeDroplet = await doApi!.waitForDropletStatus(newDropletId, 'active', 10000, 2000);
+      const publicIp = activeDroplet.networks.v4?.find(n => n.type === 'public')?.ip_address;
+      if (publicIp) {
+        ip = publicIp;
+      }
+    } catch {
+      // droplet active check deferred to pending creates sweep
+    }
+  }
 
   // Update Direct SSH DNS A record in Cloudflare
-  if (server.hostname) {
+  if (server.hostname && ip !== 'pending') {
     try {
       const cfApi = new CloudflareApiService(env);
       const directHostname = server.hostname.replace('-code.', '.').replace('-direct', '');
@@ -275,12 +355,16 @@ export async function runMorningWorkflow(
   }
 
   // Update KV server record
-  server.hetznerServerId = newHetznerServerId;
-  server.hetznerStatus = 'starting';
+  if (isDO) {
+    server.digitalOceanDropletId = newDropletId;
+  } else {
+    server.hetznerServerId = newHetznerServerId;
+    server.hetznerStatus = 'starting';
+  }
   server.ip = ip;
   server.status = 'initializing';
   server.detailedStatus = 'Initializing (0%)';
-  server.pendingCreateActionId = result.action.id;
+  server.pendingCreateActionId = actionId;
   server.updatedAt = new Date().toISOString();
   if (server.scheduleConfig) {
     server.scheduleConfig.lastMorningRun = new Date().toISOString();
@@ -335,46 +419,71 @@ export async function runEveningWorkflow(
   if (!resolved) return { success: false, message: 'Server KV record not found.' };
   const { key: actualServerKey, config: server } = resolved;
 
-  // 2. Resolve Hetzner API token
+  // 2. Resolve provider API token
   let hetznerToken = env.HETZNER_API_TOKEN;
+  let digitalOceanToken = env.CLOUDFLARE_API_TOKEN; // fallback
   if (server.orgId) {
     const orgSettings = await getOrgSettings(server.orgId);
     if (orgSettings?.hetznerToken) {
       hetznerToken = orgSettings.hetznerToken;
     }
+    if (orgSettings?.digitalOceanToken) {
+      digitalOceanToken = orgSettings.digitalOceanToken;
+    }
   }
-  if (!hetznerToken && userEmail) {
+  if (userEmail) {
     const settings = await getUserSettings(userEmail);
-    hetznerToken = settings?.hetznerToken;
+    if (!hetznerToken) {
+      hetznerToken = settings?.hetznerToken;
+    }
+    if (settings?.digitalOceanToken) {
+      digitalOceanToken = settings.digitalOceanToken;
+    }
   }
-  if (!hetznerToken) throw new Error('Hetzner API Token missing.');
 
-  const hetznerApi = new HetznerApiService(env, hetznerToken);
+  const isDO = server.provider === 'digitalocean';
+  if (isDO && !digitalOceanToken) throw new Error('DigitalOcean API Token missing.');
+  if (!isDO && !hetznerToken) throw new Error('Hetzner API Token missing.');
 
-  if (!server.hetznerServerId) {
+  const hetznerApi = isDO ? null : new HetznerApiService(env, hetznerToken);
+  const doApi = isDO ? new DigitalOceanApiService(env, digitalOceanToken) : null;
+
+  if (isDO && !server.digitalOceanDropletId) {
+    return { success: false, message: 'No DigitalOcean droplet ID on record — nothing to snapshot.' };
+  }
+  if (!isDO && !server.hetznerServerId) {
     return { success: false, message: 'No Hetzner server ID on record — nothing to snapshot.' };
   }
-
-  const hetznerServerId = server.hetznerServerId;
 
   const schedData = await kv.get(scheduleKey(userEmail, serverId));
   let sched: ScheduleConfig;
   if (schedData) {
     sched = JSON.parse(schedData) as ScheduleConfig;
   } else {
-    // If no schedule config exists, query the server details from Hetzner API to set defaults
     try {
-      const hs = await hetznerApi.getServer(hetznerServerId);
-      sched = {
-        enabled: false,
-        timezone: 'Europe/Bucharest',
-        spinupTime: '09:00',
-        snapshotTime: '18:00',
-        serverType: hs.server_type?.name || 'cpx21',
-        location: hs.datacenter?.location?.name || 'nbg1',
-      };
+      if (isDO) {
+        const hs = await doApi!.getDroplet(server.digitalOceanDropletId!);
+        sched = {
+          enabled: false,
+          timezone: 'Europe/Bucharest',
+          spinupTime: '09:00',
+          snapshotTime: '18:00',
+          serverType: hs.size_slug || 's-2vcpu-4gb',
+          location: hs.region?.slug || 'nyc1',
+        };
+      } else {
+        const hs = await hetznerApi!.getServer(server.hetznerServerId!);
+        sched = {
+          enabled: false,
+          timezone: 'Europe/Bucharest',
+          spinupTime: '09:00',
+          snapshotTime: '18:00',
+          serverType: hs.server_type?.name || 'cpx21',
+          location: hs.datacenter?.location?.name || 'nbg1',
+        };
+      }
     } catch (e) {
-      return { success: false, message: `Failed to fetch server details from Hetzner API: ${e instanceof Error ? e.message : String(e)}` };
+      return { success: false, message: `Failed to fetch server details from API: ${e instanceof Error ? e.message : String(e)}` };
     }
   }
 
@@ -388,31 +497,41 @@ export async function runEveningWorkflow(
     }
   }
 
-  console.log(`[Evening] Starting evening workflow for Hetzner server ${hetznerServerId}…`);
+  console.log(`[Evening] Starting evening workflow for server ${server.hostname || server.ip}…`);
 
   // ── Step 1: Power off ─────────────────────────────────────────────────────
-  const currentStatus = await hetznerApi.getServerStatus(hetznerServerId);
+  const currentStatus = isDO 
+    ? (await doApi!.getDroplet(server.digitalOceanDropletId!)).status 
+    : (await hetznerApi!.getServerStatus(server.hetznerServerId!));
   if (currentStatus !== 'off') {
-    console.log(`[Evening] Initiating graceful ACPI shutdown for server ${hetznerServerId} (currently: ${currentStatus})…`);
+    console.log(`[Evening] Initiating graceful shutdown for server (currently: ${currentStatus})…`);
     try {
-      await hetznerApi.shutdownServer(hetznerServerId);
-      // Wait up to 45 seconds for graceful shutdown to finish
-      await hetznerApi.waitForServerStatus(hetznerServerId, 'off', 45_000, 5_000);
-      console.log(`[Evening] Server ${hetznerServerId} gracefully shut down.`);
+      if (isDO) {
+        await doApi!.shutdownDroplet(server.digitalOceanDropletId!);
+        await doApi!.waitForDropletStatus(server.digitalOceanDropletId!, 'off', 45_000, 5_000);
+      } else {
+        await hetznerApi!.shutdownServer(server.hetznerServerId!);
+        await hetznerApi!.waitForServerStatus(server.hetznerServerId!, 'off', 45_000, 5_000);
+      }
+      console.log(`[Evening] Server gracefully shut down.`);
     } catch (err) {
       console.log(`[Evening] Graceful shutdown failed or timed out: ${err instanceof Error ? err.message : String(err)}. Falling back to hard poweroff…`);
       try {
-        await hetznerApi.poweroffServer(hetznerServerId);
-        // Wait up to 2 minutes for hard poweroff
-        await hetznerApi.waitForServerStatus(hetznerServerId, 'off', 120_000, 5_000);
-        console.log(`[Evening] Server ${hetznerServerId} forced OFF.`);
+        if (isDO) {
+          await doApi!.poweroffDroplet(server.digitalOceanDropletId!);
+          await doApi!.waitForDropletStatus(server.digitalOceanDropletId!, 'off', 120_000, 5_000);
+        } else {
+          await hetznerApi!.poweroffServer(server.hetznerServerId!);
+          await hetznerApi!.waitForServerStatus(server.hetznerServerId!, 'off', 120_000, 5_000);
+        }
+        console.log(`[Evening] Server forced OFF.`);
       } catch (forceErr) {
         console.error(`[Evening] Hard poweroff also failed:`, forceErr);
-        throw new Error(`Failed to power off server ${hetznerServerId} even with hard poweroff.`);
+        throw new Error(`Failed to power off server even with hard poweroff.`);
       }
     }
   } else {
-    console.log(`[Evening] Server ${hetznerServerId} already OFF.`);
+    console.log(`[Evening] Server already OFF.`);
   }
 
   // ── Step 2: Create snapshot (Non-blocking) ────────────────────────────────
@@ -436,14 +555,25 @@ export async function runEveningWorkflow(
   const snapshotLabel = { 'devbox-server-id': serverId, 'devbox-auto': 'true' };
 
   console.log(`[Evening] Creating snapshot "${snapshotDescription}"…`);
-  const { image: snapshotImage, action: snapshotAction } = await hetznerApi.createSnapshot(hetznerServerId, snapshotDescription, snapshotLabel);
-  console.log(`[Evening] Snapshot ${snapshotImage.id} creation action ${snapshotAction.id} initiated.`);
+  let snapshotImageId: number;
+  let snapshotActionId: number;
+
+  if (isDO) {
+    const res = await doApi!.createSnapshot(server.digitalOceanDropletId!, snapshotDescription);
+    snapshotImageId = 999999;
+    snapshotActionId = res.action.id;
+  } else {
+    const { image: snapshotImage, action: snapshotAction } = await hetznerApi!.createSnapshot(server.hetznerServerId!, snapshotDescription, snapshotLabel);
+    snapshotImageId = snapshotImage.id;
+    snapshotActionId = snapshotAction.id;
+  }
+  console.log(`[Evening] Snapshot action ${snapshotActionId} initiated.`);
 
   // Update server state and store pending snapshot details
   server.status = 'snapshotting';
   server.detailedStatus = 'Saving snapshot (0%)';
-  server.pendingSnapshotId = snapshotImage.id;
-  server.pendingSnapshotActionId = snapshotAction.id;
+  server.pendingSnapshotId = snapshotImageId;
+  server.pendingSnapshotActionId = snapshotActionId;
   server.pendingSnapshotDescription = snapshotDescription;
   server.pendingSnapshotDate = `${YYYY}-${MM}-${DD}`;
   server.updatedAt = new Date().toISOString();
@@ -459,8 +589,8 @@ export async function runEveningWorkflow(
 
     return {
       success: true,
-      message: `Evening workflow initiated. Snapshot action ${snapshotAction.id} started.`,
-      snapshotId: snapshotImage.id
+      message: `Evening workflow initiated. Snapshot action ${snapshotActionId} started.`,
+      snapshotId: snapshotImageId
     };
   } catch (error: unknown) {
     console.error("[runEveningWorkflow] Execution failed:", error);
@@ -557,7 +687,8 @@ export async function processPendingSnapshot(
   actualServerKey: string,
   userEmail: string,
   kv: KVNamespace,
-  hetznerApi: HetznerApiService
+  hetznerApi: HetznerApiService | null,
+  doApi?: DigitalOceanApiService | null
 ): Promise<ServerConfig> {
   if (!server.pendingSnapshotId || !server.pendingSnapshotActionId) {
     return server;
@@ -565,20 +696,24 @@ export async function processPendingSnapshot(
 
   const actionId = server.pendingSnapshotActionId;
   const snapshotId = server.pendingSnapshotId;
+  const isDO = server.provider === 'digitalocean';
 
   try {
-    console.log(`[processPendingSnapshot] Checking Hetzner action ${actionId} for server ${server.id}…`);
-    const action = await hetznerApi.getAction(actionId);
-    console.log(`[processPendingSnapshot] Action status: ${action.status}, progress: ${action.progress}%`);
+    console.log(`[processPendingSnapshot] Checking action ${actionId} for server ${server.id}…`);
+    const actionStatus = isDO 
+      ? (await doApi!.getAction(actionId)).status 
+      : (await hetznerApi!.getAction(actionId)).status;
+    const progress = isDO ? (actionStatus === 'completed' ? 100 : 50) : (await hetznerApi!.getAction(actionId)).progress || 0;
+    console.log(`[processPendingSnapshot] Action status: ${actionStatus}, progress: ${progress}%`);
 
-    if (action.status === 'running') {
-      const progress = action.progress || 0;
+    const now = new Date().toISOString();
+    if (actionStatus === 'in-progress' || actionStatus === 'running') {
       server.status = 'snapshotting';
       server.detailedStatus = `Saving snapshot (${progress}%)`;
-      server.updatedAt = new Date().toISOString();
+      server.updatedAt = now;
       await kv.put(actualServerKey, JSON.stringify(server));
-    } else if (action.status === 'success') {
-      console.log(`[processPendingSnapshot] Snapshot action ${actionId} succeeded. Cleaning up VM and old snapshots…`);
+    } else if (actionStatus === 'completed' || actionStatus === 'success') {
+      console.log(`[processPendingSnapshot] Snapshot action succeeded. Cleaning up VM and old snapshots…`);
 
       // Load schedule config
       const schedData = await kv.get(scheduleKey(userEmail, server.id));
@@ -591,47 +726,74 @@ export async function processPendingSnapshot(
           timezone: 'Europe/Bucharest',
           spinupTime: '09:00',
           snapshotTime: '18:00',
-          serverType: server.serverType || 'cx22',
-          location: 'nbg1',
+          serverType: server.serverType || 's-2vcpu-4gb',
+          location: 'nyc1',
         };
+      }
+
+      let realSnapshotId = snapshotId;
+      if (isDO && snapshotId === 999999) {
+        try {
+          const allPrivate = await doApi!.getImages('private');
+          const found = allPrivate.find(img => img.name === server.pendingSnapshotDescription);
+          if (found) {
+            realSnapshotId = found.id;
+            console.log(`[processPendingSnapshot] Resolved DigitalOcean snapshot ID: ${realSnapshotId}`);
+          }
+        } catch (e) {
+          console.warn("Failed to auto-resolve DO snapshot ID from name:", e);
+        }
       }
 
       // Delete old snapshot
       const previousSnapshotId = sched.latestSnapshotId;
-      if (previousSnapshotId && previousSnapshotId !== snapshotId) {
+      if (previousSnapshotId && previousSnapshotId !== realSnapshotId) {
         try {
           console.log(`[processPendingSnapshot] Deleting old snapshot ${previousSnapshotId}…`);
-          await hetznerApi.deleteSnapshot(previousSnapshotId);
+          if (isDO) {
+            await doApi!.deleteSnapshot(previousSnapshotId);
+          } else {
+            await hetznerApi!.deleteSnapshot(previousSnapshotId);
+          }
         } catch (e) {
           console.warn(`[processPendingSnapshot] Failed to delete old snapshot ${previousSnapshotId}:`, e);
         }
       }
 
-      // Sweep orphan snapshots
-      try {
-        const orphans = await hetznerApi.getSnapshots(`devbox-server-id=${server.id}`);
-        for (const orphan of orphans) {
-          if (orphan.id !== snapshotId) {
-            console.log(`[processPendingSnapshot] Sweeping orphan snapshot ${orphan.id}…`);
-            await hetznerApi.deleteSnapshot(orphan.id).catch(() => {});
+      // Sweep orphan snapshots (Hetzner only, since DO doesn't support tags/labels filtering easily)
+      if (!isDO) {
+        try {
+          const orphans = await hetznerApi!.getSnapshots(`devbox-server-id=${server.id}`);
+          for (const orphan of orphans) {
+            if (orphan.id !== realSnapshotId) {
+              console.log(`[processPendingSnapshot] Sweeping orphan snapshot ${orphan.id}…`);
+              await hetznerApi!.deleteSnapshot(orphan.id).catch(() => {});
+            }
           }
+        } catch (e) {
+          console.warn(`[processPendingSnapshot] Orphan sweep failed:`, e);
         }
-      } catch (e) {
-        console.warn(`[processPendingSnapshot] Orphan sweep failed:`, e);
       }
 
-      // Delete the Hetzner server
-      if (server.hetznerServerId) {
+      // Delete the provider VM
+      if (isDO && server.digitalOceanDropletId) {
+        try {
+          console.log(`[processPendingSnapshot] Deleting DigitalOcean Droplet ${server.digitalOceanDropletId}…`);
+          await doApi!.deleteDroplet(server.digitalOceanDropletId);
+        } catch (e) {
+          console.error(`[processPendingSnapshot] Failed to delete Droplet ${server.digitalOceanDropletId}:`, e);
+        }
+      } else if (!isDO && server.hetznerServerId) {
         try {
           console.log(`[processPendingSnapshot] Deleting Hetzner server ${server.hetznerServerId}…`);
-          await hetznerApi.deleteServer(server.hetznerServerId);
+          await hetznerApi!.deleteServer(server.hetznerServerId);
         } catch (e) {
           console.error(`[processPendingSnapshot] Failed to delete server ${server.hetznerServerId}:`, e);
         }
       }
 
       // Update schedule config
-      sched.latestSnapshotId = snapshotId;
+      sched.latestSnapshotId = realSnapshotId;
       sched.latestSnapshotDate = server.pendingSnapshotDate || new Date().toISOString().slice(0, 10);
       sched.latestSnapshotDescription = server.pendingSnapshotDescription || '';
       sched.lastEveningRun = new Date().toISOString();
@@ -642,6 +804,7 @@ export async function processPendingSnapshot(
       // Update server record
       server.hetznerServerId = undefined;
       server.hetznerStatus = undefined;
+      server.digitalOceanDropletId = undefined;
       server.ip = 'pending';
       server.status = 'off';
       server.detailedStatus = 'Server is off';
@@ -656,9 +819,9 @@ export async function processPendingSnapshot(
 
       await kv.put(actualServerKey, JSON.stringify(server));
       console.log(`[processPendingSnapshot] Server ${server.id} cleanup complete.`);
-    } else if (action.status === 'error') {
-      const errMsg = action.error?.message || 'unknown Hetzner error';
-      console.error(`[processPendingSnapshot] Snapshot action ${actionId} failed: ${errMsg}`);
+    } else if (actionStatus === 'error' || actionStatus === 'errored') {
+      const errMsg = 'snapshot action failed';
+      console.error(`[processPendingSnapshot] Snapshot action ${actionId} failed`);
 
       // Load schedule config
       const schedData = await kv.get(scheduleKey(userEmail, server.id));
@@ -667,7 +830,7 @@ export async function processPendingSnapshot(
         sched = JSON.parse(schedData) as ScheduleConfig;
         sched.lastEveningRun = new Date().toISOString();
         sched.lastRunStatus = 'error';
-        sched.lastRunError = `Hetzner snapshot action failed: ${errMsg}`;
+        sched.lastRunError = `Snapshot action failed: ${errMsg}`;
         await kv.put(scheduleKey(userEmail, server.id), JSON.stringify(sched));
       }
 
@@ -699,8 +862,58 @@ export async function processPendingCreate(
   actualServerKey: string,
   userEmail: string,
   kv: KVNamespace,
-  hetznerApi: HetznerApiService
+  hetznerApi: HetznerApiService | null,
+  doApi?: DigitalOceanApiService | null
 ): Promise<ServerConfig> {
+  const isDO = server.provider === 'digitalocean';
+  if (isDO) {
+    if (server.status !== 'initializing') {
+      return server;
+    }
+    if (!server.digitalOceanDropletId) {
+      return server;
+    }
+    try {
+      console.log(`[processPendingCreate] Checking DigitalOcean droplet ${server.digitalOceanDropletId} status...`);
+      const droplet = await doApi!.getDroplet(server.digitalOceanDropletId);
+      console.log(`[processPendingCreate] Droplet status: ${droplet.status}`);
+      
+      const now = new Date().toISOString();
+      if (droplet.status === 'new') {
+        server.status = 'initializing';
+        server.detailedStatus = 'Initializing (Droplet creating...)';
+        server.updatedAt = now;
+        await kv.put(actualServerKey, JSON.stringify(server));
+      } else if (droplet.status === 'active') {
+        const publicIp = droplet.networks.v4?.find(n => n.type === 'public')?.ip_address;
+        if (publicIp) {
+          server.ip = publicIp;
+          const env = await getCloudflareEnv();
+          const cfApi = new CloudflareApiService(env);
+          const directHostname = server.hostname?.replace('-code.', '.').replace('-direct', '');
+          if (directHostname) {
+            console.log(`[processPendingCreate] Active Droplet IP: ${publicIp}. Updating DNS...`);
+            await cfApi.setupARecord(directHostname, publicIp).catch(() => {});
+          }
+        }
+        server.pendingCreateActionId = undefined;
+        server.status = 'ready';
+        server.detailedStatus = 'Ready';
+        server.updatedAt = now;
+        await kv.put(actualServerKey, JSON.stringify(server));
+      } else if (droplet.status === 'archive' || droplet.status === 'off') {
+        server.pendingCreateActionId = undefined;
+        server.status = 'error';
+        server.detailedStatus = `Initialization failed (Status: ${droplet.status})`;
+        server.updatedAt = now;
+        await kv.put(actualServerKey, JSON.stringify(server));
+      }
+    } catch (err) {
+      console.error(`[processPendingCreate] Failed to poll DO droplet ${server.digitalOceanDropletId}:`, err);
+    }
+    return server;
+  }
+
   if (!server.pendingCreateActionId) {
     return server;
   }
@@ -709,7 +922,7 @@ export async function processPendingCreate(
 
   try {
     console.log(`[processPendingCreate] Checking Hetzner create action ${actionId} for server ${server.id}…`);
-    const action = await hetznerApi.getAction(actionId);
+    const action = await hetznerApi!.getAction(actionId);
     console.log(`[processPendingCreate] Action status: ${action.status}, progress: ${action.progress}%`);
 
     const now = new Date().toISOString();
@@ -756,29 +969,37 @@ export async function processAllPendingCreates(kv: KVNamespace) {
       continue;
     }
 
-    if (server.pendingCreateActionId) {
+    const isDO = server.provider === 'digitalocean';
+    const isPending = server.pendingCreateActionId || (isDO && server.status === 'initializing');
+
+    if (isPending) {
       count++;
       const userEmail = server.userEmail;
 
       try {
         const env = await getCloudflareEnv();
         let hetznerToken = env.HETZNER_API_TOKEN;
+        let digitalOceanToken = env.CLOUDFLARE_API_TOKEN; // fallback
         if (server.orgId) {
           const orgSettings = await getOrgSettings(server.orgId);
           if (orgSettings?.hetznerToken) {
             hetznerToken = orgSettings.hetznerToken;
           }
+          if (orgSettings?.digitalOceanToken) {
+            digitalOceanToken = orgSettings.digitalOceanToken;
+          }
         }
-        if (!hetznerToken) {
-          const settings = await getUserSettings(userEmail);
-          hetznerToken = settings?.hetznerToken;
+        const settings = await getUserSettings(userEmail);
+        if (!hetznerToken && settings?.hetznerToken) {
+          hetznerToken = settings.hetznerToken;
         }
-        if (!hetznerToken) {
-          console.error(`[processAllPendingCreates] No Hetzner token found for ${userEmail}`);
-          continue;
+        if (settings?.digitalOceanToken) {
+          digitalOceanToken = settings.digitalOceanToken;
         }
-        const hetznerApi = new HetznerApiService(env, hetznerToken);
-        await processPendingCreate(server, key.name, userEmail, kv, hetznerApi);
+
+        const hetznerApi = isDO ? null : new HetznerApiService(env, hetznerToken);
+        const doApi = isDO ? new DigitalOceanApiService(env, digitalOceanToken) : null;
+        await processPendingCreate(server, key.name, userEmail, kv, hetznerApi, doApi);
       } catch (err) {
         console.error(`[processAllPendingCreates] Failed to process pending create for ${server.id}:`, err);
       }
@@ -809,22 +1030,28 @@ export async function processAllPendingSnapshots(kv: KVNamespace) {
       try {
         const env = await getCloudflareEnv();
         let hetznerToken = env.HETZNER_API_TOKEN;
+        let digitalOceanToken = env.CLOUDFLARE_API_TOKEN; // fallback
         if (server.orgId) {
           const orgSettings = await getOrgSettings(server.orgId);
           if (orgSettings?.hetznerToken) {
             hetznerToken = orgSettings.hetznerToken;
           }
+          if (orgSettings?.digitalOceanToken) {
+            digitalOceanToken = orgSettings.digitalOceanToken;
+          }
         }
-        if (!hetznerToken) {
-          const settings = await getUserSettings(userEmail);
-          hetznerToken = settings?.hetznerToken;
+        const settings = await getUserSettings(userEmail);
+        if (!hetznerToken && settings?.hetznerToken) {
+          hetznerToken = settings.hetznerToken;
         }
-        if (!hetznerToken) {
-          console.error(`[processAllPendingSnapshots] No Hetzner token found for ${userEmail}`);
-          continue;
+        if (settings?.digitalOceanToken) {
+          digitalOceanToken = settings.digitalOceanToken;
         }
-        const hetznerApi = new HetznerApiService(env, hetznerToken);
-        await processPendingSnapshot(server, key.name, userEmail, kv, hetznerApi);
+
+        const isDO = server.provider === 'digitalocean';
+        const hetznerApi = isDO ? null : new HetznerApiService(env, hetznerToken);
+        const doApi = isDO ? new DigitalOceanApiService(env, digitalOceanToken) : null;
+        await processPendingSnapshot(server, key.name, userEmail, kv, hetznerApi, doApi);
       } catch (err) {
         console.error(`[processAllPendingSnapshots] Failed to process pending snapshot for ${server.id}:`, err);
       }
