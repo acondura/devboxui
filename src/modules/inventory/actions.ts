@@ -2316,6 +2316,7 @@ export async function getServerSnapshots(serverId: string) {
         name: img.name,
         created: new Date().toISOString(),
         disk_size: img.min_disk_size,
+        image_size: img.size_gigabytes,
         architecture: 'x86'
       }));
     } catch (e) {

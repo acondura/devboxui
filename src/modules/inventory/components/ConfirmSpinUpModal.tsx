@@ -11,7 +11,7 @@ interface ConfirmSpinUpModalProps {
   serverId: string;
   serverName: string;
   defaultServerType?: string;
-  vpsSnapshots: Array<{ id: number | string; name?: string | null; description?: string; labels?: Record<string, string> }>;
+  vpsSnapshots: Array<{ id: number | string; name?: string | null; description?: string; labels?: Record<string, string>; disk_size?: number; image_size?: number | null }>;
   selectedSnapshotId: string;
   onSnapshotChange: (id: string) => void;
 }
@@ -158,7 +158,7 @@ export function ConfirmSpinUpModal({
                     })
                     .map((s) => (
                       <option key={s.id} value={s.id.toString()}>
-                        {s.description || s.name || `Snapshot #${s.id}`}
+                        {s.description || s.name || `Snapshot #${s.id}`} {s.image_size ? `(${parseFloat(s.image_size.toString()).toFixed(2)} GB)` : ''}
                       </option>
                     ))}
                 </optgroup>
@@ -181,7 +181,7 @@ export function ConfirmSpinUpModal({
                     })
                     .map((s) => (
                       <option key={s.id} value={s.id.toString()}>
-                        {s.description || s.name || `Snapshot #${s.id}`}
+                        {s.description || s.name || `Snapshot #${s.id}`} {s.image_size ? `(${parseFloat(s.image_size.toString()).toFixed(2)} GB)` : ''}
                       </option>
                     ))}
                 </optgroup>

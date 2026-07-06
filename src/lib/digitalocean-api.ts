@@ -32,6 +32,7 @@ export interface DigitalOceanImage {
   regions: string[];
   type: 'base' | 'snapshot';
   min_disk_size: number;
+  size_gigabytes?: number;
 }
 
 export interface DigitalOceanRegion {

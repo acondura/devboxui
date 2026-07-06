@@ -126,6 +126,7 @@ export interface HetznerImage {
   deprecated: boolean | string | null;
   created: string;
   disk_size: number;
+  image_size?: number | null;
   labels: Record<string, string>;
   architecture: string;
 }
