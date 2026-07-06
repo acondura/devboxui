@@ -901,6 +901,7 @@ export async function processPendingCreate(
         server.detailedStatus = 'Ready';
         server.updatedAt = now;
         await kv.put(actualServerKey, JSON.stringify(server));
+        triggerOnStartCommands(server);
       } else if (droplet.status === 'archive' || droplet.status === 'off') {
         server.pendingCreateActionId = undefined;
         server.status = 'error';
@@ -939,6 +940,7 @@ export async function processPendingCreate(
       server.detailedStatus = 'Ready';
       server.updatedAt = now;
       await kv.put(actualServerKey, JSON.stringify(server));
+      triggerOnStartCommands(server);
     } else if (action.status === 'error') {
       console.error(`[processPendingCreate] Create action ${actionId} failed.`);
       server.pendingCreateActionId = undefined;
@@ -1058,4 +1060,75 @@ export async function processAllPendingSnapshots(kv: KVNamespace) {
     }
   }
   console.log(`[processAllPendingSnapshots] Finished processing ${count} pending snapshots.`);
+}
+
+export async function triggerOnStartCommands(server: ServerConfig) {
+  if (!server.projects || server.projects.length === 0) return;
+  const hasDdevStart = server.projects.some(p => p.startDdev);
+  if (!hasDdevStart) return;
+
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+  if (!kv) return;
+
+  const logsUrl = server.tunnelUrl?.split('?')[0].replace('-code.', '-logs.') || `https://logs-${server.id.slice(0, 8)}.devboxui.com`;
+
+  const runLoop = async () => {
+    try {
+      const cfApi = new CloudflareApiService(env);
+      const serviceToken = await cfApi.getOrCreateServiceToken(kv);
+
+      let success = false;
+      let retries = 0;
+      const maxRetries = 25; // 25 * 4s = 100 seconds max wait
+
+      while (!success && retries < maxRetries) {
+        try {
+          const resp = await fetch(logsUrl, {
+            headers: {
+              'CF-Access-Client-Id': serviceToken.id,
+              'CF-Access-Client-Secret': serviceToken.client_secret,
+            },
+            next: { revalidate: 0 },
+            cache: 'no-store'
+          });
+          if (resp.ok) {
+            success = true;
+            break;
+          }
+        } catch {
+          // VM not booted or tunnel not active yet
+        }
+        retries++;
+        await new Promise(resolve => setTimeout(resolve, 4000));
+      }
+
+      if (!success) {
+        console.warn(`[StartCommands] Timeout waiting for VM exporter to respond at ${logsUrl}`);
+        return;
+      }
+
+      // Exporter is ready! Trigger DDEV start commands
+      const username = server.userName || 'root';
+      for (const project of server.projects!) {
+        if (project.startDdev) {
+          console.log(`[StartCommands] Triggering ddev start for project ${project.name} as ${username}...`);
+          await fetch(`${logsUrl}/ddev-start`, {
+            method: 'POST',
+            headers: {
+              'CF-Access-Client-Id': serviceToken.id,
+              'CF-Access-Client-Secret': serviceToken.client_secret,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ project: project.name, username }),
+            next: { revalidate: 0 }
+          }).catch(e => console.error(`[StartCommands] Failed to request ddev start for ${project.name}:`, e));
+        }
+      }
+    } catch (err) {
+      console.error("[StartCommands] Background run execution failed:", err);
+    }
+  };
+
+  runLoop();
 }

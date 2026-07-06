@@ -19,6 +19,7 @@ export interface ServerConfig {
     domain: string;
     port?: number;
     status: 'ready' | 'provisioning' | 'error';
+    startDdev?: boolean;
   }[];
   detailedStatus?: string;
   provisioningToken?: string;

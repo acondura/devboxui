@@ -5,18 +5,20 @@ import { useState, useEffect } from 'react';
 interface AddDomainModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (domainPrefix: string, port: number) => void;
-  initialData?: { prefix: string; port: number };
+  onAdd: (domainPrefix: string, port: number, startDdev?: boolean) => void;
+  initialData?: { prefix: string; port: number; startDdev?: boolean };
 }
 
 export function AddDomainModal({ isOpen, onClose, onAdd, initialData }: AddDomainModalProps) {
   const [domainPrefix, setDomainPrefix] = useState(initialData?.prefix || '');
+  const [startDdev, setStartDdev] = useState(initialData?.startDdev || false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Sync state with initialData when modal opens
   useEffect(() => {
     if (isOpen) {
       setDomainPrefix(initialData?.prefix || '');
+      setStartDdev(initialData?.startDdev || false);
     }
   }, [isOpen, initialData]);
 
@@ -25,9 +27,10 @@ export function AddDomainModal({ isOpen, onClose, onAdd, initialData }: AddDomai
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    await onAdd(domainPrefix, 80);
+    await onAdd(domainPrefix, 80, startDdev);
     setIsSubmitting(false);
     setDomainPrefix('');
+    setStartDdev(false);
     onClose();
   };
 
@@ -74,6 +77,19 @@ export function AddDomainModal({ isOpen, onClose, onAdd, initialData }: AddDomai
                 <span className="text-slate-500 text-sm font-medium">-web.devboxui.com</span>
               </div>
             </div>
+          </div>
+
+          <div className="flex items-center space-x-3 bg-slate-50 border border-slate-200/60 p-4 rounded-xl">
+            <input
+              id="start-ddev"
+              type="checkbox"
+              checked={startDdev}
+              onChange={(e) => setStartDdev(e.target.checked)}
+              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 h-4.5 w-4.5 cursor-pointer"
+            />
+            <label htmlFor="start-ddev" className="text-sm font-medium text-slate-700 cursor-pointer select-none">
+              Start ddev project <strong className="text-indigo-600">{domainPrefix || 'X'}</strong> on spin-up
+            </label>
           </div>
 
           <div className="mt-3 p-4 bg-slate-50 rounded-xl border border-slate-200/60 space-y-3">

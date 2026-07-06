@@ -140,10 +140,52 @@ class DebugHandler(http.server.BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         self.send_response(200)
         self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS, POST')
         self.send_header('Access-Control-Allow-Headers', '*')
         self.end_headers()
         
+    def do_POST(self):
+        try:
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            req = json.loads(post_data.decode('utf-8'))
+        except Exception as e:
+            self.send_response(400)
+            self.end_headers()
+            self.wfile.write(f"Bad Request: {str(e)}".encode())
+            return
+
+        origin = self.headers.get('Origin', 'https://devboxui.com')
+        if self.path == '/ddev-start':
+            project = req.get('project')
+            username = req.get('username')
+            if project and username:
+                try:
+                    import re
+                    if not re.match("^[a-zA-Z0-9_-]+$", project) or not re.match("^[a-zA-Z0-9_-]+$", username):
+                        self.send_response(400)
+                        self.end_headers()
+                        return
+                    cmd = f'su - {username} -c "cd /home/{username}/workspace/{project} && ddev start"'
+                    subprocess.Popen(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    self.send_response(200)
+                    self.send_header('Content-type', 'application/json')
+                    self.send_header('Access-Control-Allow-Origin', origin)
+                    self.send_header('Access-Control-Allow-Credentials', 'true')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"success": True}).encode())
+                except Exception as e:
+                    self.send_response(500)
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode())
+            else:
+                self.send_response(400)
+                self.end_headers()
+                self.wfile.write(b"Missing parameters")
+        else:
+            self.send_response(404)
+            self.end_headers()
+            
     def do_GET(self):
         self.send_response(200)
         self.send_header('Content-type', 'application/json')
@@ -1234,7 +1276,7 @@ export async function getServers() {
 /**
  * Adds a new DDEV project to an existing server.
  */
-export async function addProject(serverId: string, projectName: string, port: number = 8443) {
+export async function addProject(serverId: string, projectName: string, port: number = 8443, startDdev?: boolean) {
   const userEmail = await getIdentity();
   const env = await getCloudflareEnv();
   const kv = env.KV;
@@ -1275,7 +1317,8 @@ export async function addProject(serverId: string, projectName: string, port: nu
   const newProject = {
     name: projectName,
     domain: projectDomain,
-    status: 'ready' as const
+    status: 'ready' as const,
+    startDdev
   };
 
   config.projects = [...(config.projects || []), newProject];
@@ -1326,7 +1369,7 @@ export async function deleteDomain(serverId: string, projectDomain: string) {
 /**
  * Updates an existing domain's configuration (e.g. changing the port or subdomain).
  */
-export async function updateDomain(serverId: string, oldDomain: string, newSubdomain: string, newPort: number) {
+export async function updateDomain(serverId: string, oldDomain: string, newSubdomain: string, newPort: number, startDdev?: boolean) {
   const userEmail = await getIdentity();
   const env = await getCloudflareEnv();
   const kv = env.KV;
@@ -1376,7 +1419,7 @@ export async function updateDomain(serverId: string, oldDomain: string, newSubdo
   // 4. Update Server State
   config.projects = (config.projects || []).map(p => {
     if (p.domain === oldDomain) {
-      return { ...p, domain: newDomain, name: newSubdomain, port: newPort };
+      return { ...p, domain: newDomain, name: newSubdomain, port: newPort, startDdev };
     }
     return p;
   });

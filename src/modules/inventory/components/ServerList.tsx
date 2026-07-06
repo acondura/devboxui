@@ -18,8 +18,8 @@ import { ErrorModal } from './ErrorModal';
 interface ServerListProps {
   servers: ServerConfig[];
   userEmail: string;
-  onAddProject: (serverId: string, projectName: string, port: number) => Promise<void>;
-  onUpdateDomain: (serverId: string, oldDomain: string, newSubdomain: string, port: number) => Promise<void>;
+  onAddProject: (serverId: string, projectName: string, port: number, startDdev?: boolean) => Promise<void>;
+  onUpdateDomain: (serverId: string, oldDomain: string, newSubdomain: string, port: number, startDdev?: boolean) => Promise<void>;
   onDeleteDomain: (serverId: string, domain: string) => Promise<void>;
   onDeleteServer: (serverId: string) => Promise<void>;
   onToggleLock?: (serverId: string, enableLock: boolean) => Promise<void>;
@@ -200,7 +200,7 @@ export function ServerList(props: ServerListProps) {
 function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDomain, onDeleteServer, onReinstall, onUpdateAllowedPeers, servers, onRefresh }: ServerListProps & { server: ServerConfig }) {
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [isApiAuthOpen, setIsApiAuthOpen] = useState(false);
-  const [editingDomain, setEditingDomain] = useState<{ domain: string; port: number } | null>(null);
+  const [editingDomain, setEditingDomain] = useState<{ domain: string; port: number; startDdev?: boolean } | null>(null);
   const [isReinstallModalOpen, setIsReinstallModalOpen] = useState(false);
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
   const [scheduleConfig, setScheduleConfig] = useState<ScheduleConfig | null>(server.scheduleConfig || null);
@@ -417,7 +417,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
                 </svg>
               </a>
               <div className="flex items-center space-x-1 opacity-0 group-hover/url:opacity-100 transition-opacity">
-                <button onClick={() => { setEditingDomain({ domain: project.domain, port: project.port || 80 }); setIsProjectModalOpen(true); }} className="p-1 text-slate-500 hover:text-white transition-colors">
+                <button onClick={() => { setEditingDomain({ domain: project.domain, port: project.port || 80, startDdev: project.startDdev }); setIsProjectModalOpen(true); }} className="p-1 text-slate-500 hover:text-white transition-colors">
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                 </button>
                 <button
@@ -629,8 +629,8 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
         <AddDomainModal
           isOpen={isProjectModalOpen}
           onClose={() => { setIsProjectModalOpen(false); setEditingDomain(null); }}
-          onAdd={(name, port) => editingDomain ? onUpdateDomain(server.id, editingDomain.domain, name, port) : onAddProject(server.id, name, port)}
-          initialData={editingDomain ? { prefix: editingDomain.domain.replace('-web.devboxui.com', '').replace('.devboxui.com', ''), port: editingDomain.port || 80 } : undefined}
+          onAdd={(name, port, startDdev) => editingDomain ? onUpdateDomain(server.id, editingDomain.domain, name, port, startDdev) : onAddProject(server.id, name, port, startDdev)}
+          initialData={editingDomain ? { prefix: editingDomain.domain.replace('-web.devboxui.com', '').replace('.devboxui.com', ''), port: editingDomain.port || 80, startDdev: editingDomain.startDdev } : undefined}
         />
         <ReinstallModal
           isOpen={isReinstallModalOpen}
@@ -716,7 +716,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
 function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDeleteServer, onReinstall, onUpdateAllowedPeers, servers, onRefresh }: ServerListProps & { server: ServerConfig }) {
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [isApiAuthOpen, setIsApiAuthOpen] = useState(false);
-  const [editingDomain, setEditingDomain] = useState<{ domain: string; port: number } | null>(null);
+  const [editingDomain, setEditingDomain] = useState<{ domain: string; port: number; startDdev?: boolean } | null>(null);
   const [isReinstallModalOpen, setIsReinstallModalOpen] = useState(false);
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
   const [scheduleConfig, setScheduleConfig] = useState<ScheduleConfig | null>(server.scheduleConfig || null);
@@ -858,8 +858,8 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
       <AddDomainModal
         isOpen={isProjectModalOpen}
         onClose={() => { setIsProjectModalOpen(false); setEditingDomain(null); }}
-        onAdd={(name, port) => editingDomain ? onUpdateDomain(server.id, editingDomain.domain, name, port) : onAddProject(server.id, name, port)}
-        initialData={editingDomain ? { prefix: editingDomain.domain.replace('-web.devboxui.com', '').replace('.devboxui.com', ''), port: editingDomain.port || 80 } : undefined}
+        onAdd={(name, port, startDdev) => editingDomain ? onUpdateDomain(server.id, editingDomain.domain, name, port, startDdev) : onAddProject(server.id, name, port, startDdev)}
+        initialData={editingDomain ? { prefix: editingDomain.domain.replace('-web.devboxui.com', '').replace('.devboxui.com', ''), port: editingDomain.port || 80, startDdev: editingDomain.startDdev } : undefined}
       />
       <ReinstallModal
         isOpen={isReinstallModalOpen}
@@ -1061,7 +1061,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
             <div key={p.domain} className="flex justify-between items-center bg-slate-50 p-2 rounded-lg border border-slate-200">
               <span className="text-sm font-mono text-indigo-600 hover:text-indigo-800 truncate max-w-[200px]">{p.domain}</span>
               <div className="flex space-x-2">
-                <button onClick={() => { setEditingDomain({ domain: p.domain, port: p.port || 80 }); setIsProjectModalOpen(true); }} className="text-slate-400 hover:text-slate-700"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" /></svg></button>
+                <button onClick={() => { setEditingDomain({ domain: p.domain, port: p.port || 80, startDdev: p.startDdev }); setIsProjectModalOpen(true); }} className="text-slate-400 hover:text-slate-700"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" /></svg></button>
                 <button
                   onClick={async () => {
                     if (confirm(`Delete ${p.domain}?`)) {

@@ -104,9 +104,9 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
     }
   };
 
-  const handleAddProject = async (serverId: string, projectName: string, port: number = 8443) => {
+  const handleAddProject = async (serverId: string, projectName: string, port: number = 8443, startDdev?: boolean) => {
     try {
-      const updatedServer = await addProject(serverId, projectName, port);
+      const updatedServer = await addProject(serverId, projectName, port, startDdev);
       setServers(prev => prev.map(s => s.id === serverId ? updatedServer : s));
     } catch (error) {
       alert("Failed to add project. Check console for details.");
@@ -114,9 +114,9 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
     }
   };
 
-  const handleUpdateDomain = async (serverId: string, oldDomain: string, newSubdomain: string, port: number) => {
+  const handleUpdateDomain = async (serverId: string, oldDomain: string, newSubdomain: string, port: number, startDdev?: boolean) => {
     try {
-      const updatedServer = await updateDomain(serverId, oldDomain, newSubdomain, port);
+      const updatedServer = await updateDomain(serverId, oldDomain, newSubdomain, port, startDdev);
       setServers(prev => prev.map(s => s.id === serverId ? updatedServer : s));
     } catch (error) {
       alert("Failed to update domain. Check console for details.");
