@@ -36,7 +36,6 @@ export function ConfirmSnapshotModal({ isOpen, onClose, onConfirm, serverName }:
   const cleanServerName = serverName
     .replace('.devboxui.com', '')
     .replace('-code', '')
-    .replace('-direct', '')
     .replace(/[^a-zA-Z0-9-]/g, '')
     .toLowerCase();
 
@@ -91,7 +90,7 @@ export function ConfirmSnapshotModal({ isOpen, onClose, onConfirm, serverName }:
 
           <div className="space-y-2 bg-slate-50 border border-slate-200 rounded-xl p-4">
             <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">Target Server:</p>
-            <span className="text-base font-mono font-bold text-slate-900 break-all">{serverName.replace('.devboxui.com', '').replace('-direct', '')}</span>
+            <span className="text-base font-mono font-bold text-slate-900 break-all">{serverName.replace('.devboxui.com', '')}</span>
           </div>
 
           <div className="flex space-x-3 pt-2">

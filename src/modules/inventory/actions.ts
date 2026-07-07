@@ -1492,7 +1492,7 @@ export async function deleteServer(serverId: string) {
       await cfApi.deleteDnsRecord(logsHostname).catch(e => console.error("Logs DNS deletion failed:", e));
       await cfApi.deleteAccess(logsHostname).catch(e => console.error("Logs Access deletion failed:", e));
 
-      const directHostname = hostname.replace('-code.', '.').replace('-direct', '');
+      const directHostname = hostname.replace('-code.', '.');
       await cfApi.deleteDnsRecord(directHostname).catch(e => console.error("Direct DNS deletion failed:", e));
       if (hostname.includes('-code.')) {
         const legacyDirect = hostname.replace('-code.', '-direct.');
@@ -2201,7 +2201,7 @@ export async function provisionContaboServer(
 
     // Create Direct SSH DNS record in Cloudflare
     try {
-      const directHostname = hostname.replace('-code.', '.').replace('-direct', '');
+      const directHostname = hostname.replace('-code.', '.');
       console.log(`Setting up Direct SSH DNS A record for ${directHostname} to ${instance.ipAddress}...`);
       await cfApi.setupARecord(directHostname, instance.ipAddress);
     } catch (err) {
@@ -2682,8 +2682,8 @@ export async function provisionDigitalOceanServer(
       config.tunnelToken
     );
 
-    console.log(`Requesting new droplet '${name}' in ${location}...`);
-    const doResult = await doApi.createDroplet(name, location, serverType, image, sshKeyIds, bootstrapScript);
+    console.log(`Requesting new droplet '${safeName}' in ${location}...`);
+    const doResult = await doApi.createDroplet(safeName, location, serverType, image, sshKeyIds, bootstrapScript);
     dropletId = doResult.droplet.id;
     config.digitalOceanDropletId = dropletId;
     config.detailedStatus = 'Initializing (0%)';
@@ -2702,7 +2702,7 @@ export async function provisionDigitalOceanServer(
         config.ip = publicIp;
         config.logs = [...(config.logs || []), `Droplet active at IP: ${publicIp}`];
         
-        const directHostname = config.hostname?.replace('-code.', '.').replace('-direct', '');
+        const directHostname = config.hostname?.replace('-code.', '.');
         if (directHostname) {
           await cfApi.setupARecord(directHostname, publicIp);
         }

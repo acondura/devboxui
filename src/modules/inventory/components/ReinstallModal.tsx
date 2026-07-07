@@ -14,7 +14,7 @@ interface ReinstallModalProps {
 }
 
 export function ReinstallModal({ isOpen, onClose, onConfirm, serverName, serverId, provider, isAutomated }: ReinstallModalProps) {
-  const cleanServerName = serverName.replace('.devboxui.com', '').replace('-direct', '');
+  const cleanServerName = serverName.replace('.devboxui.com', '');
   const [isConfirming, setIsConfirming] = useState(false);
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const [bootstrapCommand, setBootstrapCommand] = useState<string | null>(null);

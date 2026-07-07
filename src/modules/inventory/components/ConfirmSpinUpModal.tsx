@@ -103,7 +103,7 @@ export function ConfirmSpinUpModal({
           {/* Target Server Details */}
           <div className="space-y-1 bg-slate-50 border border-slate-200 rounded-xl p-4">
             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Target Server</p>
-            <span className="text-base font-bold text-slate-900">{serverName.replace('.devboxui.com', '').replace('-direct', '')}</span>
+            <span className="text-base font-bold text-slate-900">{serverName.replace('.devboxui.com', '')}</span>
           </div>
 
           {/* VPS Type Selector */}
@@ -142,7 +142,7 @@ export function ConfirmSpinUpModal({
               <option value="latest">Latest Snapshot (Auto)</option>
               {vpsSnapshots.some((s) => {
                 if (s.labels && s.labels['devbox-server-id'] === serverId) return true;
-                const cleanName = serverName.replace('.devboxui.com', '').replace('-direct', '').replace('-code', '').toLowerCase();
+                const cleanName = serverName.replace('.devboxui.com', '').replace('-code', '').toLowerCase();
                 if (s.name && s.name.toLowerCase().includes(cleanName)) return true;
                 if (s.description && s.description.toLowerCase().includes(cleanName)) return true;
                 return false;
@@ -151,7 +151,7 @@ export function ConfirmSpinUpModal({
                   {vpsSnapshots
                     .filter((s) => {
                       if (s.labels && s.labels['devbox-server-id'] === serverId) return true;
-                      const cleanName = serverName.replace('.devboxui.com', '').replace('-direct', '').replace('-code', '').toLowerCase();
+                      const cleanName = serverName.replace('.devboxui.com', '').replace('-code', '').toLowerCase();
                       if (s.name && s.name.toLowerCase().includes(cleanName)) return true;
                       if (s.description && s.description.toLowerCase().includes(cleanName)) return true;
                       return false;
@@ -165,7 +165,7 @@ export function ConfirmSpinUpModal({
               )}
               {vpsSnapshots.some((s) => {
                 if (s.labels && s.labels['devbox-server-id'] === serverId) return false;
-                const cleanName = serverName.replace('.devboxui.com', '').replace('-direct', '').replace('-code', '').toLowerCase();
+                const cleanName = serverName.replace('.devboxui.com', '').replace('-code', '').toLowerCase();
                 if (s.name && s.name.toLowerCase().includes(cleanName)) return false;
                 if (s.description && s.description.toLowerCase().includes(cleanName)) return false;
                 return true;
@@ -174,7 +174,7 @@ export function ConfirmSpinUpModal({
                   {vpsSnapshots
                     .filter((s) => {
                       if (s.labels && s.labels['devbox-server-id'] === serverId) return false;
-                      const cleanName = serverName.replace('.devboxui.com', '').replace('-direct', '').replace('-code', '').toLowerCase();
+                      const cleanName = serverName.replace('.devboxui.com', '').replace('-code', '').toLowerCase();
                       if (s.name && s.name.toLowerCase().includes(cleanName)) return false;
                       if (s.description && s.description.toLowerCase().includes(cleanName)) return false;
                       return true;

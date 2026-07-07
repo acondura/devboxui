@@ -231,7 +231,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
   const isDigitalOcean = server.provider === 'digitalocean';
   const displayHostname = (server.hostname || 'devbox')
     .replace('.devboxui.com', '')
-    .replace('-direct', '');
+    ;
 
   useEffect(() => {
     if (server.status === 'off' && (isHetzner || isDigitalOcean)) {
@@ -629,7 +629,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
             }
           }}
           title="Delete Server"
-          description={`Are you sure you want to delete "${server.hostname?.replace('.devboxui.com', '').replace('-direct', '') || server.ip}"? This action cannot be undone.`}
+          description={`Are you sure you want to delete "${server.hostname?.replace('.devboxui.com', '') || server.ip}"? This action cannot be undone.`}
           confirmLabel="Delete Server"
         />
         <ConfirmDeleteModal
@@ -764,7 +764,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
   const isDigitalOcean = server.provider === 'digitalocean';
   const displayHostname = (server.hostname || 'devbox')
     .replace('.devboxui.com', '')
-    .replace('-direct', '');
+    ;
 
   useEffect(() => {
     if (server.status === 'off' && (isHetzner || isDigitalOcean)) {
@@ -880,7 +880,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
           }
         }}
         title="Delete Server"
-        description={`Are you sure you want to delete "${server.hostname?.replace('.devboxui.com', '').replace('-direct', '') || server.ip}"? This action cannot be undone.`}
+        description={`Are you sure you want to delete "${server.hostname?.replace('.devboxui.com', '') || server.ip}"? This action cannot be undone.`}
         confirmLabel="Delete Server"
       />
       <ConfirmDeleteModal

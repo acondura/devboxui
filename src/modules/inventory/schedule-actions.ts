@@ -274,7 +274,8 @@ export async function runMorningWorkflow(
   // Create server from snapshot
   const serverName = (server.hostname || `devbox-${serverId.slice(0, 8)}`)
     .replace('.devboxui.com', '')
-    .replace('-direct', '');
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '-');
   console.log(`[Morning] Creating server "${serverName}" from snapshot ${snapshotToRestore}…`);
 
   let newHetznerServerId: number | undefined;
@@ -346,7 +347,7 @@ export async function runMorningWorkflow(
   if (server.hostname && ip !== 'pending') {
     try {
       const cfApi = new CloudflareApiService(env);
-      const directHostname = server.hostname.replace('-code.', '.').replace('-direct', '');
+      const directHostname = server.hostname.replace('-code.', '.');
       console.log(`[Morning] Updating Direct SSH DNS A record for ${directHostname} to ${ip}...`);
       await cfApi.setupARecord(directHostname, ip);
     } catch (err) {
@@ -546,7 +547,6 @@ export async function runEveningWorkflow(
   const cleanServerName = (server.hostname || `devbox-${serverId.slice(0, 8)}`)
     .replace('.devboxui.com', '')
     .replace('-code', '')
-    .replace('-direct', '')
     .replace(/[^a-zA-Z0-9-]/g, '')
     .toLowerCase();
 
@@ -890,7 +890,7 @@ export async function processPendingCreate(
           server.ip = publicIp;
           const env = await getCloudflareEnv();
           const cfApi = new CloudflareApiService(env);
-          const directHostname = server.hostname?.replace('-code.', '.').replace('-direct', '');
+          const directHostname = server.hostname?.replace('-code.', '.');
           if (directHostname) {
             console.log(`[processPendingCreate] Active Droplet IP: ${publicIp}. Updating DNS...`);
             await cfApi.setupARecord(directHostname, publicIp).catch(() => {});
