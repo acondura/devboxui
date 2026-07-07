@@ -186,8 +186,11 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
   const currentType = options.serverTypes.find(t => t.name === serverType);
   const currentArch = currentType?.architecture || 'x86';
 
-  // Filter images based on architecture
-  const filteredImages = options.images.filter(i => i.architecture === currentArch);
+  // Filter images based on architecture and keep ONLY Ubuntu images
+  const filteredImages = options.images.filter(i => 
+    i.architecture === currentArch && 
+    (i.name?.toLowerCase().includes('ubuntu') || i.description?.toLowerCase().includes('ubuntu'))
+  );
 
   // Sort server types by price (for the current location)
   const sortedServerTypes = [...options.serverTypes].sort((a, b) => {
@@ -493,7 +496,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm">
-      <div className="w-full max-w-lg bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden transform transition-all animate-in fade-in zoom-in duration-200 text-left">
+      <div className="w-full max-w-2xl bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden transform transition-all animate-in fade-in zoom-in duration-200 text-left">
         <div className="px-6 py-5 border-b border-slate-200 flex justify-between items-center bg-slate-50">
           <div>
             <h3 className="text-xl font-bold text-slate-900">Launch New DevBox</h3>
