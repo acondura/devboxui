@@ -14,6 +14,7 @@ import { triggerMorningSpinup, triggerEveningSnapshot } from '../schedule-action
 import { Select2 } from './Select2';
 import { InviteCollabModal } from './InviteCollabModal';
 import { ErrorModal } from './ErrorModal';
+import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 
 interface ServerListProps {
   servers: ServerConfig[];
@@ -218,6 +219,8 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
   const [isConfirmSnapshotOpen, setIsConfirmSnapshotOpen] = useState(false);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isDeleteServerOpen, setIsDeleteServerOpen] = useState(false);
+  const [deletingDomainPending, setDeletingDomainPending] = useState<string | null>(null);
 
   const [vpsSnapshots, setVpsSnapshots] = useState<Array<{ id: number | string; description?: string; name?: string | null }>>([]);
   const [selectedSnapshotId, setSelectedSnapshotId] = useState<string>('latest');
@@ -421,12 +424,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                 </button>
                 <button
-                  onClick={async () => {
-                    if (confirm(`Delete ${project.domain}?`)) {
-                      setDeletingDomain(project.domain);
-                      try { await onDeleteDomain(server.id, project.domain); } finally { setDeletingDomain(null); }
-                    }
-                  }}
+                  onClick={() => setDeletingDomainPending(project.domain)}
                   className="p-1 text-slate-500 hover:text-rose-500 transition-colors"
                 >
                   {deletingDomain === project.domain ? <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> : <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>}
@@ -568,16 +566,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
             <div className="flex flex-col items-center">
               <button
                 onClick={async () => {
-                  if (confirm("Delete server?")) {
-                    setIsDeleting(true);
-                    try {
-                      await onDeleteServer(server.id);
-                    } catch (e) {
-                      console.error("Failed to delete server:", e);
-                    } finally {
-                      setIsDeleting(false);
-                    }
-                  }
+                  setIsDeleteServerOpen(true);
                 }}
                 disabled={server.isLocked || isFetchingLogs || isDeleting || isReinstalling}
                 className={`p-2 rounded-lg transition-all ${
@@ -625,6 +614,35 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
           onClose={() => setIsConfirmSnapshotOpen(false)}
           onConfirm={handleSnapshotShutdown}
           serverName={server.hostname || server.ip}
+        />
+        <ConfirmDeleteModal
+          isOpen={isDeleteServerOpen}
+          onClose={() => setIsDeleteServerOpen(false)}
+          onConfirm={async () => {
+            setIsDeleting(true);
+            try {
+              await onDeleteServer(server.id);
+            } catch (e) {
+              console.error("Failed to delete server:", e);
+            } finally {
+              setIsDeleting(false);
+            }
+          }}
+          title="Delete Server"
+          description={`Are you sure you want to delete "${server.hostname?.replace('.devboxui.com', '').replace('-direct', '') || server.ip}"? This action cannot be undone.`}
+          confirmLabel="Delete Server"
+        />
+        <ConfirmDeleteModal
+          isOpen={deletingDomainPending !== null}
+          onClose={() => setDeletingDomainPending(null)}
+          onConfirm={async () => {
+            if (!deletingDomainPending) return;
+            setDeletingDomain(deletingDomainPending);
+            try { await onDeleteDomain(server.id, deletingDomainPending); } finally { setDeletingDomain(null); }
+          }}
+          title="Delete Domain"
+          description={`Are you sure you want to delete "${deletingDomainPending}"?`}
+          confirmLabel="Delete Domain"
         />
         <AddDomainModal
           isOpen={isProjectModalOpen}
@@ -734,6 +752,8 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
   const [isConfirmSnapshotOpen, setIsConfirmSnapshotOpen] = useState(false);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isDeleteServerOpen, setIsDeleteServerOpen] = useState(false);
+  const [deletingDomainPending, setDeletingDomainPending] = useState<string | null>(null);
 
   const [vpsSnapshots, setVpsSnapshots] = useState<Array<{ id: number | string; description?: string; name?: string | null }>>([]);
   const [selectedSnapshotId, setSelectedSnapshotId] = useState<string>('latest');
@@ -834,17 +854,8 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
   };
   */
 
-  const handleDelete = async () => {
-    if (confirm("Delete this server?")) {
-      setIsDeleting(true);
-      try {
-        await onDeleteServer(server.id);
-      } catch (e) {
-        console.error("Delete failed:", e);
-      } finally {
-        setIsDeleting(false);
-      }
-    }
+  const handleDelete = () => {
+    setIsDeleteServerOpen(true);
   };
 
   return (
@@ -854,6 +865,35 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
         onClose={() => setIsConfirmSnapshotOpen(false)}
         onConfirm={handleSnapshotShutdown}
         serverName={server.hostname || server.ip}
+      />
+      <ConfirmDeleteModal
+        isOpen={isDeleteServerOpen}
+        onClose={() => setIsDeleteServerOpen(false)}
+        onConfirm={async () => {
+          setIsDeleting(true);
+          try {
+            await onDeleteServer(server.id);
+          } catch (e) {
+            console.error("Delete failed:", e);
+          } finally {
+            setIsDeleting(false);
+          }
+        }}
+        title="Delete Server"
+        description={`Are you sure you want to delete "${server.hostname?.replace('.devboxui.com', '').replace('-direct', '') || server.ip}"? This action cannot be undone.`}
+        confirmLabel="Delete Server"
+      />
+      <ConfirmDeleteModal
+        isOpen={deletingDomainPending !== null}
+        onClose={() => setDeletingDomainPending(null)}
+        onConfirm={async () => {
+          if (!deletingDomainPending) return;
+          setDeletingDomain(deletingDomainPending);
+          try { await onDeleteDomain(server.id, deletingDomainPending); } finally { setDeletingDomain(null); }
+        }}
+        title="Delete Domain"
+        description={`Are you sure you want to delete "${deletingDomainPending}"?`}
+        confirmLabel="Delete Domain"
       />
       <AddDomainModal
         isOpen={isProjectModalOpen}
@@ -1063,16 +1103,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
               <div className="flex space-x-2">
                 <button onClick={() => { setEditingDomain({ domain: p.domain, port: p.port || 80, startDdev: p.startDdev }); setIsProjectModalOpen(true); }} className="text-slate-400 hover:text-slate-700"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" /></svg></button>
                 <button
-                  onClick={async () => {
-                    if (confirm(`Delete ${p.domain}?`)) {
-                      setDeletingDomain(p.domain);
-                      try {
-                        await onDeleteDomain(server.id, p.domain);
-                      } finally {
-                        setDeletingDomain(null);
-                      }
-                    }
-                  }}
+                  onClick={() => setDeletingDomainPending(p.domain)}
                   disabled={deletingDomain === p.domain}
                   className="text-slate-400 hover:text-rose-500 disabled:opacity-50"
                 >
