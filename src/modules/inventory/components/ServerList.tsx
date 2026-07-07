@@ -223,7 +223,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
   const [selectedSnapshotId, setSelectedSnapshotId] = useState<string>('latest');
   const [isSpinUpOpen, setIsSpinUpOpen] = useState(false);
 
-  const isAutomated = !!(server.providerName === 'Hetzner' || server.providerName === 'Contabo' || server.provider === 'hetzner' || server.provider === 'contabo');
+  const isAutomated = !!(server.providerName === 'Hetzner' || server.providerName === 'Contabo' || server.provider === 'hetzner' || server.provider === 'contabo' || server.provider === 'digitalocean');
   const isHetzner = !!(server.providerName === 'Hetzner' || server.provider === 'hetzner');
   const isDigitalOcean = server.provider === 'digitalocean';
   const displayHostname = (server.hostname || 'devbox')
@@ -515,8 +515,8 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
             </div>
           )}
 
-          {/* Schedule button — only for Hetzner servers */}
-          {isHetzner && (
+          {/* Schedule button — for Hetzner and DigitalOcean servers */}
+          {(isHetzner || isDigitalOcean) && (
             <div className="flex flex-col items-center">
               <button
                 onClick={() => setIsScheduleOpen(true)}
@@ -541,8 +541,8 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
             </div>
           )}
 
-          {/* Snapshot & Shutdown button — only for Hetzner servers that are running/not off */}
-          {isHetzner && server.status !== 'off' && (
+          {/* Snapshot & Shutdown button — for Hetzner and DigitalOcean servers that are running/not off */}
+          {(isHetzner || isDigitalOcean) && server.status !== 'off' && (
             <div className="flex flex-col items-center">
               <button
                 onClick={() => setIsConfirmSnapshotOpen(true)}
@@ -739,7 +739,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
   const [selectedSnapshotId, setSelectedSnapshotId] = useState<string>('latest');
   const [isSpinUpOpen, setIsSpinUpOpen] = useState(false);
 
-  const isAutomated = !!(server.hetznerServerId || server.contaboInstanceId || server.providerName === 'Hetzner' || server.providerName === 'Contabo' || server.provider === 'hetzner' || server.provider === 'contabo');
+  const isAutomated = !!(server.hetznerServerId || server.contaboInstanceId || server.providerName === 'Hetzner' || server.providerName === 'Contabo' || server.provider === 'hetzner' || server.provider === 'contabo' || server.provider === 'digitalocean');
   const isHetzner = !!(server.providerName === 'Hetzner' || server.provider === 'hetzner');
   const isDigitalOcean = server.provider === 'digitalocean';
   const displayHostname = (server.hostname || 'devbox')
@@ -1020,7 +1020,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
               Share
             </button>
           )}
-          {isHetzner && (
+          {(isHetzner || isDigitalOcean) && (
             <button
               onClick={() => setIsScheduleOpen(true)}
               disabled={isDeleting || isReinstalling}
@@ -1036,7 +1036,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
               Schedule
             </button>
           )}
-          {isHetzner && server.status !== 'off' && (
+          {(isHetzner || isDigitalOcean) && server.status !== 'off' && (
             <button
               onClick={() => setIsConfirmSnapshotOpen(true)}
               disabled={isSnapshotting || isDeleting || isReinstalling}
