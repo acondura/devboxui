@@ -860,7 +860,7 @@ export async function processPendingSnapshot(
 export async function processPendingCreate(
   server: ServerConfig,
   actualServerKey: string,
-  userEmail: string,
+  _userEmail: string,
   kv: KVNamespace,
   hetznerApi: HetznerApiService | null,
   doApi?: DigitalOceanApiService | null
@@ -897,11 +897,10 @@ export async function processPendingCreate(
           }
         }
         server.pendingCreateActionId = undefined;
-        server.status = 'ready';
-        server.detailedStatus = 'Ready';
+        server.status = 'configuring';
+        server.detailedStatus = 'Starting...';
         server.updatedAt = now;
         await kv.put(actualServerKey, JSON.stringify(server));
-        triggerOnStartCommands(server);
       } else if (droplet.status === 'archive' || droplet.status === 'off') {
         server.pendingCreateActionId = undefined;
         server.status = 'error';
