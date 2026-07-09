@@ -37,6 +37,10 @@ type SortOrder = 'asc' | 'desc';
 export function ServerList(props: ServerListProps) {
   const [sortField, setSortField] = useState<SortField>('created');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [filterText, setFilterText] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterProvider, setFilterProvider] = useState('');
+  const [filterOs, setFilterOs] = useState('');
 
   useEffect(() => {
     const savedField = localStorage.getItem('devboxui_sort_field') as SortField | null;
@@ -79,64 +83,153 @@ export function ServerList(props: ServerListProps) {
     return sortOrder === 'asc' ? <span className="text-indigo-400 ml-1">▲</span> : <span className="text-indigo-400 ml-1">▼</span>;
   };
 
-  const sortedServers = [...props.servers].sort((a, b) => {
-    let comparison = 0;
-    if (sortField === 'created') {
-      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      comparison = dateA - dateB;
-    } else if (sortField === 'status') {
-      const statusA = a.status || '';
-      const statusB = b.status || '';
-      comparison = statusA.localeCompare(statusB);
-    } else if (sortField === 'type') {
-      const typeA = a.providerName || 'Custom';
-      const typeB = b.providerName || 'Custom';
-      comparison = typeA.localeCompare(typeB);
-    } else if (sortField === 'ip') {
-      const ipA = a.ip || '';
-      const ipB = b.ip || '';
-      comparison = ipA.localeCompare(ipB);
-    } else if (sortField === 'os') {
-      comparison = "Ubuntu 24.04".localeCompare("Ubuntu 24.04");
-    }
-    return sortOrder === 'asc' ? comparison : -comparison;
-  });
+  const uniqueStatuses = [...new Set(props.servers.map(s => s.status === 'off' ? 'sleeping' : s.status).filter(Boolean))].sort();
+  const uniqueProviders = [...new Set(props.servers.map(s => s.providerName || 'Custom').filter(Boolean))].sort();
+  const uniqueOs = [...new Set(props.servers.map(() => 'Ubuntu 24.04'))];
+  const hasFilters = filterText || filterStatus || filterProvider || filterOs;
+
+  const sortedServers = [...props.servers]
+    .filter(s => {
+      if (filterText) {
+        const q = filterText.toLowerCase();
+        const hostname = (s.hostname || '').toLowerCase();
+        const name = hostname.replace('.devboxui.com', '').replace('-code', '');
+        const ip = (s.ip || '').toLowerCase();
+        const domains = (s.projects || []).map(p => p.domain.toLowerCase()).join(' ');
+        if (!name.includes(q) && !ip.includes(q) && !domains.includes(q)) return false;
+      }
+      if (filterStatus) {
+        const display = s.status === 'off' ? 'sleeping' : s.status;
+        if (display !== filterStatus) return false;
+      }
+      if (filterProvider) {
+        if ((s.providerName || 'Custom') !== filterProvider) return false;
+      }
+      if (filterOs) {
+        if (filterOs !== 'Ubuntu 24.04') return false;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      let comparison = 0;
+      if (sortField === 'created') {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        comparison = dateA - dateB;
+      } else if (sortField === 'status') {
+        const statusA = a.status || '';
+        const statusB = b.status || '';
+        comparison = statusA.localeCompare(statusB);
+      } else if (sortField === 'type') {
+        const typeA = a.providerName || 'Custom';
+        const typeB = b.providerName || 'Custom';
+        comparison = typeA.localeCompare(typeB);
+      } else if (sortField === 'ip') {
+        const ipA = a.ip || '';
+        const ipB = b.ip || '';
+        comparison = ipA.localeCompare(ipB);
+      } else if (sortField === 'os') {
+        comparison = "Ubuntu 24.04".localeCompare("Ubuntu 24.04");
+      }
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
 
   return (
     <>
-      {/* Sort Toolbar */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 bg-white border border-slate-200 rounded-xl p-4 gap-4 shadow-sm">
-        <span className="text-sm text-slate-650 font-medium">
-          Active Servers: <strong className="text-slate-900">{props.servers.length}</strong>
-        </span>
-        <div className="flex items-center space-x-2 w-full sm:w-auto justify-between sm:justify-end">
-          <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">Sort by:</span>
-          <div className="flex items-center space-x-1.5">
-            <Select2
-              value={sortField}
-              onValueChange={(val) => handleSort(val as SortField)}
-              minimumResultsForSearch={-1}
-              containerClassName="select-small"
-              className="bg-white border border-slate-250 rounded-lg text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer w-full"
-            >
-              <option value="created">Created Date</option>
-              <option value="status">Status</option>
-              <option value="type">Provider</option>
-              <option value="ip">IP Address</option>
-              <option value="os">OS</option>
-            </Select2>
+      {/* Sort + Filter Toolbar */}
+      <div className="flex flex-col mb-6 bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+        {/* Top row: filter inputs */}
+        <div className="flex flex-col sm:flex-row gap-2 p-3 border-b border-slate-100">
+          {/* Text search */}
+          <div className="relative flex-1 min-w-0">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z" />
+            </svg>
+            <input
+              type="text"
+              value={filterText}
+              onChange={e => setFilterText(e.target.value)}
+              placeholder="Filter by server ID or service URL…"
+              className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 transition-all"
+            />
+            {filterText && (
+              <button onClick={() => setFilterText('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            )}
+          </div>
+          {/* Status filter */}
+          <select
+            value={filterStatus}
+            onChange={e => setFilterStatus(e.target.value)}
+            className={`py-1.5 px-2.5 text-xs border rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-400 transition-all cursor-pointer ${filterStatus ? 'bg-indigo-50 border-indigo-300 text-indigo-700 font-bold' : 'bg-slate-50 border-slate-200 text-slate-600'}`}
+          >
+            <option value="">All Statuses</option>
+            {uniqueStatuses.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+          </select>
+          {/* Provider filter */}
+          <select
+            value={filterProvider}
+            onChange={e => setFilterProvider(e.target.value)}
+            className={`py-1.5 px-2.5 text-xs border rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-400 transition-all cursor-pointer ${filterProvider ? 'bg-indigo-50 border-indigo-300 text-indigo-700 font-bold' : 'bg-slate-50 border-slate-200 text-slate-600'}`}
+          >
+            <option value="">All Providers</option>
+            {uniqueProviders.map(p => <option key={p} value={p}>{p}</option>)}
+          </select>
+          {/* OS filter */}
+          <select
+            value={filterOs}
+            onChange={e => setFilterOs(e.target.value)}
+            className={`py-1.5 px-2.5 text-xs border rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-400 transition-all cursor-pointer ${filterOs ? 'bg-indigo-50 border-indigo-300 text-indigo-700 font-bold' : 'bg-slate-50 border-slate-200 text-slate-600'}`}
+          >
+            <option value="">All OS</option>
+            {uniqueOs.map(o => <option key={o} value={o}>{o}</option>)}
+          </select>
+          {hasFilters && (
             <button
-              onClick={() => {
-                const nextOrder = sortOrder === 'asc' ? 'desc' : 'asc';
-                setSortOrder(nextOrder);
-                localStorage.setItem('devboxui_sort_order', nextOrder);
-              }}
-              className="px-2.5 py-1.5 bg-white border border-slate-250 rounded-lg hover:border-slate-400 text-slate-600 hover:text-slate-900 transition-all text-xs"
-              title="Toggle sort direction"
+              onClick={() => { setFilterText(''); setFilterStatus(''); setFilterProvider(''); setFilterOs(''); }}
+              className="py-1.5 px-2.5 text-xs bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg text-slate-500 hover:text-slate-700 transition-all whitespace-nowrap"
             >
-              {sortOrder === 'asc' ? '▲' : '▼'}
+              Clear
             </button>
+          )}
+        </div>
+        {/* Bottom row: count + sort */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center px-4 py-2.5 gap-3">
+          <span className="text-sm text-slate-650 font-medium">
+            {hasFilters
+              ? <><strong className="text-slate-900">{sortedServers.length}</strong> of <strong className="text-slate-900">{props.servers.length}</strong> servers</>
+              : <>Active Servers: <strong className="text-slate-900">{props.servers.length}</strong></>
+            }
+          </span>
+          <div className="flex items-center space-x-2 w-full sm:w-auto justify-between sm:justify-end">
+            <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">Sort by:</span>
+            <div className="flex items-center space-x-1.5">
+              <Select2
+                value={sortField}
+                onValueChange={(val) => handleSort(val as SortField)}
+                minimumResultsForSearch={-1}
+                containerClassName="select-small"
+                className="bg-white border border-slate-250 rounded-lg text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer w-full"
+              >
+                <option value="created">Created Date</option>
+                <option value="status">Status</option>
+                <option value="type">Provider</option>
+                <option value="ip">IP Address</option>
+                <option value="os">OS</option>
+              </Select2>
+              <button
+                onClick={() => {
+                  const nextOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+                  setSortOrder(nextOrder);
+                  localStorage.setItem('devboxui_sort_order', nextOrder);
+                }}
+                className="px-2.5 py-1.5 bg-white border border-slate-250 rounded-lg hover:border-slate-400 text-slate-600 hover:text-slate-900 transition-all text-xs"
+                title="Toggle sort direction"
+              >
+                {sortOrder === 'asc' ? '▲' : '▼'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
