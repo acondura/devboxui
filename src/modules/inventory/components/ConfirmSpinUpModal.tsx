@@ -17,12 +17,13 @@ interface ConfirmSpinUpModalProps {
 }
 
 interface HetznerServerType {
-  id: number;
+  id?: number;
   name: string;
   cores: number;
   memory: number;
   disk: number;
   architecture: string;
+  prices?: Array<{ location: string; price_monthly: { gross: string }; price_hourly: { gross: string } }>;
 }
 
 export function ConfirmSpinUpModal({
@@ -80,8 +81,22 @@ export function ConfirmSpinUpModal({
 
   const typesList = serverTypes.length > 0 ? serverTypes : fallbackTypes;
 
-  const formatSpecs = (name: string, cores: number, memory: number, disk: number, arch: string) => {
-    return `${name.toUpperCase()} (${cores} vCPU / ${memory}GB RAM / ${disk}GB Disk / ${arch})`;
+  const getPrice = (t: HetznerServerType) => {
+    if (!t.prices?.length) return null;
+    const p = t.prices[0];
+    return {
+      monthly: parseFloat(p.price_monthly.gross).toFixed(2),
+      hourly: parseFloat(p.price_hourly.gross).toFixed(4),
+    };
+  };
+
+  const selectedTypeData = (serverTypes.length > 0 ? serverTypes : []).find(t => t.name === serverType);
+  const selectedPrice = selectedTypeData ? getPrice(selectedTypeData) : null;
+
+  const formatSpecs = (t: HetznerServerType) => {
+    const price = getPrice(t);
+    const base = `${t.name.toUpperCase()} (${t.cores} vCPU / ${t.memory}GB RAM / ${t.disk}GB Disk / ${t.architecture})`;
+    return price ? `${base} — €${price.monthly}/mo` : base;
   };
 
   return (
@@ -119,12 +134,25 @@ export function ConfirmSpinUpModal({
             >
               {typesList.map((t) => (
                 <option key={t.name} value={t.name}>
-                  {formatSpecs(t.name, t.cores, t.memory, t.disk, t.architecture)}
+                  {formatSpecs(t)}
                 </option>
               ))}
             </Select2>
             {isLoadingTypes && (
               <p className="text-[10px] text-slate-400 animate-pulse">Loading live options from Hetzner...</p>
+            )}
+            {selectedPrice && (
+              <div className="flex items-center space-x-3 pt-1">
+                <div className="flex items-center space-x-1.5 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5">
+                  <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-xs font-bold text-emerald-700">€{selectedPrice.monthly}<span className="font-normal text-emerald-600">/mo</span></span>
+                </div>
+                <div className="flex items-center space-x-1.5 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5">
+                  <span className="text-xs font-bold text-slate-600">€{selectedPrice.hourly}<span className="font-normal text-slate-500">/hr</span></span>
+                </div>
+              </div>
             )}
           </div>
 
