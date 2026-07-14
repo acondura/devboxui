@@ -1061,6 +1061,51 @@ export async function processAllPendingSnapshots(kv: KVNamespace) {
   console.log(`[processAllPendingSnapshots] Finished processing ${count} pending snapshots.`);
 }
 
+export async function checkIdleAndSnapshot(
+  serverId: string,
+  thresholdMinutes = 30
+): Promise<{ idle: boolean; idleMinutes: number; triggered: boolean; message: string }> {
+  const userEmail = await getIdentity();
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+
+  const lookup = await getServerKeyAndConfig(kv, userEmail, serverId);
+  if (!lookup) throw new Error('Server not found.');
+  const server = lookup.config;
+  if (server.status !== 'ready') {
+    return { idle: false, idleMinutes: 0, triggered: false, message: `Server is not ready (status: ${server.status})` };
+  }
+
+  const logsUrl = server.tunnelUrl?.split('?')[0].replace('-code.', '-logs.')
+    || `https://logs-${serverId.slice(0, 8)}.devboxui.com`;
+
+  const cfApi = new CloudflareApiService(env);
+  const serviceToken = await cfApi.getOrCreateServiceToken(kv);
+
+  const resp = await fetch(logsUrl, {
+    headers: {
+      'CF-Access-Client-Id': serviceToken.id,
+      'CF-Access-Client-Secret': serviceToken.client_secret,
+    },
+    cache: 'no-store',
+  });
+
+  if (!resp.ok) throw new Error(`Could not reach server debug endpoint (HTTP ${resp.status})`);
+
+  const data = await resp.json() as { idle_seconds?: number };
+  if (typeof data.idle_seconds !== 'number') throw new Error('Server did not return idle_seconds');
+
+  const idleMinutes = Math.floor(data.idle_seconds / 60);
+  const thresholdSeconds = thresholdMinutes * 60;
+
+  if (data.idle_seconds < thresholdSeconds) {
+    return { idle: false, idleMinutes, triggered: false, message: `Server active — idle for ${idleMinutes}m (threshold: ${thresholdMinutes}m)` };
+  }
+
+  const workflowResult = await runEveningWorkflow(serverId, userEmail, true);
+  return { idle: true, idleMinutes, triggered: workflowResult.success, message: workflowResult.message };
+}
+
 export async function triggerOnStartCommands(server: ServerConfig) {
   if (!server.projects || server.projects.length === 0) return;
   const hasDdevStart = server.projects.some(p => p.startDdev);

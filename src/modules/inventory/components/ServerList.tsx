@@ -297,6 +297,8 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
   const [editingDomain, setEditingDomain] = useState<{ domain: string; port: number; startDdev?: boolean } | null>(null);
   const [isReinstallModalOpen, setIsReinstallModalOpen] = useState(false);
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
+  const [isCheckingIdle, setIsCheckingIdle] = useState(false);
+  const [idleCheckResult, setIdleCheckResult] = useState<{ idle: boolean; idleMinutes: number; triggered: boolean; message: string } | null>(null);
   const [scheduleConfig, setScheduleConfig] = useState<ScheduleConfig | null>(server.scheduleConfig || null);
   const [isFetchingLogs, setIsFetchingLogs] = useState(false);
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
@@ -651,6 +653,43 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
               </button>
               <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mt-0.5 select-none text-center">
                 Snapshot
+              </span>
+            </div>
+          )}
+
+          {/* Auto-off: check idle (30 min) then snapshot if inactive */}
+          {(isHetzner || isDigitalOcean) && server.status === 'ready' && (
+            <div className="flex flex-col items-center">
+              <button
+                onClick={async () => {
+                  setIsCheckingIdle(true);
+                  setIdleCheckResult(null);
+                  try {
+                    const res = await fetch(`/api/servers/${server.id}/check-idle`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ thresholdMinutes: 30 }) });
+                    const data = await res.json() as { idle: boolean; idleMinutes: number; triggered: boolean; message: string; error?: string };
+                    if (data.error) throw new Error(data.error);
+                    setIdleCheckResult(data);
+                    if (data.triggered && onRefresh) setTimeout(onRefresh, 3000);
+                  } catch (e) {
+                    setErrorMessage(e instanceof Error ? e.message : 'Idle check failed');
+                  } finally {
+                    setIsCheckingIdle(false);
+                  }
+                }}
+                disabled={isCheckingIdle || isSnapshotting || isDeleting || isReinstalling}
+                className={`relative p-2 rounded-lg transition-all disabled:opacity-50 ${idleCheckResult ? (idleCheckResult.idle ? 'text-amber-500 bg-amber-500/10' : 'text-emerald-500 bg-emerald-500/10') : 'text-slate-500 hover:text-amber-400 hover:bg-slate-800'}`}
+                title={idleCheckResult ? idleCheckResult.message : 'Check idle — snapshot & shutdown if inactive 30min'}
+              >
+                {isCheckingIdle ? (
+                  <div className="h-4 w-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                )}
+              </button>
+              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mt-0.5 select-none text-center">
+                Auto-off
               </span>
             </div>
           )}

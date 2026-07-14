@@ -225,40 +225,79 @@ class DebugHandler(http.server.BaseHTTPRequestHandler):
             with open("/var/www/debug/status.txt", "r") as f:
                 status_txt = f.read().strip()
 
-        has_active_ssh = False
+        last_activity_file = "/var/www/debug/last_activity.txt"
+        now = int(time.time())
+        candidate_times = []
+
+        # 1. Active SSH connections via ss
         try:
             ssh_output = subprocess.getoutput("ss -t -n state established '( sport = :22 )'")
             lines = [l for l in ssh_output.split('\n') if l.strip() and 'Recv-Q' not in l]
             if len(lines) > 0:
-                has_active_ssh = True
+                candidate_times.append(now)
         except Exception:
             pass
 
-        last_activity_file = "/var/www/debug/last_activity.txt"
-        now = int(time.time())
-        
-        if has_active_ssh:
+        # 2. Terminal (TTY/PTY) activity via w — picks the most recent idle time per session
+        try:
+            w_output = subprocess.getoutput("w -h -s 2>/dev/null")
+            for line in w_output.split('\n'):
+                parts = line.split()
+                if len(parts) >= 4:
+                    idle_str = parts[3]  # IDLE column
+                    secs = 0
+                    try:
+                        if idle_str == '0s' or idle_str == '0':
+                            secs = 0
+                        elif 'm' in idle_str and 'h' not in idle_str and 'd' not in idle_str:
+                            secs = int(idle_str.rstrip('m')) * 60
+                        elif 'h' in idle_str:
+                            h, m = (idle_str.split('h') + ['0'])[:2]
+                            secs = int(h) * 3600 + int(m.rstrip('m') or 0) * 60
+                        elif 'd' in idle_str:
+                            secs = int(idle_str.rstrip('d')) * 86400
+                        elif 's' in idle_str:
+                            secs = int(idle_str.rstrip('s'))
+                        else:
+                            secs = int(idle_str)
+                    except Exception:
+                        pass
+                    candidate_times.append(now - secs)
+        except Exception:
+            pass
+
+        # 3. Bash history file mtime across all home dirs
+        try:
+            if os.path.exists('/home'):
+                for u in os.listdir('/home'):
+                    hist = os.path.join('/home', u, '.bash_history')
+                    if os.path.exists(hist):
+                        candidate_times.append(int(os.path.getmtime(hist)))
+        except Exception:
+            pass
+
+        # Most recent activity wins
+        if candidate_times:
+            last_activity = max(candidate_times)
+            try:
+                with open(last_activity_file, 'w') as f:
+                    f.write(str(last_activity))
+            except Exception:
+                pass
+        elif os.path.exists(last_activity_file):
+            try:
+                with open(last_activity_file, 'r') as f:
+                    last_activity = int(f.read().strip())
+            except Exception:
+                last_activity = now
+        else:
             last_activity = now
             try:
-                with open(last_activity_file, "w") as f:
+                with open(last_activity_file, 'w') as f:
                     f.write(str(now))
             except Exception:
                 pass
-        else:
-            last_activity = now
-            if os.path.exists(last_activity_file):
-                try:
-                    with open(last_activity_file, "r") as f:
-                        last_activity = int(f.read().strip())
-                except Exception:
-                    pass
-            else:
-                try:
-                    with open(last_activity_file, "w") as f:
-                        f.write(str(now))
-                except Exception:
-                    pass
-                    
+
         idle_seconds = now - last_activity
 
         data = {
