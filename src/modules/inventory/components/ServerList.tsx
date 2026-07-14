@@ -10,7 +10,7 @@ import { ConfirmSnapshotModal } from './ConfirmSnapshotModal';
 import { getServerLogs, getLiveProjects, getServerSnapshots } from '../actions';
 import { ConfirmSpinUpModal } from './ConfirmSpinUpModal';
 import { ScheduleConfig } from '../types';
-import { triggerMorningSpinup, triggerEveningSnapshot } from '../schedule-actions';
+import { triggerMorningSpinup, triggerEveningSnapshot, checkIdleAndSnapshot } from '../schedule-actions';
 import { Select2 } from './Select2';
 import { InviteCollabModal } from './InviteCollabModal';
 import { ErrorModal } from './ErrorModal';
@@ -665,9 +665,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
                   setIsCheckingIdle(true);
                   setIdleCheckResult(null);
                   try {
-                    const res = await fetch(`/api/servers/${server.id}/check-idle`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ thresholdMinutes: 30 }) });
-                    const data = await res.json() as { idle: boolean; idleMinutes: number; triggered: boolean; message: string; error?: string };
-                    if (data.error) throw new Error(data.error);
+                    const data = await checkIdleAndSnapshot(server.id, 30);
                     setIdleCheckResult(data);
                     if (data.triggered && onRefresh) setTimeout(onRefresh, 3000);
                   } catch (e) {
