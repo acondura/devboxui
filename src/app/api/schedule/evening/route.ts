@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCloudflareEnv } from '@/lib/auth';
-import { getScheduledServers, runEveningWorkflow, processAllPendingSnapshots, processAllPendingCreates } from '@/modules/inventory/schedule-actions';
+import { getScheduledServers, getServersWithInactivity, runEveningWorkflow, processAllPendingSnapshots, processAllPendingCreates } from '@/modules/inventory/schedule-actions';
 import { CloudflareApiService } from '@/lib/cloudflare-api';
 
 export const dynamic = 'force-dynamic';
@@ -52,6 +52,45 @@ export async function GET(req: NextRequest) {
   }> = [];
 
   const scheduledServers = await getScheduledServers();
+  const scheduledIds = new Set(scheduledServers.map(s => s.server.id));
+
+  // Inactivity pass: servers with shutdownAfterInactivity but no active schedule
+  const inactivityServers = await getServersWithInactivity();
+  for (const { server, schedule, userEmail } of inactivityServers) {
+    if (scheduledIds.has(server.id)) continue; // already handled below
+    if (server.status !== 'ready') continue;
+    try {
+      const timeoutMinutes = schedule.inactivityDurationMinutes || 30;
+      const timeoutSeconds = timeoutMinutes * 60;
+      const logsUrl = server.tunnelUrl?.split('?')[0].replace('-code.', '-logs.') || `https://logs-${server.id.slice(0, 8)}.devboxui.com`;
+
+      const cfApi = new CloudflareApiService(env);
+      const serviceToken = await cfApi.getOrCreateServiceToken(kv);
+
+      const resp = await fetch(logsUrl, {
+        headers: {
+          'CF-Access-Client-Id': serviceToken.id,
+          'CF-Access-Client-Secret': serviceToken.client_secret,
+        },
+        next: { revalidate: 0 },
+        cache: 'no-store'
+      });
+
+      if (resp.ok) {
+        const data = await resp.json() as { idle_seconds?: number };
+        if (typeof data.idle_seconds === 'number') {
+          console.log(`[Cron Inactivity] Server ${server.id} idle for ${data.idle_seconds}s (limit: ${timeoutSeconds}s)`);
+          if (data.idle_seconds >= timeoutSeconds) {
+            console.log(`[Cron Inactivity] Idle limit exceeded. Shutting down server ${server.id}...`);
+            const result = await runEveningWorkflow(server.id, userEmail);
+            results.push({ serverId: server.id, userEmail, ...result, message: `Auto-shutdown due to inactivity (${timeoutMinutes}m): ${result.message}` });
+          }
+        }
+      }
+    } catch (err) {
+      console.error(`[Cron Inactivity] Failed checking server ${server.id}:`, err);
+    }
+  }
 
   for (const { server, schedule, userEmail } of scheduledServers) {
     // Inactivity Auto-Shutdown check

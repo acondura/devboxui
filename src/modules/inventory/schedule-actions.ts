@@ -651,6 +651,41 @@ export async function getScheduledServers(): Promise<
   return results;
 }
 
+/**
+ * Returns all ready servers that have shutdownAfterInactivity enabled,
+ * regardless of whether the full schedule is enabled.
+ * Used by the evening cron to catch servers left on without a schedule.
+ */
+export async function getServersWithInactivity(): Promise<
+  Array<{ server: ServerConfig; schedule: ScheduleConfig; userEmail: string }>
+> {
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+  if (!kv) return [];
+
+  const list = await kv.list({ prefix: 'schedule:' });
+  const results: Array<{ server: ServerConfig; schedule: ScheduleConfig; userEmail: string }> = [];
+
+  for (const key of list.keys) {
+    const schedData = await kv.get(key.name);
+    if (!schedData) continue;
+    const sched = JSON.parse(schedData) as ScheduleConfig;
+    if (!sched.shutdownAfterInactivity) continue;
+
+    const parts = key.name.split(':');
+    if (parts.length < 3) continue;
+    const userEmail = parts[1];
+    const serverId = parts.slice(2).join(':');
+
+    const serverData = await kv.get(serverKey(userEmail, serverId));
+    if (!serverData) continue;
+    const server = JSON.parse(serverData) as ServerConfig;
+    results.push({ server, schedule: sched, userEmail });
+  }
+
+  return results;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper: determine if a cron event should fire for a given server's schedule
 // ─────────────────────────────────────────────────────────────────────────────

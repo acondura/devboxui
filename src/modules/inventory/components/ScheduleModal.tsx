@@ -371,8 +371,7 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                     <button
                       type="button"
                       onClick={() => setConfig(c => ({ ...c, shutdownAfterInactivity: !c.shutdownAfterInactivity }))}
-                      disabled={!config.enabled}
-                      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed ${
+                      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                         config.shutdownAfterInactivity ? 'bg-indigo-600' : 'bg-slate-250'
                       }`}
                     >
@@ -397,8 +396,7 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                           const val = parseInt(e.target.value) || 30;
                           setConfig(c => ({ ...c, inactivityDurationMinutes: val }));
                         }}
-                        disabled={!config.enabled}
-                        className="w-full bg-white border border-slate-300 text-slate-900 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-45 font-mono font-medium"
+                        className="w-full bg-white border border-slate-300 text-slate-900 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono font-medium"
                       />
                       <p className="text-[10px] text-slate-500 leading-normal mt-1">
                         The server will automatically snapshot and delete the instance after this many minutes of zero active SSH connections.
