@@ -44,13 +44,13 @@ export function ConfirmSnapshotModal({ isOpen, onClose, onConfirm, serverName }:
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm">
-      <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden transform transition-all animate-in fade-in zoom-in duration-200 text-left">
-        <div className="px-6 py-5 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+      <div className="w-full max-w-md bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-2xl shadow-2xl overflow-hidden transform transition-all animate-in fade-in zoom-in duration-200 text-left">
+        <div className="px-6 py-5 border-b border-slate-200 dark:border-zinc-700 flex justify-between items-center bg-slate-50 dark:bg-zinc-800/50">
           <div>
-            <h3 className="text-xl font-bold text-slate-900">Snapshot & Shutdown</h3>
-            <p className="text-xs text-slate-500 uppercase tracking-widest font-bold mt-1">Cost Optimization</p>
+            <h3 className="text-xl font-bold text-slate-900 dark:text-zinc-100">Snapshot & Shutdown</h3>
+            <p className="text-xs text-slate-500 dark:text-zinc-400 uppercase tracking-widest font-bold mt-1">Cost Optimization</p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-900 transition-colors">
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-900 dark:text-zinc-500 dark:hover:text-zinc-100 transition-colors">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -58,13 +58,13 @@ export function ConfirmSnapshotModal({ isOpen, onClose, onConfirm, serverName }:
         </div>
 
         <div className="p-6 space-y-6">
-          <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-xl flex items-start space-x-3">
-            <svg className="w-6 h-6 text-indigo-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/50 rounded-xl flex items-start space-x-3">
+            <svg className="w-6 h-6 text-indigo-600 dark:text-indigo-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <div className="space-y-1">
-              <p className="text-sm font-bold text-indigo-900 uppercase tracking-tight">How it works</p>
-              <p className="text-sm text-indigo-750 leading-relaxed">
+              <p className="text-sm font-bold text-indigo-900 dark:text-indigo-300 uppercase tracking-tight">How it works</p>
+              <p className="text-sm text-indigo-750 dark:text-indigo-200/70 leading-relaxed">
                 The VPS will be powered off and a snapshot image will be created. The VPS will then be deleted to stop hourly billing. The server configuration remains in the dashboard to spin it back up later.
               </p>
             </div>
@@ -72,7 +72,7 @@ export function ConfirmSnapshotModal({ isOpen, onClose, onConfirm, serverName }:
 
           {/* Snapshot custom name prefix input */}
           <div className="space-y-2">
-            <label className="text-sm font-bold text-slate-700 uppercase tracking-widest">
+            <label className="text-sm font-bold text-slate-700 dark:text-zinc-300 uppercase tracking-widest">
               Snapshot Prefix (Optional)
             </label>
             <input
@@ -80,24 +80,24 @@ export function ConfirmSnapshotModal({ isOpen, onClose, onConfirm, serverName }:
               value={customPrefix}
               onChange={(e) => setCustomPrefix(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
               placeholder="e.g. pre-refactor, before-db-upgrade"
-              className="w-full bg-white border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent focus:outline-none rounded-xl px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 transition-all font-mono"
+              className="w-full bg-white dark:bg-zinc-800 border border-slate-300 dark:border-zinc-600 focus:ring-2 focus:ring-indigo-500 focus:border-transparent focus:outline-none rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 transition-all font-mono"
             />
-            <p className="text-xs text-slate-500 leading-normal">
+            <p className="text-xs text-slate-500 dark:text-zinc-400 leading-normal">
               Final Snapshot Name: <br />
-              <span className="text-sm text-indigo-600 font-mono font-bold break-all mt-1 block">{finalPreview}</span>
+              <span className="text-sm text-indigo-600 dark:text-indigo-400 font-mono font-bold break-all mt-1 block">{finalPreview}</span>
             </p>
           </div>
 
-          <div className="space-y-2 bg-slate-50 border border-slate-200 rounded-xl p-4">
-            <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">Target Server:</p>
-            <span className="text-base font-mono font-bold text-slate-900 break-all">{serverName.replace('.devboxui.com', '')}</span>
+          <div className="space-y-2 bg-slate-50 dark:bg-zinc-800/50 border border-slate-200 dark:border-zinc-700 rounded-xl p-4">
+            <p className="text-sm font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-widest">Target Server:</p>
+            <span className="text-base font-mono font-bold text-slate-900 dark:text-zinc-100 break-all">{serverName.replace('.devboxui.com', '')}</span>
           </div>
 
           <div className="flex space-x-3 pt-2">
             <button
               onClick={onClose}
               disabled={isConfirming}
-              className="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 font-bold rounded-xl transition-all"
+              className="flex-1 px-4 py-3 bg-slate-100 dark:bg-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-600 disabled:opacity-50 text-slate-700 dark:text-zinc-200 font-bold rounded-xl transition-all"
             >
               Cancel
             </button>

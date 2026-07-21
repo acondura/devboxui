@@ -47,22 +47,22 @@ export function ApiAuthModal({ isOpen, onClose, server, allServers, onSave }: Ap
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm">
-      <div className="w-full max-w-lg bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden transform transition-all animate-in fade-in zoom-in duration-200 text-left">
+      <div className="w-full max-w-lg bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-2xl shadow-2xl overflow-hidden transform transition-all animate-in fade-in zoom-in duration-200 text-left">
         
         {/* Header */}
-        <div className="px-6 py-5 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+        <div className="px-6 py-5 border-b border-slate-200 dark:border-zinc-700 flex justify-between items-center bg-slate-50 dark:bg-zinc-800/50">
           <div>
-            <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-              <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <h3 className="text-xl font-bold text-slate-900 dark:text-zinc-100 flex items-center gap-2">
+              <svg className="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
               <span>API Authorization</span>
             </h3>
-            <p className="text-xs text-slate-500 uppercase tracking-widest font-bold mt-1">
+            <p className="text-xs text-slate-500 dark:text-zinc-400 uppercase tracking-widest font-bold mt-1">
               {(server.hostname || 'DevBox').replace('.devboxui.com', '')} Access Controls
             </p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-900 transition-colors">
+          <button onClick={onClose} className="text-slate-400 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-zinc-100 transition-colors">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -71,14 +71,14 @@ export function ApiAuthModal({ isOpen, onClose, server, allServers, onSave }: Ap
 
         <div className="p-6 space-y-5">
           {/* How it works Banner */}
-          <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-xl space-y-2.5">
-            <div className="flex items-center space-x-2 text-indigo-600">
+          <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-700 rounded-xl space-y-2.5">
+            <div className="flex items-center space-x-2 text-indigo-600 dark:text-indigo-400">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <p className="text-xs font-bold uppercase tracking-wider">How it works</p>
             </div>
-            <p className="text-xs text-slate-600 leading-relaxed">
+            <p className="text-xs text-slate-600 dark:text-zinc-300 leading-relaxed">
               Select which DevBoxes are authorized to send API requests to this server.
               Authorized DevBoxes bypass the Cloudflare Access login screen automatically using their public IP address.
               Any dynamic IP updates will keep authorization rules aligned automatically.
@@ -87,12 +87,12 @@ export function ApiAuthModal({ isOpen, onClose, server, allServers, onSave }: Ap
 
           {/* Peer Checklist */}
           <div className="space-y-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
               Select Allowed Peer DevBoxes
             </h4>
             
             {peerCandidates.length === 0 ? (
-              <div className="text-center py-6 px-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-500 text-xs">
+              <div className="text-center py-6 px-4 bg-slate-50 dark:bg-zinc-800/50 border border-slate-200 dark:border-zinc-700 rounded-xl text-slate-500 dark:text-zinc-400 text-xs">
                 No other DevBoxes available to configure.
               </div>
             ) : (
@@ -107,8 +107,8 @@ export function ApiAuthModal({ isOpen, onClose, server, allServers, onSave }: Ap
                       key={peer.id}
                       className={`flex items-center justify-between p-3.5 rounded-xl border transition-all cursor-pointer ${
                         isChecked
-                          ? 'bg-indigo-50 border-indigo-200 text-slate-900'
-                          : 'bg-white border-slate-200 text-slate-600 hover:border-slate-350'
+                          ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-700 text-slate-900 dark:text-zinc-100'
+                          : 'bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 text-slate-600 dark:text-zinc-300 hover:border-slate-350 dark:hover:border-zinc-600'
                       }`}
                     >
                       <div className="flex items-center space-x-3.5 min-w-0">
@@ -116,13 +116,13 @@ export function ApiAuthModal({ isOpen, onClose, server, allServers, onSave }: Ap
                           type="checkbox"
                           checked={isChecked}
                           onChange={() => handleTogglePeer(peer.id)}
-                          className="w-4 h-4 rounded border-slate-300 bg-white text-indigo-600 focus:ring-indigo-500/30 focus:ring-offset-0 focus:ring-2 cursor-pointer"
+                          className="w-4 h-4 rounded border-slate-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-indigo-600 focus:ring-indigo-500/30 focus:ring-offset-0 focus:ring-2 cursor-pointer"
                         />
                         <div className="min-w-0">
                           <div className="font-mono text-sm font-bold truncate">
                             {(peer.hostname || 'devbox').replace('.devboxui.com', '')}
                           </div>
-                          <div className="text-[10px] text-slate-500 font-mono mt-0.5 flex items-center gap-1.5">
+                          <div className="text-[10px] text-slate-500 dark:text-zinc-400 font-mono mt-0.5 flex items-center gap-1.5">
                             <span>{isPendingIp ? 'IP Pending' : peer.ip}</span>
                             {isOffline && (
                               <span className="text-rose-600 font-bold uppercase text-[9px] tracking-tight">
@@ -133,7 +133,7 @@ export function ApiAuthModal({ isOpen, onClose, server, allServers, onSave }: Ap
                         </div>
                       </div>
                       
-                      <div className="text-[10px] bg-slate-100 border border-slate-200 px-2 py-0.5 rounded uppercase font-bold text-slate-500 tracking-wider">
+                      <div className="text-[10px] bg-slate-100 dark:bg-zinc-700 border border-slate-200 dark:border-zinc-600 px-2 py-0.5 rounded uppercase font-bold text-slate-500 dark:text-zinc-400 tracking-wider">
                         {peer.providerName || 'Custom'}
                       </div>
                     </label>
@@ -145,11 +145,11 @@ export function ApiAuthModal({ isOpen, onClose, server, allServers, onSave }: Ap
         </div>
 
         {/* Footer Actions */}
-        <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
+        <div className="px-6 py-4 bg-slate-50 dark:bg-zinc-800/50 border-t border-slate-200 dark:border-zinc-700 flex justify-end gap-3">
           <button
             onClick={onClose}
             disabled={isSaving}
-            className="px-4 py-2 text-xs font-bold uppercase bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-all"
+            className="px-4 py-2 text-xs font-bold uppercase bg-slate-100 dark:bg-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-600 text-slate-700 dark:text-zinc-200 rounded-lg transition-all"
           >
             Cancel
           </button>
@@ -157,7 +157,7 @@ export function ApiAuthModal({ isOpen, onClose, server, allServers, onSave }: Ap
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="px-4 py-2 text-xs font-bold uppercase bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-100 disabled:text-slate-400 text-white rounded-lg transition-all flex items-center justify-center gap-2"
+            className="px-4 py-2 text-xs font-bold uppercase bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-100 dark:disabled:bg-zinc-700 disabled:text-slate-400 dark:disabled:text-zinc-500 text-white rounded-lg transition-all flex items-center justify-center gap-2"
           >
             {isSaving ? (
               <>

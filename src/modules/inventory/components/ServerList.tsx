@@ -51,12 +51,12 @@ export function ServerList(props: ServerListProps) {
 
   if (props.servers.length === 0) {
     return (
-      <div className="border border-dashed border-slate-700 rounded-xl p-12 text-center bg-slate-800/20">
-        <div className="mx-auto h-12 w-12 text-slate-500 mb-4 rounded-full bg-slate-800 flex items-center justify-center">
+      <div className="border border-dashed border-slate-300 dark:border-zinc-600 rounded-xl p-12 text-center bg-slate-50 dark:bg-zinc-800/50">
+        <div className="mx-auto h-12 w-12 text-slate-500 dark:text-zinc-400 mb-4 rounded-full bg-slate-100 dark:bg-zinc-700 flex items-center justify-center">
           <span className="text-2xl">☁️</span>
         </div>
-        <h3 className="text-base font-semibold text-white">No servers active</h3>
-        <p className="mt-1 text-sm text-slate-400 max-w-xs mx-auto">
+        <h3 className="text-base font-semibold text-slate-900 dark:text-zinc-100">No servers active</h3>
+        <p className="mt-1 text-sm text-slate-500 dark:text-zinc-400 max-w-xs mx-auto">
           Launch a DevBox to start your cloud development environment.
         </p>
       </div>
@@ -137,12 +137,12 @@ export function ServerList(props: ServerListProps) {
   return (
     <>
       {/* Sort + Filter Toolbar */}
-      <div className="flex flex-col mb-6 bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+      <div className="flex flex-col mb-6 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl shadow-sm overflow-hidden">
         {/* Top row: filter inputs */}
-        <div className="flex flex-col sm:flex-row gap-2 p-3 border-b border-slate-100">
+        <div className="flex flex-col sm:flex-row gap-2 p-3 border-b border-slate-100 dark:border-zinc-700/50">
           {/* Text search */}
           <div className="relative flex-1 min-w-0">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-zinc-500 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z" />
             </svg>
             <input
@@ -150,7 +150,7 @@ export function ServerList(props: ServerListProps) {
               value={filterText}
               onChange={e => setFilterText(e.target.value)}
               placeholder="Filter by server ID or service URL…"
-              className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 transition-all"
+              className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-600 rounded-lg text-slate-700 dark:text-zinc-300 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 transition-all"
             />
             {filterText && (
               <button onClick={() => setFilterText('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
@@ -162,7 +162,7 @@ export function ServerList(props: ServerListProps) {
           <select
             value={filterStatus}
             onChange={e => setFilterStatus(e.target.value)}
-            className={`py-1.5 px-2.5 text-xs border rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-400 transition-all cursor-pointer ${filterStatus ? 'bg-indigo-50 border-indigo-300 text-indigo-700 font-bold' : 'bg-slate-50 border-slate-200 text-slate-600'}`}
+            className={`py-1.5 px-2.5 text-xs border rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-400 transition-all cursor-pointer ${filterStatus ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 font-bold' : 'bg-slate-50 dark:bg-zinc-800 border-slate-200 dark:border-zinc-600 text-slate-600 dark:text-zinc-300'}`}
           >
             <option value="">All Statuses</option>
             {uniqueStatuses.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
@@ -171,7 +171,7 @@ export function ServerList(props: ServerListProps) {
           <select
             value={filterProvider}
             onChange={e => setFilterProvider(e.target.value)}
-            className={`py-1.5 px-2.5 text-xs border rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-400 transition-all cursor-pointer ${filterProvider ? 'bg-indigo-50 border-indigo-300 text-indigo-700 font-bold' : 'bg-slate-50 border-slate-200 text-slate-600'}`}
+            className={`py-1.5 px-2.5 text-xs border rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-400 transition-all cursor-pointer ${filterProvider ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 font-bold' : 'bg-slate-50 dark:bg-zinc-800 border-slate-200 dark:border-zinc-600 text-slate-600 dark:text-zinc-300'}`}
           >
             <option value="">All Providers</option>
             {uniqueProviders.map(p => <option key={p} value={p}>{p}</option>)}
@@ -180,7 +180,7 @@ export function ServerList(props: ServerListProps) {
           <select
             value={filterOs}
             onChange={e => setFilterOs(e.target.value)}
-            className={`py-1.5 px-2.5 text-xs border rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-400 transition-all cursor-pointer ${filterOs ? 'bg-indigo-50 border-indigo-300 text-indigo-700 font-bold' : 'bg-slate-50 border-slate-200 text-slate-600'}`}
+            className={`py-1.5 px-2.5 text-xs border rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-400 transition-all cursor-pointer ${filterOs ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 font-bold' : 'bg-slate-50 dark:bg-zinc-800 border-slate-200 dark:border-zinc-600 text-slate-600 dark:text-zinc-300'}`}
           >
             <option value="">All OS</option>
             {uniqueOs.map(o => <option key={o} value={o}>{o}</option>)}
@@ -188,7 +188,7 @@ export function ServerList(props: ServerListProps) {
           {hasFilters && (
             <button
               onClick={() => { setFilterText(''); setFilterStatus(''); setFilterProvider(''); setFilterOs(''); }}
-              className="py-1.5 px-2.5 text-xs bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg text-slate-500 hover:text-slate-700 transition-all whitespace-nowrap"
+              className="py-1.5 px-2.5 text-xs bg-slate-100 dark:bg-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-600 border border-slate-200 dark:border-zinc-600 rounded-lg text-slate-500 dark:text-zinc-400 hover:text-slate-700 dark:hover:text-zinc-200 transition-all whitespace-nowrap"
             >
               Clear
             </button>
@@ -196,21 +196,21 @@ export function ServerList(props: ServerListProps) {
         </div>
         {/* Bottom row: count + sort */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center px-4 py-2.5 gap-3">
-          <span className="text-sm text-slate-650 font-medium">
+          <span className="text-sm text-slate-650 dark:text-zinc-400 font-medium">
             {hasFilters
-              ? <><strong className="text-slate-900">{sortedServers.length}</strong> of <strong className="text-slate-900">{props.servers.length}</strong> servers</>
-              : <>Active Servers: <strong className="text-slate-900">{props.servers.length}</strong></>
+              ? <><strong className="text-slate-900 dark:text-zinc-100">{sortedServers.length}</strong> of <strong className="text-slate-900 dark:text-zinc-100">{props.servers.length}</strong> servers</>
+              : <>Active Servers: <strong className="text-slate-900 dark:text-zinc-100">{props.servers.length}</strong></>
             }
           </span>
           <div className="flex items-center space-x-2 w-full sm:w-auto justify-between sm:justify-end">
-            <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">Sort by:</span>
+            <span className="text-xs text-slate-500 dark:text-zinc-500 font-bold uppercase tracking-wider">Sort by:</span>
             <div className="flex items-center space-x-1.5">
               <Select2
                 value={sortField}
                 onValueChange={(val) => handleSort(val as SortField)}
                 minimumResultsForSearch={-1}
                 containerClassName="select-small"
-                className="bg-white border border-slate-250 rounded-lg text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer w-full"
+                className="bg-white dark:bg-zinc-800 border border-slate-250 dark:border-zinc-600 rounded-lg text-xs text-slate-700 dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer w-full"
               >
                 <option value="created">Created Date</option>
                 <option value="status">Status</option>
@@ -224,7 +224,7 @@ export function ServerList(props: ServerListProps) {
                   setSortOrder(nextOrder);
                   localStorage.setItem('devboxui_sort_order', nextOrder);
                 }}
-                className="px-2.5 py-1.5 bg-white border border-slate-250 rounded-lg hover:border-slate-400 text-slate-600 hover:text-slate-900 transition-all text-xs"
+                className="px-2.5 py-1.5 bg-white dark:bg-zinc-800 border border-slate-250 dark:border-zinc-600 rounded-lg hover:border-slate-400 dark:hover:border-zinc-400 text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-zinc-100 transition-all text-xs"
                 title="Toggle sort direction"
               >
                 {sortOrder === 'asc' ? '▲' : '▼'}
@@ -238,42 +238,42 @@ export function ServerList(props: ServerListProps) {
       <div className="hidden lg:block">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="border-b border-slate-200">
-              <th onClick={() => handleSort('status')} className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest cursor-pointer select-none hover:text-slate-800 transition-colors">
+            <tr className="border-b border-slate-200 dark:border-zinc-700">
+              <th onClick={() => handleSort('status')} className="py-4 px-4 text-xs font-bold text-slate-500 dark:text-zinc-500 uppercase tracking-widest cursor-pointer select-none hover:text-slate-800 dark:hover:text-zinc-200 transition-colors">
                 <div className="flex items-center space-x-1">
                   <span>Status</span>
                   {renderSortIcon('status')}
                 </div>
               </th>
-              <th onClick={() => handleSort('type')} className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest cursor-pointer select-none hover:text-slate-800 transition-colors">
+              <th onClick={() => handleSort('type')} className="py-4 px-4 text-xs font-bold text-slate-500 dark:text-zinc-500 uppercase tracking-widest cursor-pointer select-none hover:text-slate-800 dark:hover:text-zinc-200 transition-colors">
                 <div className="flex items-center space-x-1">
                   <span>Provider</span>
                   {renderSortIcon('type')}
                 </div>
               </th>
-              <th onClick={() => handleSort('ip')} className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest cursor-pointer select-none hover:text-slate-800 transition-colors">
+              <th onClick={() => handleSort('ip')} className="py-4 px-4 text-xs font-bold text-slate-500 dark:text-zinc-500 uppercase tracking-widest cursor-pointer select-none hover:text-slate-800 dark:hover:text-zinc-200 transition-colors">
                 <div className="flex items-center space-x-1">
                   <span>Server ID</span>
                   {renderSortIcon('ip')}
                 </div>
               </th>
-              <th onClick={() => handleSort('os')} className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest cursor-pointer select-none hover:text-slate-800 transition-colors">
+              <th onClick={() => handleSort('os')} className="py-4 px-4 text-xs font-bold text-slate-500 dark:text-zinc-500 uppercase tracking-widest cursor-pointer select-none hover:text-slate-800 dark:hover:text-zinc-200 transition-colors">
                 <div className="flex items-center space-x-1">
                   <span>OS</span>
                   {renderSortIcon('os')}
                 </div>
               </th>
-              <th onClick={() => handleSort('created')} className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest cursor-pointer select-none hover:text-slate-800 transition-colors">
+              <th onClick={() => handleSort('created')} className="py-4 px-4 text-xs font-bold text-slate-500 dark:text-zinc-500 uppercase tracking-widest cursor-pointer select-none hover:text-slate-800 dark:hover:text-zinc-200 transition-colors">
                 <div className="flex items-center space-x-1">
                   <span>Created</span>
                   {renderSortIcon('created')}
                 </div>
               </th>
-              <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Service URLs</th>
-              <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
+              <th className="py-4 px-4 text-xs font-bold text-slate-500 dark:text-zinc-500 uppercase tracking-widest">Service URLs</th>
+              <th className="py-4 px-4 text-xs font-bold text-slate-500 dark:text-zinc-500 uppercase tracking-widest text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-200">
+          <tbody className="divide-y divide-slate-200 dark:divide-zinc-700/50">
             {sortedServers.map((server) => (
               <ServerRow key={server.id} server={server} {...props} />
             ))}
@@ -411,7 +411,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
   };
 
   return (
-    <tr className="group hover:bg-slate-50 transition-colors border-b border-slate-100">
+    <tr className="group hover:bg-slate-50 dark:hover:bg-zinc-800/60 transition-colors border-b border-slate-100 dark:border-zinc-700/50">
 
       {/* Status */}
       <td className="py-2.5 px-4">
@@ -430,7 +430,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
             ) : (
               <span className="h-2 w-2 rounded-full bg-slate-400" />
             )}
-            <span className="text-sm font-bold uppercase tracking-wider text-slate-500">
+            <span className="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
               {server.status === 'off' ? 'sleeping' : (server.detailedStatus || server.status)}
             </span>
           </div>
@@ -439,7 +439,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
 
       {/* Provider */}
       <td className="py-2.5 px-4">
-        <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+        <span className="text-xs font-bold text-slate-500 dark:text-zinc-500 uppercase tracking-widest">
           {server.providerName || 'Custom'}
         </span>
       </td>
@@ -447,21 +447,21 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
       {/* Server ID */}
       <td className="py-2.5 px-4">
         <div className="flex flex-col space-y-1 text-left">
-          <span className="text-lg font-extrabold text-slate-900 tracking-tight">{displayHostname}</span>
-          
+          <span className="text-lg font-extrabold text-slate-900 dark:text-zinc-100 tracking-tight">{displayHostname}</span>
+
           {server.serverSpecs && (
-            <span className="text-sm font-medium text-slate-500 leading-tight">
+            <span className="text-sm font-medium text-slate-500 dark:text-zinc-400 leading-tight">
               {server.serverSpecs}
             </span>
           )}
-          
+
           {server.status !== 'off' && (
-            <div className="flex items-center space-x-2 text-sm font-mono text-slate-400">
+            <div className="flex items-center space-x-2 text-sm font-mono text-slate-400 dark:text-zinc-500">
               <span>{server.ip}</span>
               <CopyButton value={server.ip} />
               {server.rootPassword && (
-                <div className="flex items-center space-x-1 pl-1.5 border-l border-slate-200">
-                  <span className="text-xs font-bold text-slate-500 uppercase">PWD</span>
+                <div className="flex items-center space-x-1 pl-1.5 border-l border-slate-200 dark:border-zinc-600">
+                  <span className="text-xs font-bold text-slate-500 dark:text-zinc-400 uppercase">PWD</span>
                   <CopyButton value={server.rootPassword} />
                 </div>
               )}
@@ -471,7 +471,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
           {server.collaborators && server.collaborators.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1.5 max-w-[280px]">
               {server.collaborators.map((c) => (
-                <span key={c.email} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-650 border border-slate-200" title={`${c.email} (${c.status})`}>
+                <span key={c.email} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-zinc-700 text-slate-650 dark:text-zinc-300 border border-slate-200 dark:border-zinc-600" title={`${c.email} (${c.status})`}>
                   👤 {c.username || c.email.split('@')[0]}
                   {c.status === 'pending' && <span className="ml-1 text-[8px] text-amber-500 font-extrabold uppercase">(pending)</span>}
                 </span>
@@ -483,12 +483,12 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
 
       {/* OS */}
       <td className="py-2.5 px-4">
-        <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Ubuntu 24.04</span>
+        <span className="text-xs font-bold text-slate-500 dark:text-zinc-500 uppercase tracking-widest">Ubuntu 24.04</span>
       </td>
 
       {/* Created */}
       <td className="py-2.5 px-4">
-        <span className="text-sm font-bold text-slate-500 font-mono">
+        <span className="text-sm font-bold text-slate-500 dark:text-zinc-500 font-mono">
           {server.createdAt ? new Date(server.createdAt).toLocaleString('en-US', {
             month: 'short',
             day: 'numeric',
@@ -718,7 +718,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
             </div>
           )}
 
-          <div className="pl-2 ml-2 border-l border-slate-200 flex items-center space-x-2">
+          <div className="pl-2 ml-2 border-l border-slate-200 dark:border-zinc-700 flex items-center space-x-2">
             {server.status === 'off' ? (
               <button
                 onClick={() => setIsSpinUpOpen(true)}
@@ -989,7 +989,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl hover:border-indigo-500/50 transition-all group relative overflow-hidden shadow-sm">
+    <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl hover:border-indigo-500/50 transition-all group relative overflow-hidden shadow-sm">
       <ConfirmSnapshotModal
         isOpen={isConfirmSnapshotOpen}
         onClose={() => setIsConfirmSnapshotOpen(false)}
@@ -1062,16 +1062,16 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
       )}
 
       {/* Mobile Card Header */}
-      <div className="p-6 border-b border-slate-200 bg-slate-50 space-y-4">
+      <div className="p-6 border-b border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800/50 space-y-4">
         <div className="flex justify-between items-start">
           <div className="space-y-1.5">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Ubuntu 24.04</span>
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+              <span className="text-[10px] font-bold text-slate-500 dark:text-zinc-500 uppercase tracking-widest">Ubuntu 24.04</span>
+              <span className="text-[10px] font-bold text-slate-500 dark:text-zinc-500 uppercase tracking-widest">
                 {server.providerName || 'Custom'}
               </span>
               {isAutomated && (
-                <div className="flex items-center space-x-1.5 bg-slate-105 px-2 py-1 rounded border border-slate-200 text-[10px] font-bold uppercase tracking-wider text-slate-500" title={server.status === 'off' ? "SLEEPING = Server powered off, snapshot taken, server deleted - this ensures you only pay for what you use." : undefined}>
+                <div className="flex items-center space-x-1.5 bg-slate-105 dark:bg-zinc-700/50 px-2 py-1 rounded border border-slate-200 dark:border-zinc-600 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400" title={server.status === 'off' ? "SLEEPING = Server powered off, snapshot taken, server deleted - this ensures you only pay for what you use." : undefined}>
                   {server.status === 'ready' ? (
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
                   ) : server.status === 'waiting-for-bootstrap' ? (
@@ -1088,21 +1088,21 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
               )}
             </div>
             <div className="flex flex-col space-y-1">
-              <h3 className="text-xl font-extrabold text-slate-900 tracking-tight text-left">{displayHostname}</h3>
-              
+              <h3 className="text-xl font-extrabold text-slate-900 dark:text-zinc-100 tracking-tight text-left">{displayHostname}</h3>
+
               {server.serverSpecs && (
-                <span className="text-xs font-medium text-slate-500 leading-tight text-left">
+                <span className="text-xs font-medium text-slate-500 dark:text-zinc-400 leading-tight text-left">
                   {server.serverSpecs}
                 </span>
               )}
-              
+
               {server.status !== 'off' && (
-                <div className="flex items-center space-x-2 text-xs font-mono text-slate-400">
+                <div className="flex items-center space-x-2 text-xs font-mono text-slate-400 dark:text-zinc-500">
                   <span>{server.ip}</span>
                   <CopyButton value={server.ip} />
                   {server.rootPassword && (
-                    <div className="flex items-center space-x-1.5 pl-1.5 border-l border-slate-200">
-                      <span className="text-[10px] font-bold text-slate-500 uppercase">PWD</span>
+                    <div className="flex items-center space-x-1.5 pl-1.5 border-l border-slate-200 dark:border-zinc-600">
+                      <span className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 uppercase">PWD</span>
                       <CopyButton value={server.rootPassword} />
                     </div>
                   )}
@@ -1112,7 +1112,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
               {server.collaborators && server.collaborators.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-1.5 justify-start">
                   {server.collaborators.map((c) => (
-                    <span key={c.email} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-650 border border-slate-200" title={`${c.email} (${c.status})`}>
+                    <span key={c.email} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-zinc-700 text-slate-650 dark:text-zinc-300 border border-slate-200 dark:border-zinc-600" title={`${c.email} (${c.status})`}>
                       👤 {c.username || c.email.split('@')[0]}
                       {c.status === 'pending' && <span className="ml-1 text-[8px] text-amber-500 font-extrabold uppercase">(pending)</span>}
                     </span>
@@ -1120,7 +1120,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
                 </div>
               )}
               
-              <div className="flex flex-row justify-between items-center mt-1 text-[10px] font-mono text-slate-550 w-full font-mono text-left">
+              <div className="flex flex-row justify-between items-center mt-1 text-[10px] font-mono text-slate-550 dark:text-zinc-500 w-full font-mono text-left">
                 <span />
                 <span>
                   {server.createdAt ? new Date(server.createdAt).toLocaleString('en-US', {
@@ -1155,7 +1155,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
           <button
             onClick={handleFetchLogs}
             disabled={isFetchingLogs || isDeleting || isReinstalling}
-            className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg disabled:opacity-50 flex items-center justify-center"
+            className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 dark:bg-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-600 text-slate-700 dark:text-zinc-200 rounded-lg disabled:opacity-50 flex items-center justify-center"
           >
             {isFetchingLogs && (
               <div className="h-3.5 w-3.5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin mr-1.5" />
@@ -1165,7 +1165,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
           <button
             onClick={() => setIsReinstallModalOpen(true)}
             disabled={isFetchingLogs || isDeleting || isReinstalling}
-            className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg disabled:opacity-50 flex items-center justify-center"
+            className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 dark:bg-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-600 text-slate-700 dark:text-zinc-200 rounded-lg disabled:opacity-50 flex items-center justify-center"
           >
             {isReinstalling && (
               <div className="h-3.5 w-3.5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mr-1.5" />
@@ -1176,7 +1176,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
             <button
               onClick={() => setIsApiAuthOpen(true)}
               disabled={isDeleting || isReinstalling}
-              className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg disabled:opacity-50"
+              className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 dark:bg-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-600 text-slate-700 dark:text-zinc-200 rounded-lg disabled:opacity-50"
             >
               API Auth
             </button>
@@ -1185,7 +1185,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
             <button
               onClick={() => setIsInviteOpen(true)}
               disabled={isDeleting || isReinstalling}
-              className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg disabled:opacity-50"
+              className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 dark:bg-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-600 text-slate-700 dark:text-zinc-200 rounded-lg disabled:opacity-50"
             >
               Share
             </button>
@@ -1196,8 +1196,8 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
               disabled={isDeleting || isReinstalling}
               className={`relative flex-1 py-2 text-xs font-bold uppercase rounded-lg transition-all disabled:opacity-50 ${
                 scheduleConfig?.enabled
-                  ? 'bg-indigo-50 text-indigo-600 border border-indigo-200'
-                  : 'bg-slate-105 hover:bg-slate-200 text-slate-700'
+                  ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700'
+                  : 'bg-slate-100 dark:bg-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-600 text-slate-700 dark:text-zinc-200'
               }`}
             >
               {scheduleConfig?.enabled && (
@@ -1210,7 +1210,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
             <button
               onClick={() => setIsConfirmSnapshotOpen(true)}
               disabled={isSnapshotting || isDeleting || isReinstalling}
-              className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg disabled:opacity-50 flex items-center justify-center"
+              className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 dark:bg-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-600 text-slate-700 dark:text-zinc-200 rounded-lg disabled:opacity-50 flex items-center justify-center"
             >
               {isSnapshotting && (
                 <div className="h-3.5 w-3.5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin mr-1.5" />
@@ -1224,12 +1224,12 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
       <div className="p-6 space-y-4">
         <div className="space-y-3">
           <div className="flex justify-between items-center">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Projects</span>
-            <button onClick={() => setIsProjectModalOpen(true)} className="text-xs font-bold text-indigo-655 hover:text-indigo-800 transition-colors">+ Add Domain</button>
+            <span className="text-xs font-bold text-slate-500 dark:text-zinc-500 uppercase tracking-widest">Projects</span>
+            <button onClick={() => setIsProjectModalOpen(true)} className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors">+ Add Domain</button>
           </div>
           {server.projects?.map(p => (
-            <div key={p.domain} className="flex justify-between items-center bg-slate-50 p-2 rounded-lg border border-slate-200">
-              <span className="text-sm font-mono text-indigo-600 hover:text-indigo-800 truncate max-w-[200px]">{p.domain}</span>
+            <div key={p.domain} className="flex justify-between items-center bg-slate-50 dark:bg-zinc-800 p-2 rounded-lg border border-slate-200 dark:border-zinc-700">
+              <span className="text-sm font-mono text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 truncate max-w-[200px]">{p.domain}</span>
               <div className="flex space-x-2">
                 <button onClick={() => { setEditingDomain({ domain: p.domain, port: p.port || 80, startDdev: p.startDdev }); setIsProjectModalOpen(true); }} className="text-slate-400 hover:text-slate-700"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" /></svg></button>
                 <button

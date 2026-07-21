@@ -38,29 +38,29 @@ export function SshKeyOnboardingModal({ isOpen, onClose }: SshKeyOnboardingModal
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md">
-      <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden transform transition-all animate-in fade-in zoom-in duration-300 text-left">
-        <div className="px-6 py-6 border-b border-slate-100 bg-slate-50/50">
-          <div className="h-12 w-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center mb-4">
+      <div className="w-full max-w-md bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-3xl shadow-2xl overflow-hidden transform transition-all animate-in fade-in zoom-in duration-300 text-left">
+        <div className="px-6 py-6 border-b border-slate-100 dark:border-zinc-700 bg-slate-50/50 dark:bg-zinc-800/50">
+          <div className="h-12 w-12 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center mb-4">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m0 4a2 2 0 01-2 2m0 0a2 2 0 01-2-2m2 2v3a2 2 0 01-2 2H9a2 2 0 01-2-2v-3a2 2 0 01-2-2m2 2v-3a2 2 0 012-2h3" />
             </svg>
           </div>
-          <h3 className="text-2xl font-black text-slate-900 tracking-tight">Add Your SSH Public Key</h3>
-          <p className="text-slate-500 text-sm mt-1">To collaborate on DevBoxes, we need your SSH public key to authorize access to your user account.</p>
+          <h3 className="text-2xl font-black text-slate-900 dark:text-zinc-100 tracking-tight">Add Your SSH Public Key</h3>
+          <p className="text-slate-500 dark:text-zinc-400 text-sm mt-1">To collaborate on DevBoxes, we need your SSH public key to authorize access to your user account.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Public SSH Key</label>
+            <label className="block text-xs font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider mb-2">Public SSH Key</label>
             <textarea
               placeholder="ssh-ed25519 AAAAC3Nza... user@computer"
               value={sshPublicKey}
               onChange={(e) => setSshPublicKey(e.target.value)}
-              className="w-full h-28 bg-white border border-slate-300 rounded-xl px-4 py-3 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent transition-all font-mono text-xs"
+              className="w-full h-28 bg-white dark:bg-zinc-800 border border-slate-300 dark:border-zinc-600 rounded-xl px-4 py-3 text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent transition-all font-mono text-xs"
               required
             />
-            <p className="mt-2 text-xs text-slate-500 leading-relaxed">
-              Typically found in your local machine&apos;s terminal at <code className="text-slate-600 bg-slate-100 px-1 py-0.5 rounded">~/.ssh/id_ed25519.pub</code> or <code className="text-slate-600 bg-slate-100 px-1 py-0.5 rounded">~/.ssh/id_rsa.pub</code>.
+            <p className="mt-2 text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">
+              Typically found in your local machine&apos;s terminal at <code className="text-slate-600 dark:text-zinc-300 bg-slate-100 dark:bg-zinc-700 px-1 py-0.5 rounded">~/.ssh/id_ed25519.pub</code> or <code className="text-slate-600 dark:text-zinc-300 bg-slate-100 dark:bg-zinc-700 px-1 py-0.5 rounded">~/.ssh/id_rsa.pub</code>.
             </p>
           </div>
 

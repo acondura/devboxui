@@ -230,22 +230,22 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
         onConfirm={handleTriggerEvening}
         serverName={serverName}
       />
-      <div className="w-full max-w-lg lg:max-w-4xl bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden flex flex-col transition-all text-left">
+      <div className="w-full max-w-lg lg:max-w-4xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-2xl shadow-2xl overflow-hidden flex flex-col transition-all text-left">
 
         {/* Header */}
-        <div className="px-6 py-5 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+        <div className="px-6 py-5 border-b border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800/50 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-center">
-              <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-8 h-8 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-700 rounded-lg flex items-center justify-center">
+              <svg className="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
             <div>
-              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-widest">Daily Automation Schedule</h3>
-              <p className="text-[10px] text-slate-500 font-mono mt-0.5">{serverName.replace('.devboxui.com', '')}</p>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-zinc-100 uppercase tracking-widest">Daily Automation Schedule</h3>
+              <p className="text-[10px] text-slate-500 dark:text-zinc-400 font-mono mt-0.5">{serverName.replace('.devboxui.com', '')}</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-900 transition-colors p-1 rounded-md hover:bg-slate-100">
+          <button onClick={onClose} className="text-slate-400 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-zinc-100 transition-colors p-1 rounded-md hover:bg-slate-100 dark:hover:bg-zinc-700">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -254,27 +254,27 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
 
         {/* Body */}
         {isLoading ? (
-          <div className="flex items-center justify-center py-20 bg-white">
+          <div className="flex items-center justify-center py-20 bg-white dark:bg-zinc-900">
             <div className="animate-spin h-8 w-8 border-4 border-indigo-500 border-t-transparent rounded-full" />
           </div>
         ) : (
-          <div className="p-6 overflow-y-auto max-h-[80vh] lg:max-h-[70vh] space-y-6 bg-white">
+          <div className="p-6 overflow-y-auto max-h-[80vh] lg:max-h-[70vh] space-y-6 bg-white dark:bg-zinc-900">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
               
               {/* Left Column: Configuration Settings */}
               <div className="space-y-6">
                 
                 {/* Enable toggle */}
-                <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-zinc-800/50 border border-slate-200 dark:border-zinc-700 rounded-xl">
                   <div>
-                    <p className="text-sm font-bold text-slate-900">Enable daily automation</p>
-                    <p className="text-xs text-slate-550 mt-0.5">Automate daily spin-up and shutdown cycles</p>
+                    <p className="text-sm font-bold text-slate-900 dark:text-zinc-100">Enable daily automation</p>
+                    <p className="text-xs text-slate-550 dark:text-zinc-400 mt-0.5">Automate daily spin-up and shutdown cycles</p>
                   </div>
                   <button
                     id={`schedule-toggle-${serverId}`}
                     onClick={() => setConfig(c => ({ ...c, enabled: !c.enabled }))}
                     className={`relative w-12 h-6 rounded-full transition-all duration-300 focus:outline-none ${
-                      config.enabled ? 'bg-indigo-600 shadow-lg shadow-indigo-600/30' : 'bg-slate-200 border border-slate-300'
+                      config.enabled ? 'bg-indigo-600 shadow-lg shadow-indigo-600/30' : 'bg-slate-200 dark:bg-zinc-700 border border-slate-300 dark:border-zinc-600'
                     }`}
                     role="switch"
                     aria-checked={config.enabled}
@@ -286,13 +286,13 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                 </div>
 
                 {/* Time settings */}
-                <div className="space-y-4 bg-slate-50/50 border border-slate-200/80 p-4 rounded-xl">
+                <div className="space-y-4 bg-slate-50/50 dark:bg-zinc-800/50 border border-slate-200/80 dark:border-zinc-700 p-4 rounded-xl">
                   <Label>Schedule Times</Label>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5 select-none">
+                        <label className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-widest flex items-center gap-1.5 select-none">
                           <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
                           Spin-up Time (Start)
                         </label>
@@ -302,7 +302,7 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                           checked={config.spinupEnabled !== false}
                           onChange={e => setConfig(c => ({ ...c, spinupEnabled: e.target.checked }))}
                           disabled={!config.enabled}
-                          className="rounded border-slate-300 bg-white text-indigo-600 focus:ring-indigo-500 focus:ring-offset-0 h-3.5 w-3.5 cursor-pointer disabled:bg-slate-100 disabled:border-slate-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                          className="rounded border-slate-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-0 h-3.5 w-3.5 cursor-pointer disabled:bg-slate-100 dark:disabled:bg-zinc-700 disabled:border-slate-200 disabled:opacity-60 disabled:cursor-not-allowed"
                         />
                       </div>
                       <input
@@ -311,12 +311,12 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                         value={config.spinupTime}
                         onChange={e => setConfig(c => ({ ...c, spinupTime: e.target.value }))}
                         disabled={!config.enabled || config.spinupEnabled === false}
-                        className="w-full bg-white border border-slate-300 text-slate-900 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-45 font-mono font-medium"
+                        className="w-full bg-white dark:bg-zinc-800 border border-slate-300 dark:border-zinc-600 text-slate-900 dark:text-zinc-100 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-45 font-mono font-medium"
                       />
                     </div>
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5 select-none">
+                        <label className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-widest flex items-center gap-1.5 select-none">
                           <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />
                           Snapshot Time (Stop)
                         </label>
@@ -326,7 +326,7 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                           checked={config.snapshotEnabled !== false}
                           onChange={e => setConfig(c => ({ ...c, snapshotEnabled: e.target.checked }))}
                           disabled={!config.enabled}
-                          className="rounded border-slate-300 bg-white text-indigo-600 focus:ring-indigo-500 focus:ring-offset-0 h-3.5 w-3.5 cursor-pointer disabled:bg-slate-100 disabled:border-slate-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                          className="rounded border-slate-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-0 h-3.5 w-3.5 cursor-pointer disabled:bg-slate-100 dark:disabled:bg-zinc-700 disabled:border-slate-200 disabled:opacity-60 disabled:cursor-not-allowed"
                         />
                       </div>
                       <input
@@ -335,20 +335,20 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                         value={config.snapshotTime}
                         onChange={e => setConfig(c => ({ ...c, snapshotTime: e.target.value }))}
                         disabled={!config.enabled || config.snapshotEnabled === false}
-                        className="w-full bg-white border border-slate-300 text-slate-900 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-45 font-mono font-medium"
+                        className="w-full bg-white dark:bg-zinc-800 border border-slate-300 dark:border-zinc-600 text-slate-900 dark:text-zinc-100 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-45 font-mono font-medium"
                       />
                     </div>
                   </div>
 
                   {/* Timezone */}
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-550 uppercase tracking-widest">Timezone</label>
+                    <label className="text-[10px] font-bold text-slate-550 dark:text-zinc-400 uppercase tracking-widest">Timezone</label>
                     <Select2
                       id={`timezone-${serverId}`}
                       value={config.timezone}
                       onValueChange={val => setConfig(c => ({ ...c, timezone: val }))}
                       disabled={!config.enabled}
-                      className="w-full bg-white border border-slate-300 text-slate-900 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-45"
+                      className="w-full bg-white dark:bg-zinc-800 border border-slate-300 dark:border-zinc-600 text-slate-900 dark:text-zinc-100 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-45"
                     >
                       {TIMEZONES.map(tz => (
                         <option key={tz} value={tz}>{tz}</option>
@@ -358,13 +358,13 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                 </div>
 
                 {/* Inactivity settings */}
-                <div className="space-y-4 bg-slate-50/50 border border-slate-200/80 p-4 rounded-xl">
+                <div className="space-y-4 bg-slate-50/50 dark:bg-zinc-800/50 border border-slate-200/80 dark:border-zinc-700 p-4 rounded-xl">
                   <div className="flex items-center justify-between">
                     <div>
-                      <label className="text-xs font-bold text-slate-900 block select-none">
+                      <label className="text-xs font-bold text-slate-900 dark:text-zinc-100 block select-none">
                         Inactivity Auto-Shutdown
                       </label>
-                      <p className="text-[10px] text-slate-500 mt-0.5 leading-normal">
+                      <p className="text-[10px] text-slate-500 dark:text-zinc-400 mt-0.5 leading-normal">
                         Automatically stop and snapshot VM when not in use.
                       </p>
                     </div>
@@ -372,7 +372,7 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                       type="button"
                       onClick={() => setConfig(c => ({ ...c, shutdownAfterInactivity: !c.shutdownAfterInactivity }))}
                       className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        config.shutdownAfterInactivity ? 'bg-indigo-600' : 'bg-slate-250'
+                        config.shutdownAfterInactivity ? 'bg-indigo-600' : 'bg-slate-250 dark:bg-zinc-700'
                       }`}
                     >
                       <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
@@ -382,8 +382,8 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                   </div>
                   
                   {config.shutdownAfterInactivity && (
-                    <div className="space-y-1.5 pt-2 border-t border-slate-200/60 animate-in fade-in slide-in-from-top-1 duration-200">
-                      <label className="text-[10px] font-bold text-slate-550 uppercase tracking-widest block">
+                    <div className="space-y-1.5 pt-2 border-t border-slate-200/60 dark:border-zinc-700/50 animate-in fade-in slide-in-from-top-1 duration-200">
+                      <label className="text-[10px] font-bold text-slate-550 dark:text-zinc-400 uppercase tracking-widest block">
                         Inactivity Timeout (minutes)
                       </label>
                       <input
@@ -396,9 +396,9 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                           const val = parseInt(e.target.value) || 30;
                           setConfig(c => ({ ...c, inactivityDurationMinutes: val }));
                         }}
-                        className="w-full bg-white border border-slate-300 text-slate-900 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono font-medium"
+                        className="w-full bg-white dark:bg-zinc-800 border border-slate-300 dark:border-zinc-600 text-slate-900 dark:text-zinc-100 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono font-medium"
                       />
-                      <p className="text-[10px] text-slate-500 leading-normal mt-1">
+                      <p className="text-[10px] text-slate-500 dark:text-zinc-400 leading-normal mt-1">
                         The server will automatically snapshot and delete the instance after this many minutes of zero active SSH connections.
                       </p>
                     </div>
@@ -406,17 +406,17 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                 </div>
 
                 {/* Server type & location */}
-                <div className="space-y-4 bg-slate-50/50 border border-slate-200/80 p-4 rounded-xl">
+                <div className="space-y-4 bg-slate-50/50 dark:bg-zinc-800/50 border border-slate-200/80 dark:border-zinc-700 p-4 rounded-xl">
                   <Label>Spin-up Configuration</Label>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-550 uppercase tracking-widest">Server Type</label>
+                      <label className="text-[10px] font-bold text-slate-550 dark:text-zinc-400 uppercase tracking-widest">Server Type</label>
                       <Select2
                         id={`server-type-${serverId}`}
                         value={config.serverType}
                         onValueChange={val => setConfig(c => ({ ...c, serverType: val }))}
                         disabled={!config.enabled}
-                        className="w-full bg-white border border-slate-300 text-slate-900 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-45 font-mono font-medium"
+                        className="w-full bg-white dark:bg-zinc-800 border border-slate-300 dark:border-zinc-600 text-slate-900 dark:text-zinc-100 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-45 font-mono font-medium"
                       >
                         {serverTypes.map(t => {
                           const priceObj = t.prices.find(p => p.location === (config.location || 'nbg1')) || t.prices[0];
@@ -428,7 +428,7 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                               key={t.id} 
                               value={t.name} 
                               disabled={isDisabled}
-                              className="bg-white text-slate-900 text-xs disabled:text-slate-400"
+                              className="bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-xs disabled:text-slate-400 dark:disabled:text-zinc-500"
                             >
                               {t.name.toUpperCase()} ({t.cores}C / {t.memory}G / {t.disk}GB SSD) {monthlyGross ? `— ${monthlyGross}/mo` : ''} {isDisabled ? '(Disk too small)' : ''}
                             </option>
@@ -440,21 +440,21 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                           </option>
                         )}
                       </Select2>
-                      <p className="text-[10px] text-slate-500 leading-normal">
+                      <p className="text-[10px] text-slate-500 dark:text-zinc-400 leading-normal">
                         Choose the hardware capacity. Note: Downscaling to a size with a smaller SSD than your current snapshot ({originalDiskSize}GB) is disabled.
                       </p>
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-550 uppercase tracking-widest">Location</label>
+                      <label className="text-[10px] font-bold text-slate-550 dark:text-zinc-400 uppercase tracking-widest">Location</label>
                       <Select2
                         id={`location-${serverId}`}
                         value={config.location}
                         onValueChange={val => setConfig(c => ({ ...c, location: val }))}
                         disabled={!config.enabled}
-                        className="w-full bg-white border border-slate-300 text-slate-900 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-45 font-mono font-medium"
+                        className="w-full bg-white dark:bg-zinc-800 border border-slate-300 dark:border-zinc-600 text-slate-900 dark:text-zinc-100 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-45 font-mono font-medium"
                       >
                         {locations.map(loc => (
-                          <option key={loc.id} value={loc.name} className="bg-white text-slate-900 text-xs">
+                          <option key={loc.id} value={loc.name} className="bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-xs">
                             {loc.name.toUpperCase()} ({loc.city})
                           </option>
                         ))}
@@ -464,7 +464,7 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                           </option>
                         )}
                       </Select2>
-                      <p className="text-[10px] text-slate-500 leading-normal">
+                      <p className="text-[10px] text-slate-500 dark:text-zinc-400 leading-normal">
                         Caution: Relocating requires copying snapshot over WAN on boot, delaying startup by several minutes. Nuremberg (NBG1) is recommended.
                       </p>
                     </div>
@@ -472,12 +472,12 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                 </div>
 
                 {/* Pause Controls */}
-                <div className="space-y-4 bg-slate-50/50 border border-slate-200/80 p-4 rounded-xl">
+                <div className="space-y-4 bg-slate-50/50 dark:bg-zinc-800/50 border border-slate-200/80 dark:border-zinc-700 p-4 rounded-xl">
                   <Label>Pause & Vacation Rules</Label>
 
                   {/* Pause Until */}
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-550 uppercase tracking-widest flex items-center gap-1.5">
+                    <label className="text-[10px] font-bold text-slate-550 dark:text-zinc-400 uppercase tracking-widest flex items-center gap-1.5">
                       <svg className="w-3.5 h-3.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6M9 19h6a2 2 0 002-2V7a2 2 0 00-2-2H9a2 2 0 00-2 2v10a2 2 0 002 2z" />
                       </svg>
@@ -490,12 +490,12 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                         value={config.pauseUntil || ''}
                         min={new Date().toISOString().slice(0, 10)}
                         onChange={e => setConfig(c => ({ ...c, pauseUntil: e.target.value || undefined }))}
-                        className="flex-1 bg-white border border-slate-300 text-slate-900 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono"
+                        className="flex-1 bg-white dark:bg-zinc-800 border border-slate-300 dark:border-zinc-600 text-slate-900 dark:text-zinc-100 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono"
                       />
                       {config.pauseUntil && (
                         <button
                           onClick={() => setConfig(c => ({ ...c, pauseUntil: undefined }))}
-                          className="p-2 text-slate-400 hover:text-rose-500 hover:bg-slate-100 rounded-lg transition-all"
+                          className="p-2 text-slate-400 dark:text-zinc-500 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-zinc-700 rounded-lg transition-all"
                           title="Clear pause"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -504,7 +504,7 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                         </button>
                       )}
                     </div>
-                    <p className="text-[11px] text-slate-500">
+                    <p className="text-[11px] text-slate-500 dark:text-zinc-400">
                       It keeps the current server state (<span className="text-amber-600 font-medium">{formattedStatus}</span>) during that time.
                     </p>
                     {config.pauseUntil && (
@@ -516,14 +516,14 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                   </div>
 
                   {/* Skip weekends toggle */}
-                  <div className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                  <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-zinc-800/50 border border-slate-200 dark:border-zinc-700 rounded-lg">
                     <div className="flex items-center gap-2">
                       <svg className="w-4 h-4 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
                       <div className="text-left">
-                        <span className="text-xs font-bold text-slate-700">Skip Weekends</span>
-                        <p className="text-[10px] text-slate-500 mt-0.5">Do not run automation on Saturdays and Sundays</p>
+                        <span className="text-xs font-bold text-slate-700 dark:text-zinc-200">Skip Weekends</span>
+                        <p className="text-[10px] text-slate-500 dark:text-zinc-400 mt-0.5">Do not run automation on Saturdays and Sundays</p>
                       </div>
                     </div>
                     <button
@@ -531,8 +531,8 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                       onClick={() => setConfig(c => ({ ...c, skipWeekends: !c.skipWeekends }))}
                       disabled={!config.enabled}
                       className={`relative w-10 h-5 rounded-full transition-all duration-300 focus:outline-none ${
-                        config.skipWeekends ? 'bg-rose-600 shadow-md shadow-rose-600/20' : 'bg-slate-200 border border-slate-300'
-                      } disabled:opacity-60 disabled:bg-slate-100 disabled:border-slate-200 disabled:cursor-not-allowed`}
+                        config.skipWeekends ? 'bg-rose-600 shadow-md shadow-rose-600/20' : 'bg-slate-200 dark:bg-zinc-700 border border-slate-300 dark:border-zinc-600'
+                      } disabled:opacity-60 disabled:bg-slate-100 dark:disabled:bg-zinc-700 disabled:border-slate-200 disabled:cursor-not-allowed`}
                       role="switch"
                       aria-checked={config.skipWeekends}
                     >
@@ -545,7 +545,7 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
 
                   {/* Blocked / vacation dates */}
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-slate-550 uppercase tracking-widest flex items-center gap-1.5">
+                    <label className="text-[10px] font-bold text-slate-550 dark:text-zinc-400 uppercase tracking-widest flex items-center gap-1.5">
                       <svg className="w-3.5 h-3.5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
@@ -558,7 +558,7 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                         id={`blocked-date-picker-${serverId}`}
                         type="date"
                         min={new Date().toISOString().slice(0, 10)}
-                        className="flex-1 bg-white border border-slate-300 text-slate-900 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono"
+                        className="flex-1 bg-white dark:bg-zinc-800 border border-slate-300 dark:border-zinc-600 text-slate-900 dark:text-zinc-100 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono"
                         onChange={e => {
                           const date = e.target.value;
                           if (!date) return;
@@ -572,7 +572,7 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                         }}
                       />
                     </div>
-                    <p className="text-[11px] text-slate-500">
+                    <p className="text-[11px] text-slate-500 dark:text-zinc-400">
                       It keeps the current server state (<span className="text-rose-600 font-medium">{formattedStatus}</span>) for the selected date.
                     </p>
 
@@ -601,13 +601,13 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                         ))}
                         <button
                           onClick={() => setConfig(c => ({ ...c, blockedDates: [] }))}
-                          className="text-[10px] text-slate-500 hover:text-rose-650 transition-colors px-2 py-1 hover:bg-rose-50 rounded-full"
+                          className="text-[10px] text-slate-500 dark:text-zinc-400 hover:text-rose-650 transition-colors px-2 py-1 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-full"
                         >
                           Clear all
                         </button>
                       </div>
                     ) : (
-                      <p className="text-[10px] text-slate-500 italic">No skip days configured.</p>
+                      <p className="text-[10px] text-slate-500 dark:text-zinc-400 italic">No skip days configured.</p>
                     )}
                   </div>
                 </div>
@@ -618,23 +618,23 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
               <div className="space-y-6">
 
                 {/* Cost Estimation Card */}
-                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4 relative overflow-hidden">
+                <div className="bg-slate-50 dark:bg-zinc-800/50 border border-slate-200 dark:border-zinc-700 rounded-2xl p-5 space-y-4 relative overflow-hidden">
                   <div className="absolute top-0 right-0 h-24 w-24 bg-indigo-500/5 rounded-full blur-xl pointer-events-none" />
                   
                   <Label>Cost & Savings Projection</Label>
                                  <div className="grid grid-cols-2 gap-4">
-                    <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-1">
-                      <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Always On (24/7)</span>
-                      <span className="text-lg font-mono font-bold text-slate-700">€{monthlyPriceGross.toFixed(2)}<span className="text-xs text-slate-500">/mo</span></span>
-                      <span className="text-[9px] text-slate-550 font-mono block">€{hourlyPriceGross.toFixed(3)}/hr base</span>
+                    <div className="p-3 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl space-y-1">
+                      <span className="text-[9px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider block">Always On (24/7)</span>
+                      <span className="text-lg font-mono font-bold text-slate-700 dark:text-zinc-200">€{monthlyPriceGross.toFixed(2)}<span className="text-xs text-slate-500 dark:text-zinc-400">/mo</span></span>
+                      <span className="text-[9px] text-slate-550 dark:text-zinc-400 font-mono block">€{hourlyPriceGross.toFixed(3)}/hr base</span>
                     </div>
-                    <div className="p-3 bg-indigo-50/50 border border-indigo-100 rounded-xl space-y-1">
-                      <span className="text-[9px] font-bold text-indigo-600 uppercase tracking-wider block">Automated Schedule</span>
-                      <span className="text-lg font-mono font-bold text-indigo-900">
+                    <div className="p-3 bg-indigo-50/50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-700 rounded-xl space-y-1">
+                      <span className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider block">Automated Schedule</span>
+                      <span className="text-lg font-mono font-bold text-indigo-900 dark:text-indigo-300">
                         {bothTimesEnabled ? `€${totalScheduleCost.toFixed(2)}` : '—'}
-                        {bothTimesEnabled && <span className="text-xs text-indigo-750">/mo</span>}
+                        {bothTimesEnabled && <span className="text-xs text-indigo-750 dark:text-indigo-400">/mo</span>}
                       </span>
-                      <span className="text-[9px] text-indigo-600/70 font-mono block">
+                      <span className="text-[9px] text-indigo-600/70 dark:text-indigo-400/70 font-mono block">
                         {bothTimesEnabled ? 'Includes snapshot storage' : 'Requires both start & stop'}
                       </span>
                     </div>
@@ -642,7 +642,7 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
 
                   {/* Savings Highlight Box or warning */}
                   {!config.enabled ? (
-                    <div className="p-4 bg-slate-100 border border-slate-200 rounded-xl text-center text-xs font-semibold text-slate-500 leading-normal">
+                    <div className="p-4 bg-slate-100 dark:bg-zinc-700 border border-slate-200 dark:border-zinc-600 rounded-xl text-center text-xs font-semibold text-slate-500 dark:text-zinc-400 leading-normal">
                       Enable daily automation to calculate potential savings.
                     </div>
                   ) : !bothTimesEnabled ? (
@@ -663,29 +663,29 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
 
                   {/* Cost Breakdown Details */}
                   {bothTimesEnabled ? (
-                    <div className="space-y-2 text-[11px] font-mono text-slate-600 border-t border-slate-200 pt-3">
+                    <div className="space-y-2 text-[11px] font-mono text-slate-600 dark:text-zinc-300 border-t border-slate-200 dark:border-zinc-700 pt-3">
                       <div className="flex justify-between">
-                        <span className="text-slate-500">Daily Active Window</span>
-                        <span className="text-slate-700">{activeHoursPerDay.toFixed(1)} hours/day</span>
+                        <span className="text-slate-500 dark:text-zinc-400">Daily Active Window</span>
+                        <span className="text-slate-700 dark:text-zinc-200">{activeHoursPerDay.toFixed(1)} hours/day</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-slate-500">Monthly Run Hours</span>
-                        <span className="text-slate-700">~{monthlyRunningHours.toFixed(0)} hours/mo</span>
+                        <span className="text-slate-500 dark:text-zinc-400">Monthly Run Hours</span>
+                        <span className="text-slate-700 dark:text-zinc-200">~{monthlyRunningHours.toFixed(0)} hours/mo</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-slate-500">Server Run Cost</span>
-                        <span className="text-slate-700">€{activeCostMonthly.toFixed(2)}/mo</span>
+                        <span className="text-slate-500 dark:text-zinc-400">Server Run Cost</span>
+                        <span className="text-slate-700 dark:text-zinc-200">€{activeCostMonthly.toFixed(2)}/mo</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-slate-500">Snapshot Storage ({diskSizeGb}GB)</span>
-                        <span className="text-slate-700">€{snapshotCostMonthly.toFixed(2)}/mo</span>
+                        <span className="text-slate-500 dark:text-zinc-400">Snapshot Storage ({diskSizeGb}GB)</span>
+                        <span className="text-slate-700 dark:text-zinc-200">€{snapshotCostMonthly.toFixed(2)}/mo</span>
                       </div>
-                      <div className="flex justify-between text-[9px] text-slate-500 italic pt-1 border-t border-slate-200">
+                      <div className="flex justify-between text-[9px] text-slate-500 dark:text-zinc-400 italic pt-1 border-t border-slate-200 dark:border-zinc-700">
                         <span>* Prices include IPv4 address fee (€{getIpv4Pricing(pricing, config.location || 'nbg1').monthly.toFixed(2)}/mo or €{getIpv4Pricing(pricing, config.location || 'nbg1').hourly.toFixed(4)}/hr)</span>
                       </div>
                     </div>
                   ) : (
-                    <div className="text-[11px] font-mono text-slate-500 border-t border-slate-200 pt-3 italic text-center">
+                    <div className="text-[11px] font-mono text-slate-500 dark:text-zinc-400 border-t border-slate-200 dark:border-zinc-700 pt-3 italic text-center">
                       Enable both start and stop times to view active runtime breakdown.
                     </div>
                   )}
@@ -693,32 +693,32 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
 
                 {/* Snapshot status */}
                 {(config.latestSnapshotId || config.lastEveningRun) && (
-                  <div className="space-y-3 bg-slate-50/50 border border-slate-200/80 p-4 rounded-xl">
+                  <div className="space-y-3 bg-slate-50/50 dark:bg-zinc-800/50 border border-slate-200/80 dark:border-zinc-700 p-4 rounded-xl">
                     <Label>Latest Backup Status</Label>
-                    <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-2 text-xs font-mono">
+                    <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-4 space-y-2 text-xs font-mono">
                       {config.latestSnapshotId && (
                         <div className="flex justify-between">
-                          <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Snapshot ID</span>
+                          <span className="text-[10px] text-slate-500 dark:text-zinc-400 uppercase font-bold tracking-wider">Snapshot ID</span>
                           <span className="text-indigo-650 font-bold">#{config.latestSnapshotId}</span>
                         </div>
                       )}
                       {config.latestSnapshotDate && (
                         <div className="flex justify-between">
-                          <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Date Created</span>
-                          <span className="text-slate-700">{config.latestSnapshotDate}</span>
+                          <span className="text-[10px] text-slate-500 dark:text-zinc-400 uppercase font-bold tracking-wider">Date Created</span>
+                          <span className="text-slate-700 dark:text-zinc-200">{config.latestSnapshotDate}</span>
                         </div>
                       )}
                       {config.lastEveningRun && (
                         <div className="flex justify-between">
-                          <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Last Run</span>
-                          <span className="text-slate-700">
+                          <span className="text-[10px] text-slate-500 dark:text-zinc-400 uppercase font-bold tracking-wider">Last Run</span>
+                          <span className="text-slate-700 dark:text-zinc-200">
                             {new Date(config.lastEveningRun).toLocaleString()}
                           </span>
                         </div>
                       )}
                       {config.lastRunStatus && (
                         <div className="flex justify-between items-center">
-                          <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Automation Status</span>
+                          <span className="text-[10px] text-slate-500 dark:text-zinc-400 uppercase font-bold tracking-wider">Automation Status</span>
                           <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded ${
                             config.lastRunStatus === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
                             config.lastRunStatus === 'error' ? 'bg-rose-50 text-rose-750 border border-rose-200' :
@@ -736,7 +736,7 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                 )}
 
                 {/* Manual triggers */}
-                <div className="space-y-3 bg-slate-50/50 border border-slate-200/80 p-4 rounded-xl">
+                <div className="space-y-3 bg-slate-50/50 dark:bg-zinc-800/50 border border-slate-200/80 dark:border-zinc-700 p-4 rounded-xl">
                   <Label>Manual Operations</Label>
                   <div className="grid grid-cols-2 gap-3">
                     <button
@@ -772,9 +772,9 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                       Snapshot + Delete
                     </button>
                   </div>
-                  <p className="text-[10px] text-slate-500 leading-relaxed pt-1">
-                    <strong className="text-slate-650">Spin Up Now</strong> requests a restore from the snapshot. &nbsp;
-                    <strong className="text-slate-650">Snapshot + Delete</strong> triggers a graceful power-off, snapshot creation, and VM deletion.
+                  <p className="text-[10px] text-slate-500 dark:text-zinc-400 leading-relaxed pt-1">
+                    <strong className="text-slate-650 dark:text-zinc-300">Spin Up Now</strong> requests a restore from the snapshot. &nbsp;
+                    <strong className="text-slate-650 dark:text-zinc-300">Snapshot + Delete</strong> triggers a graceful power-off, snapshot creation, and VM deletion.
                   </p>
                 </div>
 
@@ -785,10 +785,10 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
         )}
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
+        <div className="px-6 py-4 border-t border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800/50 flex items-center justify-between gap-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-lg transition-all"
+            className="px-4 py-2 text-sm font-bold text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-zinc-200 bg-slate-100 dark:bg-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-600 rounded-lg transition-all"
           >
             Cancel
           </button>
@@ -823,8 +823,8 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
 function Label({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">{children}</span>
-      <span className="h-px flex-1 bg-slate-200" />
+      <span className="text-[10px] font-black text-slate-500 dark:text-zinc-400 uppercase tracking-[0.2em]">{children}</span>
+      <span className="h-px flex-1 bg-slate-200 dark:bg-zinc-700" />
     </div>
   );
 }

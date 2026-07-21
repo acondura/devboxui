@@ -6,6 +6,7 @@ import { AddServerModal } from '@/modules/inventory/components/AddServerModal';
 import { SettingsModal } from '@/modules/access/components/SettingsModal';
 import { SshKeyOnboardingModal } from '@/modules/access/components/SshKeyOnboardingModal';
 import { FeedbackModal } from '@/modules/feedback/components/FeedbackModal';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { ServerList } from '@/modules/inventory/components/ServerList';
 import { provisionServer, getServers, addProject, deleteServer, reinstallServer, deleteDomain, updateDomain, updateServerAllowedPeers, getUserSettings } from '@/modules/inventory/actions';
 import { ServerConfig } from '@/modules/inventory/types';
@@ -193,7 +194,7 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
   };
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 font-sans">
+    <div className="min-h-screen bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 font-sans">
       <AddServerModal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
@@ -216,24 +217,24 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
       />
 
       {/* Top Navigation */}
-      <nav className="border-b border-slate-200 bg-white px-6 py-4 flex justify-between items-center sticky top-0 z-40">
-        <Link href="/" className="font-bold text-xl tracking-tight text-slate-900 flex items-center space-x-2 hover:opacity-80 transition-opacity">
+      <nav className="border-b border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-6 py-4 flex justify-between items-center sticky top-0 z-40">
+        <Link href="/" className="font-bold text-xl tracking-tight text-slate-900 dark:text-zinc-100 flex items-center space-x-2 hover:opacity-80 transition-opacity">
           <div className="h-8 w-8 bg-indigo-600 rounded-lg flex items-center justify-center">
             <span className="text-white text-lg font-black">D</span>
           </div>
           <span className="uppercase tracking-tighter">DevBox<span className="text-indigo-500">UI</span></span>
         </Link>
-        
+
         <div className="flex items-center space-x-3">
-          <div className="hidden sm:block text-xs text-slate-650 font-mono bg-slate-50 px-3 py-1.5 rounded-md border border-slate-250">
+          <div className="hidden sm:block text-xs text-slate-650 dark:text-zinc-400 font-mono bg-slate-50 dark:bg-zinc-800 px-3 py-1.5 rounded-md border border-slate-200 dark:border-zinc-700">
             {userEmail}
           </div>
 
+          <ThemeToggle />
 
-
-          <button 
+          <button
             onClick={() => setIsSettingsOpen(true)}
-            className="p-1.5 text-slate-500 hover:text-slate-900 rounded-md border border-slate-200 hover:bg-slate-100 transition-colors"
+            className="p-1.5 text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 rounded-md border border-slate-200 dark:border-zinc-600 hover:bg-slate-100 dark:hover:bg-zinc-700 transition-colors"
             title="Settings"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -241,10 +242,10 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
           </button>
-          
-          <button 
+
+          <button
             onClick={handleLogout}
-            className="text-xs font-bold text-slate-500 hover:text-slate-900 px-3 py-1.5 rounded-md border border-slate-200 hover:bg-slate-100 transition-colors"
+            className="text-xs font-bold text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 px-3 py-1.5 rounded-md border border-slate-200 dark:border-zinc-600 hover:bg-slate-100 dark:hover:bg-zinc-700 transition-colors"
           >
             Logout
           </button>
@@ -256,8 +257,8 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
           <div className="mb-10 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
             <div>
-              <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight uppercase">Dashboard</h2>
-              <p className="text-slate-500 text-sm mt-1">Manage and provision your team&apos;s cloud development servers.</p>
+              <h2 className="text-3xl font-extrabold text-slate-900 dark:text-zinc-100 tracking-tight uppercase">Dashboard</h2>
+              <p className="text-slate-500 dark:text-zinc-400 text-sm mt-1">Manage and provision your team&apos;s cloud development servers.</p>
             </div>
             
             <button 

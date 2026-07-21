@@ -117,16 +117,16 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm">
-      <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden transform transition-all animate-in fade-in zoom-in duration-200 text-left">
-        <div className="px-6 py-5 border-b border-slate-200 flex justify-between items-center bg-slate-50">
-          <h3 className="text-xl font-bold text-slate-900 flex items-center space-x-2">
+      <div className="w-full max-w-md bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-3xl shadow-2xl overflow-hidden transform transition-all animate-in fade-in zoom-in duration-200 text-left">
+        <div className="px-6 py-5 border-b border-slate-200 dark:border-zinc-700 flex justify-between items-center bg-slate-50 dark:bg-zinc-800/50">
+          <h3 className="text-xl font-bold text-slate-900 dark:text-zinc-100 flex items-center space-x-2">
             <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924-1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37a1.724 1.724 0 002.572-1.065z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
             <span>Settings</span>
           </h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-900 transition-colors">
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-900 dark:text-zinc-500 dark:hover:text-zinc-100 transition-colors">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -134,13 +134,13 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         </div>
 
         {/* Tab Buttons */}
-        <div className="flex border-b border-slate-200">
+        <div className="flex border-b border-slate-200 dark:border-zinc-700">
           <button
             onClick={() => setActiveTab('personal')}
             className={`flex-1 py-3 text-center text-sm font-bold border-b-2 transition-all ${
               activeTab === 'personal'
-                ? 'border-indigo-600 text-indigo-605'
-                : 'border-transparent text-slate-500 hover:text-slate-900'
+                ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
+                : 'border-transparent text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-100'
             }`}
           >
             👤 Personal Profile
@@ -150,8 +150,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               onClick={() => setActiveTab('org')}
               className={`flex-1 py-3 text-center text-sm font-bold border-b-2 transition-all ${
                 activeTab === 'org'
-                  ? 'border-indigo-600 text-indigo-605'
-                  : 'border-transparent text-slate-500 hover:text-slate-900'
+                  ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
+                  : 'border-transparent text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-100'
               }`}
             >
               🏢 Organization
@@ -163,45 +163,45 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           <form onSubmit={handleSavePersonal} className="p-6 space-y-6">
             {/* Hetzner Token */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Personal Hetzner API Token</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-zinc-300 mb-2">Personal Hetzner API Token</label>
               <input
                 type="password"
                 placeholder="hcl_..."
                 value={personalHetznerToken}
                 onChange={(e) => setPersonalHetznerToken(e.target.value)}
-                className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                className="w-full bg-white dark:bg-zinc-800 border border-slate-300 dark:border-zinc-600 rounded-lg px-4 py-2.5 text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
               />
-              <p className="mt-2 text-xs text-slate-500">
+              <p className="mt-2 text-xs text-slate-500 dark:text-zinc-400">
                 Optional. If not set, the global organization or system token will be used.
               </p>
             </div>
 
             {/* DigitalOcean Token */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Personal DigitalOcean API Token</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-zinc-300 mb-2">Personal DigitalOcean API Token</label>
               <input
                 type="password"
                 placeholder="dop_..."
                 value={personalDigitalOceanToken}
                 onChange={(e) => setPersonalDigitalOceanToken(e.target.value)}
-                className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                className="w-full bg-white dark:bg-zinc-800 border border-slate-300 dark:border-zinc-600 rounded-lg px-4 py-2.5 text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
               />
-              <p className="mt-2 text-xs text-slate-500">
+              <p className="mt-2 text-xs text-slate-500 dark:text-zinc-400">
                 Optional. If not set, the organization or system token will be used.
               </p>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Your Public SSH Key</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-zinc-300 mb-2">Your Public SSH Key</label>
                 <textarea
                   placeholder="ssh-ed25519 AAAAC3Nza... user@computer"
                   value={sshPublicKey}
                   onChange={(e) => setSshPublicKey(e.target.value)}
-                  className="w-full h-24 bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all font-mono text-xs"
+                  className="w-full h-24 bg-white dark:bg-zinc-800 border border-slate-300 dark:border-zinc-600 rounded-lg px-4 py-2.5 text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all font-mono text-xs"
                   required
                 />
-                <p className="mt-2 text-[11px] text-slate-500 leading-relaxed">
+                <p className="mt-2 text-[11px] text-slate-500 dark:text-zinc-400 leading-relaxed">
                   Paste your local public key here. This key will be automatically added to all DevBoxes you have access to.
                 </p>
               </div>
@@ -214,7 +214,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             )}
             
             <div className="pt-2 flex space-x-3">
-              <button type="button" onClick={onClose} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 rounded-lg transition-all">Close</button>
+              <button type="button" onClick={onClose} className="flex-1 bg-slate-100 dark:bg-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-600 text-slate-700 dark:text-zinc-200 font-semibold py-2.5 rounded-lg transition-all">Close</button>
               <button
                 type="submit"
                 disabled={isSaving}
@@ -228,11 +228,11 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           <form onSubmit={handleSaveOrg} className="p-6 space-y-6">
             {/* Org Dropdown Selection */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Select Organization</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-zinc-300 mb-2">Select Organization</label>
               <select
                 value={selectedOrgId}
                 onChange={(e) => setSelectedOrgId(e.target.value)}
-                className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                className="w-full bg-white dark:bg-zinc-800 border border-slate-300 dark:border-zinc-600 rounded-lg px-4 py-2.5 text-slate-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
               >
                 {memberships.map(m => (
                   <option key={m.orgId} value={m.orgId}>{m.orgId}</option>
@@ -242,43 +242,43 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
             {/* Org Name */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Organization Name</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-zinc-300 mb-2">Organization Name</label>
               <input
                 type="text"
                 placeholder="My Awesome Org"
                 value={orgName}
                 onChange={(e) => setOrgName(e.target.value)}
-                className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                className="w-full bg-white dark:bg-zinc-800 border border-slate-300 dark:border-zinc-600 rounded-lg px-4 py-2.5 text-slate-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                 required
               />
             </div>
 
             {/* Org Hetzner Token */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Organization Hetzner Token</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-zinc-300 mb-2">Organization Hetzner Token</label>
               <input
                 type="password"
                 placeholder="hcl_..."
                 value={orgHetznerToken}
                 onChange={(e) => setOrgHetznerToken(e.target.value)}
-                className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                className="w-full bg-white dark:bg-zinc-800 border border-slate-300 dark:border-zinc-600 rounded-lg px-4 py-2.5 text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
               />
-              <p className="mt-2 text-xs text-slate-500">
+              <p className="mt-2 text-xs text-slate-500 dark:text-zinc-400">
                 Shared Hetzner API Token used by all members to launch DevBoxes under this organization.
               </p>
             </div>
 
             {/* Org DigitalOcean Token */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Organization DigitalOcean Token</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-zinc-300 mb-2">Organization DigitalOcean Token</label>
               <input
                 type="password"
                 placeholder="dop_..."
                 value={orgDigitalOceanToken}
                 onChange={(e) => setOrgDigitalOceanToken(e.target.value)}
-                className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                className="w-full bg-white dark:bg-zinc-800 border border-slate-300 dark:border-zinc-600 rounded-lg px-4 py-2.5 text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
               />
-              <p className="mt-2 text-xs text-slate-500">
+              <p className="mt-2 text-xs text-slate-500 dark:text-zinc-400">
                 Shared DigitalOcean API Token used by all members to launch Droplets under this organization.
               </p>
             </div>
@@ -290,7 +290,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             )}
             
             <div className="pt-2 flex space-x-3">
-              <button type="button" onClick={onClose} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 rounded-lg transition-all">Close</button>
+              <button type="button" onClick={onClose} className="flex-1 bg-slate-100 dark:bg-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-600 text-slate-700 dark:text-zinc-200 font-semibold py-2.5 rounded-lg transition-all">Close</button>
               <button
                 type="submit"
                 disabled={isSaving}

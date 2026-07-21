@@ -101,13 +101,13 @@ export function ConfirmSpinUpModal({
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden transform transition-all animate-in zoom-in duration-200 text-left">
-        <div className="px-6 py-5 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+      <div className="w-full max-w-md bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-2xl shadow-2xl overflow-hidden transform transition-all animate-in zoom-in duration-200 text-left">
+        <div className="px-6 py-5 border-b border-slate-200 dark:border-zinc-700 flex justify-between items-center bg-slate-50 dark:bg-zinc-800/50">
           <div>
-            <h3 className="text-xl font-bold text-slate-900">Spin Up Server</h3>
-            <p className="text-xs text-slate-500 uppercase tracking-widest font-bold mt-1">Configure Environment</p>
+            <h3 className="text-xl font-bold text-slate-900 dark:text-zinc-100">Spin Up Server</h3>
+            <p className="text-xs text-slate-500 dark:text-zinc-400 uppercase tracking-widest font-bold mt-1">Configure Environment</p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
+          <button onClick={onClose} className="text-slate-400 dark:text-zinc-500 hover:text-slate-600 dark:hover:text-zinc-300 transition-colors">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -116,21 +116,21 @@ export function ConfirmSpinUpModal({
 
         <div className="p-6 space-y-6">
           {/* Target Server Details */}
-          <div className="space-y-1 bg-slate-50 border border-slate-200 rounded-xl p-4">
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Target Server</p>
-            <span className="text-base font-bold text-slate-900">{serverName.replace('.devboxui.com', '')}</span>
+          <div className="space-y-1 bg-slate-50 dark:bg-zinc-800/50 border border-slate-200 dark:border-zinc-700 rounded-xl p-4">
+            <p className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">Target Server</p>
+            <span className="text-base font-bold text-slate-900 dark:text-zinc-100">{serverName.replace('.devboxui.com', '')}</span>
           </div>
 
           {/* VPS Type Selector */}
           <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-700 uppercase tracking-widest block">
+            <label className="text-xs font-bold text-slate-700 dark:text-zinc-200 uppercase tracking-widest block">
               VPS Size (Server Type)
             </label>
             <Select2
               value={serverType}
               onValueChange={val => setServerType(val)}
               disabled={isSpinningUp}
-              className="w-full bg-white border border-slate-300 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 rounded-xl px-4 py-2.5 text-sm text-slate-900 font-medium"
+              className="w-full bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-zinc-100 font-medium"
             >
               {typesList.map((t) => (
                 <option key={t.name} value={t.name}>
@@ -139,7 +139,7 @@ export function ConfirmSpinUpModal({
               ))}
             </Select2>
             {isLoadingTypes && (
-              <p className="text-[10px] text-slate-400 animate-pulse">Loading live options from Hetzner...</p>
+              <p className="text-[10px] text-slate-400 dark:text-zinc-500 animate-pulse">Loading live options from Hetzner...</p>
             )}
             {selectedPrice && (
               <div className="flex items-center space-x-3 pt-1">
@@ -149,8 +149,8 @@ export function ConfirmSpinUpModal({
                   </svg>
                   <span className="text-xs font-bold text-emerald-700">€{selectedPrice.monthly}<span className="font-normal text-emerald-600">/mo</span></span>
                 </div>
-                <div className="flex items-center space-x-1.5 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5">
-                  <span className="text-xs font-bold text-slate-600">€{selectedPrice.hourly}<span className="font-normal text-slate-500">/hr</span></span>
+                <div className="flex items-center space-x-1.5 bg-slate-50 dark:bg-zinc-800/50 border border-slate-200 dark:border-zinc-700 rounded-lg px-3 py-1.5">
+                  <span className="text-xs font-bold text-slate-600 dark:text-zinc-300">€{selectedPrice.hourly}<span className="font-normal text-slate-500 dark:text-zinc-400">/hr</span></span>
                 </div>
               </div>
             )}
@@ -158,14 +158,14 @@ export function ConfirmSpinUpModal({
 
           {/* Snapshot Selector */}
           <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-700 uppercase tracking-widest block">
+            <label className="text-xs font-bold text-slate-700 dark:text-zinc-200 uppercase tracking-widest block">
               Snapshot to Restore
             </label>
             <Select2
               value={selectedSnapshotId}
               onValueChange={val => onSnapshotChange(val)}
               disabled={isSpinningUp}
-              className="w-full bg-white border border-slate-300 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 rounded-xl px-4 py-2.5 text-sm text-slate-900 font-medium"
+              className="w-full bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-zinc-100 font-medium"
             >
               <option value="latest">Latest Snapshot (Auto)</option>
               {vpsSnapshots.some((s) => {
@@ -222,7 +222,7 @@ export function ConfirmSpinUpModal({
             <button
               onClick={onClose}
               disabled={isSpinningUp}
-              className="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 font-bold rounded-xl transition-all"
+              className="flex-1 px-4 py-3 bg-slate-100 dark:bg-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-600 disabled:opacity-50 text-slate-700 dark:text-zinc-200 font-bold rounded-xl transition-all"
             >
               Cancel
             </button>
