@@ -7,6 +7,199 @@ import { HetznerApiService, HetznerImage } from '@/lib/hetzner-api';
 import { ContaboApiService } from '@/lib/contabo-api';
 import { DigitalOceanApiService } from '@/lib/digitalocean-api';
 
+const SERVER_PY_CONTENT = `import http.server, socketserver, json, subprocess, os, time
+class DebugHandler(http.server.BaseHTTPRequestHandler):
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS, POST')
+        self.send_header('Access-Control-Allow-Headers', '*')
+        self.end_headers()
+        
+    def do_POST(self):
+        try:
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            req = json.loads(post_data.decode('utf-8'))
+        except Exception as e:
+            self.send_response(400)
+            self.end_headers()
+            self.wfile.write(f"Bad Request: {str(e)}".encode())
+            return
+
+        origin = self.headers.get('Origin', 'https://devboxui.com')
+        if self.path == '/ddev-start':
+            project = req.get('project')
+            username = req.get('username')
+            if project and username:
+                try:
+                    import re
+                    if not re.match("^[a-zA-Z0-9_-]+$", project) or not re.match("^[a-zA-Z0-9_-]+$", username):
+                        self.send_response(400)
+                        self.end_headers()
+                        return
+                    cmd = f'su - {username} -c "cd /home/{username}/workspace/{project} && ddev start"'
+                    subprocess.Popen(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    self.send_response(200)
+                    self.send_header('Content-type', 'application/json')
+                    self.send_header('Access-Control-Allow-Origin', origin)
+                    self.send_header('Access-Control-Allow-Credentials', 'true')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"success": True}).encode())
+                except Exception as e:
+                    self.send_response(500)
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode())
+            else:
+                self.send_response(400)
+                self.end_headers()
+                self.wfile.write(b"Missing parameters")
+        else:
+            self.send_response(404)
+            self.end_headers()
+            
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        origin = self.headers.get('Origin', 'https://devboxui.com')
+        self.send_header('Access-Control-Allow-Origin', origin)
+        self.send_header('Access-Control-Allow-Credentials', 'true')
+        self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        self.end_headers()
+        
+        docker_status = subprocess.getoutput('docker ps --format "{{.Names}}: {{.Status}}" || echo "Docker not ready"')
+        setup_logs = subprocess.getoutput('tail -n 100 /var/log/cloud-init-output.log || echo "Logs not ready"')
+        
+        # Determine last activity time
+        workspace_dir = os.environ.get('WORKSPACE_DIR')
+        if not workspace_dir:
+            found_dir = None
+            if os.path.exists('/home'):
+                try:
+                    for u in os.listdir('/home'):
+                        p = os.path.join('/home', u, 'workspace')
+                        if os.path.exists(p) and os.path.isdir(p):
+                            found_dir = p
+                            break
+                except Exception:
+                    pass
+            workspace_dir = found_dir or '/home/root/workspace'
+            
+        projects_list = []
+        if os.path.exists(workspace_dir):
+            try:
+                projects_list = [d for d in os.listdir(workspace_dir) if os.path.isdir(os.path.join(workspace_dir, d))]
+            except Exception as e:
+                projects_list = [f"Error listing projects: {str(e)}"]
+
+        status_txt = "Initializing..."
+        if os.path.exists("/var/www/debug/status.txt"):
+            with open("/var/www/debug/status.txt", "r") as f:
+                status_txt = f.read().strip()
+
+        last_activity_file = "/var/www/debug/last_activity.txt"
+        now = int(time.time())
+        candidate_times = []
+
+        # 1. Active SSH connections via ss
+        try:
+            ssh_output = subprocess.getoutput("ss -t -n state established '( sport = :22 )'")
+            lines = [l for l in ssh_output.split('\\n') if l.strip() and 'Recv-Q' not in l]
+            if len(lines) > 0:
+                candidate_times.append(now)
+        except Exception:
+            pass
+
+        # 2. Terminal (TTY/PTY) activity via w — picks the most recent idle time per session
+        try:
+            w_output = subprocess.getoutput("w -h -s 2>/dev/null")
+            for line in w_output.split('\\n'):
+                parts = line.split()
+                if len(parts) >= 4:
+                    idle_str = parts[3]  # IDLE column
+                    secs = 0
+                    try:
+                        if idle_str == '0s' or idle_str == '0':
+                            secs = 0
+                        elif 'm' in idle_str and 'h' not in idle_str and 'd' not in idle_str:
+                            secs = int(idle_str.rstrip('m')) * 60
+                        elif 'h' in idle_str:
+                            h, m = (idle_str.split('h') + ['0'])[:2]
+                            secs = int(h) * 3600 + int(m.rstrip('m') or 0) * 60
+                        elif 'd' in idle_str:
+                            secs = int(idle_str.rstrip('d')) * 86400
+                        elif 's' in idle_str:
+                            secs = int(idle_str.rstrip('s'))
+                        else:
+                            secs = int(idle_str)
+                    except Exception:
+                        pass
+                    candidate_times.append(now - secs)
+        except Exception:
+            pass
+
+        # 3. Bash history file mtime and parsing timestamps across all home dirs + root
+        try:
+            paths = ['/root/.bash_history']
+            if os.path.exists('/home'):
+                for u in os.listdir('/home'):
+                    paths.append(os.path.join('/home', u, '.bash_history'))
+            for hist in paths:
+                if os.path.exists(hist):
+                    candidate_times.append(int(os.path.getmtime(hist)))
+                    try:
+                        with open(hist, 'r', errors='ignore') as f:
+                            for line in f:
+                                line = line.strip()
+                                if line.startswith('#') and line[1:].isdigit():
+                                    val = int(line[1:])
+                                    if val > 1577836800 and val < now + 86400:
+                                        candidate_times.append(val)
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
+        # Most recent activity wins
+        if candidate_times:
+            last_activity = max(candidate_times)
+            try:
+                with open(last_activity_file, 'w') as f:
+                    f.write(str(last_activity))
+            except Exception:
+                pass
+        elif os.path.exists(last_activity_file):
+            try:
+                with open(last_activity_file, 'r') as f:
+                    last_activity = int(f.read().strip())
+            except Exception:
+                last_activity = now
+        else:
+            last_activity = now
+            try:
+                with open(last_activity_file, 'w') as f:
+                    f.write(str(now))
+            except Exception:
+                pass
+
+        idle_seconds = now - last_activity
+
+        data = {
+            "docker": docker_status,
+            "setup": setup_logs,
+            "status": status_txt,
+            "projects": projects_list,
+            "workspace": workspace_dir,
+            "idle_seconds": idle_seconds,
+            "timestamp": subprocess.getoutput('date')
+        }
+        self.wfile.write(json.dumps(data).encode())
+
+PORT = 8000
+socketserver.TCPServer.allow_reuse_address = True
+with socketserver.TCPServer(("", PORT), DebugHandler) as httpd:
+    httpd.serve_forever()`;
+
 /**
  * Generates the full sequence of bash commands to bootstrap the server.
  */
@@ -133,188 +326,8 @@ echo "\${USER_SSH_KEY}" >> /root/.ssh/authorized_keys
 chmod 700 /root/.ssh
 chmod 600 /root/.ssh/authorized_keys
 ln -sf /var/log/cloud-init-output.log /var/www/debug/setup.log
-
 cat <<'PYEOF' > /var/www/debug/server.py
-import http.server, socketserver, json, subprocess, os, time
-class DebugHandler(http.server.BaseHTTPRequestHandler):
-    def do_OPTIONS(self):
-        self.send_response(200)
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS, POST')
-        self.send_header('Access-Control-Allow-Headers', '*')
-        self.end_headers()
-        
-    def do_POST(self):
-        try:
-            content_length = int(self.headers['Content-Length'])
-            post_data = self.rfile.read(content_length)
-            req = json.loads(post_data.decode('utf-8'))
-        except Exception as e:
-            self.send_response(400)
-            self.end_headers()
-            self.wfile.write(f"Bad Request: {str(e)}".encode())
-            return
-
-        origin = self.headers.get('Origin', 'https://devboxui.com')
-        if self.path == '/ddev-start':
-            project = req.get('project')
-            username = req.get('username')
-            if project and username:
-                try:
-                    import re
-                    if not re.match("^[a-zA-Z0-9_-]+$", project) or not re.match("^[a-zA-Z0-9_-]+$", username):
-                        self.send_response(400)
-                        self.end_headers()
-                        return
-                    cmd = f'su - {username} -c "cd /home/{username}/workspace/{project} && ddev start"'
-                    subprocess.Popen(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                    self.send_response(200)
-                    self.send_header('Content-type', 'application/json')
-                    self.send_header('Access-Control-Allow-Origin', origin)
-                    self.send_header('Access-Control-Allow-Credentials', 'true')
-                    self.end_headers()
-                    self.wfile.write(json.dumps({"success": True}).encode())
-                except Exception as e:
-                    self.send_response(500)
-                    self.end_headers()
-                    self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode())
-            else:
-                self.send_response(400)
-                self.end_headers()
-                self.wfile.write(b"Missing parameters")
-        else:
-            self.send_response(404)
-            self.end_headers()
-            
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header('Content-type', 'application/json')
-        origin = self.headers.get('Origin', 'https://devboxui.com')
-        self.send_header('Access-Control-Allow-Origin', origin)
-        self.send_header('Access-Control-Allow-Credentials', 'true')
-        self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
-        self.end_headers()
-        
-        docker_status = subprocess.getoutput('docker ps --format "{{.Names}}: {{.Status}}" || echo "Docker not ready"')
-        setup_logs = subprocess.getoutput('tail -n 100 /var/log/cloud-init-output.log || echo "Logs not ready"')
-        
-        # Live Project Discovery
-        workspace_dir = os.environ.get('WORKSPACE_DIR')
-        if not workspace_dir:
-            found_dir = None
-            if os.path.exists('/home'):
-                try:
-                    for u in os.listdir('/home'):
-                        p = os.path.join('/home', u, 'workspace')
-                        if os.path.exists(p) and os.path.isdir(p):
-                            found_dir = p
-                            break
-                except Exception:
-                    pass
-            workspace_dir = found_dir or '/home/root/workspace'
-            
-        projects_list = []
-        if os.path.exists(workspace_dir):
-            try:
-                projects_list = [d for d in os.listdir(workspace_dir) if os.path.isdir(os.path.join(workspace_dir, d))]
-            except Exception as e:
-                projects_list = [f"Error listing projects: {str(e)}"]
-
-        status_txt = "Initializing..."
-        if os.path.exists("/var/www/debug/status.txt"):
-            with open("/var/www/debug/status.txt", "r") as f:
-                status_txt = f.read().strip()
-
-        last_activity_file = "/var/www/debug/last_activity.txt"
-        now = int(time.time())
-        candidate_times = []
-
-        # 1. Active SSH connections via ss
-        try:
-            ssh_output = subprocess.getoutput("ss -t -n state established '( sport = :22 )'")
-            lines = [l for l in ssh_output.split('\n') if l.strip() and 'Recv-Q' not in l]
-            if len(lines) > 0:
-                candidate_times.append(now)
-        except Exception:
-            pass
-
-        # 2. Terminal (TTY/PTY) activity via w — picks the most recent idle time per session
-        try:
-            w_output = subprocess.getoutput("w -h -s 2>/dev/null")
-            for line in w_output.split('\n'):
-                parts = line.split()
-                if len(parts) >= 4:
-                    idle_str = parts[3]  # IDLE column
-                    secs = 0
-                    try:
-                        if idle_str == '0s' or idle_str == '0':
-                            secs = 0
-                        elif 'm' in idle_str and 'h' not in idle_str and 'd' not in idle_str:
-                            secs = int(idle_str.rstrip('m')) * 60
-                        elif 'h' in idle_str:
-                            h, m = (idle_str.split('h') + ['0'])[:2]
-                            secs = int(h) * 3600 + int(m.rstrip('m') or 0) * 60
-                        elif 'd' in idle_str:
-                            secs = int(idle_str.rstrip('d')) * 86400
-                        elif 's' in idle_str:
-                            secs = int(idle_str.rstrip('s'))
-                        else:
-                            secs = int(idle_str)
-                    except Exception:
-                        pass
-                    candidate_times.append(now - secs)
-        except Exception:
-            pass
-
-        # 3. Bash history file mtime across all home dirs
-        try:
-            if os.path.exists('/home'):
-                for u in os.listdir('/home'):
-                    hist = os.path.join('/home', u, '.bash_history')
-                    if os.path.exists(hist):
-                        candidate_times.append(int(os.path.getmtime(hist)))
-        except Exception:
-            pass
-
-        # Most recent activity wins
-        if candidate_times:
-            last_activity = max(candidate_times)
-            try:
-                with open(last_activity_file, 'w') as f:
-                    f.write(str(last_activity))
-            except Exception:
-                pass
-        elif os.path.exists(last_activity_file):
-            try:
-                with open(last_activity_file, 'r') as f:
-                    last_activity = int(f.read().strip())
-            except Exception:
-                last_activity = now
-        else:
-            last_activity = now
-            try:
-                with open(last_activity_file, 'w') as f:
-                    f.write(str(now))
-            except Exception:
-                pass
-
-        idle_seconds = now - last_activity
-
-        data = {
-            "docker": docker_status,
-            "setup": setup_logs,
-            "status": status_txt,
-            "projects": projects_list,
-            "workspace": workspace_dir,
-            "idle_seconds": idle_seconds,
-            "timestamp": subprocess.getoutput('date')
-        }
-        self.wfile.write(json.dumps(data).encode())
-
-PORT = 8000
-socketserver.TCPServer.allow_reuse_address = True
-with socketserver.TCPServer(("", PORT), DebugHandler) as httpd:
-    httpd.serve_forever()
+${SERVER_PY_CONTENT}
 PYEOF
 
 # Set up and start the debug status server as a systemd service
@@ -500,6 +513,11 @@ chown "$DEV_USER":"$DEV_USER" /home/"$DEV_USER"/.gitconfig
 # Grant NOPASSWD so the developer can use sudo without a password (since they use SSH keys)
 echo "$DEV_USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/90-devbox-user
 
+# Configure system-wide bash history timestamps and immediate writing
+echo 'export HISTTIMEFORMAT="%F %T "' >> /etc/bash.bashrc
+echo 'export HISTTIMEFORMAT="%F %T "' >> /etc/profile
+echo 'export PROMPT_COMMAND="history -a; $PROMPT_COMMAND"' >> /etc/bash.bashrc
+
 # Firewall
 ufw allow 22/tcp
 ufw --force enable
@@ -596,6 +614,20 @@ if [ -n "${tunnelToken}" ]; then
     systemctl enable cloudflared || true
     systemctl start cloudflared || true
 fi
+
+# Update server.py and restart devbox-debug service to run the latest status exporter
+mkdir -p /var/www/debug
+cat <<'PYEOF' > /var/www/debug/server.py
+${SERVER_PY_CONTENT}
+PYEOF
+systemctl daemon-reload || true
+systemctl enable devbox-debug.service || true
+systemctl restart devbox-debug.service || true
+
+# Configure system-wide bash history timestamps and immediate writing
+echo 'export HISTTIMEFORMAT="%F %T "' >> /etc/bash.bashrc
+echo 'export HISTTIMEFORMAT="%F %T "' >> /etc/profile
+echo 'export PROMPT_COMMAND="history -a; $PROMPT_COMMAND"' >> /etc/bash.bashrc
 
 # Report Ready status back
 if command -v curl >/dev/null 2>&1; then
