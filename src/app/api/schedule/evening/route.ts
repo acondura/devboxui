@@ -67,6 +67,13 @@ export async function GET(req: NextRequest) {
       const cfApi = new CloudflareApiService(env);
       const serviceToken = await cfApi.getOrCreateServiceToken(kv);
 
+      const logsHostname = logsUrl.replace('https://', '');
+      try {
+        await cfApi.authorizeServiceToken(logsHostname, serviceToken.id);
+      } catch (err) {
+        console.warn(`[Cron Inactivity] Failed to authorize service token for ${logsHostname}:`, err);
+      }
+
       const resp = await fetch(logsUrl, {
         headers: {
           'CF-Access-Client-Id': serviceToken.id,
@@ -102,6 +109,13 @@ export async function GET(req: NextRequest) {
 
         const cfApi = new CloudflareApiService(env);
         const serviceToken = await cfApi.getOrCreateServiceToken(kv);
+
+        const logsHostname = logsUrl.replace('https://', '');
+        try {
+          await cfApi.authorizeServiceToken(logsHostname, serviceToken.id);
+        } catch (err) {
+          console.warn(`[Cron Inactivity] Failed to authorize service token for ${logsHostname}:`, err);
+        }
 
         const resp = await fetch(logsUrl, {
           headers: {

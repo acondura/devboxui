@@ -1152,6 +1152,8 @@ export async function getServers() {
               const logsHostname = `${cleanServerName}-logs.devboxui.com`;
               await cfApi.setupHostname(logsHostname, tunnelResult.id, "http://localhost:8000");
               await cfApi.setupAccess(logsHostname, userEmail);
+              const serviceToken = await cfApi.getOrCreateServiceToken(kv);
+              await cfApi.authorizeServiceToken(logsHostname, serviceToken.id);
             } catch (err) {
               console.error(`Failed to recreate Cloudflare tunnel for auto-healed server ${sId}:`, err);
             }
@@ -2076,6 +2078,7 @@ export async function provisionManualServer(
     const callbackUrl = `${requestHost}/api/provisioning/status`;
     const serviceToken = await cfApi.getOrCreateServiceToken(kv);
     await cfApi.authorizeServiceToken(requestHost.replace('https://', ''), serviceToken.id);
+    await cfApi.authorizeServiceToken(logsHostname, serviceToken.id);
 
     // 2. Generate Bootstrap Script
     const bootstrapScript = getBootstrapScript(

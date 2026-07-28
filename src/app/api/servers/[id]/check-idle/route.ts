@@ -9,6 +9,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const body = await req.json().catch(() => ({})) as { thresholdMinutes?: number };
     const threshold = body.thresholdMinutes ?? 30;
     const result = await checkIdleAndSnapshot(id, threshold);
+    if (result.error) {
+      return NextResponse.json({ error: result.error }, { status: 500 });
+    }
     return NextResponse.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

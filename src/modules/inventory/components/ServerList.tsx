@@ -666,8 +666,12 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
                   setIdleCheckResult(null);
                   try {
                     const data = await checkIdleAndSnapshot(server.id, 30);
-                    setIdleCheckResult(data);
-                    if (data.triggered && onRefresh) setTimeout(onRefresh, 3000);
+                    if (data.error) {
+                      setErrorMessage(data.error);
+                    } else {
+                      setIdleCheckResult(data);
+                      if (data.triggered && onRefresh) setTimeout(onRefresh, 3000);
+                    }
                   } catch (e) {
                     setErrorMessage(e instanceof Error ? e.message : 'Idle check failed');
                   } finally {
