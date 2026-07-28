@@ -1119,22 +1119,55 @@ export async function checkIdleAndSnapshot(
 
     const cfApi = new CloudflareApiService(env);
     const serviceToken = await cfApi.getOrCreateServiceToken(kv);
-
-    // Ensure service token is authorized for the logs subdomain Access Application on-the-fly
     const logsHostname = logsUrl.replace('https://', '');
+
+    let resp: Response | null = null;
     try {
-      await cfApi.authorizeServiceToken(logsHostname, serviceToken.id);
-    } catch (err) {
-      console.warn(`Failed to authorize service token for ${logsHostname}:`, err);
+      resp = await fetch(logsUrl, {
+        headers: {
+          'CF-Access-Client-Id': serviceToken.id,
+          'CF-Access-Client-Secret': serviceToken.client_secret,
+        },
+        cache: 'no-store',
+      });
+    } catch (e) {
+      console.warn(`Initial fetch of ${logsUrl} failed:`, e);
     }
 
-    const resp = await fetch(logsUrl, {
-      headers: {
-        'CF-Access-Client-Id': serviceToken.id,
-        'CF-Access-Client-Secret': serviceToken.client_secret,
-      },
-      cache: 'no-store',
-    });
+    // If initial fetch failed, or returned an error status that could be resolved by re-configuring Access / DNS
+    if (!resp || resp.status === 530 || resp.status === 401 || resp.status === 403 || resp.status === 404) {
+      console.log(`[checkIdleAndSnapshot] Fetch failed or returned status ${resp?.status || 'network_error'}. Running self-healing...`);
+      
+      // 1. Authorize the service token
+      try {
+        await cfApi.authorizeServiceToken(logsHostname, serviceToken.id);
+      } catch (err) {
+        console.warn(`[checkIdleAndSnapshot] Self-heal authorize failed:`, err);
+      }
+
+      // 2. Ensure DNS and Tunnel Ingress configuration is correct
+      if (server.tunnelId) {
+        try {
+          await cfApi.setupHostname(logsHostname, server.tunnelId, "http://localhost:8000");
+        } catch (err) {
+          console.warn(`[checkIdleAndSnapshot] Self-heal setupHostname failed:`, err);
+        }
+      }
+
+      // 3. Retry fetch
+      try {
+        resp = await fetch(logsUrl, {
+          headers: {
+            'CF-Access-Client-Id': serviceToken.id,
+            'CF-Access-Client-Secret': serviceToken.client_secret,
+          },
+          cache: 'no-store',
+        });
+      } catch (e) {
+        console.error(`Retry fetch of ${logsUrl} failed:`, e);
+        return { idle: false, idleMinutes: 0, triggered: false, message: `Could not reach server debug endpoint (Network Error)`, error: `Could not reach server debug endpoint (Network Error)` };
+      }
+    }
 
     if (!resp.ok) {
       return { idle: false, idleMinutes: 0, triggered: false, message: `Could not reach server debug endpoint (HTTP ${resp.status})`, error: `Could not reach server debug endpoint (HTTP ${resp.status})` };
