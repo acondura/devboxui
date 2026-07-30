@@ -842,7 +842,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
             }}
             serverId={server.id}
             serverName={server.hostname || server.ip}
-            defaultServerType={server.serverType || 'cpx21'}
+            defaultServerType={server.serverType || server.scheduleConfig?.serverType || 'cpx21'}
             vpsSnapshots={vpsSnapshots}
             selectedSnapshotId={selectedSnapshotId}
             onSnapshotChange={handleSnapshotChange}
@@ -1303,7 +1303,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
           }}
           serverId={server.id}
           serverName={server.hostname || server.ip}
-          defaultServerType={server.serverType || 'cpx21'}
+          defaultServerType={server.serverType || server.scheduleConfig?.serverType || 'cpx21'}
           vpsSnapshots={vpsSnapshots}
           selectedSnapshotId={selectedSnapshotId}
           onSnapshotChange={handleSnapshotChange}

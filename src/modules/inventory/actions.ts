@@ -2503,7 +2503,8 @@ export async function getServerSnapshots(serverId: string) {
       hetznerApi.getServerTypes()
     ]);
 
-    const targetType = serverTypes.find(t => t.name === serverConfig?.serverType);
+    const serverType = serverConfig.serverType || serverConfig.scheduleConfig?.serverType || 'cpx21';
+    const targetType = serverTypes.find(t => t.name === serverType);
     const targetDisk = targetType?.disk || 20;
     const targetArch = targetType?.architecture || 'x86';
 
