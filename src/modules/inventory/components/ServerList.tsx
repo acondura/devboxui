@@ -350,9 +350,14 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
       setMetrics(null);
       return;
     }
-    fetchMetrics();
-    const interval = setInterval(fetchMetrics, 5000);
-    return () => clearInterval(interval);
+    // Stagger initial fetch across a 20s window so many servers don't all fire at once.
+    const jitter = Math.random() * 20000;
+    let interval: ReturnType<typeof setInterval>;
+    const initial = setTimeout(() => {
+      fetchMetrics();
+      interval = setInterval(fetchMetrics, 60000);
+    }, jitter);
+    return () => { clearTimeout(initial); clearInterval(interval); };
   }, [server.id, server.status]);
 
 
@@ -987,9 +992,13 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
       setMetrics(null);
       return;
     }
-    fetchMetrics();
-    const interval = setInterval(fetchMetrics, 5000);
-    return () => clearInterval(interval);
+    const jitter = Math.random() * 20000;
+    let interval: ReturnType<typeof setInterval>;
+    const initial = setTimeout(() => {
+      fetchMetrics();
+      interval = setInterval(fetchMetrics, 60000);
+    }, jitter);
+    return () => { clearTimeout(initial); clearInterval(interval); };
   }, [server.id, server.status]);
 
   const handleRestart = async () => {
