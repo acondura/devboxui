@@ -35,6 +35,9 @@ interface CollaboratorInfo {
 }
 
 interface ServerConfig {
+  id: string;
+  ip: string;
+  orgId?: string;
   userEmail: string;
   allowedPeers?: string[];
   collaborators?: CollaboratorInfo[];
@@ -87,9 +90,19 @@ export default {
 
     const server: ServerConfig = JSON.parse(serverRaw);
 
-    // Allow known peer IPs without requiring a session
-    if (clientIp && server.allowedPeers?.includes(clientIp)) {
-      return fetch(req);
+    // Allow known peer IPs without requiring a session.
+    // allowedPeers stores server IDs — resolve each to its IP via KV.
+    if (clientIp && server.allowedPeers?.length) {
+      const orgId = server.orgId || lookup.orgId;
+      for (const peerId of server.allowedPeers) {
+        const peerRaw = await env.KV.get(`servers:${orgId}:${peerId}`);
+        if (peerRaw) {
+          const peer: ServerConfig = JSON.parse(peerRaw);
+          if (peer.ip && peer.ip !== 'pending' && peer.ip === clientIp) {
+            return fetch(req);
+          }
+        }
+      }
     }
 
     // ── 2. Session verification ──────────────────────────────────────────────
