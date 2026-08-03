@@ -207,35 +207,45 @@ export class CloudflareApiService {
   }
 
   async syncPeerWafBypassRules(peerIps: string[]) {
-    const NOTE = "devbox-peer-allow";
-    interface IpRule { id: string; notes: string; mode: string; configuration: { value: string } }
+    if (!peerIps.length) return;
 
-    // Zone-level IP Access Rules — token has proven zone perms (manages DNS on same zone).
-    // Whitelist mode bypasses all Cloudflare security including Bot Fight Mode / BIC.
-    const base = `/zones/${this.env.CLOUDFLARE_ZONE_ID}/firewall/access_rules/rules`;
+    const cleanIps = [...new Set(peerIps.map(ip => ip.replace('/32', '')))];
+    const ipConditions = cleanIps.map(ip => `(ip.src eq ${ip})`).join(' or ');
+    const expression = `(${ipConditions})`;
 
-    const existing = await this.request<IpRule[]>(`${base}?mode=whitelist&per_page=100`);
-    const ours = existing.filter(r => r.notes === NOTE);
+    const phase = `/zones/${this.env.CLOUDFLARE_ZONE_ID}/rulesets/phases/http_request_firewall_custom/entrypoint`;
 
-    const existingByIp = new Map(ours.map(r => [r.configuration.value, r.id]));
-    const desiredIps = new Set(peerIps.map(ip => ip.replace('/32', '')));
-
-    for (const ip of desiredIps) {
-      if (!existingByIp.has(ip)) {
-        console.log(`[WAF] Adding zone IP allowlist rule for ${ip}`);
-        await this.request(base, {
-          method: "POST",
-          body: JSON.stringify({ mode: "whitelist", configuration: { target: "ip", value: ip }, notes: NOTE }),
-        });
-      }
+    // Fetch existing entrypoint ruleset (may not exist yet)
+    interface WafRule { id: string; description?: string; expression: string; action: string }
+    interface Ruleset { id: string; rules?: WafRule[] }
+    let existing: Ruleset = { id: '', rules: [] };
+    try {
+      existing = await this.request<Ruleset>(phase);
+    } catch {
+      // Ruleset doesn't exist yet — PUT will create it
     }
 
-    for (const [ip, ruleId] of existingByIp) {
-      if (!desiredIps.has(ip)) {
-        console.log(`[WAF] Removing zone IP allowlist rule for ${ip}`);
-        await this.request(`${base}/${ruleId}`, { method: "DELETE" });
-      }
-    }
+    const otherRules = (existing.rules || []).filter(r => r.description !== 'devbox-peer-bypass');
+
+    const updatedRules = [
+      {
+        action: "skip",
+        action_parameters: {
+          phases: ["http_ratelimit", "http_request_firewall_managed", "http_request_sbfm"],
+          products: ["bic", "hot", "rateLimit", "securityLevel", "uaBlock", "waf", "zoneLockdown"]
+        },
+        expression,
+        description: "devbox-peer-bypass",
+        enabled: true,
+      },
+      ...otherRules,
+    ];
+
+    console.log(`[WAF] Syncing peer bypass rule for IPs: ${cleanIps.join(', ')}`);
+    await this.request(phase, {
+      method: "PUT",
+      body: JSON.stringify({ rules: updatedRules }),
+    });
   }
 
   async removeHostname(hostname: string, tunnelId: string) {
