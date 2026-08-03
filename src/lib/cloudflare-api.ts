@@ -161,9 +161,11 @@ export class CloudflareApiService {
 
   async syncPeerBypassPolicy(hostname: string, peerIps: string[]) {
     const apps = await this.request<{ id: string; domain: string }[]>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps`);
-    const app = apps.find(a => a.domain === hostname);
+    const rootDomain = hostname.split('.').slice(-2).join('.');
+    const wildcardDomain = `*.${rootDomain}`;
+    const app = apps.find(a => a.domain === hostname || a.domain === rootDomain || a.domain === wildcardDomain);
     if (!app) {
-      console.warn(`No Access App found for ${hostname} during peer sync.`);
+      console.warn(`No Access App found for ${hostname}, ${rootDomain}, or ${wildcardDomain} during peer sync.`);
       return;
     }
 
