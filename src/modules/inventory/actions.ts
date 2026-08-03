@@ -557,6 +557,7 @@ export async function getHetznerBootstrapScript(
   serviceTokenSecret?: string,
   tunnelToken?: string
 ) {
+  const cleanTunnelToken = (tunnelToken && tunnelToken !== 'undefined') ? tunnelToken : '';
   return `#!/bin/bash
 set -e
 
@@ -596,7 +597,7 @@ EOF
 chown "$DEV_USER":"$DEV_USER" /home/"$DEV_USER"/.gitconfig
 
 # Install and configure Cloudflare Tunnel if token is present
-if [ -n "${tunnelToken}" ]; then
+if [ -n "${cleanTunnelToken}" ]; then
     echo "Installing Cloudflare Tunnel..."
     ARCH=$(dpkg --print-architecture)
     if [ "$ARCH" = "arm64" ]; then
@@ -610,7 +611,7 @@ if [ -n "${tunnelToken}" ]; then
         rm cloudflared.deb
     fi
     cloudflared service uninstall > /dev/null 2>&1 || true
-    cloudflared service install "${tunnelToken}" > /dev/null 2>&1 || true
+    cloudflared service install "${cleanTunnelToken}" > /dev/null 2>&1 || true
     systemctl enable cloudflared || true
     systemctl start cloudflared || true
 fi
