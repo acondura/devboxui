@@ -2091,9 +2091,6 @@ export async function getLiveProjects(serverId: string) {
   }
 }
 
-/**
- * Fetches real-time CPU, RAM, and Disk metrics from a server via the secure logs tunnel.
- */
 export async function getServerMetrics(serverId: string) {
   const env = await getCloudflareEnv();
   const kv = env.KV;
@@ -2107,40 +2104,68 @@ export async function getServerMetrics(serverId: string) {
     return { success: false, error: "Server is powered off" };
   }
 
-  const logsUrl = config.tunnelUrl?.split('?')[0].replace('-code.', '-logs.') || `https://logs-${serverId.slice(0, 8)}.devboxui.com`;
+  // Determine logs URLs to try (primary and fallback)
+  const urlsToTry: string[] = [];
+  
+  if (config.tunnelUrl) {
+    const baseUrl = config.tunnelUrl.split('?')[0];
+    let primaryUrl = baseUrl;
+    if (baseUrl.includes('-code.')) {
+      primaryUrl = baseUrl.replace('-code.', '-logs.');
+    } else if (baseUrl.includes('-web.')) {
+      primaryUrl = baseUrl.replace('-web.', '-logs.');
+    }
+    if (primaryUrl.includes('-logs.')) {
+      urlsToTry.push(primaryUrl);
+    }
+  }
+  
+  const fallbackUrl = `https://logs-${serverId.slice(0, 8)}.devboxui.com`;
+  if (!urlsToTry.includes(fallbackUrl)) {
+    urlsToTry.push(fallbackUrl);
+  }
 
   try {
     const cfApi = new CloudflareApiService(env);
     const serviceToken = await cfApi.getOrCreateServiceToken(kv);
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s timeout to fail fast if blocked
+    let lastError = "";
 
-    const resp = await fetch(logsUrl, {
-      headers: {
-        'CF-Access-Client-Id': serviceToken.id,
-        'CF-Access-Client-Secret': serviceToken.client_secret,
-      },
-      next: { revalidate: 0 },
-      cache: 'no-store',
-      signal: controller.signal
-    });
-    
-    clearTimeout(timeoutId);
+    for (const logsUrl of urlsToTry) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4000); // 4s timeout per try
 
-    if (resp.ok) {
-      const data = await resp.json() as { cpu_pct?: number; ram_pct?: number; disk_pct?: number };
-      return { 
-        success: true, 
-        metrics: {
-          cpu_pct: data.cpu_pct !== undefined ? data.cpu_pct : 0,
-          ram_pct: data.ram_pct !== undefined ? data.ram_pct : 0,
-          disk_pct: data.disk_pct !== undefined ? data.disk_pct : 0
+        const resp = await fetch(logsUrl, {
+          headers: {
+            'CF-Access-Client-Id': serviceToken.id,
+            'CF-Access-Client-Secret': serviceToken.client_secret,
+          },
+          next: { revalidate: 0 },
+          cache: 'no-store',
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+
+        if (resp.ok) {
+          const data = await resp.json() as { cpu_pct?: number; ram_pct?: number; disk_pct?: number };
+          return { 
+            success: true, 
+            metrics: {
+              cpu_pct: data.cpu_pct !== undefined ? data.cpu_pct : 0,
+              ram_pct: data.ram_pct !== undefined ? data.ram_pct : 0,
+              disk_pct: data.disk_pct !== undefined ? data.disk_pct : 0
+            }
+          };
         }
-      };
+        lastError = `Fetch to ${logsUrl} failed: ${resp.status} ${resp.statusText}`;
+      } catch (error) {
+        lastError = `Fetch to ${logsUrl} failed: ${String(error)}`;
+      }
     }
     
-    return { success: false, error: `Fetch failed: ${resp.status} ${resp.statusText}` };
+    return { success: false, error: lastError };
   } catch (error) {
     console.error("Failed to fetch server metrics:", error);
     return { success: false, error: String(error) };
