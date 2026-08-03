@@ -95,7 +95,7 @@ body {
 
 .select2-container--default .select2-selection--single .select2-selection__arrow {
   height: 100% !important;
-  right: 0.75rem !important;
+  right: 1.125rem !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;

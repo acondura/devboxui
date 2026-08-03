@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { getHetznerOptions } from '../actions';
+import { getHetznerOptions, getDigitalOceanOptions } from '../actions';
 import { Select2 } from './Select2';
 
 interface ConfirmSpinUpModalProps {
@@ -14,10 +14,12 @@ interface ConfirmSpinUpModalProps {
   vpsSnapshots: Array<{ id: number | string; name?: string | null; description?: string; labels?: Record<string, string>; disk_size?: number; image_size?: number | null }>;
   selectedSnapshotId: string;
   onSnapshotChange: (id: string) => void;
+  provider?: 'hetzner' | 'contabo' | 'digitalocean' | 'linode' | 'vultr' | 'custom';
+  location?: string;
 }
 
 interface HetznerServerType {
-  id?: number;
+  id?: number | string;
   name: string;
   cores: number;
   memory: number;
@@ -36,6 +38,8 @@ export function ConfirmSpinUpModal({
   vpsSnapshots,
   selectedSnapshotId,
   onSnapshotChange,
+  provider = 'hetzner',
+  location,
 }: ConfirmSpinUpModalProps) {
   const [isSpinningUp, setIsSpinningUp] = useState(false);
   const [serverType, setServerType] = useState(defaultServerType);
@@ -46,16 +50,24 @@ export function ConfirmSpinUpModal({
     if (isOpen) {
       setServerType(defaultServerType);
       setIsLoadingTypes(true);
-      getHetznerOptions()
+      const fetchOptions = provider === 'digitalocean' ? getDigitalOceanOptions : getHetznerOptions;
+      fetchOptions()
         .then((data) => {
           if (data && data.serverTypes) {
-            setServerTypes(data.serverTypes as HetznerServerType[]);
+            let types = data.serverTypes as HetznerServerType[];
+            if (location) {
+              types = types.filter(t => t.prices?.some(p => p.location === location));
+            }
+            setServerTypes(types);
+            if (types.length > 0 && !types.some(t => t.name === defaultServerType)) {
+              setServerType(types[0].name);
+            }
           }
         })
         .catch((err) => console.warn('Failed to load server types:', err))
         .finally(() => setIsLoadingTypes(false));
     }
-  }, [isOpen, defaultServerType]);
+  }, [isOpen, defaultServerType, provider, location]);
 
   if (!isOpen) return null;
 
@@ -80,10 +92,11 @@ export function ConfirmSpinUpModal({
   ];
 
   const typesList = serverTypes.length > 0 ? serverTypes : fallbackTypes;
+  const priceSymbol = provider === 'digitalocean' ? '$' : '€';
 
   const getPrice = (t: HetznerServerType) => {
     if (!t.prices?.length) return null;
-    const p = t.prices[0];
+    const p = (location ? t.prices.find(p => p.location === location) : null) || t.prices[0];
     return {
       monthly: parseFloat(p.price_monthly.gross).toFixed(2),
       hourly: parseFloat(p.price_hourly.gross).toFixed(4),
@@ -96,7 +109,7 @@ export function ConfirmSpinUpModal({
   const formatSpecs = (t: HetznerServerType) => {
     const price = getPrice(t);
     const base = `${t.name.toUpperCase()} (${t.cores} vCPU / ${t.memory}GB RAM / ${t.disk}GB Disk / ${t.architecture})`;
-    return price ? `${base} — €${price.monthly}/mo` : base;
+    return price ? `${base} — ${priceSymbol}${price.monthly}/mo` : base;
   };
 
   return (
@@ -147,10 +160,10 @@ export function ConfirmSpinUpModal({
                   <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <span className="text-xs font-bold text-emerald-700">€{selectedPrice.monthly}<span className="font-normal text-emerald-600">/mo</span></span>
+                  <span className="text-xs font-bold text-emerald-700">{priceSymbol}{selectedPrice.monthly}<span className="font-normal text-emerald-600">/mo</span></span>
                 </div>
                 <div className="flex items-center space-x-1.5 bg-slate-50 dark:bg-zinc-800/50 border border-slate-200 dark:border-zinc-700 rounded-lg px-3 py-1.5">
-                  <span className="text-xs font-bold text-slate-600 dark:text-zinc-300">€{selectedPrice.hourly}<span className="font-normal text-slate-500 dark:text-zinc-400">/hr</span></span>
+                  <span className="text-xs font-bold text-slate-600 dark:text-zinc-300">{priceSymbol}{selectedPrice.hourly}<span className="font-normal text-slate-500 dark:text-zinc-400">/hr</span></span>
                 </div>
               </div>
             )}

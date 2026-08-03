@@ -284,6 +284,26 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
     }
   }, [serverType, image, options.images, options.snapshots, filteredImages, currentArch, isOpen, isLoadingOptions]);
 
+  // Ensure selected location is supported by the selected server type
+  useEffect(() => {
+    if (!isOpen || isLoadingOptions) return;
+    if (provider !== 'hetzner' && provider !== 'digitalocean') return;
+
+    if (currentType) {
+      const isLocValid = currentType.prices.some(p => p.location === location);
+      if (!isLocValid) {
+        // Find first location that is supported
+        const supportedLoc = options.locations.find(l => 
+          currentType.prices.some(p => p.location === l.name)
+        );
+        if (supportedLoc) {
+          setLocation(supportedLoc.name);
+          localStorage.setItem(`devbox_last_${provider}_location`, supportedLoc.name);
+        }
+      }
+    }
+  }, [serverType, provider, currentType, options.locations, location, isOpen, isLoadingOptions]);
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -596,10 +616,11 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
                               const ipv4 = provider === 'digitalocean' ? 0 : getIpv4MonthlyPrice(options.pricing, location);
                               const priceSymbol = provider === 'digitalocean' ? '$' : '€';
                               const priceLabel = p ? `${priceSymbol}${(parseFloat(p.price_monthly.gross) + ipv4).toFixed(2)}` : '';
-                              const specs = `${t.cores} vCPU / ${t.memory}GB RAM / ${t.disk}GB / ${t.architecture.toUpperCase()}`;
+                              const specs = `${t.cores} vCPU / ${t.memory}GB RAM / ${t.disk}GB`;
+                              const archLabel = t.architecture === 'arm' ? 'ARM64' : 'x86_64';
                               return (
                                 <option key={t.id} value={t.name} className="text-slate-900 font-normal bg-white">
-                                  {t.name.toUpperCase()} — ({priceLabel}) — {specs}
+                                  [{archLabel}] {t.name.toUpperCase()} — ({priceLabel}) — {specs}
                                 </option>
                               );
                             })}
@@ -621,9 +642,12 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
                     disabled={isLoadingOptions}
                     className="w-full bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-600 rounded-lg px-3 py-2.5 text-slate-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all disabled:opacity-50 text-sm font-medium"
                   >
-                    {options.locations.map(l => (
-                      <option key={l.name} value={l.name}>{l.city} ({l.name.toUpperCase()})</option>
-                    ))}
+                    {options.locations
+                      .filter(l => !currentType || currentType.prices.some(p => p.location === l.name))
+                      .map(l => (
+                        <option key={l.name} value={l.name}>{l.city} ({l.name.toUpperCase()})</option>
+                      ))
+                    }
                     {isLoadingOptions && <option>Loading locations...</option>}
                   </Select2>
                 </div>

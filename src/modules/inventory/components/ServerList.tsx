@@ -162,7 +162,7 @@ export function ServerList(props: ServerListProps) {
           <select
             value={filterStatus}
             onChange={e => setFilterStatus(e.target.value)}
-            className={`py-1.5 px-2.5 text-xs border rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-400 transition-all cursor-pointer ${filterStatus ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 font-bold' : 'bg-slate-50 dark:bg-zinc-800 border-slate-200 dark:border-zinc-600 text-slate-600 dark:text-zinc-300'}`}
+            className={`py-1.5 pl-2.5 pr-8 text-xs border rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-400 transition-all cursor-pointer ${filterStatus ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 font-bold' : 'bg-slate-50 dark:bg-zinc-800 border-slate-200 dark:border-zinc-600 text-slate-600 dark:text-zinc-300'}`}
           >
             <option value="">All Statuses</option>
             {uniqueStatuses.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
@@ -171,7 +171,7 @@ export function ServerList(props: ServerListProps) {
           <select
             value={filterProvider}
             onChange={e => setFilterProvider(e.target.value)}
-            className={`py-1.5 px-2.5 text-xs border rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-400 transition-all cursor-pointer ${filterProvider ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 font-bold' : 'bg-slate-50 dark:bg-zinc-800 border-slate-200 dark:border-zinc-600 text-slate-600 dark:text-zinc-300'}`}
+            className={`py-1.5 pl-2.5 pr-8 text-xs border rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-400 transition-all cursor-pointer ${filterProvider ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 font-bold' : 'bg-slate-50 dark:bg-zinc-800 border-slate-200 dark:border-zinc-600 text-slate-600 dark:text-zinc-300'}`}
           >
             <option value="">All Providers</option>
             {uniqueProviders.map(p => <option key={p} value={p}>{p}</option>)}
@@ -180,7 +180,7 @@ export function ServerList(props: ServerListProps) {
           <select
             value={filterOs}
             onChange={e => setFilterOs(e.target.value)}
-            className={`py-1.5 px-2.5 text-xs border rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-400 transition-all cursor-pointer ${filterOs ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 font-bold' : 'bg-slate-50 dark:bg-zinc-800 border-slate-200 dark:border-zinc-600 text-slate-600 dark:text-zinc-300'}`}
+            className={`py-1.5 pl-2.5 pr-8 text-xs border rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-400 transition-all cursor-pointer ${filterOs ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 font-bold' : 'bg-slate-50 dark:bg-zinc-800 border-slate-200 dark:border-zinc-600 text-slate-600 dark:text-zinc-300'}`}
           >
             <option value="">All OS</option>
             {uniqueOs.map(o => <option key={o} value={o}>{o}</option>)}
@@ -204,7 +204,7 @@ export function ServerList(props: ServerListProps) {
           </span>
           <div className="flex items-center space-x-2 w-full sm:w-auto justify-between sm:justify-end">
             <span className="text-xs text-slate-500 dark:text-zinc-500 font-bold uppercase tracking-wider">Sort by:</span>
-            <div className="flex items-center space-x-1.5">
+            <div className="flex items-center space-x-3">
               <Select2
                 value={sortField}
                 onValueChange={(val) => handleSort(val as SortField)}
@@ -846,6 +846,8 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
             vpsSnapshots={vpsSnapshots}
             selectedSnapshotId={selectedSnapshotId}
             onSnapshotChange={handleSnapshotChange}
+            provider={server.provider}
+            location={server.scheduleConfig?.location || (server.provider === 'digitalocean' ? 'nyc1' : 'nbg1')}
           />
         )}
         <InviteCollabModal
@@ -1307,6 +1309,8 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
           vpsSnapshots={vpsSnapshots}
           selectedSnapshotId={selectedSnapshotId}
           onSnapshotChange={handleSnapshotChange}
+          provider={server.provider}
+          location={server.scheduleConfig?.location || (server.provider === 'digitalocean' ? 'nyc1' : 'nbg1')}
         />
       )}
       <InviteCollabModal

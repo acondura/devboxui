@@ -104,6 +104,7 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
   const [isTriggeringEvening, setIsTriggeringEvening] = useState(false);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
   const [isConfirmSnapshotOpen, setIsConfirmSnapshotOpen] = useState(false);
+  const currentType = serverTypes.find(t => t.name.toLowerCase() === (config.serverType || 'cpx21').toLowerCase());
 
   useEffect(() => {
     if (!isOpen) return;
@@ -139,6 +140,23 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
       .catch(console.error)
       .finally(() => setIsLoading(false));
   }, [isOpen, serverId]);
+
+  // Ensure selected location is supported by the selected server type
+  useEffect(() => {
+    if (isLoading || serverTypes.length === 0 || locations.length === 0) return;
+
+    if (currentType) {
+      const isLocValid = currentType.prices.some(p => p.location === config.location);
+      if (!isLocValid) {
+        const supportedLoc = locations.find(l => 
+          currentType.prices.some(p => p.location === l.name)
+        );
+        if (supportedLoc) {
+          setConfig(c => ({ ...c, location: supportedLoc.name }));
+        }
+      }
+    }
+  }, [config.serverType, currentType, locations, config.location, isLoading, serverTypes]);
 
   const showToast = (type: 'success' | 'error', msg: string) => {
     setToast({ type, msg });
@@ -195,7 +213,7 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
     ? serverStatus.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
     : 'Ready';
 
-  const currentType = serverTypes.find(t => t.name.toLowerCase() === (config.serverType || 'cpx21').toLowerCase());
+
   const selectedPrice = currentType?.prices.find((p) => p.location === (config.location || 'nbg1')) || currentType?.prices[0];
   
   const ipv4Pricing = getIpv4Pricing(pricing, config.location || 'nbg1');
@@ -423,6 +441,7 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                           const ipv4 = getIpv4Pricing(pricing, config.location || 'nbg1');
                           const monthlyGross = priceObj ? `${(parseFloat(priceObj.price_monthly?.gross || '0') + ipv4.monthly).toFixed(2)}€` : '';
                           const isDisabled = t.disk < originalDiskSize;
+                          const archLabel = t.architecture === 'arm' ? 'ARM64' : 'x86_64';
                           return (
                             <option 
                               key={t.id} 
@@ -430,7 +449,7 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                               disabled={isDisabled}
                               className="bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-xs disabled:text-slate-400 dark:disabled:text-zinc-500"
                             >
-                              {t.name.toUpperCase()} ({t.cores}C / {t.memory}G / {t.disk}GB SSD) {monthlyGross ? `— ${monthlyGross}/mo` : ''} {isDisabled ? '(Disk too small)' : ''}
+                              [{archLabel}] {t.name.toUpperCase()} ({t.cores}C / {t.memory}G / {t.disk}GB SSD) {monthlyGross ? `— ${monthlyGross}/mo` : ''} {isDisabled ? '(Disk too small)' : ''}
                             </option>
                           );
                         })}
@@ -453,11 +472,14 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                         disabled={!config.enabled}
                         className="w-full bg-white dark:bg-zinc-800 border border-slate-300 dark:border-zinc-600 text-slate-900 dark:text-zinc-100 text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-45 font-mono font-medium"
                       >
-                        {locations.map(loc => (
-                          <option key={loc.id} value={loc.name} className="bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-xs">
-                            {loc.name.toUpperCase()} ({loc.city})
-                          </option>
-                        ))}
+                        {locations
+                          .filter(l => !currentType || currentType.prices.some(p => p.location === l.name))
+                          .map(loc => (
+                            <option key={loc.id} value={loc.name} className="bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 text-xs">
+                              {loc.name.toUpperCase()} ({loc.city})
+                            </option>
+                          ))
+                        }
                         {locations.length === 0 && (
                           <option value={config.location || 'nbg1'}>
                             {(config.location || 'nbg1').toUpperCase()} (Loading...)
