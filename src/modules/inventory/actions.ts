@@ -2120,7 +2120,7 @@ export async function getServerMetrics(serverId: string) {
     }
   }
   
-  const fallbackUrl = `https://logs-${serverId.slice(0, 8)}.devboxui.com`;
+  const fallbackUrl = `https://${serverId}-logs.devboxui.com`;
   if (!urlsToTry.includes(fallbackUrl)) {
     urlsToTry.push(fallbackUrl);
   }

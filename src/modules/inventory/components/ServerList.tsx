@@ -351,7 +351,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
       return;
     }
     fetchMetrics();
-    const interval = setInterval(fetchMetrics, 15000);
+    const interval = setInterval(fetchMetrics, 5000);
     return () => clearInterval(interval);
   }, [server.id, server.status]);
 
@@ -522,17 +522,14 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
               {metrics ? (
                 <>
                   <span className="flex items-center space-x-1" title="CPU Usage">
-                    <span>💻</span>
                     <span className="font-semibold text-slate-600 dark:text-zinc-355">CPU:</span>
                     <span className={`font-mono font-bold ${metrics.cpu_pct > 80 ? 'text-red-500' : metrics.cpu_pct > 50 ? 'text-amber-500' : 'text-emerald-500'}`}>{metrics.cpu_pct}%</span>
                   </span>
                   <span className="flex items-center space-x-1" title="Memory Usage">
-                    <span>🧠</span>
                     <span className="font-semibold text-slate-600 dark:text-zinc-355">RAM:</span>
                     <span className={`font-mono font-bold ${metrics.ram_pct > 80 ? 'text-red-500' : metrics.ram_pct > 50 ? 'text-amber-500' : 'text-emerald-500'}`}>{metrics.ram_pct}%</span>
                   </span>
                   <span className="flex items-center space-x-1" title="Disk Usage">
-                    <span>💾</span>
                     <span className="font-semibold text-slate-600 dark:text-zinc-355">Disk:</span>
                     <span className={`font-mono font-bold ${metrics.disk_pct > 85 ? 'text-red-500' : 'text-emerald-500'}`}>{metrics.disk_pct}%</span>
                   </span>
@@ -991,7 +988,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
       return;
     }
     fetchMetrics();
-    const interval = setInterval(fetchMetrics, 15000);
+    const interval = setInterval(fetchMetrics, 5000);
     return () => clearInterval(interval);
   }, [server.id, server.status]);
 
@@ -1225,17 +1222,14 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
                   {metrics ? (
                     <>
                       <span className="flex items-center space-x-1" title="CPU Usage">
-                        <span>💻</span>
                         <span className="font-semibold text-slate-600 dark:text-zinc-355">CPU:</span>
                         <span className={`font-mono font-bold ${metrics.cpu_pct > 80 ? 'text-red-500' : metrics.cpu_pct > 50 ? 'text-amber-500' : 'text-emerald-500'}`}>{metrics.cpu_pct}%</span>
                       </span>
                       <span className="flex items-center space-x-1" title="Memory Usage">
-                        <span>🧠</span>
                         <span className="font-semibold text-slate-600 dark:text-zinc-355">RAM:</span>
                         <span className={`font-mono font-bold ${metrics.ram_pct > 80 ? 'text-red-500' : metrics.ram_pct > 50 ? 'text-amber-500' : 'text-emerald-500'}`}>{metrics.ram_pct}%</span>
                       </span>
                       <span className="flex items-center space-x-1" title="Disk Usage">
-                        <span>💾</span>
                         <span className="font-semibold text-slate-600 dark:text-zinc-355">Disk:</span>
                         <span className={`font-mono font-bold ${metrics.disk_pct > 85 ? 'text-red-500' : 'text-emerald-500'}`}>{metrics.disk_pct}%</span>
                       </span>
