@@ -90,15 +90,27 @@ export default {
 
     const server: ServerConfig = JSON.parse(serverRaw);
 
-    // Allow known peer IPs without requiring a session.
-    // allowedPeers stores server IDs — resolve each to its IP via KV.
-    if (clientIp && server.allowedPeers?.length) {
+    // Allow requests from any known VPS IP that is listed as a peer of this server,
+    // OR that lists this server as one of its own peers (bidirectional trust).
+    // allowedPeers stores server IDs — resolve to IPs via KV.
+    if (clientIp) {
       const orgId = server.orgId || lookup.orgId;
-      for (const peerId of server.allowedPeers) {
-        const peerRaw = await env.KV.get(`servers:${orgId}:${peerId}`);
-        if (peerRaw) {
-          const peer: ServerConfig = JSON.parse(peerRaw);
-          if (peer.ip && peer.ip !== 'pending' && peer.ip === clientIp) {
+
+      // Build set of trusted peer IPs: peers this server trusts
+      const trustedPeerIds = new Set(server.allowedPeers || []);
+
+      // Also trust any server whose allowedPeers includes this server (reverse direction)
+      // We check this by looking up the incoming IP via a vps_ip_index KV key written by the app
+      const ipIndexRaw = await env.KV.get(`vps_ip:${clientIp}`);
+      if (ipIndexRaw) {
+        const ipIndex: { orgId: string; serverId: string } = JSON.parse(ipIndexRaw);
+        const incomingServerRaw = await env.KV.get(`servers:${ipIndex.orgId}:${ipIndex.serverId}`);
+        if (incomingServerRaw) {
+          const incomingServer: ServerConfig = JSON.parse(incomingServerRaw);
+          // Trust if: incoming server has this server in its allowedPeers, OR this server has incoming in its peers
+          const incomingTrustsUs = (incomingServer.allowedPeers || []).includes(lookup.serverId);
+          const weTrustIncoming = trustedPeerIds.has(ipIndex.serverId);
+          if (incomingTrustsUs || weTrustIncoming) {
             return fetch(req);
           }
         }

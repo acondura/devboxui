@@ -1012,7 +1012,6 @@ export async function provisionServer(
     const ip = hetznerResult.server.public_net.ipv4.ip;
     config.ip = ip;
     config.logs = [...(config.logs || []), `Hetzner server created at ${ip}`];
-
     // Create Direct SSH DNS record in Cloudflare pointing to the public IP
     try {
       console.log(`Setting up Direct SSH DNS A record for ${directHostname} to ${ip}...`);
@@ -1032,6 +1031,9 @@ export async function provisionServer(
     const kvKey = `servers:${targetOrgId}:${serverId}`;
     await kv.put(kvKey, JSON.stringify(config));
     await kv.put(`server_lookup:${serverId}`, JSON.stringify({ orgId: targetOrgId, serverKey: kvKey }));
+    if (config.ip && config.ip !== 'pending') {
+      await kv.put(`vps_ip:${config.ip}`, JSON.stringify({ orgId: targetOrgId, serverId }));
+    }
 
     return { success: true, server: config };
 
@@ -2450,6 +2452,7 @@ export async function provisionContaboServer(
 
     const kvKey = `servers:${userEmail}:${serverId}`;
     await kv.put(kvKey, JSON.stringify(config));
+    await kv.put(`vps_ip:${instance.ipAddress}`, JSON.stringify({ orgId: userEmail, serverId }));
 
     try {
       console.log(`[Provisioning Contabo] Server IP resolved as ${instance.ipAddress}. Triggering dependent policy sync...`);
@@ -2985,6 +2988,7 @@ export async function provisionDigitalOceanServer(
       if (publicIp) {
         config.ip = publicIp;
         config.logs = [...(config.logs || []), `Droplet active at IP: ${publicIp}`];
+        await kv.put(`vps_ip:${publicIp}`, JSON.stringify({ orgId: config.orgId || userEmail, serverId }));
         
         const directHostname = config.hostname?.replace('-code.', '.');
         if (directHostname) {
