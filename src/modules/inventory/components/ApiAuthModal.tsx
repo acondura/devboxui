@@ -23,8 +23,8 @@ export function ApiAuthModal({ isOpen, onClose, server, allServers, onSave }: Ap
 
   if (!isOpen) return null;
 
-  // Filter out the current server from the list of possible peers
-  const peerCandidates = allServers.filter(s => s.id !== server.id);
+  // Only show peers that have a real IP — pending/offline servers can't be allowlisted
+  const peerCandidates = allServers.filter(s => s.id !== server.id && s.ip && s.ip !== 'pending');
 
   const handleTogglePeer = (peerId: string) => {
     setSelectedPeers(prev =>
