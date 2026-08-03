@@ -29,18 +29,34 @@ export class CloudflareApiService {
    * Creates a new Cloudflare Tunnel for a specific VPS.
    */
   async createTunnel(name: string) {
-    // 1. Create Tunnel
-    const tunnel = await this.request<{ id: string }>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/cfd_tunnel`, {
-      method: "POST",
-      body: JSON.stringify({ name, config_src: "cloudflare" }),
-    });
+    try {
+      // 1. Create Tunnel
+      const tunnel = await this.request<{ id: string }>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/cfd_tunnel`, {
+        method: "POST",
+        body: JSON.stringify({ name, config_src: "cloudflare" }),
+      });
 
-    // 2. Create Tunnel Token
-    const token = await this.request<string>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/cfd_tunnel/${tunnel.id}/token`, {
-      method: "GET",
-    });
+      // 2. Create Tunnel Token
+      const token = await this.request<string>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/cfd_tunnel/${tunnel.id}/token`, {
+        method: "GET",
+      });
 
-    return { id: tunnel.id, token };
+      return { id: tunnel.id, token };
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      if (errMsg.includes("1013") || errMsg.includes("already have a tunnel with this name")) {
+        console.log(`Tunnel "${name}" already exists. Retrieving existing tunnel...`);
+        const existingTunnel = await this.getTunnelByName(name);
+        if (existingTunnel) {
+          console.log(`Found existing tunnel ID: ${existingTunnel.id}. Fetching token...`);
+          const token = await this.request<string>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/cfd_tunnel/${existingTunnel.id}/token`, {
+            method: "GET",
+          });
+          return { id: existingTunnel.id, token };
+        }
+      }
+      throw err;
+    }
   }
 
   /**
