@@ -349,7 +349,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
       return;
     }
     fetchMetrics();
-    const interval = setInterval(fetchMetrics, 30000);
+    const interval = setInterval(fetchMetrics, 15000);
     return () => clearInterval(interval);
   }, [server.id, server.status]);
 
@@ -1029,7 +1029,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
       return;
     }
     fetchMetrics();
-    const interval = setInterval(fetchMetrics, 30000);
+    const interval = setInterval(fetchMetrics, 15000);
     return () => clearInterval(interval);
   }, [server.id, server.status]);
 
