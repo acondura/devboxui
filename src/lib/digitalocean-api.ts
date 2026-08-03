@@ -191,6 +191,17 @@ export class DigitalOceanApiService {
   }
 
   /**
+   * Reboots a droplet gracefully.
+   */
+  async rebootDroplet(dropletId: number): Promise<DigitalOceanAction> {
+    const data = await this.request<{ action: DigitalOceanAction }>(`/droplets/${dropletId}/actions`, {
+      method: 'POST',
+      body: JSON.stringify({ type: 'reboot' })
+    });
+    return data.action;
+  }
+
+  /**
    * Creates a snapshot from a powered-off droplet
    */
   async createSnapshot(dropletId: number, name: string): Promise<{ action: DigitalOceanAction }> {

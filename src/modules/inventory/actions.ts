@@ -182,6 +182,54 @@ class DebugHandler(http.server.BaseHTTPRequestHandler):
             except Exception:
                 pass
 
+        # Compute CPU, RAM, and Disk metrics
+        cpu_pct = 0.0
+        try:
+            def get_cpu_times():
+                with open('/proc/stat', 'r') as f_stat:
+                    for line_stat in f_stat:
+                        if line_stat.startswith('cpu '):
+                            parts_stat = [float(x) for x in line_stat.split()[1:]]
+                            idle_stat = parts_stat[3] + parts_stat[4]
+                            total_stat = sum(parts_stat)
+                            return idle_stat, total_stat
+                return 0, 0
+            
+            idle1, total1 = get_cpu_times()
+            time.sleep(0.1)
+            idle2, total2 = get_cpu_times()
+            
+            idle_diff = idle2 - idle1
+            total_diff = total2 - total1
+            if total_diff > 0:
+                cpu_pct = round((1.0 - (idle_diff / total_diff)) * 100, 1)
+        except Exception:
+            pass
+
+        ram_pct = 0.0
+        try:
+            with open('/proc/meminfo', 'r') as f_mem:
+                meminfo = {}
+                for line_mem in f_mem:
+                    parts_mem = line_mem.split()
+                    meminfo[parts_mem[0].replace(':', '')] = int(parts_mem[1])
+            total_mem = meminfo['MemTotal']
+            free_mem = meminfo['MemFree'] + meminfo.get('Buffers', 0) + meminfo.get('Cached', 0) + meminfo.get('SReclaimable', 0)
+            used_mem = total_mem - free_mem
+            ram_pct = round((used_mem / total_mem) * 100, 1)
+        except Exception:
+            pass
+
+        disk_pct = 0.0
+        try:
+            statvfs = os.statvfs('/')
+            total_disk = statvfs.f_blocks * statvfs.f_frsize
+            free_disk = statvfs.f_bfree * statvfs.f_frsize
+            used_disk = total_disk - free_disk
+            disk_pct = round((used_disk / total_disk) * 100, 1)
+        except Exception:
+            pass
+
         idle_seconds = now - last_activity
 
         data = {
@@ -191,7 +239,10 @@ class DebugHandler(http.server.BaseHTTPRequestHandler):
             "projects": projects_list,
             "workspace": workspace_dir,
             "idle_seconds": idle_seconds,
-            "timestamp": subprocess.getoutput('date')
+            "timestamp": subprocess.getoutput('date'),
+            "cpu_pct": cpu_pct,
+            "ram_pct": ram_pct,
+            "disk_pct": disk_pct
         }
         self.wfile.write(json.dumps(data).encode())
 
@@ -2037,6 +2088,115 @@ export async function getLiveProjects(serverId: string) {
   } catch (error) {
     console.error("Failed to fetch live projects:", error);
     return { success: false, error: String(error) };
+  }
+}
+
+/**
+ * Fetches real-time CPU, RAM, and Disk metrics from a server via the secure logs tunnel.
+ */
+export async function getServerMetrics(serverId: string) {
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+  if (!kv) throw new Error("KV database missing.");
+
+  const servers = await getServers();
+  const config = servers.find(s => s.id === serverId);
+  if (!config) throw new Error("Server not found.");
+
+  if (config.status === 'off') {
+    return { success: false, error: "Server is powered off" };
+  }
+
+  const logsUrl = config.tunnelUrl?.split('?')[0].replace('-code.', '-logs.') || `https://logs-${serverId.slice(0, 8)}.devboxui.com`;
+
+  try {
+    const cfApi = new CloudflareApiService(env);
+    const serviceToken = await cfApi.getOrCreateServiceToken(kv);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s timeout to fail fast if blocked
+
+    const resp = await fetch(logsUrl, {
+      headers: {
+        'CF-Access-Client-Id': serviceToken.id,
+        'CF-Access-Client-Secret': serviceToken.client_secret,
+      },
+      next: { revalidate: 0 },
+      cache: 'no-store',
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+
+    if (resp.ok) {
+      const data = await resp.json() as { cpu_pct?: number; ram_pct?: number; disk_pct?: number };
+      return { 
+        success: true, 
+        metrics: {
+          cpu_pct: data.cpu_pct !== undefined ? data.cpu_pct : 0,
+          ram_pct: data.ram_pct !== undefined ? data.ram_pct : 0,
+          disk_pct: data.disk_pct !== undefined ? data.disk_pct : 0
+        }
+      };
+    }
+    
+    return { success: false, error: `Fetch failed: ${resp.status} ${resp.statusText}` };
+  } catch (error) {
+    console.error("Failed to fetch server metrics:", error);
+    return { success: false, error: String(error) };
+  }
+}
+
+/**
+ * Triggers a reboot for the target server on the cloud provider.
+ */
+export async function rebootServerAction(serverId: string) {
+  const userEmail = await getIdentity();
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+  if (!kv) throw new Error("KV database missing.");
+
+  const serverRes = await getServerKeyAndConfig(kv, userEmail, serverId);
+  if (!serverRes) throw new Error("Server config not found.");
+  const { key: serverKey, config } = serverRes;
+
+  let hetznerToken = env.HETZNER_API_TOKEN;
+  let digitalOceanToken = env.CLOUDFLARE_API_TOKEN; // fallback
+  if (config.orgId) {
+    const orgSettings = await getOrgSettings(config.orgId);
+    if (orgSettings?.hetznerToken) hetznerToken = orgSettings.hetznerToken;
+    if (orgSettings?.digitalOceanToken) digitalOceanToken = orgSettings.digitalOceanToken;
+  }
+  if (userEmail) {
+    const settings = await getUserSettings(userEmail);
+    if (!hetznerToken) hetznerToken = settings?.hetznerToken;
+    if (settings?.digitalOceanToken) digitalOceanToken = settings.digitalOceanToken;
+  }
+
+  const isDO = config.provider === 'digitalocean';
+  config.logs = [...(config.logs || []), `[${new Date().toISOString()}] Initiated graceful server reboot`];
+  config.updatedAt = new Date().toISOString();
+
+  try {
+    if (isDO) {
+      if (!digitalOceanToken) throw new Error("DigitalOcean token missing.");
+      const doApi = new DigitalOceanApiService(env, digitalOceanToken);
+      if (!config.digitalOceanDropletId) throw new Error("DigitalOcean droplet ID missing.");
+      await doApi.rebootDroplet(config.digitalOceanDropletId);
+    } else {
+      if (!hetznerToken) throw new Error("Hetzner token missing.");
+      const hetznerApi = new HetznerApiService(env, hetznerToken);
+      if (!config.hetznerServerId) throw new Error("Hetzner server ID missing.");
+      await hetznerApi.rebootServer(config.hetznerServerId);
+    }
+    
+    await kv.put(serverKey, JSON.stringify(config));
+    return { success: true, message: "Reboot initiated successfully." };
+  } catch (err) {
+    console.error("Reboot action failed:", err);
+    config.logs = [...(config.logs || []), `[${new Date().toISOString()}] Reboot failed: ${err instanceof Error ? err.message : String(err)}`];
+    await kv.put(serverKey, JSON.stringify(config));
+    return { success: false, message: err instanceof Error ? err.message : String(err) };
   }
 }
 

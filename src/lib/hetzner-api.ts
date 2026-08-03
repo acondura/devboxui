@@ -400,6 +400,22 @@ export class HetznerApiService {
   }
 
   /**
+   * Reboots a server gracefully.
+   */
+  async rebootServer(serverId: number): Promise<HetznerAction> {
+    const response = await fetch(`${this.baseUrl}/servers/${serverId}/actions/reboot`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${this.token}` }
+    });
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Hetzner Reboot Error: ${response.status} - ${error}`);
+    }
+    const data = await response.json() as { action: HetznerAction };
+    return data.action;
+  }
+
+  /**
    * Gets the live status of a single server.
    */
   async getServerStatus(serverId: number): Promise<string> {

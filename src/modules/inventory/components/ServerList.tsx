@@ -7,7 +7,7 @@ import { ReinstallModal } from './ReinstallModal';
 import { ScheduleModal } from './ScheduleModal';
 import { ApiAuthModal } from './ApiAuthModal';
 import { ConfirmSnapshotModal } from './ConfirmSnapshotModal';
-import { getServerLogs, getLiveProjects, getServerSnapshots } from '../actions';
+import { getServerLogs, getLiveProjects, getServerSnapshots, getServerMetrics, rebootServerAction } from '../actions';
 import { ConfirmSpinUpModal } from './ConfirmSpinUpModal';
 import { ScheduleConfig } from '../types';
 import { triggerMorningSpinup, triggerEveningSnapshot, checkIdleAndSnapshot } from '../schedule-actions';
@@ -321,6 +321,56 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
   const [selectedSnapshotId, setSelectedSnapshotId] = useState<string>('latest');
   const [isSpinUpOpen, setIsSpinUpOpen] = useState(false);
 
+  const [metrics, setMetrics] = useState<{ cpu_pct: number; ram_pct: number; disk_pct: number } | null>(null);
+  const [isFetchingMetrics, setIsFetchingMetrics] = useState(false);
+  const [isRestarting, setIsRestarting] = useState(false);
+
+  const fetchMetrics = async () => {
+    if (server.status !== 'ready') return;
+    setIsFetchingMetrics(true);
+    try {
+      const result = await getServerMetrics(server.id);
+      if (result.success && result.metrics) {
+        setMetrics(result.metrics);
+      } else {
+        setMetrics(null);
+      }
+    } catch (e) {
+      console.warn("Failed to fetch metrics", e);
+      setMetrics(null);
+    } finally {
+      setIsFetchingMetrics(false);
+    }
+  };
+
+  useEffect(() => {
+    if (server.status !== 'ready') {
+      setMetrics(null);
+      return;
+    }
+    fetchMetrics();
+    const interval = setInterval(fetchMetrics, 30000);
+    return () => clearInterval(interval);
+  }, [server.id, server.status]);
+
+  const handleRestart = async () => {
+    if (!confirm("Are you sure you want to restart this VPS?")) return;
+    setIsRestarting(true);
+    try {
+      const result = await rebootServerAction(server.id);
+      if (result.success) {
+        setErrorMessage(null);
+        if (onRefresh) await onRefresh();
+      } else {
+        setErrorMessage(result.message || "Failed to initiate reboot.");
+      }
+    } catch (e) {
+      setErrorMessage(e instanceof Error ? e.message : "Failed to initiate reboot.");
+    } finally {
+      setIsRestarting(false);
+    }
+  };
+
   const isAutomated = !!(server.providerName === 'Hetzner' || server.providerName === 'Contabo' || server.provider === 'hetzner' || server.provider === 'contabo' || server.provider === 'digitalocean');
   const isHetzner = !!(server.providerName === 'Hetzner' || server.provider === 'hetzner');
   const isDigitalOcean = server.provider === 'digitalocean';
@@ -455,6 +505,39 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
             </span>
           )}
 
+          {server.status === 'ready' && (
+            <div className="flex items-center space-x-3 mt-1 text-[11px] text-slate-500 dark:text-zinc-400">
+              {metrics ? (
+                <>
+                  <span className="flex items-center space-x-1" title="CPU Usage">
+                    <span>💻</span>
+                    <span className="font-semibold text-slate-600 dark:text-zinc-355">CPU:</span>
+                    <span className={`font-mono font-bold ${metrics.cpu_pct > 80 ? 'text-red-500' : metrics.cpu_pct > 50 ? 'text-amber-500' : 'text-emerald-500'}`}>{metrics.cpu_pct}%</span>
+                  </span>
+                  <span className="flex items-center space-x-1" title="Memory Usage">
+                    <span>🧠</span>
+                    <span className="font-semibold text-slate-600 dark:text-zinc-355">RAM:</span>
+                    <span className={`font-mono font-bold ${metrics.ram_pct > 80 ? 'text-red-500' : metrics.ram_pct > 50 ? 'text-amber-500' : 'text-emerald-500'}`}>{metrics.ram_pct}%</span>
+                  </span>
+                  <span className="flex items-center space-x-1" title="Disk Usage">
+                    <span>💾</span>
+                    <span className="font-semibold text-slate-600 dark:text-zinc-355">Disk:</span>
+                    <span className={`font-mono font-bold ${metrics.disk_pct > 85 ? 'text-red-500' : 'text-emerald-500'}`}>{metrics.disk_pct}%</span>
+                  </span>
+                </>
+              ) : isFetchingMetrics ? (
+                <span className="text-[10px] text-indigo-400 animate-pulse flex items-center space-x-1">
+                  <div className="w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin mr-1" />
+                  Updating metrics...
+                </span>
+              ) : (
+                <span className="text-[10px] text-red-500 dark:text-red-400 flex items-center space-x-1 font-bold animate-pulse">
+                  ⚠️ Health Check Unreachable (Blocked/Off)
+                </span>
+              )}
+            </div>
+          )}
+
           {server.status !== 'off' && (
             <div className="flex items-center space-x-2 text-sm font-mono text-slate-400 dark:text-zinc-500">
               <span>{server.ip}</span>
@@ -569,6 +652,29 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
               Reinstall
             </span>
           </div>
+
+          {/* Restart Button */}
+          {(isHetzner || isDigitalOcean) && server.status !== 'off' && (
+            <div className="flex flex-col items-center">
+              <button
+                onClick={handleRestart}
+                disabled={isRestarting || isDeleting || isReinstalling}
+                className="p-2 text-slate-500 hover:text-amber-500 hover:bg-slate-800 rounded-lg transition-all disabled:opacity-50"
+                title="Restart VPS"
+              >
+                {isRestarting ? (
+                  <div className="h-4 w-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                )}
+              </button>
+              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mt-0.5 select-none text-center">
+                Restart
+              </span>
+            </div>
+          )}
 
           {/* API Auth Button */}
           {isAutomated && (
@@ -895,6 +1001,56 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
   const [selectedSnapshotId, setSelectedSnapshotId] = useState<string>('latest');
   const [isSpinUpOpen, setIsSpinUpOpen] = useState(false);
 
+  const [metrics, setMetrics] = useState<{ cpu_pct: number; ram_pct: number; disk_pct: number } | null>(null);
+  const [isFetchingMetrics, setIsFetchingMetrics] = useState(false);
+  const [isRestarting, setIsRestarting] = useState(false);
+
+  const fetchMetrics = async () => {
+    if (server.status !== 'ready') return;
+    setIsFetchingMetrics(true);
+    try {
+      const result = await getServerMetrics(server.id);
+      if (result.success && result.metrics) {
+        setMetrics(result.metrics);
+      } else {
+        setMetrics(null);
+      }
+    } catch (e) {
+      console.warn("Failed to fetch metrics", e);
+      setMetrics(null);
+    } finally {
+      setIsFetchingMetrics(false);
+    }
+  };
+
+  useEffect(() => {
+    if (server.status !== 'ready') {
+      setMetrics(null);
+      return;
+    }
+    fetchMetrics();
+    const interval = setInterval(fetchMetrics, 30000);
+    return () => clearInterval(interval);
+  }, [server.id, server.status]);
+
+  const handleRestart = async () => {
+    if (!confirm("Are you sure you want to restart this VPS?")) return;
+    setIsRestarting(true);
+    try {
+      const result = await rebootServerAction(server.id);
+      if (result.success) {
+        setErrorMessage(null);
+        if (onRefresh) await onRefresh();
+      } else {
+        setErrorMessage(result.message || "Failed to initiate reboot.");
+      }
+    } catch (e) {
+      setErrorMessage(e instanceof Error ? e.message : "Failed to initiate reboot.");
+    } finally {
+      setIsRestarting(false);
+    }
+  };
+
   const isAutomated = !!(server.hetznerServerId || server.contaboInstanceId || server.providerName === 'Hetzner' || server.providerName === 'Contabo' || server.provider === 'hetzner' || server.provider === 'contabo' || server.provider === 'digitalocean');
   const isHetzner = !!(server.providerName === 'Hetzner' || server.provider === 'hetzner');
   const isDigitalOcean = server.provider === 'digitalocean';
@@ -1102,6 +1258,39 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
                 </span>
               )}
 
+              {server.status === 'ready' && (
+                <div className="flex items-center space-x-3 mt-1 text-[11px] text-slate-500 dark:text-zinc-400">
+                  {metrics ? (
+                    <>
+                      <span className="flex items-center space-x-1" title="CPU Usage">
+                        <span>💻</span>
+                        <span className="font-semibold text-slate-600 dark:text-zinc-355">CPU:</span>
+                        <span className={`font-mono font-bold ${metrics.cpu_pct > 80 ? 'text-red-500' : metrics.cpu_pct > 50 ? 'text-amber-500' : 'text-emerald-500'}`}>{metrics.cpu_pct}%</span>
+                      </span>
+                      <span className="flex items-center space-x-1" title="Memory Usage">
+                        <span>🧠</span>
+                        <span className="font-semibold text-slate-600 dark:text-zinc-355">RAM:</span>
+                        <span className={`font-mono font-bold ${metrics.ram_pct > 80 ? 'text-red-500' : metrics.ram_pct > 50 ? 'text-amber-500' : 'text-emerald-500'}`}>{metrics.ram_pct}%</span>
+                      </span>
+                      <span className="flex items-center space-x-1" title="Disk Usage">
+                        <span>💾</span>
+                        <span className="font-semibold text-slate-600 dark:text-zinc-355">Disk:</span>
+                        <span className={`font-mono font-bold ${metrics.disk_pct > 85 ? 'text-red-500' : 'text-emerald-500'}`}>{metrics.disk_pct}%</span>
+                      </span>
+                    </>
+                  ) : isFetchingMetrics ? (
+                    <span className="text-[10px] text-indigo-400 animate-pulse flex items-center space-x-1">
+                      <div className="w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin mr-1" />
+                      Updating metrics...
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-red-500 dark:text-red-400 flex items-center space-x-1 font-bold animate-pulse">
+                      ⚠️ Health Check Unreachable (Blocked/Off)
+                    </span>
+                  )}
+                </div>
+              )}
+
               {server.status !== 'off' && (
                 <div className="flex items-center space-x-2 text-xs font-mono text-slate-400 dark:text-zinc-500">
                   <span>{server.ip}</span>
@@ -1222,6 +1411,18 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
                 <div className="h-3.5 w-3.5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin mr-1.5" />
               )}
               {isSnapshotting ? 'Saving...' : 'Shutdown'}
+            </button>
+          )}
+          {(isHetzner || isDigitalOcean) && server.status !== 'off' && (
+            <button
+              onClick={handleRestart}
+              disabled={isRestarting || isDeleting || isReinstalling}
+              className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 dark:bg-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-600 text-slate-700 dark:text-zinc-200 rounded-lg disabled:opacity-50 flex items-center justify-center"
+            >
+              {isRestarting && (
+                <div className="h-3.5 w-3.5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mr-1.5" />
+              )}
+              {isRestarting ? 'Restarting...' : 'Restart'}
             </button>
           )}
         </div>
