@@ -1232,11 +1232,11 @@ export async function getServers() {
               tunnelToken = tunnelResult.token;
 
               await cfApi.setupHostname(hostname, tunnelResult.id);
-              await cfApi.setupAccess(hostname, userEmail);
 
               const logsHostname = `${cleanServerName}-logs.devboxui.com`;
               await cfApi.setupHostname(logsHostname, tunnelResult.id, "http://localhost:8000");
-              await cfApi.setupAccess(logsHostname, userEmail);
+              await kv.put(`hostname_lookup:${hostname}`, JSON.stringify({ orgId: targetOrgId, serverId: sId }));
+              await kv.put(`hostname_lookup:${logsHostname}`, JSON.stringify({ orgId: targetOrgId, serverId: sId }));
               const serviceToken = await cfApi.getOrCreateServiceToken(kv);
               await cfApi.authorizeServiceToken(logsHostname, serviceToken.id);
             } catch (err) {
@@ -1433,11 +1433,10 @@ export async function addProject(serverId: string, projectName: string, port: nu
   const cleanName = projectName.toLowerCase().replace(/[^a-z0-9.]/g, '-');
   const projectDomain = `${cleanName}-web.devboxui.com`; // Simplified domain generation
 
-  // 3. Update Cloudflare Tunnel, DNS & Access
+  // 3. Update Cloudflare Tunnel & DNS
   const service = `http://127.0.0.1:${port}`;
   await cfApi.setupHostname(projectDomain, config.tunnelId, service);
-  console.log(`Setting up Zero Trust Access for project ${projectDomain} -> ${service}...`);
-  await cfApi.setupAccess(projectDomain, userEmail);
+  await kv.put(`hostname_lookup:${projectDomain}`, JSON.stringify({ orgId: config.orgId || userEmail, serverId }));
 
   // 4. Update Server State
   const newProject = {
@@ -1533,14 +1532,13 @@ export async function updateDomain(serverId: string, oldDomain: string, newSubdo
     console.log(`Domain changed from ${oldDomain} to ${newDomain}. Cleaning up old and creating new...`);
     try {
       await cfApi.removeHostname(oldDomain, config.tunnelId);
-      await cfApi.deleteAccess(oldDomain);
     } catch (e) {
       console.error("Cleanup of old domain failed (non-critical):", e);
     }
   }
-  
+
   await cfApi.setupHostname(newDomain, config.tunnelId, service);
-  await cfApi.setupAccess(newDomain, userEmail);
+  await kv.put(`hostname_lookup:${newDomain}`, JSON.stringify({ orgId: config.orgId || userEmail, serverId }));
 
   // 4. Update Server State
   config.projects = (config.projects || []).map(p => {
@@ -1682,7 +1680,8 @@ export async function deleteServer(serverId: string) {
 async function setupCloudflareTunnel(config: ServerConfig, userEmail: string) {
   const env = await getCloudflareEnv();
   const cfApi = new CloudflareApiService(env);
-  
+  const kv = env.KV;
+
   const hostname = (config.tunnelUrl || '').replace('https://', '');
   if (!hostname) throw new Error("Tunnel URL missing in config.");
 
@@ -1690,10 +1689,10 @@ async function setupCloudflareTunnel(config: ServerConfig, userEmail: string) {
   const tunnelResult = await cfApi.createTunnel(`tunnel-${config.id}`);
   config.tunnelId = tunnelResult.id;
   config.tunnelToken = tunnelResult.token;
-  
+
   await cfApi.setupHostname(hostname, tunnelResult.id);
-  await cfApi.setupAccess(hostname, userEmail);
-  
+  if (kv) await kv.put(`hostname_lookup:${hostname}`, JSON.stringify({ orgId: config.orgId || userEmail, serverId: config.id }));
+
   return tunnelResult;
 }
 
@@ -2284,11 +2283,9 @@ export async function provisionManualServer(
     config.hostname = hostname;
 
     await cfApi.setupHostname(hostname, tunnelResult.id);
-    await cfApi.setupAccess(hostname, userEmail);
 
     const logsHostname = `${name}-logs.devboxui.com`;
     await cfApi.setupHostname(logsHostname, tunnelResult.id, "http://localhost:8000");
-    await cfApi.setupAccess(logsHostname, userEmail);
 
     const provisioningToken = crypto.randomUUID();
     config.provisioningToken = provisioningToken;
@@ -2403,7 +2400,7 @@ export async function provisionContaboServer(
     const tunnelResult = await cfApi.createTunnel(`tunnel-${serverId}`);
     config.tunnelId = tunnelResult.id;
     await cfApi.setupHostname(hostname, tunnelResult.id);
-    await cfApi.setupAccess(hostname, userEmail);
+    await kv.put(`hostname_lookup:${hostname}`, JSON.stringify({ orgId: userEmail, serverId }));
 
     const provisioningToken = crypto.randomUUID();
     config.provisioningToken = provisioningToken;
