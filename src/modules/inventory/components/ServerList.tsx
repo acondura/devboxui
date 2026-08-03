@@ -301,6 +301,8 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
   const [idleCheckResult, setIdleCheckResult] = useState<{ idle: boolean; idleMinutes: number; triggered: boolean; message: string } | null>(null);
   const [scheduleConfig, setScheduleConfig] = useState<ScheduleConfig | null>(server.scheduleConfig || null);
   const [isFetchingLogs, setIsFetchingLogs] = useState(false);
+  const [isActionsOpen, setIsActionsOpen] = useState(false);
+  const actionsDropdownRef = useRef<HTMLDivElement>(null);
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
   const [deletingDomain, setDeletingDomain] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -353,6 +355,16 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
     return () => clearInterval(interval);
   }, [server.id, server.status]);
 
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (actionsDropdownRef.current && !actionsDropdownRef.current.contains(e.target as Node)) {
+        setIsActionsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
   const handleRestart = async () => {
     if (!confirm("Are you sure you want to restart this VPS?")) return;
     setIsRestarting(true);
@@ -616,238 +628,188 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
 
       {/* Actions */}
       <td className="py-2.5 px-4 text-right">
-        <div className="flex items-center justify-end space-x-2.5">
-          <div className="flex flex-col items-center">
+        <div className="flex items-center justify-end space-x-2" ref={actionsDropdownRef}>
+          {/* "..." overflow menu */}
+          <div className="relative">
             <button
-              onClick={handleFetchLogs}
-              disabled={isFetchingLogs || isDeleting || isReinstalling}
-              className="p-2 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition-all disabled:opacity-50"
-              title="Logs"
+              onClick={() => setIsActionsOpen(o => !o)}
+              className="p-2 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition-all"
+              title="More actions"
             >
-              {isFetchingLogs ? (
-                <div className="h-4 w-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-              )}
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" />
+              </svg>
             </button>
-            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mt-0.5 select-none text-center">
-              Logs
-            </span>
-          </div>
 
-          <div className="flex flex-col items-center">
-            <button
-              onClick={() => setIsReinstallModalOpen(true)}
-              disabled={isFetchingLogs || isDeleting || isReinstalling}
-              className="p-2 text-slate-500 hover:text-amber-500 hover:bg-slate-800 rounded-lg transition-all disabled:opacity-50"
-              title="Reinstall"
-            >
-              {isReinstalling ? (
-                <div className="h-4 w-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-              )}
-            </button>
-            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mt-0.5 select-none text-center">
-              Reinstall
-            </span>
-          </div>
+            {isActionsOpen && (
+              <div className="absolute right-0 top-full mt-1.5 w-52 bg-slate-900 border border-slate-800 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-50 overflow-hidden py-1">
 
-          {/* Restart Button */}
-          {(isHetzner || isDigitalOcean) && server.status !== 'off' && (
-            <div className="flex flex-col items-center">
-              <button
-                onClick={handleRestart}
-                disabled={isRestarting || isDeleting || isReinstalling}
-                className="p-2 text-slate-500 hover:text-amber-500 hover:bg-slate-800 rounded-lg transition-all disabled:opacity-50"
-                title="Restart VPS"
-              >
-                {isRestarting ? (
-                  <div className="h-4 w-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                )}
-              </button>
-              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mt-0.5 select-none text-center">
-                Restart
-              </span>
-            </div>
-          )}
-
-          {/* API Auth Button */}
-          {isAutomated && (
-            <div className="flex flex-col items-center">
-              <button
-                onClick={() => setIsApiAuthOpen(true)}
-                disabled={isDeleting || isReinstalling}
-                className="p-2 text-slate-500 hover:text-indigo-400 hover:bg-slate-800 rounded-lg transition-all disabled:opacity-50"
-                title="API Authorization"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-              </button>
-              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mt-0.5 select-none text-center">
-                Auth
-              </span>
-            </div>
-          )}
-
-          {/* Share/Collaborators Button */}
-          {isAutomated && (
-            <div className="flex flex-col items-center">
-              <button
-                onClick={() => setIsInviteOpen(true)}
-                disabled={isDeleting || isReinstalling}
-                className="p-2 text-slate-500 hover:text-indigo-400 hover:bg-slate-800 rounded-lg transition-all disabled:opacity-50"
-                title="Share & Invite Collaborators"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                </svg>
-              </button>
-              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mt-0.5 select-none text-center">
-                Share
-              </span>
-            </div>
-          )}
-
-          {/* Schedule button — for Hetzner and DigitalOcean servers */}
-          {(isHetzner || isDigitalOcean) && (
-            <div className="flex flex-col items-center">
-              <button
-                onClick={() => setIsScheduleOpen(true)}
-                disabled={isDeleting || isReinstalling}
-                className={`relative p-2 rounded-lg transition-all disabled:opacity-50 ${
-                  scheduleConfig?.enabled
-                    ? 'text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20'
-                    : 'text-slate-500 hover:text-indigo-400 hover:bg-slate-800'
-                }`}
-                title={scheduleConfig?.enabled ? `Schedule active — ${scheduleConfig.spinupTime} / ${scheduleConfig.snapshotTime}` : 'Set daily schedule'}
-              >
-                {scheduleConfig?.enabled && (
-                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-indigo-500 rounded-full shadow-[0_0_6px_rgba(99,102,241,0.8)] animate-pulse" />
-                )}
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </button>
-              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mt-0.5 select-none text-center">
-                Schedule
-              </span>
-            </div>
-          )}
-
-          {/* Snapshot & Shutdown button — for Hetzner and DigitalOcean servers that are running/not off */}
-          {(isHetzner || isDigitalOcean) && server.status !== 'off' && (
-            <div className="flex flex-col items-center">
-              <button
-                onClick={() => setIsConfirmSnapshotOpen(true)}
-                disabled={isSnapshotting || isDeleting || isReinstalling}
-                className="p-2 text-slate-500 hover:text-indigo-400 hover:bg-slate-800 rounded-lg transition-all disabled:opacity-50"
-                title="Snapshot & Shutdown (Saves costs)"
-              >
-                {isSnapshotting ? (
-                  <div className="h-4 w-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                  </svg>
-                )}
-              </button>
-              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mt-0.5 select-none text-center">
-                Snapshot
-              </span>
-            </div>
-          )}
-
-          {/* Auto-off: check idle (30 min) then snapshot if inactive */}
-          {(isHetzner || isDigitalOcean) && server.status === 'ready' && (
-            <div className="flex flex-col items-center">
-              <button
-                onClick={async () => {
-                  setIsCheckingIdle(true);
-                  setIdleCheckResult(null);
-                  try {
-                    const data = await checkIdleAndSnapshot(server.id, 30);
-                    if (data.error) {
-                      setErrorMessage(data.error);
-                    } else {
-                      setIdleCheckResult(data);
-                      if (data.triggered && onRefresh) setTimeout(onRefresh, 3000);
-                    }
-                  } catch (e) {
-                    setErrorMessage(e instanceof Error ? e.message : 'Idle check failed');
-                  } finally {
-                    setIsCheckingIdle(false);
+                {/* Logs */}
+                <button
+                  onClick={() => { handleFetchLogs(); setIsActionsOpen(false); }}
+                  disabled={isFetchingLogs || isDeleting || isReinstalling}
+                  className="w-full flex items-center space-x-3 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors disabled:opacity-50"
+                >
+                  {isFetchingLogs
+                    ? <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                    : <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                   }
-                }}
-                disabled={isCheckingIdle || isSnapshotting || isDeleting || isReinstalling}
-                className={`relative p-2 rounded-lg transition-all disabled:opacity-50 ${idleCheckResult ? (idleCheckResult.idle ? 'text-amber-500 bg-amber-500/10' : 'text-emerald-500 bg-emerald-500/10') : 'text-slate-500 hover:text-amber-400 hover:bg-slate-800'}`}
-                title={idleCheckResult ? idleCheckResult.message : 'Check idle — snapshot & shutdown if inactive 30min'}
-              >
-                {isCheckingIdle ? (
-                  <div className="h-4 w-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                )}
-              </button>
-              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mt-0.5 select-none text-center">
-                Auto-off
-              </span>
-            </div>
-          )}
+                  <span>Logs</span>
+                </button>
 
-          {isAutomated && (
-            <div className="flex flex-col items-center">
-              <button
-                onClick={async () => {
-                  setIsDeleteServerOpen(true);
-                }}
-                disabled={server.isLocked || isFetchingLogs || isDeleting || isReinstalling}
-                className={`p-2 rounded-lg transition-all ${
-                  server.isLocked || isDeleting
-                    ? 'text-slate-850 opacity-40'
-                    : 'text-slate-500 hover:text-rose-500 hover:bg-rose-500/10'
-                }`}
-                title="Delete Server"
-              >
-                {isDeleting ? (
-                  <div className="h-4 w-4 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                )}
-              </button>
-              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider mt-0.5 select-none text-center">
-                Delete
-              </span>
-            </div>
-          )}
+                {/* Reinstall */}
+                <button
+                  onClick={() => { setIsReinstallModalOpen(true); setIsActionsOpen(false); }}
+                  disabled={isFetchingLogs || isDeleting || isReinstalling}
+                  className="w-full flex items-center space-x-3 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-amber-400 transition-colors disabled:opacity-50"
+                >
+                  {isReinstalling
+                    ? <div className="w-4 h-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                    : <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                  }
+                  <span>Reinstall</span>
+                </button>
 
-          <div className="pl-2 ml-2 border-l border-slate-200 dark:border-zinc-700 flex items-center space-x-2">
-            {server.status === 'off' ? (
-              <button
-                onClick={() => setIsSpinUpOpen(true)}
-                disabled={isSpinningUp}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-all shadow-lg inline-flex items-center whitespace-nowrap"
-              >
-                {isSpinningUp ? (
-                  <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                ) : (
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
+                {/* Restart */}
+                {(isHetzner || isDigitalOcean) && server.status !== 'off' && (
+                  <button
+                    onClick={() => { handleRestart(); setIsActionsOpen(false); }}
+                    disabled={isRestarting || isDeleting || isReinstalling}
+                    className="w-full flex items-center space-x-3 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-amber-400 transition-colors disabled:opacity-50"
+                  >
+                    {isRestarting
+                      ? <div className="w-4 h-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                      : <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                    }
+                    <span>Restart</span>
+                  </button>
                 )}
-                <span>{isSpinningUp ? 'Spinning Up...' : 'Spin Up'}</span>
-              </button>
-            ) : (
-              <IdeLaunchButton server={server} />
+
+                {/* Snapshot */}
+                {(isHetzner || isDigitalOcean) && server.status !== 'off' && (
+                  <button
+                    onClick={() => { setIsConfirmSnapshotOpen(true); setIsActionsOpen(false); }}
+                    disabled={isSnapshotting || isDeleting || isReinstalling}
+                    className="w-full flex items-center space-x-3 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-indigo-400 transition-colors disabled:opacity-50"
+                  >
+                    {isSnapshotting
+                      ? <div className="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                      : <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+                    }
+                    <span>Snapshot &amp; Shutdown</span>
+                  </button>
+                )}
+
+                {/* Auto-off */}
+                {(isHetzner || isDigitalOcean) && server.status === 'ready' && (
+                  <button
+                    onClick={async () => {
+                      setIsActionsOpen(false);
+                      setIsCheckingIdle(true);
+                      setIdleCheckResult(null);
+                      try {
+                        const data = await checkIdleAndSnapshot(server.id, 30);
+                        if (data.error) { setErrorMessage(data.error); }
+                        else { setIdleCheckResult(data); if (data.triggered && onRefresh) setTimeout(onRefresh, 3000); }
+                      } catch (e) {
+                        setErrorMessage(e instanceof Error ? e.message : 'Idle check failed');
+                      } finally { setIsCheckingIdle(false); }
+                    }}
+                    disabled={isCheckingIdle || isSnapshotting || isDeleting || isReinstalling}
+                    className={`w-full flex items-center space-x-3 px-3 py-2 text-sm transition-colors disabled:opacity-50 ${idleCheckResult ? (idleCheckResult.idle ? 'text-amber-400' : 'text-emerald-400') : 'text-slate-300 hover:bg-slate-800 hover:text-amber-400'}`}
+                    title={idleCheckResult ? idleCheckResult.message : undefined}
+                  >
+                    {isCheckingIdle
+                      ? <div className="w-4 h-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                      : <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    }
+                    <span>Auto-off</span>
+                  </button>
+                )}
+
+                {/* Schedule */}
+                {(isHetzner || isDigitalOcean) && (
+                  <button
+                    onClick={() => { setIsScheduleOpen(true); setIsActionsOpen(false); }}
+                    disabled={isDeleting || isReinstalling}
+                    className="w-full flex items-center space-x-3 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-indigo-400 transition-colors disabled:opacity-50"
+                  >
+                    <span className="relative flex-shrink-0">
+                      {scheduleConfig?.enabled && (
+                        <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-indigo-500 rounded-full" />
+                      )}
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </span>
+                    <span className={scheduleConfig?.enabled ? 'text-indigo-400' : ''}>
+                      Schedule{scheduleConfig?.enabled ? ' (active)' : ''}
+                    </span>
+                  </button>
+                )}
+
+                {/* API Auth */}
+                {isAutomated && (
+                  <button
+                    onClick={() => { setIsApiAuthOpen(true); setIsActionsOpen(false); }}
+                    disabled={isDeleting || isReinstalling}
+                    className="w-full flex items-center space-x-3 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-indigo-400 transition-colors disabled:opacity-50"
+                  >
+                    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                    <span>API Auth</span>
+                  </button>
+                )}
+
+                {/* Share */}
+                {isAutomated && (
+                  <button
+                    onClick={() => { setIsInviteOpen(true); setIsActionsOpen(false); }}
+                    disabled={isDeleting || isReinstalling}
+                    className="w-full flex items-center space-x-3 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-indigo-400 transition-colors disabled:opacity-50"
+                  >
+                    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
+                    <span>Share</span>
+                  </button>
+                )}
+
+                {/* Delete */}
+                {isAutomated && (
+                  <>
+                    <div className="my-1 border-t border-slate-800" />
+                    <button
+                      onClick={() => { setIsDeleteServerOpen(true); setIsActionsOpen(false); }}
+                      disabled={server.isLocked || isFetchingLogs || isDeleting || isReinstalling}
+                      className="w-full flex items-center space-x-3 px-3 py-2 text-sm text-slate-300 hover:bg-rose-500/10 hover:text-rose-400 transition-colors disabled:opacity-40"
+                    >
+                      {isDeleting
+                        ? <div className="w-4 h-4 border-2 border-rose-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                        : <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                      }
+                      <span>Delete</span>
+                    </button>
+                  </>
+                )}
+              </div>
             )}
           </div>
+
+          {/* Primary action button */}
+          {server.status === 'off' ? (
+            <button
+              onClick={() => setIsSpinUpOpen(true)}
+              disabled={isSpinningUp}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-all shadow-lg inline-flex items-center whitespace-nowrap"
+            >
+              {isSpinningUp ? (
+                <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+              ) : (
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              )}
+              <span>{isSpinningUp ? 'Spinning Up...' : 'Spin Up'}</span>
+            </button>
+          ) : (
+            <IdeLaunchButton server={server} />
+          )}
         </div>
         <ConfirmSnapshotModal
           isOpen={isConfirmSnapshotOpen}
