@@ -2563,13 +2563,14 @@ export async function syncServerAccessPolicies(serverId: string) {
 
   const cfApi = new CloudflareApiService(env);
 
-  // Account-level IP allowlist — bypasses BIC/security challenges before Access evaluates.
-  // Non-fatal: Access policy still saves if this fails (e.g. token lacks firewall permission).
+  // Zone-level IP allowlist — bypasses BIC/security challenges before Access evaluates.
+  // Non-fatal: Access policy still saves if this fails.
   try {
     console.log(`[Access Sync] Syncing WAF peer bypass rule with IPs:`, peerIps);
     await cfApi.syncPeerWafBypassRules(peerIps);
+    console.log(`[Access Sync] WAF IP allowlist synced successfully.`);
   } catch (err) {
-    console.warn(`[Access Sync] WAF IP allowlist sync failed (non-fatal):`, err);
+    console.error(`[Access Sync] WAF IP allowlist sync FAILED:`, err);
   }
 
   if (server.hostname) {

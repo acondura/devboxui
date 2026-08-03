@@ -210,9 +210,9 @@ export class CloudflareApiService {
     const NOTE = "devbox-peer-allow";
     interface IpRule { id: string; notes: string; mode: string; configuration: { value: string } }
 
-    // Use account-level IP access rules — same token scope as tunnels/access apps.
-    // These apply to all zones in the account and bypass BIC/security challenges.
-    const base = `/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/firewall/access_rules/rules`;
+    // Zone-level IP Access Rules — token has proven zone perms (manages DNS on same zone).
+    // Whitelist mode bypasses all Cloudflare security including Bot Fight Mode / BIC.
+    const base = `/zones/${this.env.CLOUDFLARE_ZONE_ID}/firewall/access_rules/rules`;
 
     const existing = await this.request<IpRule[]>(`${base}?mode=whitelist&per_page=100`);
     const ours = existing.filter(r => r.notes === NOTE);
@@ -222,7 +222,7 @@ export class CloudflareApiService {
 
     for (const ip of desiredIps) {
       if (!existingByIp.has(ip)) {
-        console.log(`[WAF] Adding account IP allowlist rule for ${ip}`);
+        console.log(`[WAF] Adding zone IP allowlist rule for ${ip}`);
         await this.request(base, {
           method: "POST",
           body: JSON.stringify({ mode: "whitelist", configuration: { target: "ip", value: ip }, notes: NOTE }),
@@ -232,7 +232,7 @@ export class CloudflareApiService {
 
     for (const [ip, ruleId] of existingByIp) {
       if (!desiredIps.has(ip)) {
-        console.log(`[WAF] Removing account IP allowlist rule for ${ip}`);
+        console.log(`[WAF] Removing zone IP allowlist rule for ${ip}`);
         await this.request(`${base}/${ruleId}`, { method: "DELETE" });
       }
     }
