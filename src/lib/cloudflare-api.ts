@@ -210,32 +210,30 @@ export class CloudflareApiService {
     const NOTE = "devbox-peer-allow";
     interface IpRule { id: string; notes: string; mode: string; configuration: { value: string } }
 
-    // Fetch all existing allow rules tagged with our note
-    const existing = await this.request<IpRule[]>(
-      `/zones/${this.env.CLOUDFLARE_ZONE_ID}/firewall/access_rules/rules?mode=whitelist&notes=${NOTE}&per_page=100`
-    );
+    // Use account-level IP access rules — same token scope as tunnels/access apps.
+    // These apply to all zones in the account and bypass BIC/security challenges.
+    const base = `/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/firewall/access_rules/rules`;
 
-    const existingByIp = new Map(existing.map(r => [r.configuration.value, r.id]));
+    const existing = await this.request<IpRule[]>(`${base}?mode=whitelist&per_page=100`);
+    const ours = existing.filter(r => r.notes === NOTE);
+
+    const existingByIp = new Map(ours.map(r => [r.configuration.value, r.id]));
     const desiredIps = new Set(peerIps.map(ip => ip.replace('/32', '')));
 
-    // Create rules for new IPs
     for (const ip of desiredIps) {
       if (!existingByIp.has(ip)) {
-        console.log(`[WAF] Adding IP access allow rule for ${ip}`);
-        await this.request(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/firewall/access_rules/rules`, {
+        console.log(`[WAF] Adding account IP allowlist rule for ${ip}`);
+        await this.request(base, {
           method: "POST",
           body: JSON.stringify({ mode: "whitelist", configuration: { target: "ip", value: ip }, notes: NOTE }),
         });
       }
     }
 
-    // Remove rules for IPs no longer needed
     for (const [ip, ruleId] of existingByIp) {
       if (!desiredIps.has(ip)) {
-        console.log(`[WAF] Removing IP access allow rule for ${ip}`);
-        await this.request(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/firewall/access_rules/rules/${ruleId}`, {
-          method: "DELETE",
-        });
+        console.log(`[WAF] Removing account IP allowlist rule for ${ip}`);
+        await this.request(`${base}/${ruleId}`, { method: "DELETE" });
       }
     }
   }
