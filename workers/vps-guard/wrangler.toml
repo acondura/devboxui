@@ -1,0 +1,20 @@
+name = "devboxui-vps-guard"
+main = "index.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+account_id = "acd43f7fef2daed6bc2b608d058db15b"
+
+[[kv_namespaces]]
+binding = "KV"
+id = "b5847164d88f4dfe88fbb88cf53e5723"
+
+# ─── Routes ───────────────────────────────────────────────────────────────────
+# These routes are set in the Cloudflare Dashboard under Workers > Triggers
+# after deploying, or via wrangler.toml routes below.
+# Uncomment and adjust zone_id to activate route-based routing:
+#
+# routes = [
+#   { pattern = "*-web.devboxui.com/*", zone_name = "devboxui.com" },
+#   { pattern = "*-code.devboxui.com/*", zone_name = "devboxui.com" },
+#   { pattern = "*-logs.devboxui.com/*", zone_name = "devboxui.com" },
+# ]

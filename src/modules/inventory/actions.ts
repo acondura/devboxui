@@ -6,6 +6,7 @@ import { CloudflareApiService } from '@/lib/cloudflare-api';
 import { HetznerApiService, HetznerImage } from '@/lib/hetzner-api';
 import { ContaboApiService } from '@/lib/contabo-api';
 import { DigitalOceanApiService } from '@/lib/digitalocean-api';
+import { createMagicToken, sendMagicLinkEmail } from '@/lib/magic-auth';
 
 const SERVER_PY_CONTENT = `import http.server, socketserver, json, subprocess, os, time
 class DebugHandler(http.server.BaseHTTPRequestHandler):
@@ -2327,6 +2328,7 @@ export async function provisionManualServer(
     const serverKey = `servers:${targetOrgId}:${serverId}`;
     await kv.put(serverKey, JSON.stringify(config));
     await kv.put(`server_lookup:${serverId}`, JSON.stringify({ orgId: targetOrgId, serverKey }));
+    await kv.put(`hostname_lookup:${hostname}`, JSON.stringify({ orgId: targetOrgId, serverId }));
 
     // Fast-lookup index for the bootstrap API
     await kv.put(`token:${provisioningToken}`, JSON.stringify({ serverKey, serverId }));
@@ -2782,18 +2784,32 @@ export async function inviteCollaborator(serverId: string, orgId: string, email:
   server.collaborators.push(newCollab);
   await kv.put(serverKey, JSON.stringify(server));
 
-  // Update Access for main hostname and logs
-  const cfApi = new CloudflareApiService(env);
-  if (server.hostname) {
-    await cfApi.setupAccess(server.hostname, email).catch(e => console.error("Access error:", e));
-    const cleanPrefix = server.hostname.split('-code.')[0].split('-logs.')[0].split('.')[0];
-    await cfApi.setupAccess(`${cleanPrefix}-logs.devboxui.com`, email).catch(e => console.error("Access error:", e));
-  }
-  
-  if (server.projects) {
-    for (const project of server.projects) {
-      await cfApi.setupAccess(project.domain, email).catch(e => console.error("Access error on project:", e));
-    }
+  // Send invite email with a magic sign-in link (replaces CF Access policy creation)
+  if (env.AUTH_SECRET && env.AWS_SES_ACCESS_KEY_ID && env.AWS_SES_SECRET_ACCESS_KEY && env.AWS_SES_REGION && env.AWS_SES_FROM_EMAIL) {
+    const token = await createMagicToken(email, env.AUTH_SECRET);
+    const appUrl = env.NEXT_PUBLIC_APP_URL || 'https://devboxui.com';
+    const magicUrl = `${appUrl}/api/auth/verify?token=${encodeURIComponent(token)}`;
+    const serverLabel = server.hostname || serverId;
+    await sendMagicLinkEmail({
+      to: email,
+      magicUrl,
+      sesAccessKeyId: env.AWS_SES_ACCESS_KEY_ID,
+      sesSecretAccessKey: env.AWS_SES_SECRET_ACCESS_KEY,
+      sesRegion: env.AWS_SES_REGION,
+      sesFromEmail: env.AWS_SES_FROM_EMAIL,
+      subject: `You've been invited to access ${serverLabel}`,
+      bodyOverride: `
+        <html><body style="font-family:sans-serif;max-width:480px;margin:40px auto;color:#1e293b">
+          <h2 style="color:#4f46e5">DevBox UI — You're Invited</h2>
+          <p>You've been granted access to <strong>${serverLabel}</strong>.</p>
+          <p>Click below to sign in and start using it. This link expires in 15 minutes.</p>
+          <a href="${magicUrl}" style="display:inline-block;margin:24px 0;padding:12px 28px;background:#4f46e5;color:#fff;border-radius:8px;text-decoration:none;font-weight:700">
+            Accept Invitation
+          </a>
+          <p style="color:#64748b;font-size:13px">If you didn't expect this, you can ignore this email.</p>
+        </body></html>
+      `.trim(),
+    }).catch(e => console.error("Invite email error:", e));
   }
 
   // Create membership placeholder for the user in KV

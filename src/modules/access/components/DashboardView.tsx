@@ -188,9 +188,9 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
     }
   };
 
-  const handleLogout = () => {
-    const returnTo = encodeURIComponent(window.location.origin);
-    window.location.href = `/cdn-cgi/access/logout?returnTo=${returnTo}`;
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    window.location.href = '/login';
   };
 
   return (
