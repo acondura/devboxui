@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCloudflareEnv } from '@/lib/auth';
 import { verifyMagicToken, createSessionToken, SESSION_COOKIE, sessionCookieOptions } from '@/lib/magic-auth';
 
-export const runtime = 'edge';
 
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get('token');

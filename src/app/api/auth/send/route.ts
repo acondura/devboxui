@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCloudflareEnv } from '@/lib/auth';
 import { createMagicToken, sendMagicLinkEmail } from '@/lib/magic-auth';
 
-export const runtime = 'edge';
 
 export async function POST(req: NextRequest) {
   try {
