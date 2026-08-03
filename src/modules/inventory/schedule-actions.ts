@@ -1114,8 +1114,15 @@ export async function checkIdleAndSnapshot(
       return { idle: false, idleMinutes: 0, triggered: false, message: `Server is not ready (status: ${server.status})` };
     }
 
-    const logsUrl = server.tunnelUrl?.split('?')[0].replace('-code.', '-logs.')
-      || `https://logs-${serverId.slice(0, 8)}.devboxui.com`;
+    let logsUrl = `https://logs-${serverId.slice(0, 8)}.devboxui.com`;
+    if (server.tunnelUrl) {
+      const baseUrl = server.tunnelUrl.split('?')[0];
+      if (baseUrl.includes('-code.')) {
+        logsUrl = baseUrl.replace('-code.', '-logs.');
+      } else if (baseUrl.includes('-web.')) {
+        logsUrl = baseUrl.replace('-web.', '-logs.');
+      }
+    }
 
     const cfApi = new CloudflareApiService(env);
     const serviceToken = await cfApi.getOrCreateServiceToken(kv);
@@ -1212,7 +1219,15 @@ export async function triggerOnStartCommands(server: ServerConfig) {
   const kv = env.KV;
   if (!kv) return;
 
-  const logsUrl = server.tunnelUrl?.split('?')[0].replace('-code.', '-logs.') || `https://logs-${server.id.slice(0, 8)}.devboxui.com`;
+  let logsUrl = `https://logs-${server.id.slice(0, 8)}.devboxui.com`;
+  if (server.tunnelUrl) {
+    const baseUrl = server.tunnelUrl.split('?')[0];
+    if (baseUrl.includes('-code.')) {
+      logsUrl = baseUrl.replace('-code.', '-logs.');
+    } else if (baseUrl.includes('-web.')) {
+      logsUrl = baseUrl.replace('-web.', '-logs.');
+    }
+  }
 
   const runLoop = async () => {
     try {

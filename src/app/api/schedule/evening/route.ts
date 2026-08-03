@@ -62,7 +62,15 @@ export async function GET(req: NextRequest) {
     try {
       const timeoutMinutes = schedule.inactivityDurationMinutes || 30;
       const timeoutSeconds = timeoutMinutes * 60;
-      const logsUrl = server.tunnelUrl?.split('?')[0].replace('-code.', '-logs.') || `https://logs-${server.id.slice(0, 8)}.devboxui.com`;
+      let logsUrl = `https://logs-${server.id.slice(0, 8)}.devboxui.com`;
+      if (server.tunnelUrl) {
+        const baseUrl = server.tunnelUrl.split('?')[0];
+        if (baseUrl.includes('-code.')) {
+          logsUrl = baseUrl.replace('-code.', '-logs.');
+        } else if (baseUrl.includes('-web.')) {
+          logsUrl = baseUrl.replace('-web.', '-logs.');
+        }
+      }
 
       const cfApi = new CloudflareApiService(env);
       const serviceToken = await cfApi.getOrCreateServiceToken(kv);
@@ -132,7 +140,15 @@ export async function GET(req: NextRequest) {
       try {
         const timeoutMinutes = schedule.inactivityDurationMinutes || 30;
         const timeoutSeconds = timeoutMinutes * 60;
-        const logsUrl = server.tunnelUrl?.split('?')[0].replace('-code.', '-logs.') || `https://logs-${server.id.slice(0, 8)}.devboxui.com`;
+        let logsUrl = `https://logs-${server.id.slice(0, 8)}.devboxui.com`;
+        if (server.tunnelUrl) {
+          const baseUrl = server.tunnelUrl.split('?')[0];
+          if (baseUrl.includes('-code.')) {
+            logsUrl = baseUrl.replace('-code.', '-logs.');
+          } else if (baseUrl.includes('-web.')) {
+            logsUrl = baseUrl.replace('-web.', '-logs.');
+          }
+        }
 
         const cfApi = new CloudflareApiService(env);
         const serviceToken = await cfApi.getOrCreateServiceToken(kv);
