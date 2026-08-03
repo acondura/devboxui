@@ -2562,7 +2562,12 @@ export async function syncServerAccessPolicies(serverId: string) {
   }
 
   const cfApi = new CloudflareApiService(env);
-  
+
+  // Zone-level WAF allow rule — bypasses Browser Integrity Check and other
+  // security challenges that block server-side HTTP clients before Access evaluates.
+  console.log(`[Access Sync] Syncing WAF peer bypass rule with IPs:`, peerIps);
+  await cfApi.syncPeerWafBypassRules(peerIps);
+
   if (server.hostname) {
     console.log(`[Access Sync] Syncing peer bypass on ${server.hostname} with IPs:`, peerIps);
     await cfApi.syncPeerBypassPolicy(server.hostname, peerIps);

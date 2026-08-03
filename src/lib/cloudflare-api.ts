@@ -206,6 +206,56 @@ export class CloudflareApiService {
     }
   }
 
+  async syncPeerWafBypassRules(peerIps: string[]) {
+    const RULE_DESCRIPTION = "Allow Peer DevBoxes";
+    interface WafRule { id: string; description: string; action: string; enabled: boolean }
+
+    const rules = await this.request<WafRule[]>(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/firewall/rules`);
+    const existing = rules.find(r => r.description === RULE_DESCRIPTION);
+
+    if (peerIps.length === 0) {
+      if (existing) {
+        console.log(`Deleting WAF peer bypass rule...`);
+        await this.request(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/firewall/rules/${existing.id}`, { method: "DELETE" });
+      }
+      return;
+    }
+
+    // Build the firewall filter expression: (ip.src in {x.x.x.x y.y.y.y})
+    const ipList = peerIps.map(ip => ip.replace('/32', '')).join(' ');
+    const expression = `(ip.src in {${ipList}})`;
+
+    if (existing) {
+      console.log(`Updating WAF peer bypass rule with IPs: ${ipList}`);
+      // Fetch the underlying filter id first
+      interface FirewallRule { id: string; filter: { id: string } }
+      const fullRules = await this.request<FirewallRule[]>(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/firewall/rules`);
+      const full = fullRules.find(r => r.id === existing.id);
+      if (full?.filter?.id) {
+        await this.request(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/filters/${full.filter.id}`, {
+          method: "PUT",
+          body: JSON.stringify({ id: full.filter.id, expression }),
+        });
+      }
+    } else {
+      console.log(`Creating WAF peer bypass rule with IPs: ${ipList}`);
+      // Create filter first
+      interface Filter { id: string }
+      const [filter] = await this.request<Filter[]>(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/filters`, {
+        method: "POST",
+        body: JSON.stringify([{ expression }]),
+      });
+      await this.request(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/firewall/rules`, {
+        method: "POST",
+        body: JSON.stringify([{
+          filter: { id: filter.id },
+          action: "allow",
+          description: RULE_DESCRIPTION,
+        }]),
+      });
+    }
+  }
+
   async removeHostname(hostname: string, tunnelId: string) {
     // 1. Fetch current configuration
     interface IngressRule { hostname?: string; service: string }
