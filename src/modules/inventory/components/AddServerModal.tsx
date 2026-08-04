@@ -3,12 +3,13 @@
 import { useState, useEffect } from 'react';
 import { getHetznerOptions, getDigitalOceanOptions, provisionManualServer } from '@/modules/inventory/actions';
 import type { HetznerPricingResponse } from '@/lib/hetzner-api';
+import type { ProvisioningOptions } from '@/modules/inventory/actions';
 import { Select2 } from './Select2';
 
 interface AddServerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (name: string, serverType: string, location: string, image: string, customUsername?: string, provider?: 'hetzner' | 'digitalocean') => Promise<{ success: boolean; error?: string; server?: unknown } | void>;
+  onAdd: (name: string, serverType: string, location: string, image: string, customUsername?: string, provider?: 'hetzner' | 'digitalocean', provisioningOptions?: ProvisioningOptions) => Promise<{ success: boolean; error?: string; server?: unknown } | void>;
 }
 
 interface HetznerPrice {
@@ -85,6 +86,12 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
   const [createdServerName, setCreatedServerName] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
+  const [provOpts, setProvOpts] = useState<ProvisioningOptions>({
+    aptUpdate: true,
+    installDocker: false,
+    installDdev: false,
+    installOhMyBash: true,
+  });
   
   // Load last provider and selections on mount
   useEffect(() => {
@@ -312,7 +319,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
     setError(null);
     try {
       if (provider === 'hetzner' || provider === 'digitalocean') {
-        const result = await onAdd(name, serverType, location, image, customUsername.trim() || undefined, provider);
+        const result = await onAdd(name, serverType, location, image, customUsername.trim() || undefined, provider, provOpts);
         if (result && !result.success) {
           setError(result.error || "An unknown error occurred during provisioning.");
         } else {
@@ -773,6 +780,35 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
                 <div className="absolute inset-0 bg-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl pointer-events-none" />
               </div>
             </>
+          )}
+
+          {(provider === 'hetzner' || provider === 'digitalocean') && (
+            <div className="border border-slate-200 dark:border-zinc-700 rounded-xl overflow-hidden">
+              <div className="px-4 py-2.5 bg-slate-50 dark:bg-zinc-800/50 border-b border-slate-200 dark:border-zinc-700">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400">Bootstrap Options</p>
+              </div>
+              <div className="p-4 grid grid-cols-2 gap-3">
+                {([
+                  { key: 'aptUpdate', label: 'apt update & upgrade', desc: 'Fully update the OS before setup' },
+                  { key: 'installOhMyBash', label: 'Oh My Bash', desc: 'Enhanced bash shell experience' },
+                  { key: 'installDocker', label: 'Docker', desc: 'Install Docker Engine via convenience script' },
+                  { key: 'installDdev', label: 'DDEV', desc: 'Local dev environment tool for PHP/CMS projects' },
+                ] as { key: keyof ProvisioningOptions; label: string; desc: string }[]).map(({ key, label, desc }) => (
+                  <label key={key} className="flex items-start gap-3 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={!!provOpts[key]}
+                      onChange={(e) => setProvOpts(prev => ({ ...prev, [key]: e.target.checked }))}
+                      className="mt-0.5 w-4 h-4 rounded border-slate-300 dark:border-zinc-600 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-slate-800 dark:text-zinc-100 leading-tight">{label}</p>
+                      <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">{desc}</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
           )}
 
           <div className="p-4 bg-indigo-55 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/50 rounded-xl space-y-2.5">

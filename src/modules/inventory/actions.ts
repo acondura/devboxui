@@ -602,6 +602,13 @@ echo "✅ SETUP FINISHED - Server is ready for use." > /etc/motd
 `;
 }
 
+export interface ProvisioningOptions {
+  aptUpdate?: boolean;
+  installDocker?: boolean;
+  installDdev?: boolean;
+  installOhMyBash?: boolean;
+}
+
 /**
  * Generates a minimal, ultra-fast cloud-init script for Hetzner servers.
  * Avoids slow package updates and installation, focusing only on user creation,
@@ -615,9 +622,45 @@ export async function getHetznerBootstrapScript(
   callbackUrl: string,
   serviceTokenId?: string,
   serviceTokenSecret?: string,
-  tunnelToken?: string
+  tunnelToken?: string,
+  options?: ProvisioningOptions
 ) {
   const cleanTunnelToken = (tunnelToken && tunnelToken !== 'undefined') ? tunnelToken : '';
+  const aptUpdate = options?.aptUpdate ?? true;
+  const installDocker = options?.installDocker ?? false;
+  const installDdev = options?.installDdev ?? false;
+  const installOhMyBash = options?.installOhMyBash ?? true;
+
+  const aptUpdateBlock = aptUpdate ? `
+echo "Running apt update and upgrade..."
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -y
+apt-get upgrade -y
+` : '';
+
+  const dockerBlock = installDocker ? `
+echo "Installing Docker..."
+curl -fsSL https://get.docker.com -o get-docker.sh
+sh get-docker.sh
+rm get-docker.sh
+usermod -aG docker "$DEV_USER"
+systemctl enable docker
+systemctl start docker
+` : '';
+
+  const ddevBlock = installDdev ? `
+echo "Installing DDEV..."
+curl -fsSL https://apt.fury.io/drud/gpg.key | gpg --dearmor | tee /etc/apt/trusted.gpg.d/ddev.gpg > /dev/null
+echo "deb [signed-by=/etc/apt/trusted.gpg.d/ddev.gpg] https://apt.fury.io/drud/ * *" | tee /etc/apt/sources.list.d/ddev.list
+apt-get update
+apt-get install -y ddev
+` : '';
+
+  const ohMyBashBlock = installOhMyBash ? `
+echo "Installing Oh My Bash for $DEV_USER..."
+su - "$DEV_USER" -c 'OSH_INSTALL_NOCHANGE=1 bash -c "$(curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh)"' || true
+` : '';
+
   return `#!/bin/bash
 set -e
 
@@ -689,7 +732,7 @@ systemctl restart devbox-debug.service || true
 echo 'export HISTTIMEFORMAT="%F %T "' >> /etc/bash.bashrc
 echo 'export HISTTIMEFORMAT="%F %T "' >> /etc/profile
 echo 'export PROMPT_COMMAND="history -a; $PROMPT_COMMAND"' >> /etc/bash.bashrc
-
+${aptUpdateBlock}${dockerBlock}${ddevBlock}${ohMyBashBlock}
 # Report Ready status back
 if command -v curl >/dev/null 2>&1; then
     curl -s -m 5 -X POST "$CALLBACK_URL" \
@@ -851,13 +894,14 @@ export async function provisionServer(
   image: string,
   provider: 'hetzner' | 'contabo' | 'digitalocean' = 'hetzner',
   customUsername?: string,
-  orgId?: string
+  orgId?: string,
+  provisioningOptions?: ProvisioningOptions
 ) {
   if (provider === 'contabo') {
     return provisionContaboServer(customName, serverType, location, image, customUsername);
   }
   if (provider === 'digitalocean') {
-    return provisionDigitalOceanServer(customName, serverType, location, image, customUsername, orgId);
+    return provisionDigitalOceanServer(customName, serverType, location, image, customUsername, orgId, provisioningOptions);
   }
   const userEmail = await getIdentity();
   const env = await getCloudflareEnv();
@@ -990,7 +1034,8 @@ export async function provisionServer(
       callbackUrl,
       serviceToken.id,
       serviceToken.client_secret,
-      config.tunnelToken
+      config.tunnelToken,
+      provisioningOptions
     );
 
     console.log(`Requesting new ${serverType} server '${name}' in ${location} with ${sshKeyIds.length} keys...`);
@@ -2841,7 +2886,8 @@ export async function provisionDigitalOceanServer(
   location: string,
   image: string,
   customUsername?: string,
-  orgId?: string
+  orgId?: string,
+  provisioningOptions?: ProvisioningOptions
 ) {
   const userEmail = await getIdentity();
   const env = await getCloudflareEnv();
@@ -2974,7 +3020,8 @@ export async function provisionDigitalOceanServer(
       callbackUrl,
       serviceToken.id,
       serviceToken.client_secret,
-      config.tunnelToken
+      config.tunnelToken,
+      provisioningOptions
     );
 
     console.log(`Requesting new droplet '${safeName}' in ${location}...`);

@@ -91,10 +91,11 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
     location: string,
     image: string,
     customUsername?: string,
-    provider: 'hetzner' | 'digitalocean' = 'hetzner'
+    provider: 'hetzner' | 'digitalocean' = 'hetzner',
+    provisioningOptions?: import('@/modules/inventory/actions').ProvisioningOptions
   ) => {
     try {
-      const result = await provisionServer(name, serverType, location, image, provider, customUsername) as { success: boolean; server?: ServerConfig; error?: string };
+      const result = await provisionServer(name, serverType, location, image, provider, customUsername, undefined, provisioningOptions) as { success: boolean; server?: ServerConfig; error?: string };
       if (result.success && result.server) {
         setServers(prev => [...prev, result.server!]);
       }
