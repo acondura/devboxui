@@ -22,6 +22,7 @@ interface KVNamespace {
 export interface Env {
   KV: KVNamespace;
   AUTH_SECRET: string;
+  INTERNAL_SECRET: string;
 }
 
 interface HostnameLookup {
@@ -71,6 +72,16 @@ export default {
     // If AUTH_SECRET is not configured, pass through (safety valve during rollout)
     if (!env.AUTH_SECRET) {
       return fetch(req);
+    }
+
+    // ── 0. Internal service bypass (server-side Pages → Worker fetches) ──────
+    if (env.INTERNAL_SECRET && req.headers.get('X-DevBox-Internal') === env.INTERNAL_SECRET) {
+      const proxied = new Request(req);
+      // Strip the header before forwarding to the origin
+      const cleaned = new Request(proxied);
+      const headers = new Headers(cleaned.headers);
+      headers.delete('X-DevBox-Internal');
+      return fetch(new Request(req, { headers }));
     }
 
     // ── 1. Peer-to-peer bypass: trusted VPS IPs skip auth entirely ──────────

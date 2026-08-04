@@ -2128,9 +2128,7 @@ export async function getServerMetrics(serverId: string) {
   }
 
   try {
-    const cfApi = new CloudflareApiService(env);
-    const serviceToken = await cfApi.getOrCreateServiceToken(kv);
-
+    const internalSecret = env.INTERNAL_SECRET;
     let lastError = "";
 
     for (const logsUrl of urlsToTry) {
@@ -2138,11 +2136,13 @@ export async function getServerMetrics(serverId: string) {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 4000); // 4s timeout per try
 
+        const headers: Record<string, string> = {};
+        if (internalSecret) {
+          headers['X-DevBox-Internal'] = internalSecret;
+        }
+
         const resp = await fetch(logsUrl, {
-          headers: {
-            'CF-Access-Client-Id': serviceToken.id,
-            'CF-Access-Client-Secret': serviceToken.client_secret,
-          },
+          headers,
           next: { revalidate: 0 },
           cache: 'no-store',
           signal: controller.signal

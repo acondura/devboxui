@@ -25,6 +25,7 @@ export const CloudflareEnvSchema = z.object({
   CRON_SECRET: z.string().optional(),
   ADMIN_EMAIL: z.string().optional(),
   AUTH_SECRET: z.string().optional(),
+  INTERNAL_SECRET: z.string().optional(),
   AWS_SES_ACCESS_KEY_ID: z.string().optional(),
   AWS_SES_SECRET_ACCESS_KEY: z.string().optional(),
   AWS_SES_REGION: z.string().optional(),
