@@ -444,11 +444,11 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
     }
   };
 
-  const handleSpinUp = async (customServerType?: string, snapshotIdStr?: string) => {
+  const handleSpinUp = async (customServerType?: string, snapshotIdStr?: string, customLocation?: string) => {
     setIsSpinningUp(true);
     try {
       const snapId = !snapshotIdStr || snapshotIdStr === 'latest' ? undefined : parseInt(snapshotIdStr, 10);
-      const result = await triggerMorningSpinup(server.id, snapId, customServerType);
+      const result = await triggerMorningSpinup(server.id, snapId, customServerType, customLocation);
       if (result.success) {
         if (onRefresh) await onRefresh();
       } else {
@@ -907,8 +907,8 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
           <ConfirmSpinUpModal
             isOpen={isSpinUpOpen}
             onClose={() => setIsSpinUpOpen(false)}
-            onConfirm={async (selectedType, selectedSnap) => {
-              await handleSpinUp(selectedType, selectedSnap);
+            onConfirm={async (selectedType, selectedSnap, selectedLocation) => {
+              await handleSpinUp(selectedType, selectedSnap, selectedLocation);
             }}
             serverId={server.id}
             serverName={server.hostname || server.ip}
@@ -1071,11 +1071,11 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
     } finally { setIsFetchingLogs(false); }
   };
 
-  const handleSpinUp = async (customServerType?: string, snapshotIdStr?: string) => {
+  const handleSpinUp = async (customServerType?: string, snapshotIdStr?: string, customLocation?: string) => {
     setIsSpinningUp(true);
     try {
       const snapId = !snapshotIdStr || snapshotIdStr === 'latest' ? undefined : parseInt(snapshotIdStr, 10);
-      const result = await triggerMorningSpinup(server.id, snapId, customServerType);
+      const result = await triggerMorningSpinup(server.id, snapId, customServerType, customLocation);
       if (result.success) {
         if (onRefresh) await onRefresh();
       } else {

@@ -7,7 +7,7 @@ import { Select2 } from './Select2';
 interface ConfirmSpinUpModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (serverType: string, snapshotId: string) => Promise<void> | void;
+  onConfirm: (serverType: string, snapshotId: string, location: string) => Promise<void> | void;
   serverId: string;
   serverName: string;
   defaultServerType?: string;
@@ -28,6 +28,13 @@ interface HetznerServerType {
   prices?: Array<{ location: string; price_monthly: { gross: string }; price_hourly: { gross: string } }>;
 }
 
+interface LocationOption {
+  name: string;
+  description: string;
+  city?: string;
+  country?: string;
+}
+
 export function ConfirmSpinUpModal({
   isOpen,
   onClose,
@@ -45,22 +52,28 @@ export function ConfirmSpinUpModal({
   const [serverType, setServerType] = useState(defaultServerType);
   const [serverTypes, setServerTypes] = useState<HetznerServerType[]>([]);
   const [isLoadingTypes, setIsLoadingTypes] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState(location || 'nbg1');
+  const [locations, setLocations] = useState<LocationOption[]>([]);
 
   useEffect(() => {
     if (isOpen) {
       setServerType(defaultServerType);
+      setSelectedLocation(location || (provider === 'digitalocean' ? 'nyc1' : 'nbg1'));
       setIsLoadingTypes(true);
       const fetchOptions = provider === 'digitalocean' ? getDigitalOceanOptions : getHetznerOptions;
       fetchOptions()
         .then((data) => {
           if (data && data.serverTypes) {
-            let types = data.serverTypes as HetznerServerType[];
-            if (location) {
-              types = types.filter(t => t.prices?.some(p => p.location === location));
+            setServerTypes(data.serverTypes as HetznerServerType[]);
+            if (data.locations) {
+              setLocations(data.locations as LocationOption[]);
             }
-            setServerTypes(types);
-            if (types.length > 0 && !types.some(t => t.name === defaultServerType)) {
-              setServerType(types[0].name);
+            const currentLoc = location || (provider === 'digitalocean' ? 'nyc1' : 'nbg1');
+            const filteredTypes = (data.serverTypes as HetznerServerType[]).filter(
+              t => !t.prices || t.prices.some(p => p.location === currentLoc)
+            );
+            if (filteredTypes.length > 0 && !filteredTypes.some(t => t.name === defaultServerType)) {
+              setServerType(filteredTypes[0].name);
             }
           }
         })
@@ -69,12 +82,21 @@ export function ConfirmSpinUpModal({
     }
   }, [isOpen, defaultServerType, provider, location]);
 
+  const handleLocationChange = (newLocation: string) => {
+    setSelectedLocation(newLocation);
+    // Re-filter server types for new location and reset selection if needed
+    const filtered = serverTypes.filter(t => !t.prices || t.prices.some(p => p.location === newLocation));
+    if (filtered.length > 0 && !filtered.some(t => t.name === serverType)) {
+      setServerType(filtered[0].name);
+    }
+  };
+
   if (!isOpen) return null;
 
   const handleConfirm = async () => {
     setIsSpinningUp(true);
     try {
-      await onConfirm(serverType, selectedSnapshotId);
+      await onConfirm(serverType, selectedSnapshotId, selectedLocation);
     } finally {
       setIsSpinningUp(false);
       onClose();
@@ -82,7 +104,7 @@ export function ConfirmSpinUpModal({
   };
 
   // Hardcoded fallback list if API fails or is loading
-  const fallbackTypes = [
+  const fallbackTypes: HetznerServerType[] = [
     { name: 'cpx11', cores: 2, memory: 2, disk: 40, architecture: 'x86' },
     { name: 'cx22', cores: 2, memory: 4, disk: 40, architecture: 'x86' },
     { name: 'cpx21', cores: 3, memory: 4, disk: 80, architecture: 'x86' },
@@ -91,19 +113,20 @@ export function ConfirmSpinUpModal({
     { name: 'cpx51', cores: 16, memory: 32, disk: 360, architecture: 'x86' },
   ];
 
-  const typesList = serverTypes.length > 0 ? serverTypes : fallbackTypes;
+  const allTypes = serverTypes.length > 0 ? serverTypes : fallbackTypes;
+  const typesList = allTypes.filter(t => !t.prices || t.prices.some(p => p.location === selectedLocation));
   const priceSymbol = provider === 'digitalocean' ? '$' : '€';
 
   const getPrice = (t: HetznerServerType) => {
     if (!t.prices?.length) return null;
-    const p = (location ? t.prices.find(p => p.location === location) : null) || t.prices[0];
+    const p = t.prices.find(p => p.location === selectedLocation) || t.prices[0];
     return {
       monthly: parseFloat(p.price_monthly.gross).toFixed(2),
       hourly: parseFloat(p.price_hourly.gross).toFixed(4),
     };
   };
 
-  const selectedTypeData = (serverTypes.length > 0 ? serverTypes : []).find(t => t.name === serverType);
+  const selectedTypeData = allTypes.find(t => t.name === serverType);
   const selectedPrice = selectedTypeData ? getPrice(selectedTypeData) : null;
 
   const formatSpecs = (t: HetznerServerType) => {
@@ -133,6 +156,38 @@ export function ConfirmSpinUpModal({
             <p className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">Target Server</p>
             <span className="text-base font-bold text-slate-900 dark:text-zinc-100">{serverName.replace('.devboxui.com', '')}</span>
           </div>
+
+          {/* Region Selector */}
+          {provider !== 'digitalocean' && (
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-700 dark:text-zinc-200 uppercase tracking-widest block">
+                Region
+              </label>
+              <Select2
+                value={selectedLocation}
+                onValueChange={handleLocationChange}
+                disabled={isSpinningUp}
+                className="w-full bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-zinc-100 font-medium"
+              >
+                {locations.length > 0 ? (
+                  locations.map((l) => (
+                    <option key={l.name} value={l.name}>
+                      {l.description}{l.city ? ` (${l.city}${l.country ? ', ' + l.country : ''})` : ''}
+                    </option>
+                  ))
+                ) : (
+                  <>
+                    <option value="nbg1">Nuremberg, DE (nbg1)</option>
+                    <option value="fsn1">Falkenstein, DE (fsn1)</option>
+                    <option value="hel1">Helsinki, FI (hel1)</option>
+                    <option value="ash">Ashburn, VA (ash)</option>
+                    <option value="hil">Hillsboro, OR (hil)</option>
+                    <option value="sin">Singapore (sin)</option>
+                  </>
+                )}
+              </Select2>
+            </div>
+          )}
 
           {/* VPS Type Selector */}
           <div className="space-y-2">

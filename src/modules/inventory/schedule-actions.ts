@@ -149,7 +149,8 @@ export async function runMorningWorkflow(
   userEmail: string,
   isManual?: boolean,
   customSnapshotId?: number,
-  customServerType?: string
+  customServerType?: string,
+  customLocation?: string
 ): Promise<{ success: boolean; message: string; newServerId?: number; ip?: string }> {
   try {
     const env = await getCloudflareEnv();
@@ -283,10 +284,12 @@ export async function runMorningWorkflow(
   let ip = 'pending';
   let actionId: number;
 
+  const effectiveLocation = customLocation || sched.location;
+
   if (isDO) {
     const doResult = await doApi!.createDroplet(
       serverName,
-      sched.location,
+      effectiveLocation,
       customServerType || sched.serverType,
       snapshotToRestore,
       sshKeyIds,
@@ -299,7 +302,7 @@ export async function runMorningWorkflow(
       serverName,
       snapshotToRestore,
       customServerType || sched.serverType,
-      sched.location,
+      effectiveLocation,
       sshKeyIds,
       bootstrapScript
     );
@@ -313,7 +316,7 @@ export async function runMorningWorkflow(
     const specsParts = [
       (customServerType || sched.serverType || '').toUpperCase(),
       'X86',
-      sched.location.toUpperCase()
+      effectiveLocation.toUpperCase()
     ];
     server.serverSpecs = specsParts.join(' | ');
   } else {
@@ -605,9 +608,9 @@ export async function runEveningWorkflow(
 // Manual trigger server actions (called from UI buttons)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function triggerMorningSpinup(serverId: string, customSnapshotId?: number, customServerType?: string) {
+export async function triggerMorningSpinup(serverId: string, customSnapshotId?: number, customServerType?: string, customLocation?: string) {
   const userEmail = await getIdentity();
-  return runMorningWorkflow(serverId, userEmail, true, customSnapshotId, customServerType);
+  return runMorningWorkflow(serverId, userEmail, true, customSnapshotId, customServerType, customLocation);
 }
 
 export async function triggerEveningSnapshot(serverId: string, customPrefix?: string) {
