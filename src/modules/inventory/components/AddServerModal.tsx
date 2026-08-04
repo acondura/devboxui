@@ -523,7 +523,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm">
-      <div className="w-full max-w-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-2xl shadow-2xl overflow-hidden transform transition-all animate-in fade-in zoom-in duration-200 text-left">
+      <div className="w-full max-w-3xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-2xl shadow-2xl overflow-hidden transform transition-all animate-in fade-in zoom-in duration-200 text-left">
         <div className="px-6 py-5 border-b border-slate-200 dark:border-zinc-700 flex justify-between items-center bg-slate-50 dark:bg-zinc-800/50">
           <div>
             <h3 className="text-xl font-bold text-slate-900 dark:text-zinc-100">Launch New DevBox</h3>
@@ -568,7 +568,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
         )}
         
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-zinc-200 mb-1.5">DevBox Name (Required)</label>
               <input
@@ -698,7 +698,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
 
           {/* Specs Summary */}
           {!isLoadingOptions && currentType && (provider === 'hetzner' || provider === 'digitalocean') && (
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <div className="bg-slate-50 dark:bg-zinc-800/50 border border-slate-200/80 dark:border-zinc-700 rounded-xl p-2.5 text-center group relative cursor-help">
                 <p className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-zinc-400 font-bold mb-0.5">Cores</p>
                 <p className="text-sm font-bold text-slate-700 dark:text-zinc-200">{currentType.cores} vCPU</p>
@@ -787,7 +787,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
               <div className="px-4 py-2.5 bg-slate-50 dark:bg-zinc-800/50 border-b border-slate-200 dark:border-zinc-700">
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400">Bootstrap Options</p>
               </div>
-              <div className="p-4 grid grid-cols-2 gap-3">
+              <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {([
                   { key: 'aptUpdate', label: 'apt update & upgrade', desc: 'Fully update the OS before setup' },
                   { key: 'installOhMyBash', label: 'Oh My Bash', desc: 'Enhanced bash shell experience' },
