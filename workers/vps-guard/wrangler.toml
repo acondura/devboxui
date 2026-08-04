@@ -8,8 +8,14 @@ account_id = "acd43f7fef2daed6bc2b608d058db15b"
 binding = "KV"
 id = "b5847164d88f4dfe88fbb88cf53e5723"
 
-routes = [
-  { pattern = "*-web.devboxui.com/*", zone_name = "devboxui.com" },
-  { pattern = "*-code.devboxui.com/*", zone_name = "devboxui.com" },
-  { pattern = "*-logs.devboxui.com/*", zone_name = "devboxui.com" },
-]
+[[routes]]
+pattern = "*-web.devboxui.com/*"
+zone_name = "devboxui.com"
+
+[[routes]]
+pattern = "*-code.devboxui.com/*"
+zone_name = "devboxui.com"
+
+[[routes]]
+pattern = "*-logs.devboxui.com/*"
+zone_name = "devboxui.com"
