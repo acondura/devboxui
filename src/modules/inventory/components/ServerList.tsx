@@ -319,7 +319,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
   const [isDeleteServerOpen, setIsDeleteServerOpen] = useState(false);
   const [deletingDomainPending, setDeletingDomainPending] = useState<string | null>(null);
 
-  const [vpsSnapshots, setVpsSnapshots] = useState<Array<{ id: number | string; description?: string; name?: string | null }>>([]);
+  const [vpsSnapshots, setVpsSnapshots] = useState<Array<{ id: number | string; description?: string; name?: string | null; labels?: Record<string, string>; disk_size?: number; image_size?: number | null; architecture?: string }>>([]);
   const [selectedSnapshotId, setSelectedSnapshotId] = useState<string>('latest');
   const [isSpinUpOpen, setIsSpinUpOpen] = useState(false);
 
@@ -961,7 +961,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
   const [isDeleteServerOpen, setIsDeleteServerOpen] = useState(false);
   const [deletingDomainPending, setDeletingDomainPending] = useState<string | null>(null);
 
-  const [vpsSnapshots, setVpsSnapshots] = useState<Array<{ id: number | string; description?: string; name?: string | null }>>([]);
+  const [vpsSnapshots, setVpsSnapshots] = useState<Array<{ id: number | string; description?: string; name?: string | null; labels?: Record<string, string>; disk_size?: number; image_size?: number | null; architecture?: string }>>([]);
   const [selectedSnapshotId, setSelectedSnapshotId] = useState<string>('latest');
   const [isSpinUpOpen, setIsSpinUpOpen] = useState(false);
 

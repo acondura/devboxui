@@ -11,7 +11,7 @@ interface ConfirmSpinUpModalProps {
   serverId: string;
   serverName: string;
   defaultServerType?: string;
-  vpsSnapshots: Array<{ id: number | string; name?: string | null; description?: string; labels?: Record<string, string>; disk_size?: number; image_size?: number | null }>;
+  vpsSnapshots: Array<{ id: number | string; name?: string | null; description?: string; labels?: Record<string, string>; disk_size?: number; image_size?: number | null; architecture?: string }>;
   selectedSnapshotId: string;
   onSnapshotChange: (id: string) => void;
   provider?: 'hetzner' | 'contabo' | 'digitalocean' | 'linode' | 'vultr' | 'custom';
@@ -84,10 +84,32 @@ export function ConfirmSpinUpModal({
 
   const handleLocationChange = (newLocation: string) => {
     setSelectedLocation(newLocation);
-    // Re-filter server types for new location and reset selection if needed
-    const filtered = serverTypes.filter(t => !t.prices || t.prices.some(p => p.location === newLocation));
+    const snapArch = selectedSnapshotId !== 'latest'
+      ? vpsSnapshots.find(s => s.id.toString() === selectedSnapshotId)?.architecture
+      : vpsSnapshots[0]?.architecture;
+    const filtered = serverTypes.filter(t => {
+      if (t.prices && !t.prices.some(p => p.location === newLocation)) return false;
+      if (snapArch && t.architecture !== snapArch) return false;
+      return true;
+    });
     if (filtered.length > 0 && !filtered.some(t => t.name === serverType)) {
       setServerType(filtered[0].name);
+    }
+  };
+
+  const handleSnapshotSelect = (id: string) => {
+    onSnapshotChange(id);
+    // Reset server type if new snapshot has a different arch
+    const snapArch = id !== 'latest'
+      ? vpsSnapshots.find(s => s.id.toString() === id)?.architecture
+      : vpsSnapshots[0]?.architecture;
+    if (!snapArch) return;
+    const currentTypeArch = serverTypes.find(t => t.name === serverType)?.architecture;
+    if (currentTypeArch && currentTypeArch !== snapArch) {
+      const compatible = serverTypes.find(
+        t => t.architecture === snapArch && (!t.prices || t.prices.some(p => p.location === selectedLocation))
+      );
+      if (compatible) setServerType(compatible.name);
     }
   };
 
@@ -103,18 +125,19 @@ export function ConfirmSpinUpModal({
     }
   };
 
-  // Hardcoded fallback list if API fails or is loading
-  const fallbackTypes: HetznerServerType[] = [
-    { name: 'cpx11', cores: 2, memory: 2, disk: 40, architecture: 'x86' },
-    { name: 'cx22', cores: 2, memory: 4, disk: 40, architecture: 'x86' },
-    { name: 'cpx21', cores: 3, memory: 4, disk: 80, architecture: 'x86' },
-    { name: 'cpx31', cores: 4, memory: 8, disk: 160, architecture: 'x86' },
-    { name: 'cpx41', cores: 8, memory: 16, disk: 240, architecture: 'x86' },
-    { name: 'cpx51', cores: 16, memory: 32, disk: 360, architecture: 'x86' },
-  ];
+  // Derive the architecture of the selected snapshot so we only show compatible server types.
+  const selectedSnapshotArch = selectedSnapshotId !== 'latest'
+    ? vpsSnapshots.find(s => s.id.toString() === selectedSnapshotId)?.architecture
+    : vpsSnapshots[0]?.architecture;
 
-  const allTypes = serverTypes.length > 0 ? serverTypes : fallbackTypes;
-  const typesList = allTypes.filter(t => !t.prices || t.prices.some(p => p.location === selectedLocation));
+  const typesList = serverTypes.filter(t => {
+    if (t.prices && !t.prices.some(p => p.location === selectedLocation)) return false;
+    if (selectedSnapshotArch) {
+      // Hetzner image arch: 'x86' matches server type arch 'x86'; 'arm' matches 'arm'
+      if (t.architecture !== selectedSnapshotArch) return false;
+    }
+    return true;
+  });
   const priceSymbol = provider === 'digitalocean' ? '$' : '€';
 
   const getPrice = (t: HetznerServerType) => {
@@ -126,7 +149,7 @@ export function ConfirmSpinUpModal({
     };
   };
 
-  const selectedTypeData = allTypes.find(t => t.name === serverType);
+  const selectedTypeData = serverTypes.find(t => t.name === serverType);
   const selectedPrice = selectedTypeData ? getPrice(selectedTypeData) : null;
 
   const formatSpecs = (t: HetznerServerType) => {
@@ -231,7 +254,7 @@ export function ConfirmSpinUpModal({
             </label>
             <Select2
               value={selectedSnapshotId}
-              onValueChange={val => onSnapshotChange(val)}
+              onValueChange={handleSnapshotSelect}
               disabled={isSpinningUp}
               className="w-full bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-zinc-100 font-medium"
             >
