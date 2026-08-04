@@ -102,6 +102,14 @@ class DebugHandler(http.server.BaseHTTPRequestHandler):
         now = int(time.time())
         candidate_times = []
 
+        # 0. Boot time as a floor — server can't be idle longer than its uptime
+        try:
+            with open('/proc/uptime', 'r') as f_up:
+                uptime_secs = float(f_up.read().split()[0])
+            candidate_times.append(int(now - uptime_secs))
+        except Exception:
+            pass
+
         # 1. Active SSH connections via ss
         try:
             ssh_output = subprocess.getoutput("ss -t -n state established '( sport = :22 )'")
