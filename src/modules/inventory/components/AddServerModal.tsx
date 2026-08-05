@@ -523,8 +523,8 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm">
-      <div className="w-full max-w-3xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-2xl shadow-2xl overflow-hidden transform transition-all animate-in fade-in zoom-in duration-200 text-left">
-        <div className="px-6 py-5 border-b border-slate-200 dark:border-zinc-700 flex justify-between items-center bg-slate-50 dark:bg-zinc-800/50">
+      <div className="w-full max-w-3xl max-h-[90vh] flex flex-col bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-2xl shadow-2xl overflow-hidden transform transition-all animate-in fade-in zoom-in duration-200 text-left">
+        <div className="shrink-0 px-6 py-5 border-b border-slate-200 dark:border-zinc-700 flex justify-between items-center bg-slate-50 dark:bg-zinc-800/50">
           <div>
             <h3 className="text-xl font-bold text-slate-900 dark:text-zinc-100">Launch New DevBox</h3>
             <p className="text-xs text-slate-500 dark:text-zinc-400 uppercase tracking-widest font-bold mt-1">Multi-Cloud Provisioning</p>
@@ -535,6 +535,8 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
             </svg>
           </button>
         </div>
+
+        <div className="overflow-y-auto">
 
         {/* Provider Selector */}
         <div className="px-6 py-4 bg-slate-50 dark:bg-zinc-800/50 border-b border-slate-205 dark:border-zinc-700">
@@ -847,6 +849,7 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
             </button>
           </div>
         </form>
+        </div>
       </div>
     </div>
   );
