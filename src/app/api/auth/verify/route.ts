@@ -14,7 +14,9 @@ export async function GET(req: NextRequest) {
     const email = await verifyMagicToken(token, env.AUTH_SECRET);
     const sessionToken = await createSessionToken(email, env.AUTH_SECRET);
 
-    const res = NextResponse.redirect(new URL('/dashboard', req.url));
+    const next = req.nextUrl.searchParams.get('next');
+    const redirectTo = next && next.startsWith('/') ? new URL(next, req.url) : new URL('/dashboard', req.url);
+    const res = NextResponse.redirect(redirectTo);
     res.cookies.set(SESSION_COOKIE, sessionToken, sessionCookieOptions());
     return res;
   } catch {

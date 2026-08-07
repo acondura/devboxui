@@ -5,7 +5,7 @@ import { createMagicToken, sendMagicLinkEmail } from '@/lib/magic-auth';
 
 export async function POST(req: NextRequest) {
   try {
-    const { email } = await req.json() as { email?: string };
+    const { email, next } = await req.json() as { email?: string; next?: string };
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json({ error: 'Invalid email' }, { status: 400 });
     }
@@ -18,11 +18,13 @@ export async function POST(req: NextRequest) {
 
     const token = await createMagicToken(email, env.AUTH_SECRET);
     const appUrl = env.NEXT_PUBLIC_APP_URL || `https://${req.headers.get('host')}`;
-    const magicUrl = `${appUrl}/api/auth/verify?token=${encodeURIComponent(token)}`;
+    const magicUrl = new URL(`${appUrl}/api/auth/verify`);
+    magicUrl.searchParams.set('token', token);
+    if (next && next.startsWith('/')) magicUrl.searchParams.set('next', next);
 
     await sendMagicLinkEmail({
       to: email,
-      magicUrl,
+      magicUrl: magicUrl.toString(),
       sesAccessKeyId: env.AWS_SES_ACCESS_KEY_ID,
       sesSecretAccessKey: env.AWS_SES_SECRET_ACCESS_KEY,
       sesRegion: env.AWS_SES_REGION,

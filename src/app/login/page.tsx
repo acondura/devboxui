@@ -9,6 +9,7 @@ export default function LoginPage() {
 
   const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
   const errorParam = searchParams?.get('error');
+  const nextParam = searchParams?.get('next');
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -18,7 +19,7 @@ export default function LoginPage() {
       const res = await fetch('/api/auth/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, next: nextParam }),
       });
       if (!res.ok) {
         const data = await res.json() as { error?: string };
