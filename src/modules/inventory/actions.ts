@@ -2203,6 +2203,18 @@ export async function getServerMetrics(serverId: string) {
     const internalSecret = env.INTERNAL_SECRET;
     let lastError = "";
 
+    // Load CF Access service token once — needed for domains protected by CF Access (e.g. odb-logs).
+    let cfAccessClientId: string | undefined;
+    let cfAccessClientSecret: string | undefined;
+    try {
+      const tokenRaw = await kv.get('cloudflare:service_token');
+      if (tokenRaw) {
+        const token = JSON.parse(tokenRaw) as { client_id: string; client_secret: string };
+        cfAccessClientId = token.client_id;
+        cfAccessClientSecret = token.client_secret;
+      }
+    } catch { /* non-fatal — proceed without CF Access credentials */ }
+
     for (const logsUrl of urlsToTry) {
       try {
         const controller = new AbortController();
@@ -2211,6 +2223,10 @@ export async function getServerMetrics(serverId: string) {
         const headers: Record<string, string> = {};
         if (internalSecret) {
           headers['X-DevBox-Internal'] = internalSecret;
+        }
+        if (cfAccessClientId && cfAccessClientSecret) {
+          headers['CF-Access-Client-Id'] = cfAccessClientId;
+          headers['CF-Access-Client-Secret'] = cfAccessClientSecret;
         }
 
         const resp = await fetch(logsUrl, {
