@@ -326,6 +326,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
   const [metrics, setMetrics] = useState<{ cpu_pct: number; ram_pct: number; disk_pct: number } | null>(null);
   const [isFetchingMetrics, setIsFetchingMetrics] = useState(false);
   const [hasFetchedMetrics, setHasFetchedMetrics] = useState(false);
+  const [metricsError, setMetricsError] = useState<string | null>(null);
   const [isRestarting, setIsRestarting] = useState(false);
 
   const fetchMetrics = async () => {
@@ -335,13 +336,18 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
       const result = await getServerMetrics(server.id);
       if (result.success && result.metrics) {
         setMetrics(result.metrics);
+        setMetricsError(null);
       } else {
-        console.warn(`[health-check] ${server.id}: ${result.error ?? 'no metrics returned'}`);
+        const err = result.error ?? 'no metrics returned';
+        console.warn(`[health-check] ${server.id}: ${err}`);
         setMetrics(null);
+        setMetricsError(err);
       }
     } catch (e) {
+      const err = e instanceof Error ? e.message : String(e);
       console.warn(`[health-check] ${server.id}:`, e);
       setMetrics(null);
+      setMetricsError(err);
     } finally {
       setIsFetchingMetrics(false);
       setHasFetchedMetrics(true);
@@ -351,6 +357,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
   useEffect(() => {
     if (server.status !== 'ready') {
       setMetrics(null);
+      setMetricsError(null);
       setHasFetchedMetrics(false);
       return;
     }
@@ -549,7 +556,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
                   Updating metrics...
                 </span>
               ) : hasFetchedMetrics ? (
-                <span className="text-[10px] text-red-500 dark:text-red-400 flex items-center space-x-1 font-bold animate-pulse">
+                <span title={metricsError ?? undefined} className="text-[10px] text-red-500 dark:text-red-400 flex items-center space-x-1 font-bold animate-pulse cursor-help">
                   ⚠️ Health Check Unreachable (Blocked/Off)
                 </span>
               ) : null}
@@ -972,6 +979,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
   const [metrics, setMetrics] = useState<{ cpu_pct: number; ram_pct: number; disk_pct: number } | null>(null);
   const [isFetchingMetrics, setIsFetchingMetrics] = useState(false);
   const [hasFetchedMetrics, setHasFetchedMetrics] = useState(false);
+  const [metricsError, setMetricsError] = useState<string | null>(null);
   const [isRestarting, setIsRestarting] = useState(false);
 
   const fetchMetrics = async () => {
@@ -981,13 +989,18 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
       const result = await getServerMetrics(server.id);
       if (result.success && result.metrics) {
         setMetrics(result.metrics);
+        setMetricsError(null);
       } else {
-        console.warn(`[health-check] ${server.id}: ${result.error ?? 'no metrics returned'}`);
+        const err = result.error ?? 'no metrics returned';
+        console.warn(`[health-check] ${server.id}: ${err}`);
         setMetrics(null);
+        setMetricsError(err);
       }
     } catch (e) {
+      const err = e instanceof Error ? e.message : String(e);
       console.warn(`[health-check] ${server.id}:`, e);
       setMetrics(null);
+      setMetricsError(err);
     } finally {
       setIsFetchingMetrics(false);
       setHasFetchedMetrics(true);
@@ -997,6 +1010,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
   useEffect(() => {
     if (server.status !== 'ready') {
       setMetrics(null);
+      setMetricsError(null);
       setHasFetchedMetrics(false);
       return;
     }
@@ -1257,7 +1271,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
                       Updating metrics...
                     </span>
                   ) : hasFetchedMetrics ? (
-                    <span className="text-[10px] text-red-500 dark:text-red-400 flex items-center space-x-1 font-bold animate-pulse">
+                    <span title={metricsError ?? undefined} className="text-[10px] text-red-500 dark:text-red-400 flex items-center space-x-1 font-bold animate-pulse cursor-help">
                       ⚠️ Health Check Unreachable (Blocked/Off)
                     </span>
                   ) : null}
