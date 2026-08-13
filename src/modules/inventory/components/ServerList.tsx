@@ -325,6 +325,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
 
   const [metrics, setMetrics] = useState<{ cpu_pct: number; ram_pct: number; disk_pct: number } | null>(null);
   const [isFetchingMetrics, setIsFetchingMetrics] = useState(false);
+  const [hasFetchedMetrics, setHasFetchedMetrics] = useState(false);
   const [isRestarting, setIsRestarting] = useState(false);
 
   const fetchMetrics = async () => {
@@ -342,12 +343,14 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
       setMetrics(null);
     } finally {
       setIsFetchingMetrics(false);
+      setHasFetchedMetrics(true);
     }
   };
 
   useEffect(() => {
     if (server.status !== 'ready') {
       setMetrics(null);
+      setHasFetchedMetrics(false);
       return;
     }
     // Stagger initial fetch across a 20s window so many servers don't all fire at once.
@@ -544,11 +547,11 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
                   <div className="w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin mr-1" />
                   Updating metrics...
                 </span>
-              ) : (
+              ) : hasFetchedMetrics ? (
                 <span className="text-[10px] text-red-500 dark:text-red-400 flex items-center space-x-1 font-bold animate-pulse">
                   ⚠️ Health Check Unreachable (Blocked/Off)
                 </span>
-              )}
+              ) : null}
             </div>
           )}
 
@@ -967,6 +970,7 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
 
   const [metrics, setMetrics] = useState<{ cpu_pct: number; ram_pct: number; disk_pct: number } | null>(null);
   const [isFetchingMetrics, setIsFetchingMetrics] = useState(false);
+  const [hasFetchedMetrics, setHasFetchedMetrics] = useState(false);
   const [isRestarting, setIsRestarting] = useState(false);
 
   const fetchMetrics = async () => {
@@ -984,12 +988,14 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
       setMetrics(null);
     } finally {
       setIsFetchingMetrics(false);
+      setHasFetchedMetrics(true);
     }
   };
 
   useEffect(() => {
     if (server.status !== 'ready') {
       setMetrics(null);
+      setHasFetchedMetrics(false);
       return;
     }
     const jitter = Math.random() * 20000;
@@ -1248,11 +1254,11 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
                       <div className="w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin mr-1" />
                       Updating metrics...
                     </span>
-                  ) : (
+                  ) : hasFetchedMetrics ? (
                     <span className="text-[10px] text-red-500 dark:text-red-400 flex items-center space-x-1 font-bold animate-pulse">
                       ⚠️ Health Check Unreachable (Blocked/Off)
                     </span>
-                  )}
+                  ) : null}
                 </div>
               )}
 
