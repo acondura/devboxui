@@ -6,11 +6,6 @@
  * For browser traffic: verifies the devboxui_session cookie and checks that
  * the session email matches the server owner or a collaborator.
  * Redirects unauthenticated/unauthorized requests to devboxui.com/login.
- *
- * Deploy routes (add in Cloudflare Dashboard → Workers → Triggers → Routes):
- *   *-web.devboxui.com/*
- *   *-code.devboxui.com/*
- *   *-logs.devboxui.com/*
  */
 
 import { jwtVerify } from 'jose';
@@ -76,10 +71,7 @@ export default {
 
     // ── 0. Internal service bypass (server-side Pages → Worker fetches) ──────
     if (env.INTERNAL_SECRET && req.headers.get('X-DevBox-Internal') === env.INTERNAL_SECRET) {
-      const proxied = new Request(req);
-      // Strip the header before forwarding to the origin
-      const cleaned = new Request(proxied);
-      const headers = new Headers(cleaned.headers);
+      const headers = new Headers(req.headers);
       headers.delete('X-DevBox-Internal');
       return fetch(new Request(req, { headers }));
     }
@@ -89,43 +81,44 @@ export default {
 
     const lookupRaw = await env.KV.get(`hostname_lookup:${hostname}`);
     if (!lookupRaw) {
-      // Hostname not in KV — pass through (may not be a managed VPS)
+      console.log(`[vps-guard] PASS-THROUGH: no hostname_lookup for ${hostname}`);
       return fetch(req);
     }
 
     const lookup: HostnameLookup = JSON.parse(lookupRaw);
+    console.log(`[vps-guard] ${hostname} → orgId=${lookup.orgId} serverId=${lookup.serverId} clientIp=${clientIp}`);
+
     const serverRaw = await env.KV.get(`servers:${lookup.orgId}:${lookup.serverId}`);
     if (!serverRaw) {
+      console.log(`[vps-guard] PASS-THROUGH: servers:${lookup.orgId}:${lookup.serverId} not found`);
       return fetch(req);
     }
 
     const server: ServerConfig = JSON.parse(serverRaw);
 
-    // Allow requests from any known VPS IP that is listed as a peer of this server,
-    // OR that lists this server as one of its own peers (bidirectional trust).
-    // allowedPeers stores server IDs — resolve to IPs via KV.
     if (clientIp) {
-      const orgId = server.orgId || lookup.orgId;
-
-      // Build set of trusted peer IPs: peers this server trusts
       const trustedPeerIds = new Set(server.allowedPeers || []);
 
-      // Also trust any server whose allowedPeers includes this server (reverse direction)
-      // We check this by looking up the incoming IP via a vps_ip_index KV key written by the app
       const ipIndexRaw = await env.KV.get(`vps_ip:${clientIp}`);
+      console.log(`[vps-guard] vps_ip:${clientIp} = ${ipIndexRaw ?? 'NOT FOUND'}`);
+
       if (ipIndexRaw) {
         const ipIndex: { orgId: string; serverId: string } = JSON.parse(ipIndexRaw);
         const incomingServerRaw = await env.KV.get(`servers:${ipIndex.orgId}:${ipIndex.serverId}`);
+        console.log(`[vps-guard] incoming server servers:${ipIndex.orgId}:${ipIndex.serverId} = ${incomingServerRaw ? 'found' : 'NOT FOUND'}`);
+
         if (incomingServerRaw) {
           const incomingServer: ServerConfig = JSON.parse(incomingServerRaw);
-          // Trust if: incoming server has this server in its allowedPeers, OR this server has incoming in its peers
           const incomingTrustsUs = (incomingServer.allowedPeers || []).includes(lookup.serverId);
           const weTrustIncoming = trustedPeerIds.has(ipIndex.serverId);
+          console.log(`[vps-guard] incomingTrustsUs=${incomingTrustsUs} weTrustIncoming=${weTrustIncoming} (cma2.allowedPeers=${JSON.stringify(server.allowedPeers)})`);
           if (incomingTrustsUs || weTrustIncoming) {
+            console.log(`[vps-guard] PEER BYPASS granted for IP ${clientIp}`);
             return fetch(req);
           }
         }
       }
+      console.log(`[vps-guard] peer bypass FAILED for IP ${clientIp}`);
     }
 
     // ── 2. Session verification ──────────────────────────────────────────────

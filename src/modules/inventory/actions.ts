@@ -2612,8 +2612,17 @@ export async function syncServerAccessPolicies(serverId: string) {
       const peer = allServers.find(s => s.id === peerId);
       if (peer && peer.ip && peer.ip !== 'pending') {
         peerIps.push(peer.ip);
+        // Keep vps_ip index in sync so the Worker can resolve peer IPs to server IDs
+        const peerOrgId = peer.orgId || userEmail;
+        await kv.put(`vps_ip:${peer.ip}`, JSON.stringify({ orgId: peerOrgId, serverId: peer.id }));
       }
     }
+  }
+
+  // Also ensure this server's own IP is indexed
+  if (server.ip && server.ip !== 'pending') {
+    const ownOrgId = server.orgId || userEmail;
+    await kv.put(`vps_ip:${server.ip}`, JSON.stringify({ orgId: ownOrgId, serverId: server.id }));
   }
 
   const cfApi = new CloudflareApiService(env);

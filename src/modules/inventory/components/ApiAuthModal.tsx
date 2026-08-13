@@ -80,8 +80,8 @@ export function ApiAuthModal({ isOpen, onClose, server, allServers, onSave }: Ap
             </div>
             <p className="text-xs text-slate-600 dark:text-zinc-300 leading-relaxed">
               Select which DevBoxes are authorized to send API requests to this server.
-              Authorized DevBoxes bypass the Cloudflare Access login screen automatically using their public IP address.
-              Any dynamic IP updates will keep authorization rules aligned automatically.
+              Authorized DevBoxes bypass the login screen automatically using their public IP address.
+              Saving this refreshes the IP index immediately — no redeployment needed.
             </p>
           </div>
 
