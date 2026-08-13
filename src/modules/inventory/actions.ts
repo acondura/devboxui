@@ -2161,7 +2161,7 @@ export async function getServerMetrics(serverId: string) {
 
   // Determine logs URLs to try (primary and fallback)
   const urlsToTry: string[] = [];
-  
+
   if (config.tunnelUrl) {
     const baseUrl = config.tunnelUrl.split('?')[0];
     let primaryUrl = baseUrl;
@@ -2174,7 +2174,26 @@ export async function getServerMetrics(serverId: string) {
       urlsToTry.push(primaryUrl);
     }
   }
-  
+
+  // For servers whose tunnelUrl has no -code./-web. pattern (e.g. "odb.devboxui.com"),
+  // derive the logs URL from config.hostname instead.
+  if (urlsToTry.length === 0 && config.hostname) {
+    const dotIdx = config.hostname.indexOf('.');
+    if (dotIdx > 0) {
+      const sub = config.hostname.substring(0, dotIdx);
+      const domain = config.hostname.substring(dotIdx);
+      let logsSub = sub;
+      if (sub.includes('-code')) {
+        logsSub = sub.replace('-code', '-logs');
+      } else if (sub.includes('-web')) {
+        logsSub = sub.replace('-web', '-logs');
+      } else if (!sub.endsWith('-logs')) {
+        logsSub = `${sub}-logs`;
+      }
+      urlsToTry.push(`https://${logsSub}${domain}`);
+    }
+  }
+
   const fallbackUrl = `https://${serverId}-logs.devboxui.com`;
   if (!urlsToTry.includes(fallbackUrl)) {
     urlsToTry.push(fallbackUrl);
@@ -2381,6 +2400,7 @@ export async function provisionManualServer(
     await kv.put(serverKey, JSON.stringify(config));
     await kv.put(`server_lookup:${serverId}`, JSON.stringify({ orgId: targetOrgId, serverKey }));
     await kv.put(`hostname_lookup:${hostname}`, JSON.stringify({ orgId: targetOrgId, serverId }));
+    await kv.put(`hostname_lookup:${logsHostname}`, JSON.stringify({ orgId: targetOrgId, serverId }));
 
     // Fast-lookup index for the bootstrap API
     await kv.put(`token:${provisioningToken}`, JSON.stringify({ serverKey, serverId }));

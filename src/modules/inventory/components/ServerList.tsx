@@ -336,10 +336,11 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
       if (result.success && result.metrics) {
         setMetrics(result.metrics);
       } else {
+        console.warn(`[health-check] ${server.id}: ${result.error ?? 'no metrics returned'}`);
         setMetrics(null);
       }
     } catch (e) {
-      console.warn("Failed to fetch metrics", e);
+      console.warn(`[health-check] ${server.id}:`, e);
       setMetrics(null);
     } finally {
       setIsFetchingMetrics(false);
@@ -981,10 +982,11 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
       if (result.success && result.metrics) {
         setMetrics(result.metrics);
       } else {
+        console.warn(`[health-check] ${server.id}: ${result.error ?? 'no metrics returned'}`);
         setMetrics(null);
       }
     } catch (e) {
-      console.warn("Failed to fetch metrics", e);
+      console.warn(`[health-check] ${server.id}:`, e);
       setMetrics(null);
     } finally {
       setIsFetchingMetrics(false);
