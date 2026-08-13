@@ -2176,21 +2176,27 @@ export async function getServerMetrics(serverId: string) {
   }
 
   // For servers whose tunnelUrl has no -code./-web. pattern (e.g. "odb.devboxui.com"),
-  // derive the logs URL from config.hostname instead.
-  if (urlsToTry.length === 0 && config.hostname) {
-    const dotIdx = config.hostname.indexOf('.');
-    if (dotIdx > 0) {
-      const sub = config.hostname.substring(0, dotIdx);
-      const domain = config.hostname.substring(dotIdx);
-      let logsSub = sub;
-      if (sub.includes('-code')) {
-        logsSub = sub.replace('-code', '-logs');
-      } else if (sub.includes('-web')) {
-        logsSub = sub.replace('-web', '-logs');
-      } else if (!sub.endsWith('-logs')) {
-        logsSub = `${sub}-logs`;
+  // extract the hostname directly from tunnelUrl or config.hostname and derive the logs URL.
+  if (urlsToTry.length === 0) {
+    let sourceHostname: string | null = config.hostname ?? null;
+    if (!sourceHostname && config.tunnelUrl) {
+      try { sourceHostname = new URL(config.tunnelUrl).hostname; } catch { /* ignore */ }
+    }
+    if (sourceHostname) {
+      const dotIdx = sourceHostname.indexOf('.');
+      if (dotIdx > 0) {
+        const sub = sourceHostname.substring(0, dotIdx);
+        const domain = sourceHostname.substring(dotIdx);
+        let logsSub = sub;
+        if (sub.includes('-code')) {
+          logsSub = sub.replace('-code', '-logs');
+        } else if (sub.includes('-web')) {
+          logsSub = sub.replace('-web', '-logs');
+        } else if (!sub.endsWith('-logs')) {
+          logsSub = `${sub}-logs`;
+        }
+        urlsToTry.push(`https://${logsSub}${domain}`);
       }
-      urlsToTry.push(`https://${logsSub}${domain}`);
     }
   }
 
