@@ -54,20 +54,32 @@ export async function GET(req: NextRequest) {
 
       // Set up Cloudflare tunnel routing for the new hostname
       if (server.tunnelId) {
-        steps.push(`Setting up hostname routing for ${newHostname}…`);
-        await cfApi.setupHostname(newHostname, server.tunnelId);
-
-        steps.push(`Setting up Access for ${newHostname}…`);
-        await cfApi.setupAccess(newHostname, userEmail);
-
         const logsHostname = newHostname.replace(/^([^.]+)\./, '$1-logs.');
-        steps.push(`Setting up hostname routing for ${logsHostname}…`);
-        await cfApi.setupHostname(logsHostname, server.tunnelId, 'http://localhost:8000');
-        steps.push(`Setting up Access for ${logsHostname}…`);
-        await cfApi.setupAccess(logsHostname, userEmail);
-
-        const serviceToken = await cfApi.getOrCreateServiceToken(kv);
-        await cfApi.authorizeServiceToken(logsHostname, serviceToken.id);
+        for (const [h, svc] of [[newHostname, undefined], [logsHostname, 'http://localhost:8000']] as [string, string | undefined][]) {
+          try {
+            steps.push(`Setting up hostname routing for ${h}…`);
+            await cfApi.setupHostname(h, server.tunnelId, svc);
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            if (msg.includes('81053')) {
+              steps.push(`DNS record for ${h} already exists — skipping`);
+            } else {
+              throw e;
+            }
+          }
+          try {
+            steps.push(`Setting up Access for ${h}…`);
+            await cfApi.setupAccess(h, userEmail);
+          } catch (e) {
+            steps.push(`Access setup for ${h} skipped: ${e instanceof Error ? e.message : String(e)}`);
+          }
+        }
+        try {
+          const serviceToken = await cfApi.getOrCreateServiceToken(kv);
+          await cfApi.authorizeServiceToken(logsHostname, serviceToken.id);
+        } catch (e) {
+          steps.push(`Service token auth skipped: ${e instanceof Error ? e.message : String(e)}`);
+        }
       } else {
         steps.push('No tunnelId on record — skipping Cloudflare routing setup');
       }
