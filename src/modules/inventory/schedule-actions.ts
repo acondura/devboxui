@@ -275,6 +275,7 @@ export async function runMorningWorkflow(
   // Create server from snapshot
   const serverName = (server.hostname || `devbox-${serverId.slice(0, 8)}`)
     .replace('.devboxui.com', '')
+    .replace('-code', '')
     .toLowerCase()
     .replace(/[^a-z0-9-]/g, '-');
   console.log(`[Morning] Creating server "${serverName}" from snapshot ${snapshotToRestore}…`);
