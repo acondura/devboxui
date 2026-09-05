@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Self-healing processing of any pending snapshots/creations
+  // Self-healing processing of any pending snapshots/creations (runs every minute)
   const kv = env.KV;
   if (kv) {
     try {
@@ -41,6 +41,12 @@ export async function GET(req: NextRequest) {
     } catch (err) {
       console.error('[Cron Evening] Failed to process pending creations:', err);
     }
+  }
+
+  // Only scan for scheduled servers at the top of each hour to avoid kv.list on every tick
+  const nowUtc = new Date();
+  if (nowUtc.getUTCMinutes() !== 0) {
+    return NextResponse.json({ timestamp: nowUtc.toISOString(), processed: 0, results: [] });
   }
 
   const results: Array<{
