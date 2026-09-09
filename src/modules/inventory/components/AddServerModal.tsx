@@ -211,55 +211,6 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
     };
     return getPrice(a) - getPrice(b);
   });
- 
-  // Categorization function for server types
-  const getCategorizedType = (t: HetznerServerType) => {
-    const name = t.name.toLowerCase();
-    
-    if (provider === 'digitalocean') {
-      if (name.startsWith('s-')) {
-        return 'Shared Resources - Cost-Optimized (Intel/AMD)';
-      }
-      return 'Dedicated Resources (General Purpose)';
-    }
-
-    // Dedicated resources
-    if (t.cpu_type === 'dedicated' || name.startsWith('ccx')) {
-      return 'Dedicated Resources (General Purpose)';
-    }
-    
-    // ARM architecture
-    if (t.architecture === 'arm' || name.startsWith('cax')) {
-      return 'Shared Resources - ARM64 (Ampere®)';
-    }
-    
-    // x86 Shared resources
-    const isNewerShared = name.startsWith('cx23') || name.startsWith('cx33') || name.startsWith('cx43') || name.startsWith('cx53') || name.startsWith('cx63');
-    if (isNewerShared) {
-      return 'Shared Resources - Regular Performance (Intel/AMD)';
-    }
-    
-    return 'Shared Resources - Cost-Optimized (Intel/AMD)';
-  };
-
-  // Group sorted types by category
-  const groupedServerTypes = sortedServerTypes.reduce((acc, t) => {
-    const category = getCategorizedType(t);
-    if (!acc[category]) acc[category] = [];
-    acc[category].push(t);
-    return acc;
-  }, {} as Record<string, HetznerServerType[]>);
-
-  const categoryOrder = Object.keys(groupedServerTypes).sort((a, b) => {
-    const getMinPrice = (cat: string) => {
-      const first = groupedServerTypes[cat]?.[0];
-      if (!first) return Infinity;
-      const p = first.prices.find(p => p.location === location) || first.prices[0];
-      const ipv4 = provider === 'digitalocean' ? 0 : getIpv4MonthlyPrice(options.pricing, location);
-      return parseFloat(p?.price_monthly?.gross || '0') + ipv4;
-    };
-    return getMinPrice(a) - getMinPrice(b);
-  });
 
   // Find price for current selection
   const selectedPrice = currentType?.prices.find((p) => p.location === location) || currentType?.prices[0];
@@ -619,25 +570,17 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
                     {isLoadingOptions ? (
                       <option>Loading types...</option>
                     ) : (
-                      categoryOrder.map(category => {
-                        const types = groupedServerTypes[category];
-                        if (!types || types.length === 0) return null;
+                      sortedServerTypes.map(t => {
+                        const p = t.prices.find((p) => p.location === location) || t.prices[0];
+                        const ipv4 = provider === 'digitalocean' ? 0 : getIpv4MonthlyPrice(options.pricing, location);
+                        const priceSymbol = provider === 'digitalocean' ? '$' : '€';
+                        const priceLabel = p ? `${priceSymbol}${(parseFloat(p.price_monthly.gross) + ipv4).toFixed(2)}` : '';
+                        const specs = `${t.cores} vCPU / ${t.memory}GB RAM / ${t.disk}GB`;
+                        const archLabel = t.architecture === 'arm' ? 'ARM64' : 'x86_64';
                         return (
-                          <optgroup key={category} label={category} className="bg-white text-slate-500 font-semibold text-xs py-1">
-                            {types.map(t => {
-                              const p = t.prices.find((p) => p.location === location) || t.prices[0];
-                              const ipv4 = provider === 'digitalocean' ? 0 : getIpv4MonthlyPrice(options.pricing, location);
-                              const priceSymbol = provider === 'digitalocean' ? '$' : '€';
-                              const priceLabel = p ? `${priceSymbol}${(parseFloat(p.price_monthly.gross) + ipv4).toFixed(2)}` : '';
-                              const specs = `${t.cores} vCPU / ${t.memory}GB RAM / ${t.disk}GB`;
-                              const archLabel = t.architecture === 'arm' ? 'ARM64' : 'x86_64';
-                              return (
-                                <option key={t.id} value={t.name} className="text-slate-900 font-normal bg-white">
-                                  [{archLabel}] {t.name.toUpperCase()} — ({priceLabel}) — {specs}
-                                </option>
-                              );
-                            })}
-                          </optgroup>
+                          <option key={t.id} value={t.name} className="text-slate-900 font-normal bg-white">
+                            [{archLabel}] {t.name.toUpperCase()} — ({priceLabel}) — {specs}
+                          </option>
                         );
                       })
                     )}
