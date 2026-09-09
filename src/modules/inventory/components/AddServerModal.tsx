@@ -250,12 +250,16 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
     return acc;
   }, {} as Record<string, HetznerServerType[]>);
 
-  const categoryOrder = [
-    'Shared Resources - Regular Performance (Intel/AMD)',
-    'Shared Resources - Cost-Optimized (Intel/AMD)',
-    'Shared Resources - ARM64 (Ampere®)',
-    'Dedicated Resources (General Purpose)'
-  ];
+  const categoryOrder = Object.keys(groupedServerTypes).sort((a, b) => {
+    const getMinPrice = (cat: string) => {
+      const first = groupedServerTypes[cat]?.[0];
+      if (!first) return Infinity;
+      const p = first.prices.find(p => p.location === location) || first.prices[0];
+      const ipv4 = provider === 'digitalocean' ? 0 : getIpv4MonthlyPrice(options.pricing, location);
+      return parseFloat(p?.price_monthly?.gross || '0') + ipv4;
+    };
+    return getMinPrice(a) - getMinPrice(b);
+  });
 
   // Find price for current selection
   const selectedPrice = currentType?.prices.find((p) => p.location === location) || currentType?.prices[0];
