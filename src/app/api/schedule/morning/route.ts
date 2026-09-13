@@ -27,9 +27,10 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Self-healing processing of any pending snapshots/creations (runs every minute)
+  // Self-healing processing of any pending snapshots/creations (runs every 15 min to stay within KV list quota)
   const kv = env.KV;
-  if (kv) {
+  const nowForPending = new Date();
+  if (kv && nowForPending.getUTCMinutes() % 15 === 0) {
     try {
       await processAllPendingSnapshots(kv);
     } catch (err) {
