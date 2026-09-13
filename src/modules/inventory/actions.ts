@@ -639,6 +639,13 @@ apt-get upgrade -y
 ` : '';
 
   const dockerBlock = installDocker ? `
+if command -v curl >/dev/null 2>&1; then
+    curl -s -m 5 -X POST "$CALLBACK_URL" \
+      -H "Content-Type: application/json" \
+      -H "CF-Access-Client-Id: $SERVICE_TOKEN_ID" \
+      -H "CF-Access-Client-Secret: $SERVICE_TOKEN_SECRET" \
+      -d "{\\\"serverId\\\": \\\"$SERVER_ID\\\", \\\"token\\\": \\\"$PROV_TOKEN\\\", \\\"status\\\": \\\"Installing Docker\\\"}" || true
+fi
 echo "Installing Docker..."
 curl -fsSL https://get.docker.com -o get-docker.sh
 sh get-docker.sh
@@ -1394,8 +1401,10 @@ export async function getServers() {
           const oldDetailed = s.detailedStatus;
 
           if (hs.status === 'running') {
-            s.status = 'ready';
-            s.detailedStatus = 'Ready';
+            if (s.status !== 'configuring') {
+              s.status = 'ready';
+              s.detailedStatus = 'Ready';
+            }
           } else if (hs.status === 'starting' || hs.status === 'initializing') {
             s.status = 'initializing';
             s.detailedStatus = 'Initializing...';

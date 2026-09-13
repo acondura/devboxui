@@ -974,8 +974,8 @@ export async function processPendingCreate(
     } else if (action.status === 'success') {
       console.log(`[processPendingCreate] Create action ${actionId} succeeded.`);
       server.pendingCreateActionId = undefined;
-      server.status = 'ready';
-      server.detailedStatus = 'Ready';
+      server.status = 'configuring';
+      server.detailedStatus = 'Running bootstrap...';
       server.updatedAt = now;
       await kv.put(actualServerKey, JSON.stringify(server));
       triggerOnStartCommands(server);
