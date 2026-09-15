@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCloudflareEnv } from '@/lib/auth';
-import { getScheduledServers, runMorningWorkflow, processAllPendingSnapshots, processAllPendingCreates } from '@/modules/inventory/schedule-actions';
+import { getScheduledServers, runMorningWorkflow } from '@/modules/inventory/schedule-actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,22 +24,6 @@ export async function GET(req: NextRequest) {
     const token = authHeader.replace(/^Bearer\s+/i, '').trim();
     if (token !== cronSecret) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-  }
-
-  // Self-healing processing of any pending snapshots/creations (runs hourly to stay within KV list quota)
-  const kv = env.KV;
-  const nowForPending = new Date();
-  if (kv && nowForPending.getUTCMinutes() === 0) {
-    try {
-      await processAllPendingSnapshots(kv);
-    } catch (err) {
-      console.error('[Cron Morning] Failed to process pending snapshots:', err);
-    }
-    try {
-      await processAllPendingCreates(kv);
-    } catch (err) {
-      console.error('[Cron Morning] Failed to process pending creations:', err);
     }
   }
 

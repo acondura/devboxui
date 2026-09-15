@@ -73,15 +73,15 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
           ['provisioning', 'waiting-for-bootstrap', 'initializing', 'Initializing', 'snapshotting'].includes(s.status as string)
         );
         if (stillPending) {
-          timerId = setTimeout(poll, 5000);
+          timerId = setTimeout(poll, 15000);
         }
       } catch {
         // Silently retry polling on network/auth errors to avoid console drama
-        timerId = setTimeout(poll, 10000); 
+        timerId = setTimeout(poll, 20000);
       }
     }
 
-    timerId = setTimeout(poll, 5000);
+    timerId = setTimeout(poll, 15000);
     return () => clearTimeout(timerId);
   }, [servers]); // Simplified dependency to avoid complex expression warnings
 

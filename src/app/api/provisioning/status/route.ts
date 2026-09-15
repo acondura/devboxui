@@ -21,17 +21,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'KV not configured' }, { status: 500 });
     }
 
-    // 1. Fetch all server keys to find the one matching this serverId
-    const list = await kv.list({ prefix: 'servers:' });
+    // 1. Look up the server key directly via the server_lookup index (avoids a full kv.list scan)
+    const lookupRaw = await kv.get(`server_lookup:${serverId}`);
     let serverKey = '';
     let data: string | null = null;
 
-    for (const key of list.keys) {
-      if (key.name.endsWith(`:${serverId}`)) {
-        serverKey = key.name;
-        data = await kv.get(serverKey);
-        break;
-      }
+    if (lookupRaw) {
+      const lookup = JSON.parse(lookupRaw) as { serverKey: string };
+      serverKey = lookup.serverKey;
+      data = await kv.get(serverKey);
     }
 
     if (!data || !serverKey) {
