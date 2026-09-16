@@ -1091,6 +1091,7 @@ export async function provisionServer(
     const kvKey = `servers:${targetOrgId}:${serverId}`;
     await kv.put(kvKey, JSON.stringify(config));
     await kv.put(`server_lookup:${serverId}`, JSON.stringify({ orgId: targetOrgId, serverKey: kvKey }));
+    await addToManifest(kv, `org:servers:manifest:${targetOrgId}`, serverId);
     if (config.ip && config.ip !== 'pending') {
       await kv.put(`vps_ip:${config.ip}`, JSON.stringify({ orgId: targetOrgId, serverId }));
     }
@@ -1118,6 +1119,28 @@ export async function provisionServer(
  * Helper to dynamically resolve a server's KV key and parsed config by scanning
  * the user's personal organization and any team organization memberships.
  */
+// ─── Manifest helpers ─────────────────────────────────────────────────────────
+// These replace kv.list() prefix scans with O(1) manifest key reads.
+// user:org:manifest:{email}    → string[]  list of orgIds the user belongs to
+// org:servers:manifest:{orgId} → string[]  list of serverIds in that org
+
+async function addToManifest(kv: KVNamespace, key: string, value: string): Promise<void> {
+  const raw = await kv.get(key);
+  const list: string[] = raw ? JSON.parse(raw) : [];
+  if (!list.includes(value)) {
+    list.push(value);
+    await kv.put(key, JSON.stringify(list));
+  }
+}
+
+async function removeFromManifest(kv: KVNamespace, key: string, value: string): Promise<void> {
+  const raw = await kv.get(key);
+  if (!raw) return;
+  const filtered = (JSON.parse(raw) as string[]).filter(v => v !== value);
+  await kv.put(key, JSON.stringify(filtered));
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
 export async function getServerKeyAndConfig(
   kv: KVNamespace,
   userEmail: string,
@@ -1130,10 +1153,20 @@ export async function getServerKeyAndConfig(
     return { key: personalKey, config: JSON.parse(personalData) as ServerConfig };
   }
 
-  // 2. Check team memberships
-  const orgList = await kv.list({ prefix: `user:org:${userEmail}:` });
-  const orgIds = orgList.keys.map((k: { name: string }) => k.name.split(':').pop()!);
-  for (const orgId of orgIds) {
+  // 2. Use the server_lookup index for O(1) resolution (no kv.list scan)
+  const lookupRaw = await kv.get(`server_lookup:${serverId}`);
+  if (lookupRaw) {
+    const lookup = JSON.parse(lookupRaw) as { serverKey: string };
+    const data = await kv.get(lookup.serverKey);
+    if (data) {
+      return { key: lookup.serverKey, config: JSON.parse(data) as ServerConfig };
+    }
+  }
+
+  // 3. Fallback: check all team orgs via manifest (handles old servers without lookup index)
+  const orgManifestRaw = await kv.get(`user:org:manifest:${userEmail}`);
+  const teamOrgIds: string[] = orgManifestRaw ? JSON.parse(orgManifestRaw) : [];
+  for (const orgId of teamOrgIds) {
     if (orgId === userEmail) continue;
     const key = `servers:${orgId}:${serverId}`;
     const data = await kv.get(key);
@@ -1154,18 +1187,18 @@ export async function getServers() {
 
   if (!kv) return [];
 
-  // Get all organizations the user belongs to
-  const orgList = await kv.list({ prefix: `user:org:${userEmail}:` });
-  const orgIds = orgList.keys.length > 0
-    ? orgList.keys.map((k: { name: string }) => k.name.split(':').pop()!)
-    : [userEmail]; // Default fallback to personal organization
+  // Get all organizations the user belongs to via manifest (zero kv.list calls)
+  const orgManifestRaw = await kv.get(`user:org:manifest:${userEmail}`);
+  const orgIds: string[] = orgManifestRaw ? JSON.parse(orgManifestRaw) : [userEmail];
+  if (orgIds.length === 0) orgIds.push(userEmail);
 
   const allServerKeys: { name: string; orgId: string }[] = [];
 
   for (const orgId of orgIds) {
-    const list = await kv.list({ prefix: `servers:${orgId}:` });
-    for (const key of list.keys) {
-      allServerKeys.push({ name: key.name, orgId });
+    const serversManifestRaw = await kv.get(`org:servers:manifest:${orgId}`);
+    const serverIds: string[] = serversManifestRaw ? JSON.parse(serversManifestRaw) : [];
+    for (const sid of serverIds) {
+      allServerKeys.push({ name: `servers:${orgId}:${sid}`, orgId });
     }
   }
 
@@ -1354,6 +1387,8 @@ export async function getServers() {
 
             const sKey = `servers:${targetOrgId}:${sId}`;
             await kv.put(sKey, JSON.stringify(reconstructed));
+            await kv.put(`server_lookup:${sId}`, JSON.stringify({ orgId: targetOrgId, serverKey: sKey }));
+            await addToManifest(kv, `org:servers:manifest:${targetOrgId}`, sId);
             finalServersMap.set(sId, reconstructed);
             console.log(`Auto-healing: Successfully reconstructed server config for ${sId}`);
           }
@@ -1425,6 +1460,7 @@ export async function getServers() {
           if (serverAgeMinutes > 2) {
             console.log(`Self-healing: Removing ghost server ${s.id} (not in Hetzner after ${Math.round(serverAgeMinutes)}m)`);
             await kv.delete(`servers:${s.orgId || targetOrgId}:${s.id}`).catch(() => { });
+            await removeFromManifest(kv, `org:servers:manifest:${s.orgId || targetOrgId}`, s.id).catch(() => {});
             finalServersMap.delete(s.id);
           }
         }
@@ -1734,6 +1770,7 @@ export async function deleteServer(serverId: string) {
   // 3. Remove from KV
   const kvKey = `servers:${config.orgId || userEmail}:${serverId}`;
   await kv.delete(kvKey);
+  await removeFromManifest(kv, `org:servers:manifest:${config.orgId || userEmail}`, serverId);
 
   return { success: true };
 }
@@ -2430,6 +2467,7 @@ export async function provisionManualServer(
     const serverKey = `servers:${targetOrgId}:${serverId}`;
     await kv.put(serverKey, JSON.stringify(config));
     await kv.put(`server_lookup:${serverId}`, JSON.stringify({ orgId: targetOrgId, serverKey }));
+    await addToManifest(kv, `org:servers:manifest:${targetOrgId}`, serverId);
     await kv.put(`hostname_lookup:${hostname}`, JSON.stringify({ orgId: targetOrgId, serverId }));
     await kv.put(`hostname_lookup:${logsHostname}`, JSON.stringify({ orgId: targetOrgId, serverId }));
 
@@ -2556,6 +2594,8 @@ export async function provisionContaboServer(
 
     const kvKey = `servers:${userEmail}:${serverId}`;
     await kv.put(kvKey, JSON.stringify(config));
+    await kv.put(`server_lookup:${serverId}`, JSON.stringify({ orgId: userEmail, serverKey: kvKey }));
+    await addToManifest(kv, `org:servers:manifest:${userEmail}`, serverId);
     await kv.put(`vps_ip:${instance.ipAddress}`, JSON.stringify({ orgId: userEmail, serverId }));
 
     try {
@@ -2707,15 +2747,15 @@ export async function syncAllDependentPolicies(peerServerId: string, newIp: stri
   const kv = env.KV;
   if (!kv) return;
 
-  const orgList = await kv.list({ prefix: `user:org:${userEmail}:` });
-  const orgIds = orgList.keys.length > 0
-    ? orgList.keys.map((k: { name: string }) => k.name.split(':').pop()!)
-    : [userEmail];
+  const orgManifestRaw = await kv.get(`user:org:manifest:${userEmail}`);
+  const orgIds: string[] = orgManifestRaw ? JSON.parse(orgManifestRaw) : [userEmail];
+  if (orgIds.length === 0) orgIds.push(userEmail);
 
   for (const orgId of orgIds) {
-    const list = await kv.list({ prefix: `servers:${orgId}:` });
-    for (const key of list.keys) {
-      const val = await kv.get(key.name);
+    const serversManifestRaw = await kv.get(`org:servers:manifest:${orgId}`);
+    const serverIds: string[] = serversManifestRaw ? JSON.parse(serversManifestRaw) : [];
+    for (const sid of serverIds) {
+      const val = await kv.get(`servers:${orgId}:${sid}`);
       if (!val) continue;
       const server = JSON.parse(val) as ServerConfig;
 
@@ -2860,10 +2900,11 @@ export async function getUserMemberships(passedEmail?: string): Promise<UserMemb
   const env = await getCloudflareEnv();
   const kv = env.KV;
   if (!kv) return [];
-  const list = await kv.list({ prefix: `user:org:${userEmail}:` });
+  const orgManifestRaw = await kv.get(`user:org:manifest:${userEmail}`);
+  const orgIds: string[] = orgManifestRaw ? JSON.parse(orgManifestRaw) : [];
   const memberships: UserMembership[] = [];
-  for (const key of list.keys) {
-    const val = await kv.get(key.name);
+  for (const orgId of orgIds) {
+    const val = await kv.get(`user:org:${userEmail}:${orgId}`);
     if (val) memberships.push(JSON.parse(val));
   }
   return memberships;
@@ -2935,6 +2976,7 @@ export async function inviteCollaborator(serverId: string, orgId: string, email:
       permissions: { canCreateServers: false, canAssignServers: false }
     };
     await kv.put(membershipKey, JSON.stringify(newMembership));
+    await addToManifest(kv, `user:org:manifest:${email}`, orgId);
   }
 
   return server;
@@ -3116,11 +3158,8 @@ export async function provisionDigitalOceanServer(
 
     const actualKey = `servers:${config.orgId}:${serverId}`;
     await kv.put(actualKey, JSON.stringify(config));
-
-    await kv.put(`server_lookup:${serverId}`, JSON.stringify({
-      orgId: config.orgId,
-      serverKey: actualKey
-    }));
+    await kv.put(`server_lookup:${serverId}`, JSON.stringify({ orgId: config.orgId, serverKey: actualKey }));
+    await addToManifest(kv, `org:servers:manifest:${config.orgId}`, serverId);
 
     return {
       success: true,
