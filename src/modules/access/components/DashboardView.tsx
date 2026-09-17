@@ -7,7 +7,7 @@ import { SettingsModal } from '@/modules/access/components/SettingsModal';
 import { SshKeyOnboardingModal } from '@/modules/access/components/SshKeyOnboardingModal';
 import { FeedbackModal } from '@/modules/feedback/components/FeedbackModal';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { ServerList } from '@/modules/inventory/components/ServerList';
+import { ServerList, ServerCard } from '@/modules/inventory/components/ServerList';
 import { provisionServer, getServers, addProject, deleteServer, reinstallServer, deleteDomain, updateDomain, updateServerAllowedPeers, getUserSettings } from '@/modules/inventory/actions';
 import { ServerConfig } from '@/modules/inventory/types';
 
@@ -298,7 +298,7 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-4">
-              <ServerList servers={[selectedServer]} hideControls {...sharedListProps} />
+              <ServerCard server={selectedServer} inlineLogsMode servers={servers} {...sharedListProps} />
             </div>
           </div>
         ) : (
@@ -358,11 +358,9 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
                   {f === 'provisioning' && <span className={`w-2 h-2 rounded-full flex-shrink-0 ${navFilter === f ? 'bg-white' : 'bg-amber-400'}`} />}
                   <span className="capitalize truncate">{f === 'all' ? 'All Servers' : f}</span>
                 </div>
-                {counts[f] > 0 && (
-                  <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ${navFilter === f ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-zinc-700 text-slate-500 dark:text-zinc-400'}`}>
-                    {counts[f]}
-                  </span>
-                )}
+                <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ${navFilter === f ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-zinc-700 text-slate-500 dark:text-zinc-400'}`}>
+                  {counts[f]}
+                </span>
               </button>
             ))}
           </nav>
@@ -459,7 +457,12 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
         <div className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-zinc-800">
           {selectedServer ? (
             <div className="flex-1 overflow-y-auto p-6">
-              <ServerList servers={[selectedServer]} hideControls {...sharedListProps} />
+              <ServerCard
+                server={selectedServer}
+                inlineLogsMode
+                servers={servers}
+                {...sharedListProps}
+              />
             </div>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-center px-8">
