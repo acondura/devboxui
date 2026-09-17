@@ -1027,6 +1027,13 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
     return () => { clearTimeout(initial); clearInterval(interval); };
   }, [server.id, server.status]);
 
+  // Auto-fetch logs when used in inline detail panel mode
+  useEffect(() => {
+    if (!inlineLogsMode) return;
+    handleFetchLogs();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [server.id, inlineLogsMode]);
+
   const handleRestart = async () => {
     if (!confirm("Are you sure you want to restart this VPS?")) return;
     setIsRestarting(true);
