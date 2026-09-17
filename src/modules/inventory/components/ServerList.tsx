@@ -27,6 +27,9 @@ interface ServerListProps {
   onReinstall?: (serverId: string) => Promise<void>;
   onUpdateAllowedPeers?: (serverId: string, allowedPeers: string[]) => Promise<void>;
   onRefresh?: () => Promise<void>;
+  hideControls?: boolean;
+  selectedServerId?: string;
+  onSelectServer?: (id: string) => void;
 }
 
 type SortField = 'status' | 'type' | 'ip' | 'os' | 'created';
@@ -137,7 +140,7 @@ export function ServerList(props: ServerListProps) {
   return (
     <>
       {/* Sort + Filter Toolbar */}
-      <div className="flex flex-col mb-6 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl shadow-sm overflow-hidden">
+      {!props.hideControls && <div className="flex flex-col mb-6 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl shadow-sm overflow-hidden">
         {/* Top row: filter inputs */}
         <div className="flex flex-col sm:flex-row gap-2 p-3 border-b border-slate-100 dark:border-zinc-700/50">
           {/* Text search */}
@@ -232,7 +235,7 @@ export function ServerList(props: ServerListProps) {
             </div>
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* Desktop Table View */}
       <div className="hidden lg:block">
