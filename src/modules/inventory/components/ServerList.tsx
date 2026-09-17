@@ -402,7 +402,8 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
   const isAutomated = !!(server.providerName === 'Hetzner' || server.providerName === 'Contabo' || server.provider === 'hetzner' || server.provider === 'contabo' || server.provider === 'digitalocean');
   const isHetzner = !!(server.providerName === 'Hetzner' || server.provider === 'hetzner');
   const isDigitalOcean = server.provider === 'digitalocean';
-  const displayHostname = (server.hostname || 'devbox')
+  const displayHostname = server.name || (server.hostname || 'devbox')
+    .replace('-code.devboxui.com', '')
     .replace('.devboxui.com', '')
     ;
 
@@ -1044,7 +1045,8 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
   const isAutomated = !!(server.hetznerServerId || server.contaboInstanceId || server.providerName === 'Hetzner' || server.providerName === 'Contabo' || server.provider === 'hetzner' || server.provider === 'contabo' || server.provider === 'digitalocean');
   const isHetzner = !!(server.providerName === 'Hetzner' || server.provider === 'hetzner');
   const isDigitalOcean = server.provider === 'digitalocean';
-  const displayHostname = (server.hostname || 'devbox')
+  const displayHostname = server.name || (server.hostname || 'devbox')
+    .replace('-code.devboxui.com', '')
     .replace('.devboxui.com', '')
     ;
 

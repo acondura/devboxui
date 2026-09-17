@@ -1,5 +1,6 @@
 export interface ServerConfig {
   id: string; // UUID or unique hash
+  name?: string;
   ip: string;
   userName: string;
   userEmail: string;

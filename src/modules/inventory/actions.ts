@@ -954,6 +954,7 @@ export async function provisionServer(
   const provisioningToken = crypto.randomUUID();
   const config: ServerConfig = {
     id: serverId,
+    name,
     ip: 'pending',
     userName,
     userEmail,
@@ -2399,6 +2400,7 @@ export async function provisionManualServer(
   const rootPassword = manualPassword || Math.random().toString(36).slice(-10);
   const config: ServerConfig = {
     id: serverId,
+    name,
     ip: manualIp || 'manual-setup',
     userName,
     userEmail,
