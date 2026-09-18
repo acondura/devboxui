@@ -1027,13 +1027,6 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
     return () => { clearTimeout(initial); clearInterval(interval); };
   }, [server.id, server.status]);
 
-  // Auto-fetch logs when used in inline detail panel mode
-  useEffect(() => {
-    if (!inlineLogsMode) return;
-    handleFetchLogs();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [server.id, inlineLogsMode]);
-
   const handleRestart = async () => {
     if (!confirm("Are you sure you want to restart this VPS?")) return;
     setIsRestarting(true);
@@ -1526,41 +1519,6 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
         message={errorMessage || ''}
       />
 
-      {/* Inline logs panel — only rendered in detail panel mode */}
-      {inlineLogsMode && (
-        <div className="border-t border-slate-200 dark:border-zinc-800 bg-zinc-950 rounded-b-xl overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-800">
-            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">System Logs</span>
-            <button
-              onClick={handleFetchLogs}
-              disabled={isFetchingLogs}
-              className="text-[10px] text-indigo-400 hover:text-indigo-300 disabled:opacity-50 font-bold uppercase tracking-wider"
-            >
-              {isFetchingLogs ? 'Loading…' : 'Refresh live logs'}
-            </button>
-          </div>
-          <div className="h-72 overflow-y-auto p-4 font-mono text-xs space-y-0.5">
-            {serverLogs.length > 0 ? (
-              serverLogs.map((log, i) => (
-                <div key={i} className="text-zinc-300 leading-relaxed">{log}</div>
-              ))
-            ) : (
-              <div className="text-zinc-600">No orchestrator events recorded.</div>
-            )}
-            {debugData && (
-              <>
-                <div className="mt-4 pt-3 border-t border-zinc-800 text-zinc-500 uppercase tracking-widest text-[9px]">Docker Status</div>
-                <pre className="text-zinc-300 whitespace-pre-wrap mt-1">{debugData.docker}</pre>
-                <div className="mt-4 pt-3 border-t border-zinc-800 text-zinc-500 uppercase tracking-widest text-[9px]">Setup Log</div>
-                <pre className="text-zinc-300 whitespace-pre-wrap mt-1">{debugData.setup}</pre>
-              </>
-            )}
-            {isFetchingLogs && !debugData && (
-              <div className="text-indigo-400 animate-pulse mt-2">Fetching debug logs…</div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
