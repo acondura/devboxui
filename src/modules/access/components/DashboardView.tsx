@@ -43,6 +43,14 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
   // Three-panel state
   const [selectedServerId, setSelectedServerId] = useState<string | null>(null);
   const [navFilter, setNavFilter] = useState<NavFilter>('all');
+
+  const LS_KEY = 'devboxui_last_server_id';
+
+  const selectServer = (id: string | null) => {
+    setSelectedServerId(id);
+    if (id) localStorage.setItem(LS_KEY, id);
+    else localStorage.removeItem(LS_KEY);
+  };
   const [listSearch, setListSearch] = useState('');
   const [mobilePanel, setMobilePanel] = useState<'list' | 'detail'>('list');
 
@@ -64,7 +72,14 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
     async function loadServers() {
       try {
         const data = await getServers();
-        setServers(data || []);
+        const list = data || [];
+        setServers(list);
+        if (list.length > 0) {
+          const lastId = localStorage.getItem(LS_KEY);
+          const found = lastId ? list.find(s => s.id === lastId) : null;
+          const active = list.find(s => s.status === 'ready');
+          setSelectedServerId((found ?? active ?? list[0]).id);
+        }
       } catch (error) {
         console.error("Failed to load servers:", error);
       } finally {
@@ -160,7 +175,7 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
     try {
       await deleteServer(serverId);
       setServers(prev => prev.filter(s => s.id !== serverId));
-      if (selectedServerId === serverId) setSelectedServerId(null);
+      if (selectedServerId === serverId) selectServer(null);
     } catch (error) {
       alert("Failed to delete server.");
       console.error(error);
@@ -292,7 +307,7 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
         {mobilePanel === 'detail' && selectedServer ? (
           <div className="flex flex-col flex-1 overflow-hidden">
             <div className="px-4 py-2 border-b border-slate-200 dark:border-zinc-700 flex-shrink-0">
-              <button onClick={() => { setMobilePanel('list'); setSelectedServerId(null); }} className="flex items-center space-x-1 text-indigo-500 text-sm font-medium">
+              <button onClick={() => { setMobilePanel('list'); selectServer(null); }} className="flex items-center space-x-1 text-indigo-500 text-sm font-medium">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                 <span>Back</span>
               </button>
@@ -314,7 +329,7 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
                 <ServerList
                   servers={servers}
                   selectedServerId={selectedServerId ?? undefined}
-                  onSelectServer={(id) => { setSelectedServerId(id); setMobilePanel('detail'); }}
+                  onSelectServer={(id) => { selectServer(id); setMobilePanel('detail'); }}
                   {...sharedListProps}
                 />
               )}
@@ -348,7 +363,7 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
             {(['all', 'active', 'sleeping', 'provisioning'] as NavFilter[]).map(f => (
               <button
                 key={f}
-                onClick={() => { setNavFilter(f); setSelectedServerId(null); }}
+                onClick={() => { setNavFilter(f); selectServer(null); }}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all text-left ${navFilter === f ? 'bg-indigo-600 text-white' : 'text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800 hover:text-slate-900 dark:hover:text-zinc-100'}`}
               >
                 <div className="flex items-center space-x-2.5 min-w-0">
@@ -433,7 +448,7 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
                 return (
                   <button
                     key={server.id}
-                    onClick={() => setSelectedServerId(isSelected ? null : server.id)}
+                    onClick={() => selectServer(isSelected ? null : server.id)}
                     className={`w-full flex items-start space-x-3 px-4 py-3 border-b border-slate-100 dark:border-zinc-800 transition-all text-left ${isSelected ? 'bg-indigo-50 dark:bg-indigo-900/20 border-l-2 border-l-indigo-500' : 'hover:bg-slate-50 dark:hover:bg-zinc-800/60'}`}
                   >
                     <span className={`mt-1.5 w-2 h-2 rounded-full flex-shrink-0 ${statusDotClass(server.status)}`} />
