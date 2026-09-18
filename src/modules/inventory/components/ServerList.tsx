@@ -7,7 +7,7 @@ import { ReinstallModal } from './ReinstallModal';
 import { ScheduleModal } from './ScheduleModal';
 import { ApiAuthModal } from './ApiAuthModal';
 import { ConfirmSnapshotModal } from './ConfirmSnapshotModal';
-import { getServerLogs, getLiveProjects, getServerSnapshots, getServerMetrics, rebootServerAction } from '../actions';
+import { getServerLogs, getLiveProjects, getServerSnapshots, rebootServerAction } from '../actions';
 import { ConfirmSpinUpModal } from './ConfirmSpinUpModal';
 import { ScheduleConfig } from '../types';
 import { triggerMorningSpinup, triggerEveningSnapshot, checkIdleAndSnapshot } from '../schedule-actions';
@@ -326,54 +326,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
   const [selectedSnapshotId, setSelectedSnapshotId] = useState<string>('latest');
   const [isSpinUpOpen, setIsSpinUpOpen] = useState(false);
 
-  const [metrics, setMetrics] = useState<{ cpu_pct: number; ram_pct: number; disk_pct: number } | null>(null);
-  const [isFetchingMetrics, setIsFetchingMetrics] = useState(false);
-  const [hasFetchedMetrics, setHasFetchedMetrics] = useState(false);
-  const [metricsError, setMetricsError] = useState<string | null>(null);
   const [isRestarting, setIsRestarting] = useState(false);
-
-  const fetchMetrics = async () => {
-    if (server.status !== 'ready') return;
-    setIsFetchingMetrics(true);
-    try {
-      const result = await getServerMetrics(server.id);
-      if (result.success && result.metrics) {
-        setMetrics(result.metrics);
-        setMetricsError(null);
-      } else {
-        const err = result.error ?? 'no metrics returned';
-        console.warn(`[health-check] ${server.id}: ${err}`);
-        setMetrics(null);
-        setMetricsError(err);
-      }
-    } catch (e) {
-      const err = e instanceof Error ? e.message : String(e);
-      console.warn(`[health-check] ${server.id}:`, e);
-      setMetrics(null);
-      setMetricsError(err);
-    } finally {
-      setIsFetchingMetrics(false);
-      setHasFetchedMetrics(true);
-    }
-  };
-
-  useEffect(() => {
-    if (server.status !== 'ready') {
-      setMetrics(null);
-      setMetricsError(null);
-      setHasFetchedMetrics(false);
-      return;
-    }
-    // Stagger initial fetch across a 20s window so many servers don't all fire at once.
-    const jitter = Math.random() * 20000;
-    let interval: ReturnType<typeof setInterval>;
-    const initial = setTimeout(() => {
-      fetchMetrics();
-      interval = setInterval(fetchMetrics, 60000);
-    }, jitter);
-    return () => { clearTimeout(initial); clearInterval(interval); };
-  }, [server.id, server.status]);
-
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -535,36 +488,6 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
             <span className="text-sm font-medium text-slate-500 dark:text-zinc-400 leading-tight">
               {server.serverSpecs}
             </span>
-          )}
-
-          {server.status === 'ready' && (
-            <div className="flex items-center space-x-3 mt-1 text-[11px] text-slate-500 dark:text-zinc-400">
-              {metrics ? (
-                <>
-                  <span className="flex items-center space-x-1" title="CPU Usage">
-                    <span className="font-semibold text-slate-600 dark:text-zinc-355">CPU:</span>
-                    <span className={`font-mono font-bold ${metrics.cpu_pct > 80 ? 'text-red-500' : metrics.cpu_pct > 50 ? 'text-amber-500' : 'text-emerald-500'}`}>{metrics.cpu_pct}%</span>
-                  </span>
-                  <span className="flex items-center space-x-1" title="Memory Usage">
-                    <span className="font-semibold text-slate-600 dark:text-zinc-355">RAM:</span>
-                    <span className={`font-mono font-bold ${metrics.ram_pct > 80 ? 'text-red-500' : metrics.ram_pct > 50 ? 'text-amber-500' : 'text-emerald-500'}`}>{metrics.ram_pct}%</span>
-                  </span>
-                  <span className="flex items-center space-x-1" title="Disk Usage">
-                    <span className="font-semibold text-slate-600 dark:text-zinc-355">Disk:</span>
-                    <span className={`font-mono font-bold ${metrics.disk_pct > 85 ? 'text-red-500' : 'text-emerald-500'}`}>{metrics.disk_pct}%</span>
-                  </span>
-                </>
-              ) : isFetchingMetrics ? (
-                <span className="text-[10px] text-indigo-400 animate-pulse flex items-center space-x-1">
-                  <div className="w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin mr-1" />
-                  Updating metrics...
-                </span>
-              ) : hasFetchedMetrics ? (
-                <span title={metricsError ?? undefined} className="text-[10px] text-red-500 dark:text-red-400 flex items-center space-x-1 font-bold animate-pulse cursor-help">
-                  ⚠️ Health Check Unreachable (Blocked/Off)
-                </span>
-              ) : null}
-            </div>
           )}
 
           {server.status !== 'off' && (
@@ -980,52 +903,7 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
   const [selectedSnapshotId, setSelectedSnapshotId] = useState<string>('latest');
   const [isSpinUpOpen, setIsSpinUpOpen] = useState(false);
 
-  const [metrics, setMetrics] = useState<{ cpu_pct: number; ram_pct: number; disk_pct: number } | null>(null);
-  const [isFetchingMetrics, setIsFetchingMetrics] = useState(false);
-  const [hasFetchedMetrics, setHasFetchedMetrics] = useState(false);
-  const [metricsError, setMetricsError] = useState<string | null>(null);
   const [isRestarting, setIsRestarting] = useState(false);
-
-  const fetchMetrics = async () => {
-    if (server.status !== 'ready') return;
-    setIsFetchingMetrics(true);
-    try {
-      const result = await getServerMetrics(server.id);
-      if (result.success && result.metrics) {
-        setMetrics(result.metrics);
-        setMetricsError(null);
-      } else {
-        const err = result.error ?? 'no metrics returned';
-        console.warn(`[health-check] ${server.id}: ${err}`);
-        setMetrics(null);
-        setMetricsError(err);
-      }
-    } catch (e) {
-      const err = e instanceof Error ? e.message : String(e);
-      console.warn(`[health-check] ${server.id}:`, e);
-      setMetrics(null);
-      setMetricsError(err);
-    } finally {
-      setIsFetchingMetrics(false);
-      setHasFetchedMetrics(true);
-    }
-  };
-
-  useEffect(() => {
-    if (server.status !== 'ready') {
-      setMetrics(null);
-      setMetricsError(null);
-      setHasFetchedMetrics(false);
-      return;
-    }
-    const jitter = Math.random() * 20000;
-    let interval: ReturnType<typeof setInterval>;
-    const initial = setTimeout(() => {
-      fetchMetrics();
-      interval = setInterval(fetchMetrics, 60000);
-    }, jitter);
-    return () => { clearTimeout(initial); clearInterval(interval); };
-  }, [server.id, server.status]);
 
   const handleRestart = async () => {
     if (!confirm("Are you sure you want to restart this VPS?")) return;
@@ -1251,36 +1129,6 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
                 <span className="text-xs font-medium text-slate-500 dark:text-zinc-400 leading-tight text-left">
                   {server.serverSpecs}
                 </span>
-              )}
-
-              {server.status === 'ready' && (
-                <div className="flex items-center space-x-3 mt-1 text-[11px] text-slate-500 dark:text-zinc-400">
-                  {metrics ? (
-                    <>
-                      <span className="flex items-center space-x-1" title="CPU Usage">
-                        <span className="font-semibold text-slate-600 dark:text-zinc-355">CPU:</span>
-                        <span className={`font-mono font-bold ${metrics.cpu_pct > 80 ? 'text-red-500' : metrics.cpu_pct > 50 ? 'text-amber-500' : 'text-emerald-500'}`}>{metrics.cpu_pct}%</span>
-                      </span>
-                      <span className="flex items-center space-x-1" title="Memory Usage">
-                        <span className="font-semibold text-slate-600 dark:text-zinc-355">RAM:</span>
-                        <span className={`font-mono font-bold ${metrics.ram_pct > 80 ? 'text-red-500' : metrics.ram_pct > 50 ? 'text-amber-500' : 'text-emerald-500'}`}>{metrics.ram_pct}%</span>
-                      </span>
-                      <span className="flex items-center space-x-1" title="Disk Usage">
-                        <span className="font-semibold text-slate-600 dark:text-zinc-355">Disk:</span>
-                        <span className={`font-mono font-bold ${metrics.disk_pct > 85 ? 'text-red-500' : 'text-emerald-500'}`}>{metrics.disk_pct}%</span>
-                      </span>
-                    </>
-                  ) : isFetchingMetrics ? (
-                    <span className="text-[10px] text-indigo-400 animate-pulse flex items-center space-x-1">
-                      <div className="w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin mr-1" />
-                      Updating metrics...
-                    </span>
-                  ) : hasFetchedMetrics ? (
-                    <span title={metricsError ?? undefined} className="text-[10px] text-red-500 dark:text-red-400 flex items-center space-x-1 font-bold animate-pulse cursor-help">
-                      ⚠️ Health Check Unreachable (Blocked/Off)
-                    </span>
-                  ) : null}
-                </div>
               )}
 
               {server.status !== 'off' && (
