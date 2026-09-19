@@ -368,7 +368,7 @@ export async function runMorningWorkflow(
   }
   server.ip = ip;
   server.status = 'initializing';
-  server.detailedStatus = 'Initializing (0%)';
+  server.detailedStatus = 'Restoring from snapshot (0%)';
   server.pendingCreateActionId = actionId;
   server.updatedAt = new Date().toISOString();
   if (server.scheduleConfig) {
@@ -510,6 +510,10 @@ export async function runEveningWorkflow(
     : (await hetznerApi!.getServerStatus(server.hetznerServerId!));
   if (currentStatus !== 'off') {
     console.log(`[Evening] Initiating graceful shutdown for server (currently: ${currentStatus})…`);
+    server.status = 'snapshotting';
+    server.detailedStatus = 'Shutting down...';
+    server.updatedAt = new Date().toISOString();
+    await kv.put(actualServerKey, JSON.stringify(server));
     try {
       if (isDO) {
         await doApi!.shutdownDroplet(server.digitalOceanDropletId!);
@@ -575,7 +579,7 @@ export async function runEveningWorkflow(
 
   // Update server state and store pending snapshot details
   server.status = 'snapshotting';
-  server.detailedStatus = 'Saving snapshot (0%)';
+  server.detailedStatus = 'Snapshotting (0%)';
   server.pendingSnapshotId = snapshotImageId;
   server.pendingSnapshotActionId = snapshotActionId;
   server.pendingSnapshotDescription = snapshotDescription;
@@ -748,7 +752,7 @@ export async function processPendingSnapshot(
     const now = new Date().toISOString();
     if (actionStatus === 'in-progress' || actionStatus === 'running') {
       server.status = 'snapshotting';
-      server.detailedStatus = `Saving snapshot (${progress}%)`;
+      server.detailedStatus = `Snapshotting (${progress}%)`;
       server.updatedAt = now;
       await kv.put(actualServerKey, JSON.stringify(server));
     } else if (actionStatus === 'completed' || actionStatus === 'success') {
@@ -920,7 +924,7 @@ export async function processPendingCreate(
       const now = new Date().toISOString();
       if (droplet.status === 'new') {
         server.status = 'initializing';
-        server.detailedStatus = 'Initializing (Droplet creating...)';
+        server.detailedStatus = 'Restoring from snapshot...';
         server.updatedAt = now;
         await kv.put(actualServerKey, JSON.stringify(server));
       } else if (droplet.status === 'active') {
@@ -937,7 +941,7 @@ export async function processPendingCreate(
         }
         server.pendingCreateActionId = undefined;
         server.status = 'configuring';
-        server.detailedStatus = 'Starting...';
+        server.detailedStatus = 'Starting up...';
         server.updatedAt = now;
         await kv.put(actualServerKey, JSON.stringify(server));
       } else if (droplet.status === 'archive' || droplet.status === 'off') {
@@ -968,14 +972,14 @@ export async function processPendingCreate(
     if (action.status === 'running') {
       const progress = action.progress || 0;
       server.status = 'initializing';
-      server.detailedStatus = `Initializing (${progress}%)`;
+      server.detailedStatus = `Restoring from snapshot (${progress}%)`;
       server.updatedAt = now;
       await kv.put(actualServerKey, JSON.stringify(server));
     } else if (action.status === 'success') {
       console.log(`[processPendingCreate] Create action ${actionId} succeeded.`);
       server.pendingCreateActionId = undefined;
       server.status = 'configuring';
-      server.detailedStatus = 'Running bootstrap...';
+      server.detailedStatus = 'Starting up...';
       server.updatedAt = now;
       await kv.put(actualServerKey, JSON.stringify(server));
       triggerOnStartCommands(server);
