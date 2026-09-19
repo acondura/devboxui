@@ -93,7 +93,7 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
   useEffect(() => {
     const isPending = servers.some(s =>
       s.hetznerServerId &&
-      ['provisioning', 'waiting-for-bootstrap', 'initializing', 'Initializing', 'snapshotting'].includes(s.status as string)
+      ['provisioning', 'waiting-for-bootstrap', 'initializing', 'Initializing', 'snapshotting', 'configuring'].includes(s.status as string)
     );
     if (!isPending) return;
 
@@ -106,7 +106,7 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
 
         const stillPending = data && data.some(s =>
           s.hetznerServerId &&
-          ['provisioning', 'waiting-for-bootstrap', 'initializing', 'Initializing', 'snapshotting'].includes(s.status as string)
+          ['provisioning', 'waiting-for-bootstrap', 'initializing', 'Initializing', 'snapshotting', 'configuring'].includes(s.status as string)
         );
         if (stillPending) {
           timerId = setTimeout(poll, 15000);
