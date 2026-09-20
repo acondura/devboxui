@@ -380,6 +380,30 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
             ))}
           </nav>
 
+          {/* Cost summary */}
+          {(() => {
+            const activeServers = servers.filter(s => s.status !== 'off' && s.priceMonthly);
+            if (activeServers.length === 0) return null;
+            const byProvider: Record<string, number> = {};
+            for (const s of activeServers) {
+              const provider = s.providerName || s.provider || 'Custom';
+              byProvider[provider] = (byProvider[provider] || 0) + parseFloat(s.priceMonthly!);
+            }
+            const entries = Object.entries(byProvider);
+            const currency = entries.length > 0 && (byProvider['Hetzner'] !== undefined || Object.keys(byProvider).every(k => k === 'Hetzner')) ? '€' : '€';
+            return (
+              <div className="mx-2 mb-2 px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700">
+                <p className="text-[9px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest mb-1.5">Est. Monthly</p>
+                {entries.map(([provider, total]) => (
+                  <div key={provider} className="flex items-center justify-between">
+                    <span className="text-[10px] text-slate-500 dark:text-zinc-400 truncate">{provider}</span>
+                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-500">{currency}{total.toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
           {/* Bottom: user info + actions */}
           <div className="px-2 pb-3 pt-2 border-t border-slate-200 dark:border-zinc-700 space-y-0.5">
             <button onClick={() => setIsSettingsOpen(true)} className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800 hover:text-slate-900 dark:hover:text-zinc-100 transition-all text-left">

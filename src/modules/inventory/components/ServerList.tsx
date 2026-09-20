@@ -1131,6 +1131,15 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
                 </span>
               )}
 
+              {server.priceMonthly && (
+                <div className="flex items-center space-x-2 text-left">
+                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-500">€{server.priceMonthly}<span className="font-normal text-emerald-500 dark:text-emerald-600">/mo</span></span>
+                  {server.priceHourly && (
+                    <span className="text-[10px] text-slate-400 dark:text-zinc-500">€{server.priceHourly}/hr</span>
+                  )}
+                </div>
+              )}
+
               {server.status !== 'off' && (
                 <div className="flex items-center space-x-2 text-xs font-mono text-slate-400 dark:text-zinc-500">
                   <span>{server.ip}</span>

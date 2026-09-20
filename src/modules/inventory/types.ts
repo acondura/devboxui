@@ -44,6 +44,8 @@ export interface ServerConfig {
   pendingSnapshotDate?: string;
   pendingCreateActionId?: number;
   serverSpecs?: string;
+  priceMonthly?: string;
+  priceHourly?: string;
   orgId?: string;
   assignedTo?: string;
   collaborators?: CollaboratorInfo[];
