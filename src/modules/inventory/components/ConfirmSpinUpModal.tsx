@@ -97,6 +97,15 @@ export function ConfirmSpinUpModal({
     }
   };
 
+  const handleServerTypeChange = (newType: string) => {
+    setServerType(newType);
+    const typeData = serverTypes.find(t => t.name === newType);
+    if (typeData?.prices?.length && !typeData.prices.some(p => p.location === selectedLocation)) {
+      const validLocation = typeData.prices[0]?.location;
+      if (validLocation) setSelectedLocation(validLocation);
+    }
+  };
+
   const handleSnapshotSelect = (id: string) => {
     onSnapshotChange(id);
     // Reset server type if new snapshot has a different arch
@@ -133,10 +142,15 @@ export function ConfirmSpinUpModal({
   const typesList = serverTypes.filter(t => {
     if (t.prices && !t.prices.some(p => p.location === selectedLocation)) return false;
     if (selectedSnapshotArch) {
-      // Hetzner image arch: 'x86' matches server type arch 'x86'; 'arm' matches 'arm'
       if (t.architecture !== selectedSnapshotArch) return false;
     }
     return true;
+  });
+
+  const availableLocations = locations.filter(l => {
+    const currentTypeData = serverTypes.find(t => t.name === serverType);
+    if (!currentTypeData?.prices?.length) return true;
+    return currentTypeData.prices.some(p => p.location === l.name);
   });
   const priceSymbol = provider === 'digitalocean' ? '$' : '€';
 
@@ -192,8 +206,8 @@ export function ConfirmSpinUpModal({
                 disabled={isSpinningUp}
                 className="w-full bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-zinc-100 font-medium"
               >
-                {locations.length > 0 ? (
-                  locations.map((l) => (
+                {availableLocations.length > 0 ? (
+                  availableLocations.map((l) => (
                     <option key={l.name} value={l.name}>
                       {l.description}{l.city ? ` (${l.city}${l.country ? ', ' + l.country : ''})` : ''}
                     </option>
@@ -219,7 +233,7 @@ export function ConfirmSpinUpModal({
             </label>
             <Select2
               value={serverType}
-              onValueChange={val => setServerType(val)}
+              onValueChange={handleServerTypeChange}
               disabled={isSpinningUp}
               className="w-full bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-zinc-100 font-medium"
             >
