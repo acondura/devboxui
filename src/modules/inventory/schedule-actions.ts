@@ -303,14 +303,20 @@ export async function runMorningWorkflow(
     const tryCreate = (location: string) =>
       hetznerApi!.createServerFromSnapshot(serverName, snapshotToRestore, targetServerType, location, sshKeyIds, bootstrapScript);
 
-    const createResult = await tryCreate(effectiveLocation).catch(async (err: unknown) => {
-      const msg = err instanceof Error ? err.message : String(err);
-      const isCapacityOrLocationError = msg.includes(': 412 -') || msg.includes(': 422 -');
-      if (!isCapacityOrLocationError) throw err;
+    const isCapacityError = (e: unknown) => {
+      const m = e instanceof Error ? e.message : String(e);
+      return m.includes(': 412 -') || m.includes(': 422 -');
+    };
 
-      console.warn(`[Morning] Create failed in ${effectiveLocation}: ${msg}. Trying other locations...`);
+    const createResult = await tryCreate(effectiveLocation).catch(async (err: unknown) => {
+      if (!isCapacityError(err)) throw err;
+      const lastMsg = err instanceof Error ? err.message : String(err);
+
+      console.warn(`[Morning] Create failed in ${effectiveLocation}: ${lastMsg}. Fetching fallback options...`);
       const serverTypes = await hetznerApi!.getServerTypes();
       const typeData = serverTypes.find(t => t.name.toLowerCase() === targetServerType.toLowerCase());
+
+      // Phase 1: other locations for the same server type, cheapest first
       const fallbackLocations = (typeData?.prices ?? [])
         .filter(p => p.location !== effectiveLocation)
         .sort((a, b) => parseFloat(a.price_monthly.gross) - parseFloat(b.price_monthly.gross))
@@ -319,14 +325,50 @@ export async function runMorningWorkflow(
       for (const fallbackLoc of fallbackLocations) {
         try {
           const r = await tryCreate(fallbackLoc);
-          console.log(`[Morning] Server created in fallback location: ${fallbackLoc}`);
+          console.log(`[Morning] Created ${targetServerType} in fallback location: ${fallbackLoc}`);
           effectiveLocation = fallbackLoc;
           return r;
         } catch (e) {
-          console.warn(`[Morning] Location ${fallbackLoc} also failed: ${e instanceof Error ? e.message : e}`);
+          if (!isCapacityError(e)) throw e;
+          console.warn(`[Morning] ${targetServerType}/${fallbackLoc} failed: ${e instanceof Error ? e.message : e}`);
         }
       }
-      throw new Error(`Failed to create server "${targetServerType}" in any available location. Last error: ${msg}`);
+
+      // Phase 2: similar server types (same arch, same or closest RAM), cheapest first
+      if (typeData) {
+        // Try every other type with the same arch, sorted cheapest-first.
+        // No memory cap — escalate price until something accepts the request.
+        const altTypes = serverTypes
+          .filter(t =>
+            t.name !== targetServerType &&
+            t.architecture === typeData.architecture &&
+            (t.prices?.length ?? 0) > 0
+          )
+          .sort((a, b) => {
+            const cheapA = Math.min(...(a.prices ?? []).map(p => parseFloat(p.price_monthly.gross)));
+            const cheapB = Math.min(...(b.prices ?? []).map(p => parseFloat(p.price_monthly.gross)));
+            return cheapA - cheapB;
+          });
+
+        for (const altType of altTypes) {
+          const altLocs = (altType.prices ?? [])
+            .sort((a, b) => parseFloat(a.price_monthly.gross) - parseFloat(b.price_monthly.gross))
+            .map(p => p.location);
+          for (const altLoc of altLocs) {
+            try {
+              const r = await hetznerApi!.createServerFromSnapshot(serverName, snapshotToRestore, altType.name, altLoc, sshKeyIds, bootstrapScript);
+              console.log(`[Morning] Created with fallback type ${altType.name} in ${altLoc} (requested: ${targetServerType})`);
+              effectiveLocation = altLoc;
+              return r;
+            } catch (e) {
+              if (!isCapacityError(e)) throw e;
+              console.warn(`[Morning] ${altType.name}/${altLoc} failed: ${e instanceof Error ? e.message : e}`);
+            }
+          }
+        }
+      }
+
+      throw new Error(`Failed to create server "${targetServerType}" (or any similar type) in any available location. Last error: ${lastMsg}`);
     });
 
     newHetznerServerId = createResult.server.id;
@@ -396,8 +438,12 @@ export async function runMorningWorkflow(
   if (server.scheduleConfig) {
     server.scheduleConfig.lastMorningRun = new Date().toISOString();
     server.scheduleConfig.lastRunStatus = 'success';
+    // Always restore original user preferences — never persist fallback type/location
+    server.scheduleConfig.serverType = sched.serverType;
+    server.scheduleConfig.location = sched.location;
   }
-  // Persist updated schedule config
+  // Persist updated schedule config — sched.serverType and sched.location
+  // are never modified above; this is explicit protection against future drift.
   sched.lastMorningRun = new Date().toISOString();
   sched.lastRunStatus = 'success';
   await kv.put(scheduleKey(userEmail, serverId), JSON.stringify(sched));
