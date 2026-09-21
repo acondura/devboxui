@@ -46,6 +46,7 @@ export interface ServerConfig {
   serverSpecs?: string;
   priceMonthly?: string;
   priceHourly?: string;
+  spinUpNote?: string;
   orgId?: string;
   assignedTo?: string;
   collaborators?: CollaboratorInfo[];

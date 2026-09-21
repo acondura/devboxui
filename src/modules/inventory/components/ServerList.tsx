@@ -1140,6 +1140,13 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
                 </div>
               )}
 
+              {server.spinUpNote && (
+                <div className="flex items-start space-x-1.5 px-2.5 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 text-left">
+                  <span className="text-amber-500 text-xs mt-px">⚠</span>
+                  <span className="text-[10px] font-medium text-amber-700 dark:text-amber-400 leading-tight">{server.spinUpNote}</span>
+                </div>
+              )}
+
               {server.status !== 'off' && (
                 <div className="flex items-center space-x-2 text-xs font-mono text-slate-400 dark:text-zinc-500">
                   <span>{server.ip}</span>
@@ -1164,8 +1171,8 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
                 </div>
               )}
               
-              <div className="flex flex-row justify-between items-center mt-1 text-[10px] font-mono text-slate-550 dark:text-zinc-500 w-full font-mono text-left">
-                <span />
+              <div className="flex items-center mt-1 text-[10px] font-mono text-slate-500 dark:text-zinc-500">
+                <span className="font-bold text-slate-400 dark:text-zinc-600 mr-1">Created:</span>
                 <span>
                   {server.createdAt ? new Date(server.createdAt).toLocaleString('en-US', {
                     month: 'short',

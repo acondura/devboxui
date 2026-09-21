@@ -284,6 +284,7 @@ export async function runMorningWorkflow(
   let newDropletId: number | undefined;
   let ip = 'pending';
   let actionId: number;
+  let spinUpNote: string | undefined;
 
   let effectiveLocation = customLocation || sched.location;
 
@@ -326,6 +327,7 @@ export async function runMorningWorkflow(
         try {
           const r = await tryCreate(fallbackLoc);
           console.log(`[Morning] Created ${targetServerType} in fallback location: ${fallbackLoc}`);
+          spinUpNote = `Preferred location unavailable — running in ${fallbackLoc} instead`;
           effectiveLocation = fallbackLoc;
           return r;
         } catch (e) {
@@ -334,10 +336,8 @@ export async function runMorningWorkflow(
         }
       }
 
-      // Phase 2: similar server types (same arch, same or closest RAM), cheapest first
+      // Phase 2: all other types with same arch, sorted cheapest-first — escalate until something works
       if (typeData) {
-        // Try every other type with the same arch, sorted cheapest-first.
-        // No memory cap — escalate price until something accepts the request.
         const altTypes = serverTypes
           .filter(t =>
             t.name !== targetServerType &&
@@ -357,7 +357,10 @@ export async function runMorningWorkflow(
           for (const altLoc of altLocs) {
             try {
               const r = await hetznerApi!.createServerFromSnapshot(serverName, snapshotToRestore, altType.name, altLoc, sshKeyIds, bootstrapScript);
+              const altPrice = altType.prices?.find(p => p.location === altLoc);
+              const altPriceStr = altPrice ? `€${parseFloat(altPrice.price_monthly.gross).toFixed(2)}/mo` : '';
               console.log(`[Morning] Created with fallback type ${altType.name} in ${altLoc} (requested: ${targetServerType})`);
+              spinUpNote = `${targetServerType} unavailable — using ${altType.name.toUpperCase()} in ${altLoc}${altPriceStr ? ` (${altPriceStr})` : ''}`;
               effectiveLocation = altLoc;
               return r;
             } catch (e) {
@@ -388,7 +391,8 @@ export async function runMorningWorkflow(
     const result = await hetznerApi!.getServer(newHetznerServerId!);
     const arch = result.server_type.architecture || 'x86';
     const disk = result.server_type.disk ? `${result.server_type.disk} GB` : '';
-    const zone = await getNetworkZone(result.datacenter?.location?.name);
+    const locationName = result.datacenter?.location?.name;
+    const zone = await getNetworkZone(locationName);
     const specsParts = [
       result.server_type.name.toUpperCase(),
       arch,
@@ -396,6 +400,17 @@ export async function runMorningWorkflow(
       zone
     ].filter(Boolean);
     server.serverSpecs = specsParts.join(' | ');
+    server.serverType = result.server_type.name;
+
+    const serverTypesForPrice = await hetznerApi!.getServerTypes().catch(() => []);
+    const priceTypeData = serverTypesForPrice.find(t => t.name.toLowerCase() === result.server_type.name.toLowerCase());
+    if (priceTypeData?.prices && locationName) {
+      const priceEntry = priceTypeData.prices.find(p => p.location === locationName);
+      if (priceEntry) {
+        server.priceMonthly = parseFloat(priceEntry.price_monthly.gross).toFixed(2);
+        server.priceHourly = parseFloat(priceEntry.price_hourly.gross).toFixed(4);
+      }
+    }
   }
 
   // Try to resolve DO droplet IP immediately if possible
@@ -435,6 +450,7 @@ export async function runMorningWorkflow(
   server.detailedStatus = 'Restoring from snapshot (0%)';
   server.pendingCreateActionId = actionId;
   server.updatedAt = new Date().toISOString();
+  server.spinUpNote = spinUpNote ?? undefined;
   if (server.scheduleConfig) {
     server.scheduleConfig.lastMorningRun = new Date().toISOString();
     server.scheduleConfig.lastRunStatus = 'success';
