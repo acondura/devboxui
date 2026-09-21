@@ -285,7 +285,7 @@ export async function runMorningWorkflow(
   let ip = 'pending';
   let actionId: number;
 
-  const effectiveLocation = customLocation || sched.location;
+  let effectiveLocation = customLocation || sched.location;
 
   if (isDO) {
     const doResult = await doApi!.createDroplet(
@@ -299,17 +299,39 @@ export async function runMorningWorkflow(
     newDropletId = doResult.droplet.id;
     actionId = doResult.links?.actions?.[0]?.id || 999999;
   } else {
-    const result = await hetznerApi!.createServerFromSnapshot(
-      serverName,
-      snapshotToRestore,
-      customServerType || sched.serverType,
-      effectiveLocation,
-      sshKeyIds,
-      bootstrapScript
-    );
-    newHetznerServerId = result.server.id;
-    ip = result.server.public_net.ipv4.ip;
-    actionId = result.action.id;
+    const targetServerType = customServerType || sched.serverType;
+    const tryCreate = (location: string) =>
+      hetznerApi!.createServerFromSnapshot(serverName, snapshotToRestore, targetServerType, location, sshKeyIds, bootstrapScript);
+
+    const createResult = await tryCreate(effectiveLocation).catch(async (err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      const isCapacityOrLocationError = msg.includes(': 412 -') || msg.includes(': 422 -');
+      if (!isCapacityOrLocationError) throw err;
+
+      console.warn(`[Morning] Create failed in ${effectiveLocation}: ${msg}. Trying other locations...`);
+      const serverTypes = await hetznerApi!.getServerTypes();
+      const typeData = serverTypes.find(t => t.name.toLowerCase() === targetServerType.toLowerCase());
+      const fallbackLocations = (typeData?.prices ?? [])
+        .filter(p => p.location !== effectiveLocation)
+        .sort((a, b) => parseFloat(a.price_monthly.gross) - parseFloat(b.price_monthly.gross))
+        .map(p => p.location);
+
+      for (const fallbackLoc of fallbackLocations) {
+        try {
+          const r = await tryCreate(fallbackLoc);
+          console.log(`[Morning] Server created in fallback location: ${fallbackLoc}`);
+          effectiveLocation = fallbackLoc;
+          return r;
+        } catch (e) {
+          console.warn(`[Morning] Location ${fallbackLoc} also failed: ${e instanceof Error ? e.message : e}`);
+        }
+      }
+      throw new Error(`Failed to create server "${targetServerType}" in any available location. Last error: ${msg}`);
+    });
+
+    newHetznerServerId = createResult.server.id;
+    ip = createResult.server.public_net.ipv4.ip;
+    actionId = createResult.action.id;
   }
 
   // Construct serverSpecs
