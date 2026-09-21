@@ -1448,6 +1448,7 @@ export async function getServers() {
 
           const oldStatus = s.status;
           const oldDetailed = s.detailedStatus;
+          const hadPrice = !!s.priceMonthly;
 
           if (hs.status === 'running') {
             if (s.status !== 'configuring') {
@@ -1462,7 +1463,7 @@ export async function getServers() {
             s.detailedStatus = `Server is ${hs.status}`;
           }
 
-          if (s.status !== oldStatus || s.detailedStatus !== oldDetailed) {
+          if (s.status !== oldStatus || s.detailedStatus !== oldDetailed || (!hadPrice && s.priceMonthly)) {
             await kv.put(`servers:${s.orgId || targetOrgId}:${s.id}`, JSON.stringify(s)).catch(() => {});
           }
 
