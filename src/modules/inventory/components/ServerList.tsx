@@ -1126,21 +1126,16 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
               <h3 className="text-xl font-extrabold text-slate-900 dark:text-zinc-100 tracking-tight text-left">{displayHostname}</h3>
 
               {server.serverSpecs && (
-                <span className="text-xs font-medium text-slate-500 dark:text-zinc-400 leading-tight text-left">
-                  {server.serverSpecs}
-                </span>
-              )}
-
-              {server.priceMonthly && (
-                <div className="flex items-center space-x-2">
-                  <div className="flex items-center space-x-1 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700/50 rounded-lg px-2 py-1">
-                    <svg className="w-3 h-3 text-emerald-600 dark:text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">€{server.priceMonthly}<span className="font-normal text-emerald-600 dark:text-emerald-500">/mo</span></span>
-                  </div>
-                  {server.priceHourly && (
-                    <span className="text-[10px] font-medium text-slate-400 dark:text-zinc-500">€{server.priceHourly}/hr</span>
+                <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5">
+                  <span className="text-xs font-medium text-slate-500 dark:text-zinc-400 leading-tight">{server.serverSpecs}</span>
+                  {server.priceMonthly && (
+                    <>
+                      <span className="text-xs text-slate-300 dark:text-zinc-600">—</span>
+                      <span className="text-xs font-bold text-emerald-600 dark:text-emerald-500">€{server.priceMonthly}<span className="font-normal text-emerald-500 dark:text-emerald-600">/mo</span></span>
+                      {server.priceHourly && (
+                        <span className="text-[10px] text-slate-400 dark:text-zinc-500">€{server.priceHourly}/hr</span>
+                      )}
+                    </>
                   )}
                 </div>
               )}
