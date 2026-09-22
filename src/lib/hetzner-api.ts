@@ -20,6 +20,7 @@ export interface HetznerServer {
     deprecated: boolean;
     storage_type: string;
     cpu_type: string;
+    prices?: HetznerPrice[];
   };
   datacenter: {
     location: {

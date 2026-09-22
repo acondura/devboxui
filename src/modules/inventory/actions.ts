@@ -1399,10 +1399,7 @@ export async function getServers() {
       }
 
       // Sync active servers under this token
-      const [hetznerServers, hetznerServerTypes] = await Promise.all([
-        hetznerApi.getAllServers(),
-        hetznerApi.getServerTypes().catch(() => [] as Awaited<ReturnType<typeof hetznerApi.getServerTypes>>),
-      ]);
+      const hetznerServers = await hetznerApi.getAllServers();
       const hetznerMap = new Map(hetznerServers.map(hs => [hs.id.toString(), hs]));
 
       for (const s of kvServers) {
@@ -1437,9 +1434,9 @@ export async function getServers() {
           s.serverSpecs = specsParts.join(' | ');
 
           const locationName = hs.datacenter?.location?.name;
-          const serverTypeData = hetznerServerTypes.find(t => t.name.toLowerCase() === hs.server_type.name.toLowerCase());
-          if (serverTypeData?.prices && locationName) {
-            const priceEntry = serverTypeData.prices.find(p => p.location === locationName);
+          const prices = hs.server_type.prices;
+          if (prices && locationName) {
+            const priceEntry = prices.find(p => p.location === locationName);
             if (priceEntry) {
               s.priceMonthly = parseFloat(priceEntry.price_monthly.gross).toFixed(2);
               s.priceHourly = parseFloat(priceEntry.price_hourly.gross).toFixed(4);
