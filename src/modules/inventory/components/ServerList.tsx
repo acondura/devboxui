@@ -485,9 +485,18 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
           <span className="text-lg font-extrabold text-slate-900 dark:text-zinc-100 tracking-tight">{displayHostname}</span>
 
           {server.serverSpecs && (
-            <span className="text-sm font-medium text-slate-500 dark:text-zinc-400 leading-tight">
-              {server.serverSpecs}
-            </span>
+            <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5">
+              <span className="text-sm font-medium text-slate-500 dark:text-zinc-400 leading-tight">{server.serverSpecs}</span>
+              {server.priceMonthly && (
+                <>
+                  <span className="text-sm text-slate-300 dark:text-zinc-600">—</span>
+                  <span className="text-sm font-bold text-emerald-600 dark:text-emerald-500">€{server.priceMonthly}<span className="font-normal text-emerald-500 dark:text-emerald-600">/mo</span></span>
+                  {server.priceHourly && (
+                    <span className="text-xs text-slate-400 dark:text-zinc-500">€{server.priceHourly}/hr</span>
+                  )}
+                </>
+              )}
+            </div>
           )}
 
           {server.status !== 'off' && (
@@ -1140,12 +1149,6 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
                 </div>
               )}
 
-              {server.spinUpNote && (
-                <div className="flex items-start space-x-1.5 px-2.5 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 text-left">
-                  <span className="text-amber-500 text-xs mt-px">⚠</span>
-                  <span className="text-[10px] font-medium text-amber-700 dark:text-amber-400 leading-tight">{server.spinUpNote}</span>
-                </div>
-              )}
 
               {server.status !== 'off' && (
                 <div className="flex items-center space-x-2 text-xs font-mono text-slate-400 dark:text-zinc-500">

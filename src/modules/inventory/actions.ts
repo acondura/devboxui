@@ -1428,16 +1428,16 @@ export async function getServers() {
 
           const arch = hs.server_type.architecture || 'x86';
           const disk = hs.server_type.disk ? `${hs.server_type.disk} GB` : '';
-          const zone = await getNetworkZone(hs.datacenter?.location?.name);
+          const locationName = hs.datacenter?.location?.name;
           const specsParts = [
             hs.server_type.name.toUpperCase(),
             arch,
             disk,
-            zone
+            locationName
           ].filter(Boolean);
           s.serverSpecs = specsParts.join(' | ');
 
-          const locationName = hs.datacenter?.location?.name;
+          const hadPrice = !!s.priceMonthly;
           const typeForPrice = serverTypePriceMap.get(hs.server_type.name.toLowerCase());
           const prices = typeForPrice?.prices ?? hs.server_type.prices;
           if (prices && locationName) {
@@ -1450,7 +1450,6 @@ export async function getServers() {
 
           const oldStatus = s.status;
           const oldDetailed = s.detailedStatus;
-          const hadPrice = !!s.priceMonthly;
 
           if (hs.status === 'running') {
             if (s.status !== 'configuring') {
