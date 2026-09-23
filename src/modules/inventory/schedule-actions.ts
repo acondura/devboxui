@@ -827,10 +827,16 @@ export async function processPendingSnapshot(
 
   try {
     console.log(`[processPendingSnapshot] Checking action ${actionId} for server ${server.id}…`);
-    const actionStatus = isDO 
-      ? (await doApi!.getAction(actionId)).status 
-      : (await hetznerApi!.getAction(actionId)).status;
-    const progress = isDO ? (actionStatus === 'completed' ? 100 : 50) : (await hetznerApi!.getAction(actionId)).progress || 0;
+    let actionStatus: string;
+    let progress: number;
+    if (isDO) {
+      actionStatus = (await doApi!.getAction(actionId)).status;
+      progress = actionStatus === 'completed' ? 100 : 50;
+    } else {
+      const action = await hetznerApi!.getAction(actionId);
+      actionStatus = action.status;
+      progress = action.progress || 0;
+    }
     console.log(`[processPendingSnapshot] Action status: ${actionStatus}, progress: ${progress}%`);
 
     const now = new Date().toISOString();

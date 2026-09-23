@@ -2,6 +2,9 @@ name = "devboxui"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
+[limits]
+subrequests = 1000
+
 [[kv_namespaces]]
 binding = "KV"
 id = ""  # Set KV_ID env var at deploy time via pages-build script
