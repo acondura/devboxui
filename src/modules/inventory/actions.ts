@@ -3,7 +3,7 @@
 import { ServerConfig, ScheduleConfig, CollaboratorInfo, OrgSettings, UserMembership } from './types';
 import { getCloudflareEnv, getIdentity } from '@/lib/auth';
 import { CloudflareApiService } from '@/lib/cloudflare-api';
-import { HetznerApiService, HetznerImage } from '@/lib/hetzner-api';
+import { HetznerApiService, HetznerImage, HetznerPrice } from '@/lib/hetzner-api';
 import { ContaboApiService } from '@/lib/contabo-api';
 import { DigitalOceanApiService } from '@/lib/digitalocean-api';
 import { createMagicToken, sendMagicLinkEmail } from '@/lib/magic-auth';
@@ -1428,7 +1428,8 @@ export async function getServers() {
 
           const arch = hs.server_type.architecture || 'x86';
           const disk = hs.server_type.disk ? `${hs.server_type.disk} GB` : '';
-          const locationName = hs.datacenter?.location?.name;
+          // Hetzner API may omit datacenter.location — fall back to schedule config
+          const locationName = hs.datacenter?.location?.name || s.scheduleConfig?.location;
           const specsParts = [
             hs.server_type.name.toUpperCase(),
             arch,
@@ -1439,9 +1440,24 @@ export async function getServers() {
 
           const hadPrice = !!s.priceMonthly;
           const typeForPrice = serverTypePriceMap.get(hs.server_type.name.toLowerCase());
-          const prices = typeForPrice?.prices ?? hs.server_type.prices;
-          if (prices && locationName) {
-            const priceEntry = prices.find(p => p.location === locationName);
+          let prices = typeForPrice?.prices ?? hs.server_type.prices;
+          // Last resort: fetch the server type directly by ID (handles deprecated types with no prices in the list)
+          if ((!prices || prices.length === 0) && hs.server_type.id) {
+            try {
+              const stResp = await fetch(`https://api.hetzner.cloud/v1/server_types/${hs.server_type.id}`, {
+                headers: { Authorization: `Bearer ${currentToken}` }
+              });
+              if (stResp.ok) {
+                const stData = await stResp.json() as { server_type: { prices: HetznerPrice[] } };
+                prices = stData.server_type?.prices;
+              }
+            } catch { /* ignore */ }
+          }
+          if (prices && prices.length > 0) {
+            // Try exact location match first, fall back to first available price
+            const priceEntry = locationName
+              ? (prices.find(p => p.location === locationName) ?? prices[0])
+              : prices[0];
             if (priceEntry) {
               s.priceMonthly = parseFloat(priceEntry.price_monthly.gross).toFixed(2);
               s.priceHourly = parseFloat(priceEntry.price_hourly.gross).toFixed(4);
