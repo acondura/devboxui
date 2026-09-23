@@ -380,57 +380,6 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
             ))}
           </nav>
 
-          {/* Cost summary */}
-          {(() => {
-            const activeServers = servers.filter(s => s.status !== 'off' && s.priceMonthly);
-            if (activeServers.length === 0) return null;
-            const byProvider: Record<string, number> = {};
-            for (const s of activeServers) {
-              const provider = s.providerName || s.provider || 'Custom';
-              byProvider[provider] = (byProvider[provider] || 0) + parseFloat(s.priceMonthly!);
-            }
-
-            const now = new Date();
-            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-            const thisMonthByProvider: Record<string, number> = {};
-            for (const s of servers.filter(s => s.priceHourly)) {
-              const provider = s.providerName || s.provider || 'Custom';
-              const serverStart = new Date(s.createdAt);
-              const billingStart = serverStart > startOfMonth ? serverStart : startOfMonth;
-              const hoursElapsed = (now.getTime() - billingStart.getTime()) / 3_600_000;
-              if (hoursElapsed > 0) {
-                thisMonthByProvider[provider] = (thisMonthByProvider[provider] || 0) + hoursElapsed * parseFloat(s.priceHourly!);
-              }
-            }
-
-            const entries = Object.entries(byProvider);
-            const thisMonthEntries = Object.entries(thisMonthByProvider);
-            const currency = '€';
-            return (
-              <div className="mx-2 mb-2 px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 space-y-2">
-                <div>
-                  <p className="text-[9px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest mb-1.5">Est. Monthly</p>
-                  {entries.map(([provider, total]) => (
-                    <div key={provider} className="flex items-center justify-between">
-                      <span className="text-[10px] text-slate-500 dark:text-zinc-400 truncate">{provider}</span>
-                      <span className="text-xs font-bold text-emerald-600 dark:text-emerald-500">{currency}{total.toFixed(2)}</span>
-                    </div>
-                  ))}
-                </div>
-                {thisMonthEntries.length > 0 && (
-                  <div className="border-t border-slate-200 dark:border-zinc-700 pt-2">
-                    <p className="text-[9px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest mb-1.5">This Month</p>
-                    {thisMonthEntries.map(([provider, total]) => (
-                      <div key={provider} className="flex items-center justify-between">
-                        <span className="text-[10px] text-slate-500 dark:text-zinc-400 truncate">{provider}</span>
-                        <span className="text-xs font-bold text-amber-600 dark:text-amber-500">{currency}{total.toFixed(2)}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })()}
 
           {/* Bottom: user info + actions */}
           <div className="px-2 pb-3 pt-2 border-t border-slate-200 dark:border-zinc-700 space-y-0.5">
