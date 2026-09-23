@@ -1399,7 +1399,11 @@ export async function getServers() {
       }
 
       // Sync active servers under this token
-      const hetznerServers = await hetznerApi.getAllServers();
+      const [hetznerServers, allServerTypes] = await Promise.all([
+        hetznerApi.getAllServers(),
+        hetznerApi.getServerTypesAll().catch(() => [] as Awaited<ReturnType<typeof hetznerApi.getServerTypesAll>>),
+      ]);
+      const serverTypePriceMap = new Map(allServerTypes.map(t => [t.name.toLowerCase(), t]));
       const hetznerMap = new Map(hetznerServers.map(hs => [hs.id.toString(), hs]));
 
       for (const s of kvServers) {
@@ -1434,7 +1438,8 @@ export async function getServers() {
           s.serverSpecs = specsParts.join(' | ');
 
           const locationName = hs.datacenter?.location?.name;
-          const prices = hs.server_type.prices;
+          const typeForPrice = serverTypePriceMap.get(hs.server_type.name.toLowerCase());
+          const prices = typeForPrice?.prices ?? hs.server_type.prices;
           if (prices && locationName) {
             const priceEntry = prices.find(p => p.location === locationName);
             if (priceEntry) {

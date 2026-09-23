@@ -242,6 +242,16 @@ export class HetznerApiService {
     return data.server_types.filter((t) => !t.deprecated);
   }
 
+  async getServerTypesAll(): Promise<HetznerServerType[]> {
+    const response = await fetch(`${this.baseUrl}/server_types?per_page=100`, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${this.token}` }
+    });
+    if (!response.ok) return [];
+    const data = (await response.json()) as { server_types: HetznerServerType[] };
+    return data.server_types;
+  }
+
   /**
    * Gets available locations
    */
