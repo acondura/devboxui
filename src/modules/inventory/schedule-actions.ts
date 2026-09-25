@@ -306,43 +306,59 @@ export async function runMorningWorkflow(
 
     const isCapacityError = (e: unknown) => {
       const m = e instanceof Error ? e.message : String(e);
-      return m.includes(': 412 -') || m.includes(': 422 -');
+      return m.includes(': 412 -') || m.includes(': 422 -') || (m.includes(': 403 -') && m.includes('resource_limit_exceeded'));
     };
+
+    const isSharedCoreLimitError = (e: unknown) => {
+      const m = e instanceof Error ? e.message : String(e);
+      return m.includes('resource_limit_exceeded') && m.includes('server_shared_cores_limit');
+    };
+
+    // Shared-core types (cx*, cpx*, cax*) — these share the same account quota
+    const isSharedCoreType = (typeName: string) => /^c[ap]?x\d/i.test(typeName);
 
     const createResult = await tryCreate(effectiveLocation).catch(async (err: unknown) => {
       if (!isCapacityError(err)) throw err;
       const lastMsg = err instanceof Error ? err.message : String(err);
+      const sharedCoreLimit = isSharedCoreLimitError(err);
 
       console.warn(`[Morning] Create failed in ${effectiveLocation}: ${lastMsg}. Fetching fallback options...`);
       const serverTypes = await hetznerApi!.getServerTypes();
       const typeData = serverTypes.find(t => t.name.toLowerCase() === targetServerType.toLowerCase());
 
       // Phase 1: other locations for the same server type, cheapest first
-      const fallbackLocations = (typeData?.prices ?? [])
-        .filter(p => p.location !== effectiveLocation)
-        .sort((a, b) => parseFloat(a.price_monthly.gross) - parseFloat(b.price_monthly.gross))
-        .map(p => p.location);
+      // Skip if hitting a shared-core account limit — no location will help
+      if (!sharedCoreLimit) {
+        const fallbackLocations = (typeData?.prices ?? [])
+          .filter(p => p.location !== effectiveLocation)
+          .sort((a, b) => parseFloat(a.price_monthly.gross) - parseFloat(b.price_monthly.gross))
+          .map(p => p.location);
 
-      for (const fallbackLoc of fallbackLocations) {
-        try {
-          const r = await tryCreate(fallbackLoc);
-          console.log(`[Morning] Created ${targetServerType} in fallback location: ${fallbackLoc}`);
-          spinUpNote = `Preferred location unavailable — running in ${fallbackLoc} instead`;
-          effectiveLocation = fallbackLoc;
-          return r;
-        } catch (e) {
-          if (!isCapacityError(e)) throw e;
-          console.warn(`[Morning] ${targetServerType}/${fallbackLoc} failed: ${e instanceof Error ? e.message : e}`);
+        for (const fallbackLoc of fallbackLocations) {
+          try {
+            const r = await tryCreate(fallbackLoc);
+            console.log(`[Morning] Created ${targetServerType} in fallback location: ${fallbackLoc}`);
+            spinUpNote = `Preferred location unavailable — running in ${fallbackLoc} instead`;
+            effectiveLocation = fallbackLoc;
+            return r;
+          } catch (e) {
+            if (!isCapacityError(e)) throw e;
+            console.warn(`[Morning] ${targetServerType}/${fallbackLoc} failed: ${e instanceof Error ? e.message : e}`);
+          }
         }
+      } else {
+        console.warn(`[Morning] Shared core limit exceeded — skipping same-type location fallbacks, escalating to dedicated types.`);
       }
 
       // Phase 2: all other types with same arch, sorted cheapest-first — escalate until something works
+      // When hitting shared-core limit, only try dedicated (non-shared) types
       if (typeData) {
         const altTypes = serverTypes
           .filter(t =>
             t.name !== targetServerType &&
             t.architecture === typeData.architecture &&
-            (t.prices?.length ?? 0) > 0
+            (t.prices?.length ?? 0) > 0 &&
+            (!sharedCoreLimit || !isSharedCoreType(t.name))
           )
           .sort((a, b) => {
             const cheapA = Math.min(...(a.prices ?? []).map(p => parseFloat(p.price_monthly.gross)));
