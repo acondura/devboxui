@@ -287,6 +287,7 @@ export async function runMorningWorkflow(
   let spinUpNote: string | undefined;
 
   let effectiveLocation = customLocation || sched.location;
+  let resolvedFallbackPrice: { monthly: string; hourly: string } | undefined;
 
   if (isDO) {
     const doResult = await doApi!.createDroplet(
@@ -340,6 +341,8 @@ export async function runMorningWorkflow(
             console.log(`[Morning] Created ${targetServerType} in fallback location: ${fallbackLoc}`);
             spinUpNote = `Preferred location unavailable — running in ${fallbackLoc} instead`;
             effectiveLocation = fallbackLoc;
+            const fallbackPrice = typeData?.prices?.find(p => p.location === fallbackLoc);
+            if (fallbackPrice) resolvedFallbackPrice = { monthly: parseFloat(fallbackPrice.price_monthly.gross).toFixed(2), hourly: parseFloat(fallbackPrice.price_hourly.gross).toFixed(4) };
             return r;
           } catch (e) {
             if (!isCapacityError(e)) throw e;
@@ -375,6 +378,7 @@ export async function runMorningWorkflow(
               const r = await hetznerApi!.createServerFromSnapshot(serverName, snapshotToRestore, altType.name, altLoc, sshKeyIds, bootstrapScript);
               const altPrice = altType.prices?.find(p => p.location === altLoc);
               const altPriceStr = altPrice ? `€${parseFloat(altPrice.price_monthly.gross).toFixed(2)}/mo` : '';
+              if (altPrice) resolvedFallbackPrice = { monthly: parseFloat(altPrice.price_monthly.gross).toFixed(2), hourly: parseFloat(altPrice.price_hourly.gross).toFixed(4) };
               console.log(`[Morning] Created with fallback type ${altType.name} in ${altLoc} (requested: ${targetServerType})`);
               spinUpNote = `${targetServerType} unavailable — using ${altType.name.toUpperCase()} in ${altLoc}${altPriceStr ? ` (${altPriceStr})` : ''}`;
               effectiveLocation = altLoc;
@@ -418,13 +422,18 @@ export async function runMorningWorkflow(
     server.serverSpecs = specsParts.join(' | ');
     server.serverType = result.server_type.name;
 
-    const serverTypesForPrice = await hetznerApi!.getServerTypes().catch(() => []);
-    const priceTypeData = serverTypesForPrice.find(t => t.name.toLowerCase() === result.server_type.name.toLowerCase());
-    if (priceTypeData?.prices && locationName) {
-      const priceEntry = priceTypeData.prices.find(p => p.location === locationName);
-      if (priceEntry) {
-        server.priceMonthly = parseFloat(priceEntry.price_monthly.gross).toFixed(2);
-        server.priceHourly = parseFloat(priceEntry.price_hourly.gross).toFixed(4);
+    if (resolvedFallbackPrice) {
+      server.priceMonthly = resolvedFallbackPrice.monthly;
+      server.priceHourly = resolvedFallbackPrice.hourly;
+    } else {
+      const serverTypesForPrice = await hetznerApi!.getServerTypes().catch(() => []);
+      const priceTypeData = serverTypesForPrice.find(t => t.name.toLowerCase() === result.server_type.name.toLowerCase());
+      if (priceTypeData?.prices && locationName) {
+        const priceEntry = priceTypeData.prices.find(p => p.location === locationName);
+        if (priceEntry) {
+          server.priceMonthly = parseFloat(priceEntry.price_monthly.gross).toFixed(2);
+          server.priceHourly = parseFloat(priceEntry.price_hourly.gross).toFixed(4);
+        }
       }
     }
   }
