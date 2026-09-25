@@ -288,6 +288,7 @@ export async function runMorningWorkflow(
 
   let effectiveLocation = customLocation || sched.location;
   let resolvedFallbackPrice: { monthly: string; hourly: string } | undefined;
+  let cachedServerTypes: Awaited<ReturnType<HetznerApiService['getServerTypes']>> | undefined;
 
   if (isDO) {
     const doResult = await doApi!.createDroplet(
@@ -324,15 +325,16 @@ export async function runMorningWorkflow(
       const sharedCoreLimit = isSharedCoreLimitError(err);
 
       console.warn(`[Morning] Create failed in ${effectiveLocation}: ${lastMsg}. Fetching fallback options...`);
-      const serverTypes = await hetznerApi!.getServerTypes();
-      const typeData = serverTypes.find(t => t.name.toLowerCase() === targetServerType.toLowerCase());
+      cachedServerTypes = await hetznerApi!.getServerTypes();
+      const typeData = cachedServerTypes.find(t => t.name.toLowerCase() === targetServerType.toLowerCase());
 
-      // Phase 1: other locations for the same server type, cheapest first
+      // Phase 1: other locations for the same server type, cheapest first (cap at 3 to limit subrequests)
       // Skip if hitting a shared-core account limit — no location will help
       if (!sharedCoreLimit) {
         const fallbackLocations = (typeData?.prices ?? [])
           .filter(p => p.location !== effectiveLocation)
           .sort((a, b) => parseFloat(a.price_monthly.gross) - parseFloat(b.price_monthly.gross))
+          .slice(0, 3)
           .map(p => p.location);
 
         for (const fallbackLoc of fallbackLocations) {
@@ -353,10 +355,10 @@ export async function runMorningWorkflow(
         console.warn(`[Morning] Shared core limit exceeded — skipping same-type location fallbacks, escalating to dedicated types.`);
       }
 
-      // Phase 2: all other types with same arch, sorted cheapest-first — escalate until something works
+      // Phase 2: cheapest alternative types with same arch (cap at 5 types, cheapest location only per type)
       // When hitting shared-core limit, only try dedicated (non-shared) types
       if (typeData) {
-        const altTypes = serverTypes
+        const altTypes = cachedServerTypes
           .filter(t =>
             t.name !== targetServerType &&
             t.architecture === typeData.architecture &&
@@ -367,11 +369,14 @@ export async function runMorningWorkflow(
             const cheapA = Math.min(...(a.prices ?? []).map(p => parseFloat(p.price_monthly.gross)));
             const cheapB = Math.min(...(b.prices ?? []).map(p => parseFloat(p.price_monthly.gross)));
             return cheapA - cheapB;
-          });
+          })
+          .slice(0, 5);
 
         for (const altType of altTypes) {
+          // Only try the single cheapest location per type to limit subrequests
           const altLocs = (altType.prices ?? [])
             .sort((a, b) => parseFloat(a.price_monthly.gross) - parseFloat(b.price_monthly.gross))
+            .slice(0, 1)
             .map(p => p.location);
           for (const altLoc of altLocs) {
             try {
@@ -426,7 +431,7 @@ export async function runMorningWorkflow(
       server.priceMonthly = resolvedFallbackPrice.monthly;
       server.priceHourly = resolvedFallbackPrice.hourly;
     } else {
-      const serverTypesForPrice = await hetznerApi!.getServerTypes().catch(() => []);
+      const serverTypesForPrice = cachedServerTypes ?? await hetznerApi!.getServerTypes().catch(() => []);
       const priceTypeData = serverTypesForPrice.find(t => t.name.toLowerCase() === result.server_type.name.toLowerCase());
       if (priceTypeData?.prices && locationName) {
         const priceEntry = priceTypeData.prices.find(p => p.location === locationName);
