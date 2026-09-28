@@ -359,11 +359,13 @@ export async function runMorningWorkflow(
 
       // Phase 2: cheapest alternative types with same arch (cap at 5 types, cheapest location only per type)
       // When hitting shared-core limit, only try dedicated (non-shared) types
-      if (typeData) {
+      // If typeData is undefined (server type deprecated/removed), fall back to x86 shared-core types
+      const fallbackArch = typeData?.architecture ?? 'x86';
+      if (true) {
         const altTypes = cachedServerTypes
           .filter(t =>
             t.name !== targetServerType &&
-            t.architecture === typeData.architecture &&
+            t.architecture === fallbackArch &&
             (t.prices?.length ?? 0) > 0 &&
             (!sharedCoreLimit || !isSharedCoreType(t.name))
           )
