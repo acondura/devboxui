@@ -98,6 +98,8 @@ export interface ScheduleConfig {
   skipWeekends?: boolean;
   shutdownAfterInactivity?: boolean;
   inactivityDurationMinutes?: number;
+  scheduledPriceMonthly?: string;
+  scheduledPriceHourly?: string;
 }
 
 export interface ProvisioningState {

@@ -166,8 +166,14 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await saveScheduleConfig(serverId, config);
-      onSaved?.(config);
+      const configToSave: ScheduleConfig = {
+        ...config,
+        scheduledPriceMonthly: monthlyPriceGross.toFixed(2),
+        scheduledPriceHourly: hourlyPriceGross.toFixed(4),
+      };
+      await saveScheduleConfig(serverId, configToSave);
+      setConfig(configToSave);
+      onSaved?.(configToSave);
       showToast('success', 'Schedule saved successfully.');
     } catch (e) {
       showToast('error', e instanceof Error ? e.message : 'Failed to save.');

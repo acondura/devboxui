@@ -303,6 +303,8 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
   const [isCheckingIdle, setIsCheckingIdle] = useState(false);
   const [idleCheckResult, setIdleCheckResult] = useState<{ idle: boolean; idleMinutes: number; triggered: boolean; message: string } | null>(null);
   const [scheduleConfig, setScheduleConfig] = useState<ScheduleConfig | null>(server.scheduleConfig || null);
+  const [localPriceMonthly, setLocalPriceMonthly] = useState<string | undefined>(server.priceMonthly);
+  const [localPriceHourly, setLocalPriceHourly] = useState<string | undefined>(server.priceHourly);
   const [isFetchingLogs, setIsFetchingLogs] = useState(false);
   const [isActionsOpen, setIsActionsOpen] = useState(false);
   const actionsDropdownRef = useRef<HTMLDivElement>(null);
@@ -487,12 +489,12 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
           {server.serverSpecs && (
             <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5">
               <span className="text-sm font-medium text-slate-500 dark:text-zinc-400 leading-tight">{server.serverSpecs}</span>
-              {server.priceMonthly && (
+              {localPriceMonthly && (
                 <>
                   <span className="text-sm text-slate-300 dark:text-zinc-600">—</span>
-                  <span className="text-sm font-bold text-emerald-600 dark:text-emerald-500">€{server.priceMonthly}<span className="font-normal text-emerald-500 dark:text-emerald-600">/mo</span></span>
-                  {server.priceHourly && (
-                    <span className="text-xs text-slate-400 dark:text-zinc-500">€{server.priceHourly}/hr</span>
+                  <span className="text-sm font-bold text-emerald-600 dark:text-emerald-500">€{localPriceMonthly}<span className="font-normal text-emerald-500 dark:text-emerald-600">/mo</span></span>
+                  {localPriceHourly && (
+                    <span className="text-xs text-slate-400 dark:text-zinc-500">€{localPriceHourly}/hr</span>
                   )}
                 </>
               )}
@@ -826,7 +828,11 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
             serverId={server.id}
             serverName={server.hostname || server.ip}
             serverStatus={server.status}
-            onSaved={(cfg) => setScheduleConfig(cfg)}
+            onSaved={(cfg) => {
+              setScheduleConfig(cfg);
+              if (cfg.scheduledPriceMonthly) setLocalPriceMonthly(cfg.scheduledPriceMonthly);
+              if (cfg.scheduledPriceHourly) setLocalPriceHourly(cfg.scheduledPriceHourly);
+            }}
             onRefresh={onRefresh}
           />
         )}
@@ -891,6 +897,8 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
   const [isReinstallModalOpen, setIsReinstallModalOpen] = useState(false);
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
   const [scheduleConfig, setScheduleConfig] = useState<ScheduleConfig | null>(server.scheduleConfig || null);
+  const [localPriceMonthly, setLocalPriceMonthly] = useState<string | undefined>(server.priceMonthly);
+  const [localPriceHourly, setLocalPriceHourly] = useState<string | undefined>(server.priceHourly);
   const [isFetchingLogs, setIsFetchingLogs] = useState(false);
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
   const [deletingDomain, setDeletingDomain] = useState<string | null>(null);
@@ -1100,7 +1108,11 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
           serverId={server.id}
           serverName={server.hostname || server.ip}
           serverStatus={server.status}
-          onSaved={(cfg) => setScheduleConfig(cfg)}
+          onSaved={(cfg) => {
+            setScheduleConfig(cfg);
+            if (cfg.scheduledPriceMonthly) setLocalPriceMonthly(cfg.scheduledPriceMonthly);
+            if (cfg.scheduledPriceHourly) setLocalPriceHourly(cfg.scheduledPriceHourly);
+          }}
           onRefresh={onRefresh}
         />
       )}
@@ -1137,12 +1149,12 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
               {server.serverSpecs && (
                 <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5">
                   <span className="text-xs font-medium text-slate-500 dark:text-zinc-400 leading-tight">{server.serverSpecs}</span>
-                  {server.priceMonthly && (
+                  {localPriceMonthly && (
                     <>
                       <span className="text-xs text-slate-300 dark:text-zinc-600">—</span>
-                      <span className="text-xs font-bold text-emerald-600 dark:text-emerald-500">€{server.priceMonthly}<span className="font-normal text-emerald-500 dark:text-emerald-600">/mo</span></span>
-                      {server.priceHourly && (
-                        <span className="text-[10px] text-slate-400 dark:text-zinc-500">€{server.priceHourly}/hr</span>
+                      <span className="text-xs font-bold text-emerald-600 dark:text-emerald-500">€{localPriceMonthly}<span className="font-normal text-emerald-500 dark:text-emerald-600">/mo</span></span>
+                      {localPriceHourly && (
+                        <span className="text-[10px] text-slate-400 dark:text-zinc-500">€{localPriceHourly}/hr</span>
                       )}
                     </>
                   )}

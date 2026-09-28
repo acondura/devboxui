@@ -54,6 +54,8 @@ export async function saveScheduleConfig(
     const { key: actualServerKey, config: server } = resolved;
     server.scheduleConfig = config;
     server.updatedAt = new Date().toISOString();
+    if (config.scheduledPriceMonthly) server.priceMonthly = config.scheduledPriceMonthly;
+    if (config.scheduledPriceHourly) server.priceHourly = config.scheduledPriceHourly;
     await kv.put(actualServerKey, JSON.stringify(server));
   }
 
