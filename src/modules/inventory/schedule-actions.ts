@@ -434,7 +434,7 @@ export async function runMorningWorkflow(
       server.priceMonthly = resolvedFallbackPrice.monthly;
       server.priceHourly = resolvedFallbackPrice.hourly;
     } else {
-      const serverTypesForPrice = cachedServerTypes ?? await hetznerApi!.getServerTypes().catch(() => []);
+      const serverTypesForPrice = cachedServerTypes ?? await hetznerApi!.getServerTypesAll().catch(() => []);
       const priceTypeData = serverTypesForPrice.find(t => t.name.toLowerCase() === result.server_type.name.toLowerCase());
       if (priceTypeData?.prices && locationName) {
         const priceEntry = priceTypeData.prices.find(p => p.location === locationName);
