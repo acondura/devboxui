@@ -1143,7 +1143,7 @@ export async function processAllPendingCreates(kv: KVNamespace) {
 
     // Auto-recover servers stuck in 'configuring' for > 15 minutes (bootstrap callback never fired)
     const isStuckConfiguring = server.status === 'configuring' && !server.pendingCreateActionId && server.updatedAt
-      && (Date.now() - new Date(server.updatedAt).getTime()) > 15 * 60 * 1000;
+      && (Date.now() - new Date(server.updatedAt).getTime()) > 5 * 60 * 1000;
 
     if (isStuckConfiguring) {
       try {
