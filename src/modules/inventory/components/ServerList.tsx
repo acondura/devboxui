@@ -489,7 +489,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
           {server.serverSpecs && (
             <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5">
               <span className="text-sm font-medium text-slate-500 dark:text-zinc-400 leading-tight">{server.serverSpecs}</span>
-              {localPriceMonthly && (
+              {localPriceMonthly && server.status !== 'off' && (
                 <>
                   <span className="text-sm text-slate-300 dark:text-zinc-600">—</span>
                   <span className="text-sm font-bold text-emerald-600 dark:text-emerald-500">€{localPriceMonthly}<span className="font-normal text-emerald-500 dark:text-emerald-600">/mo</span></span>
@@ -830,8 +830,6 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
             serverStatus={server.status}
             onSaved={(cfg) => {
               setScheduleConfig(cfg);
-              if (cfg.scheduledPriceMonthly) setLocalPriceMonthly(cfg.scheduledPriceMonthly);
-              if (cfg.scheduledPriceHourly) setLocalPriceHourly(cfg.scheduledPriceHourly);
             }}
             onRefresh={onRefresh}
           />
@@ -1110,8 +1108,6 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
           serverStatus={server.status}
           onSaved={(cfg) => {
             setScheduleConfig(cfg);
-            if (cfg.scheduledPriceMonthly) setLocalPriceMonthly(cfg.scheduledPriceMonthly);
-            if (cfg.scheduledPriceHourly) setLocalPriceHourly(cfg.scheduledPriceHourly);
           }}
           onRefresh={onRefresh}
         />
@@ -1149,7 +1145,7 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
               {server.serverSpecs && (
                 <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5">
                   <span className="text-xs font-medium text-slate-500 dark:text-zinc-400 leading-tight">{server.serverSpecs}</span>
-                  {localPriceMonthly && (
+                  {localPriceMonthly && server.status !== 'off' && (
                     <>
                       <span className="text-xs text-slate-300 dark:text-zinc-600">—</span>
                       <span className="text-xs font-bold text-emerald-600 dark:text-emerald-500">€{localPriceMonthly}<span className="font-normal text-emerald-500 dark:text-emerald-600">/mo</span></span>
