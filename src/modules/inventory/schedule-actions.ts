@@ -266,7 +266,8 @@ export async function runMorningWorkflow(
       callbackUrl,
       serviceToken.id,
       serviceToken.client_secret,
-      server.tunnelToken
+      server.tunnelToken,
+      { aptUpdate: false, installDocker: false, installDdev: false, installOhMyBash: false }
     );
   } catch (err) {
     console.error("[Morning] Failed to generate bootstrap script for snapshot restore:", err);
@@ -1139,6 +1140,37 @@ export async function processAllPendingCreates(kv: KVNamespace) {
 
     const isDO = server.provider === 'digitalocean';
     const isPending = server.pendingCreateActionId || (isDO && server.status === 'initializing');
+
+    // Auto-recover servers stuck in 'configuring' for > 15 minutes (bootstrap callback never fired)
+    const isStuckConfiguring = server.status === 'configuring' && !server.pendingCreateActionId && server.updatedAt
+      && (Date.now() - new Date(server.updatedAt).getTime()) > 15 * 60 * 1000;
+
+    if (isStuckConfiguring) {
+      try {
+        const env = await getCloudflareEnv();
+        let hetznerToken = env.HETZNER_API_TOKEN;
+        if (server.orgId) {
+          const orgSettings = await getOrgSettings(server.orgId);
+          if (orgSettings?.hetznerToken) hetznerToken = orgSettings.hetznerToken;
+        }
+        const settings = await getUserSettings(server.userEmail);
+        if (!hetznerToken && settings?.hetznerToken) hetznerToken = settings.hetznerToken;
+
+        if (!isDO && hetznerToken && server.hetznerServerId) {
+          const hetznerApi = new HetznerApiService(env, hetznerToken);
+          const hetznerStatus = await hetznerApi.getServerStatus(server.hetznerServerId).catch(() => null);
+          if (hetznerStatus === 'running') {
+            console.log(`[processAllPendingCreates] Auto-recovering stuck server ${server.id} (configuring > 15min, Hetzner: running)`);
+            server.status = 'ready';
+            server.detailedStatus = 'Ready';
+            server.updatedAt = new Date().toISOString();
+            await kv.put(key.name, JSON.stringify(server));
+          }
+        }
+      } catch (err) {
+        console.error(`[processAllPendingCreates] Failed to auto-recover stuck server ${server.id}:`, err);
+      }
+    }
 
     if (isPending) {
       count++;
