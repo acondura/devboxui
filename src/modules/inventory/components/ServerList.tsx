@@ -305,6 +305,10 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
   const [scheduleConfig, setScheduleConfig] = useState<ScheduleConfig | null>(server.scheduleConfig || null);
   const [localPriceMonthly, setLocalPriceMonthly] = useState<string | undefined>(server.priceMonthly);
   const [localPriceHourly, setLocalPriceHourly] = useState<string | undefined>(server.priceHourly);
+  useEffect(() => {
+    setLocalPriceMonthly(server.priceMonthly);
+    setLocalPriceHourly(server.priceHourly);
+  }, [server.id, server.priceMonthly, server.priceHourly]);
   const [isFetchingLogs, setIsFetchingLogs] = useState(false);
   const [isActionsOpen, setIsActionsOpen] = useState(false);
   const actionsDropdownRef = useRef<HTMLDivElement>(null);
@@ -897,6 +901,10 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
   const [scheduleConfig, setScheduleConfig] = useState<ScheduleConfig | null>(server.scheduleConfig || null);
   const [localPriceMonthly, setLocalPriceMonthly] = useState<string | undefined>(server.priceMonthly);
   const [localPriceHourly, setLocalPriceHourly] = useState<string | undefined>(server.priceHourly);
+  useEffect(() => {
+    setLocalPriceMonthly(server.priceMonthly);
+    setLocalPriceHourly(server.priceHourly);
+  }, [server.id, server.priceMonthly, server.priceHourly]);
   const [isFetchingLogs, setIsFetchingLogs] = useState(false);
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
   const [deletingDomain, setDeletingDomain] = useState<string | null>(null);

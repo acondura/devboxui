@@ -269,7 +269,7 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
               <p className="text-[10px] text-slate-500 dark:text-zinc-400 font-mono mt-0.5">{serverName.replace('.devboxui.com', '')}</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-400 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-zinc-100 transition-colors p-1 rounded-md hover:bg-slate-100 dark:hover:bg-zinc-700">
+          <button type="button" aria-label="Close" onClick={onClose} className="text-slate-400 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-zinc-100 transition-colors p-1 rounded-md hover:bg-slate-100 dark:hover:bg-zinc-700">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -296,6 +296,8 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                   </div>
                   <button
                     id={`schedule-toggle-${serverId}`}
+                    type="button"
+                    aria-label="Toggle daily automation"
                     onClick={() => setConfig(c => ({ ...c, enabled: !c.enabled }))}
                     className={`relative w-12 h-6 rounded-full transition-all duration-300 focus:outline-none ${
                       config.enabled ? 'bg-indigo-600 shadow-lg shadow-indigo-600/30' : 'bg-slate-200 dark:bg-zinc-700 border border-slate-300 dark:border-zinc-600'
@@ -394,6 +396,9 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                     </div>
                     <button
                       type="button"
+                      aria-label="Toggle inactivity auto-shutdown"
+                      role="switch"
+                      aria-checked={!!config.shutdownAfterInactivity}
                       onClick={() => setConfig(c => ({ ...c, shutdownAfterInactivity: !c.shutdownAfterInactivity }))}
                       className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                         config.shutdownAfterInactivity ? 'bg-indigo-600' : 'bg-slate-250 dark:bg-zinc-700'
@@ -522,9 +527,10 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                       />
                       {config.pauseUntil && (
                         <button
+                          type="button"
                           onClick={() => setConfig(c => ({ ...c, pauseUntil: undefined }))}
                           className="p-2 text-slate-400 dark:text-zinc-500 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-zinc-700 rounded-lg transition-all"
-                          title="Clear pause"
+                          aria-label="Clear pause date"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -556,13 +562,15 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                     </div>
                     <button
                       id={`skip-weekends-toggle-${serverId}`}
+                      type="button"
+                      aria-label="Toggle skip weekends"
                       onClick={() => setConfig(c => ({ ...c, skipWeekends: !c.skipWeekends }))}
                       disabled={!config.enabled}
                       className={`relative w-10 h-5 rounded-full transition-all duration-300 focus:outline-none ${
                         config.skipWeekends ? 'bg-rose-600 shadow-md shadow-rose-600/20' : 'bg-slate-200 dark:bg-zinc-700 border border-slate-300 dark:border-zinc-600'
                       } disabled:opacity-60 disabled:bg-slate-100 dark:disabled:bg-zinc-700 disabled:border-slate-200 disabled:cursor-not-allowed`}
                       role="switch"
-                      aria-checked={config.skipWeekends}
+                      aria-checked={!!config.skipWeekends}
                     >
                       <span
                         className="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all duration-300"
@@ -614,12 +622,13 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                           >
                             {date}
                             <button
+                              type="button"
                               onClick={() => setConfig(c => ({
                                 ...c,
                                 blockedDates: (c.blockedDates || []).filter(d => d !== date)
                               }))}
                               className="text-rose-500/70 hover:text-rose-700 transition-colors"
-                              title={`Remove ${date}`}
+                              aria-label={`Remove ${date}`}
                             >
                               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -628,6 +637,7 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                           </span>
                         ))}
                         <button
+                          type="button"
                           onClick={() => setConfig(c => ({ ...c, blockedDates: [] }))}
                           className="text-[10px] text-slate-500 dark:text-zinc-400 hover:text-rose-650 transition-colors px-2 py-1 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-full"
                         >
@@ -769,6 +779,7 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       id={`trigger-morning-${serverId}`}
+                      type="button"
                       onClick={handleTriggerMorning}
                       disabled={isTriggeringMorning || !config.latestSnapshotId}
                       className="flex items-center justify-center gap-2 px-4 py-2.5 border border-emerald-250 text-emerald-700 text-xs font-bold rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-emerald-50 hover:bg-emerald-100"
@@ -786,6 +797,7 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
 
                     <button
                       id={`trigger-evening-${serverId}`}
+                      type="button"
                       onClick={() => setIsConfirmSnapshotOpen(true)}
                       disabled={isTriggeringEvening}
                       className="flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-50 hover:bg-amber-100 border border-amber-250 text-amber-700 text-xs font-bold rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
@@ -815,6 +827,7 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
         {/* Footer */}
         <div className="px-6 py-4 border-t border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800/50 flex items-center justify-between gap-3">
           <button
+            type="button"
             onClick={onClose}
             className="px-4 py-2 text-sm font-bold text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-zinc-200 bg-slate-100 dark:bg-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-600 rounded-lg transition-all"
           >
@@ -822,6 +835,7 @@ export function ScheduleModal({ serverId, serverName, serverStatus, isOpen, onCl
           </button>
           <button
             id={`save-schedule-${serverId}`}
+            type="button"
             onClick={handleSave}
             disabled={isSaving || isLoading}
             className="px-6 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50 flex items-center gap-2"
