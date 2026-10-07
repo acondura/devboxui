@@ -1285,7 +1285,7 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
               {isSnapshotting && (
                 <div className="h-3.5 w-3.5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin mr-1.5" />
               )}
-              {isSnapshotting ? 'Saving...' : 'Shutdown'}
+              {isSnapshotting ? 'Shutting down...' : 'Shutdown'}
             </button>
           )}
           {(isHetzner || isDigitalOcean) && server.status !== 'off' && (
