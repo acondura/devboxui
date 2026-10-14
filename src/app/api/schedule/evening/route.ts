@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCloudflareEnv } from '@/lib/auth';
-import { getScheduledServers, getServersWithInactivity, runEveningWorkflow, processAllPendingSnapshots, processAllPendingCreates } from '@/modules/inventory/schedule-actions';
+import { getScheduledServers, getServersWithInactivity, runEveningWorkflow, processAllPendingSnapshots, processAllPendingCreates, processAllPendingShutdowns } from '@/modules/inventory/schedule-actions';
 import { CloudflareApiService } from '@/lib/cloudflare-api';
 
 export const dynamic = 'force-dynamic';
@@ -28,8 +28,16 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Self-healing processing of any pending snapshots/creations (runs hourly to stay within KV list quota)
   const kv = env.KV;
+  // Process pending shutdowns on every cron tick — servers power off within seconds.
+  if (kv) {
+    try {
+      await processAllPendingShutdowns(kv);
+    } catch (err) {
+      console.error('[Cron Evening] Failed to process pending shutdowns:', err);
+    }
+  }
+  // Self-healing processing of pending snapshots/creations (runs hourly to stay within KV list quota)
   const nowForPending = new Date();
   if (kv && nowForPending.getUTCMinutes() === 0) {
     try {

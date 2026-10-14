@@ -621,44 +621,45 @@ export async function runEveningWorkflow(
 
   console.log(`[Evening] Starting evening workflow for server ${server.hostname || server.ip}…`);
 
-  // ── Step 1: Power off ─────────────────────────────────────────────────────
-  const currentStatus = isDO 
-    ? (await doApi!.getDroplet(server.digitalOceanDropletId!)).status 
+  // ── Step 1: Power off (non-blocking) ──────────────────────────────────────
+  // We issue the poweroff command and return immediately to avoid Cloudflare Worker
+  // request timeouts. The snapshot creation is handled by processAllPendingShutdowns
+  // which is called on every cron tick.
+  const currentStatus = isDO
+    ? (await doApi!.getDroplet(server.digitalOceanDropletId!)).status
     : (await hetznerApi!.getServerStatus(server.hetznerServerId!));
+
   if (currentStatus !== 'off') {
-    console.log(`[Evening] Initiating graceful shutdown for server (currently: ${currentStatus})…`);
+    console.log(`[Evening] Issuing hard poweroff for server (currently: ${currentStatus})…`);
     server.status = 'snapshotting';
     server.detailedStatus = 'Shutting down...';
+    server.pendingShutdownForSnapshot = true;
     server.updatedAt = new Date().toISOString();
+    if (sched) {
+      sched.lastEveningRun = new Date().toISOString();
+      sched.lastRunStatus = 'running';
+      sched.lastRunError = undefined;
+      server.scheduleConfig = sched;
+      await kv.put(scheduleKey(userEmail, serverId), JSON.stringify(sched));
+    }
     await kv.put(actualServerKey, JSON.stringify(server));
     try {
       if (isDO) {
-        await doApi!.shutdownDroplet(server.digitalOceanDropletId!);
-        await doApi!.waitForDropletStatus(server.digitalOceanDropletId!, 'off', 45_000, 5_000);
+        await doApi!.poweroffDroplet(server.digitalOceanDropletId!);
       } else {
-        await hetznerApi!.shutdownServer(server.hetznerServerId!);
-        await hetznerApi!.waitForServerStatus(server.hetznerServerId!, 'off', 45_000, 5_000);
+        await hetznerApi!.poweroffServer(server.hetznerServerId!);
       }
-      console.log(`[Evening] Server gracefully shut down.`);
     } catch (err) {
-      console.log(`[Evening] Graceful shutdown failed or timed out: ${err instanceof Error ? err.message : String(err)}. Falling back to hard poweroff…`);
-      try {
-        if (isDO) {
-          await doApi!.poweroffDroplet(server.digitalOceanDropletId!);
-          await doApi!.waitForDropletStatus(server.digitalOceanDropletId!, 'off', 120_000, 5_000);
-        } else {
-          await hetznerApi!.poweroffServer(server.hetznerServerId!);
-          await hetznerApi!.waitForServerStatus(server.hetznerServerId!, 'off', 120_000, 5_000);
-        }
-        console.log(`[Evening] Server forced OFF.`);
-      } catch (forceErr) {
-        console.error(`[Evening] Hard poweroff also failed:`, forceErr);
-        throw new Error(`Failed to power off server even with hard poweroff.`);
-      }
+      console.error(`[Evening] Poweroff command failed:`, err);
+      throw new Error(`Failed to issue poweroff command: ${err instanceof Error ? err.message : String(err)}`);
     }
-  } else {
-    console.log(`[Evening] Server already OFF.`);
+    console.log(`[Evening] Poweroff command sent. Returning — cron will complete snapshot.`);
+    return {
+      success: true,
+      message: 'Poweroff initiated. Snapshot will be taken automatically once the server is off.'
+    };
   }
+  console.log(`[Evening] Server already OFF.`);
 
   // ── Step 2: Create snapshot (Non-blocking) ────────────────────────────────
   const now = new Date();
@@ -1206,6 +1207,100 @@ export async function processAllPendingCreates(kv: KVNamespace) {
     }
   }
   console.log(`[processAllPendingCreates] Finished processing ${count} pending creations.`);
+}
+
+export async function processAllPendingShutdowns(kv: KVNamespace) {
+  console.log('[processAllPendingShutdowns] Scanning KV for servers with pending shutdowns...');
+  const list = await kv.list({ prefix: 'servers:' });
+  let count = 0;
+  for (const key of list.keys) {
+    const data = await kv.get(key.name);
+    if (!data) continue;
+    let server: ServerConfig;
+    try {
+      server = JSON.parse(data) as ServerConfig;
+    } catch {
+      continue;
+    }
+    if (!server.pendingShutdownForSnapshot) continue;
+    count++;
+
+    try {
+      const env = await getCloudflareEnv();
+      const isDO = server.provider === 'digitalocean';
+      let hetznerToken = env.HETZNER_API_TOKEN;
+      let digitalOceanToken = env.CLOUDFLARE_API_TOKEN;
+      if (server.orgId) {
+        const orgSettings = await getOrgSettings(server.orgId);
+        if (orgSettings?.hetznerToken) hetznerToken = orgSettings.hetznerToken;
+        if (orgSettings?.digitalOceanToken) digitalOceanToken = orgSettings.digitalOceanToken;
+      }
+      const settings = await getUserSettings(server.userEmail);
+      if (!hetznerToken && settings?.hetznerToken) hetznerToken = settings.hetznerToken;
+      if (settings?.digitalOceanToken) digitalOceanToken = settings.digitalOceanToken;
+
+      const hetznerApi = isDO ? null : new HetznerApiService(env, hetznerToken);
+      const doApi = isDO ? new DigitalOceanApiService(env, digitalOceanToken) : null;
+
+      const currentStatus = isDO
+        ? (await doApi!.getDroplet(server.digitalOceanDropletId!)).status
+        : (await hetznerApi!.getServerStatus(server.hetznerServerId!));
+
+      if (currentStatus !== 'off') {
+        console.log(`[processAllPendingShutdowns] Server ${server.id} still ${currentStatus}, waiting...`);
+        continue;
+      }
+
+      console.log(`[processAllPendingShutdowns] Server ${server.id} is off — creating snapshot...`);
+      server.pendingShutdownForSnapshot = undefined;
+
+      const now = new Date();
+      const YYYY = now.getFullYear();
+      const MM = String(now.getMonth() + 1).padStart(2, '0');
+      const DD = String(now.getDate()).padStart(2, '0');
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+      const ss = String(now.getSeconds()).padStart(2, '0');
+      const cleanServerName = (server.hostname || `devbox-${server.id.slice(0, 8)}`)
+        .replace('.devboxui.com', '').replace('-code', '').replace(/[^a-zA-Z0-9-]/g, '').toLowerCase();
+      const snapshotDescription = `${cleanServerName}--${YYYY}-${MM}-${DD}-${hh}-${mm}-${ss}`;
+      const snapshotLabel = { 'devbox-server-id': server.id, 'devbox-auto': 'true' };
+
+      let snapshotImageId: number;
+      let snapshotActionId: number;
+      if (isDO) {
+        const res = await doApi!.createSnapshot(server.digitalOceanDropletId!, snapshotDescription);
+        snapshotImageId = 999999;
+        snapshotActionId = res.action.id;
+      } else {
+        const { image, action } = await hetznerApi!.createSnapshot(server.hetznerServerId!, snapshotDescription, snapshotLabel);
+        snapshotImageId = image.id;
+        snapshotActionId = action.id;
+      }
+
+      server.status = 'snapshotting';
+      server.detailedStatus = 'Snapshotting (0%)';
+      server.pendingSnapshotId = snapshotImageId;
+      server.pendingSnapshotActionId = snapshotActionId;
+      server.pendingSnapshotDescription = snapshotDescription;
+      server.pendingSnapshotDate = `${YYYY}-${MM}-${DD}`;
+      server.updatedAt = new Date().toISOString();
+
+      const schedData = await kv.get(scheduleKey(server.userEmail, server.id));
+      if (schedData) {
+        const sched = JSON.parse(schedData) as ScheduleConfig;
+        sched.lastEveningRun = new Date().toISOString();
+        sched.lastRunStatus = 'running';
+        server.scheduleConfig = sched;
+        await kv.put(scheduleKey(server.userEmail, server.id), JSON.stringify(sched));
+      }
+      await kv.put(key.name, JSON.stringify(server));
+      console.log(`[processAllPendingShutdowns] Snapshot action ${snapshotActionId} started for server ${server.id}.`);
+    } catch (err) {
+      console.error(`[processAllPendingShutdowns] Failed for server ${server.id}:`, err);
+    }
+  }
+  console.log(`[processAllPendingShutdowns] Finished processing ${count} pending shutdowns.`);
 }
 
 export async function processAllPendingSnapshots(kv: KVNamespace) {

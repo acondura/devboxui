@@ -43,6 +43,7 @@ export interface ServerConfig {
   pendingSnapshotDescription?: string;
   pendingSnapshotDate?: string;
   pendingCreateActionId?: number;
+  pendingShutdownForSnapshot?: boolean;
   serverSpecs?: string;
   priceMonthly?: string;
   priceHourly?: string;
