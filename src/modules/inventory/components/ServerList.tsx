@@ -892,6 +892,91 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
   );
 }
 
+const HETZNER_BOOTSTRAP_STEPS: Array<{ label: string; key: string; option?: keyof NonNullable<ServerConfig['provisioningOptions']>; defaultOn?: boolean }> = [
+  { label: 'Setting up workspace', key: 'Setting up workspace...' },
+  { label: 'Updating packages', key: 'Updating packages...', option: 'aptUpdate', defaultOn: true },
+  { label: 'Installing Docker', key: 'Installing Docker...', option: 'installDocker', defaultOn: false },
+  { label: 'Installing DDEV', key: 'Installing DDEV...', option: 'installDdev', defaultOn: false },
+  { label: 'Installing Oh My Bash', key: 'Installing Oh My Bash...', option: 'installOhMyBash', defaultOn: true },
+  { label: 'Ready', key: 'Ready' },
+];
+
+const MANUAL_BOOTSTRAP_STEPS = [
+  { label: 'Initializing system', key: 'Initializing system...' },
+  { label: 'Hardening server', key: 'Hardening server and setting up users...' },
+  { label: 'Syncing SSH keys', key: 'Syncing SSH keys...' },
+  { label: 'Setting up Cloudflare Tunnel', key: 'Setting up Cloudflare Tunnel...' },
+  { label: 'Ready', key: 'Ready' },
+];
+
+function BootstrapProgress({ server, isManual }: { server: ServerConfig; isManual: boolean }) {
+  const completedSet = new Set(
+    (server.statusLog || []).map(entry => {
+      const m = entry.match(/^\[[^\]]+\] (.+)$/);
+      return (m ? m[1] : entry).trim();
+    })
+  );
+
+  const opts = server.provisioningOptions;
+  const steps: Array<{ label: string; key: string }> = isManual
+    ? MANUAL_BOOTSTRAP_STEPS
+    : HETZNER_BOOTSTRAP_STEPS.filter(s => {
+        if (!s.option) return true;
+        if (opts) return s.defaultOn ? opts[s.option] !== false : !!opts[s.option];
+        return !!s.defaultOn;
+      });
+
+  let lastCompletedIdx = -1;
+  steps.forEach((step, i) => { if (completedSet.has(step.key)) lastCompletedIdx = i; });
+
+  const completedCount = lastCompletedIdx + 1;
+  const totalCount = steps.length;
+  const pct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+  if (completedCount === 0) {
+    return (
+      <div className="rounded-lg border border-slate-200 dark:border-zinc-700 p-3 flex items-center space-x-2.5">
+        <div className="h-4 w-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+        <span className="text-xs text-slate-500 dark:text-zinc-400">{server.detailedStatus || 'Waiting for bootstrap...'}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-slate-200 dark:border-zinc-700 overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-slate-50 dark:bg-zinc-800/50 border-b border-slate-200 dark:border-zinc-700">
+        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-zinc-400">Bootstrap Progress</span>
+        <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">{completedCount}/{totalCount} · {pct}%</span>
+      </div>
+      <div className="px-3 py-2 space-y-1.5">
+        {steps.map((step, i) => {
+          const done = completedSet.has(step.key);
+          const isCurrent = !done && i === lastCompletedIdx + 1;
+          return (
+            <div key={step.key} className={`flex items-center space-x-2 text-xs ${done ? 'text-emerald-600 dark:text-emerald-400' : isCurrent ? 'text-slate-800 dark:text-zinc-200 font-semibold' : 'text-slate-400 dark:text-zinc-500'}`}>
+              {done ? (
+                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                </svg>
+              ) : isCurrent ? (
+                <div className="w-3.5 h-3.5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+              ) : (
+                <div className="w-3.5 h-3.5 rounded-full border border-slate-300 dark:border-zinc-600 flex-shrink-0" />
+              )}
+              <span>{step.label}</span>
+            </div>
+          );
+        })}
+      </div>
+      <div className="px-3 pb-3">
+        <div className="w-full bg-slate-200 dark:bg-zinc-700 rounded-full h-1.5 overflow-hidden">
+          <div className="h-1.5 rounded-full bg-indigo-500 transition-[width] duration-700" style={{ width: `${Math.max(pct, 2)}%` }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomain, onDeleteDomain, onDeleteServer, onReinstall, onUpdateAllowedPeers, servers, onRefresh }: ServerListProps & { server: ServerConfig; inlineLogsMode?: boolean }) {
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [isApiAuthOpen, setIsApiAuthOpen] = useState(false);
@@ -1220,6 +1305,10 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
             )}
           </div>
         </div>
+
+        {['provisioning', 'configuring', 'initializing', 'Initializing'].includes(server.status) && isAutomated && (
+          <BootstrapProgress server={server} isManual={!isAutomated} />
+        )}
 
         <div className="flex items-center space-x-2 pt-2 flex-wrap gap-y-2">
           <button

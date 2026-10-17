@@ -632,6 +632,7 @@ export async function getHetznerBootstrapScript(
   const installOhMyBash = options?.installOhMyBash ?? true;
 
   const aptUpdateBlock = aptUpdate ? `
+send_status "Updating packages..."
 echo "Running apt update and upgrade..."
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y
@@ -639,13 +640,7 @@ apt-get upgrade -y
 ` : '';
 
   const dockerBlock = installDocker ? `
-if command -v curl >/dev/null 2>&1; then
-    curl -s -m 5 -X POST "$CALLBACK_URL" \
-      -H "Content-Type: application/json" \
-      -H "CF-Access-Client-Id: $SERVICE_TOKEN_ID" \
-      -H "CF-Access-Client-Secret: $SERVICE_TOKEN_SECRET" \
-      -d "{\\\"serverId\\\": \\\"$SERVER_ID\\\", \\\"token\\\": \\\"$PROV_TOKEN\\\", \\\"status\\\": \\\"Installing Docker\\\"}" || true
-fi
+send_status "Installing Docker..."
 echo "Installing Docker..."
 curl -fsSL https://get.docker.com -o get-docker.sh
 sh get-docker.sh
@@ -656,6 +651,7 @@ systemctl start docker
 ` : '';
 
   const ddevBlock = installDdev ? `
+send_status "Installing DDEV..."
 echo "Installing DDEV..."
 curl -fsSL https://apt.fury.io/drud/gpg.key | gpg --dearmor | tee /etc/apt/trusted.gpg.d/ddev.gpg > /dev/null
 echo "deb [signed-by=/etc/apt/trusted.gpg.d/ddev.gpg] https://apt.fury.io/drud/ * *" | tee /etc/apt/sources.list.d/ddev.list
@@ -664,6 +660,7 @@ apt-get install -y ddev
 ` : '';
 
   const ohMyBashBlock = installOhMyBash ? `
+send_status "Installing Oh My Bash..."
 echo "Installing Oh My Bash for $DEV_USER..."
 su - "$DEV_USER" -c 'OSH_INSTALL_NOCHANGE=1 bash -c "$(curl -fsSL https://raw.githubusercontent.com/ohmybash/oh-my-bash/master/tools/install.sh)"' || true
 ` : '';
@@ -678,6 +675,16 @@ PROV_TOKEN="${provisioningToken}"
 CALLBACK_URL="${callbackUrl}"
 SERVICE_TOKEN_ID="${serviceTokenId || ''}"
 SERVICE_TOKEN_SECRET="${serviceTokenSecret || ''}"
+
+# Bootstrap status reporter
+send_status() {
+  local msg="$1"
+  if command -v curl >/dev/null 2>&1; then
+    curl -s -m 10 -X POST "$CALLBACK_URL" -H "Content-Type: application/json" -H "CF-Access-Client-Id: $SERVICE_TOKEN_ID" -H "CF-Access-Client-Secret: $SERVICE_TOKEN_SECRET" -d "{\\\"serverId\\\": \\\"$SERVER_ID\\\", \\\"token\\\": \\\"$PROV_TOKEN\\\", \\\"status\\\": \\\"$msg\\\"}" || true
+  fi
+}
+
+send_status "Setting up workspace..."
 
 # Create User
 if ! id "$DEV_USER" &>/dev/null; then
@@ -740,14 +747,7 @@ echo 'export HISTTIMEFORMAT="%F %T "' >> /etc/bash.bashrc
 echo 'export HISTTIMEFORMAT="%F %T "' >> /etc/profile
 echo 'export PROMPT_COMMAND="history -a; $PROMPT_COMMAND"' >> /etc/bash.bashrc
 ${aptUpdateBlock}${dockerBlock}${ddevBlock}${ohMyBashBlock}
-# Report Ready status back
-if command -v curl >/dev/null 2>&1; then
-    curl -s -m 5 -X POST "$CALLBACK_URL" \
-      -H "Content-Type: application/json" \
-      -H "CF-Access-Client-Id: $SERVICE_TOKEN_ID" \
-      -H "CF-Access-Client-Secret: $SERVICE_TOKEN_SECRET" \
-      -d "{\\\"serverId\\\": \\\"$SERVER_ID\\\", \\\"token\\\": \\\"$PROV_TOKEN\\\", \\\"status\\\": \\\"Ready\\\"}" || true
-fi
+send_status "Ready"
 `;
 }
 
@@ -1052,6 +1052,7 @@ export async function provisionServer(
     config.hetznerServerId = hetznerServerId;
     config.pendingCreateActionId = hetznerResult.action.id;
     config.detailedStatus = 'Initializing (0%)';
+    if (provisioningOptions) config.provisioningOptions = provisioningOptions;
 
     // Construct serverSpecs
     const arch = hetznerResult.server.server_type.architecture || 'x86';
@@ -3164,6 +3165,7 @@ export async function provisionDigitalOceanServer(
     dropletId = doResult.droplet.id;
     config.digitalOceanDropletId = dropletId;
     config.detailedStatus = 'Initializing (0%)';
+    if (provisioningOptions) config.provisioningOptions = provisioningOptions;
 
     const specsParts = [
       serverType.toUpperCase(),

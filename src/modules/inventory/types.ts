@@ -51,6 +51,12 @@ export interface ServerConfig {
   orgId?: string;
   assignedTo?: string;
   collaborators?: CollaboratorInfo[];
+  provisioningOptions?: {
+    aptUpdate?: boolean;
+    installDocker?: boolean;
+    installDdev?: boolean;
+    installOhMyBash?: boolean;
+  };
 }
 
 export interface CollaboratorInfo {
