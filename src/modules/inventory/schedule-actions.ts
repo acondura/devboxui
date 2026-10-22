@@ -481,6 +481,7 @@ export async function runMorningWorkflow(
   server.ip = ip;
   server.status = 'initializing';
   server.detailedStatus = 'Restoring from snapshot (0%)';
+  server.statusLog = [];
   server.pendingCreateActionId = actionId;
   server.updatedAt = new Date().toISOString();
   server.spinUpNote = spinUpNote ?? undefined;
