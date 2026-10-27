@@ -934,10 +934,21 @@ function BootstrapProgress({ server, isManual }: { server: ServerConfig; isManua
   const pct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
   if (completedCount === 0) {
+    const pctMatch = (server.detailedStatus || '').match(/(\d+)%/);
+    const earlyPct = pctMatch ? parseInt(pctMatch[1], 10) : null;
+    const label = server.detailedStatus?.replace(/\s*\(\d+%\)/, '') || 'Waiting for bootstrap...';
     return (
-      <div className="rounded-lg border border-slate-200 dark:border-zinc-700 p-3 flex items-center space-x-2.5">
-        <div className="h-4 w-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
-        <span className="text-xs text-slate-500 dark:text-zinc-400">{server.detailedStatus || 'Waiting for bootstrap...'}</span>
+      <div className="rounded-lg border border-slate-200 dark:border-zinc-700 overflow-hidden">
+        <div className="px-3 py-2.5 flex items-center space-x-2.5">
+          <div className="h-3.5 w-3.5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+          <span className="text-xs text-slate-500 dark:text-zinc-400 flex-1">{label}</span>
+          {earlyPct !== null && <span className="text-xs font-bold text-indigo-400 flex-shrink-0">{earlyPct}%</span>}
+        </div>
+        {earlyPct !== null && (
+          <div className="w-full bg-slate-200 dark:bg-zinc-700 h-1.5">
+            <div className="h-1.5 bg-indigo-500 transition-[width] duration-700" style={{ width: `${Math.max(earlyPct, 2)}%` }} />
+          </div>
+        )}
       </div>
     );
   }
@@ -1215,14 +1226,10 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
               <span className="text-[10px] font-bold text-slate-500 dark:text-zinc-500 uppercase tracking-widest">
                 {server.providerName || 'Custom'}
               </span>
-              {isAutomated && (
+              {isAutomated && !['provisioning', 'configuring', 'initializing', 'Initializing', 'starting', 'snapshotting', 'waiting-for-bootstrap'].includes(server.status) && (
                 <div className="flex items-center space-x-1.5 bg-slate-105 dark:bg-zinc-700/50 px-2 py-1 rounded border border-slate-200 dark:border-zinc-600 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400" title={server.status === 'off' ? "SLEEPING = Server powered off, snapshot taken, server deleted - this ensures you only pay for what you use." : undefined}>
                   {server.status === 'ready' ? (
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                  ) : server.status === 'waiting-for-bootstrap' ? (
-                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
-                  ) : ['provisioning', 'configuring', 'initializing', 'Initializing', 'starting', 'snapshotting'].includes(server.status) ? (
-                    <span className="h-2 w-2 border border-indigo-500 border-t-transparent rounded-full animate-spin" />
                   ) : server.status === 'off' && scheduleConfig?.enabled ? (
                     <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)] animate-pulse" />
                   ) : (
