@@ -21,6 +21,11 @@ id = ""  # Set KV_ID env var at deploy time via pages-build script
 # Default windows cover 04:00–12:00 UTC (morning) and 12:00–21:00 UTC (evening)
 # to accommodate any timezone from UTC-8 to UTC+12.
 
+# ─── Cron: Weekly tunnel cleanup (Sundays 03:00 UTC) ─────────────────────────
+# Calls /api/schedule/cleanup-tunnels?force=1 with Bearer CRON_SECRET.
+# Add via: Cloudflare Dashboard → Workers & Pages → devboxui → Settings → Triggers
+# Cron expression: 0 3 * * 0
+
 # ─── Secrets (set via wrangler secret put or Cloudflare Dashboard) ────────────
 # CRON_SECRET          — shared secret to authenticate cron trigger calls
 # HETZNER_API_TOKEN    — Hetzner Cloud project API token
