@@ -26,6 +26,7 @@ interface ServerListProps {
   onToggleLock?: (serverId: string, enableLock: boolean) => Promise<void>;
   onReinstall?: (serverId: string) => Promise<void>;
   onUpdateAllowedPeers?: (serverId: string, allowedPeers: string[]) => Promise<void>;
+  onUpdateGitConfig?: (serverId: string, gitUserName: string, gitUserEmail: string) => Promise<void>;
   onRefresh?: () => Promise<void>;
   hideControls?: boolean;
   selectedServerId?: string;
@@ -988,9 +989,13 @@ function BootstrapProgress({ server, isManual }: { server: ServerConfig; isManua
   );
 }
 
-export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomain, onDeleteDomain, onDeleteServer, onReinstall, onUpdateAllowedPeers, servers, onRefresh }: ServerListProps & { server: ServerConfig; inlineLogsMode?: boolean }) {
+export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomain, onDeleteDomain, onDeleteServer, onReinstall, onUpdateAllowedPeers, onUpdateGitConfig, servers, onRefresh }: ServerListProps & { server: ServerConfig; inlineLogsMode?: boolean }) {
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [isApiAuthOpen, setIsApiAuthOpen] = useState(false);
+  const [isGitConfigOpen, setIsGitConfigOpen] = useState(false);
+  const [gitNameInput, setGitNameInput] = useState(server.gitUserName || '');
+  const [gitEmailInput, setGitEmailInput] = useState(server.gitUserEmail || '');
+  const [isSavingGitConfig, setIsSavingGitConfig] = useState(false);
   const [editingDomain, setEditingDomain] = useState<{ domain: string; port: number; startDdev?: boolean } | null>(null);
   const [isReinstallModalOpen, setIsReinstallModalOpen] = useState(false);
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
@@ -1347,6 +1352,13 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
               API Auth
             </button>
           )}
+          <button
+            onClick={() => { setGitNameInput(server.gitUserName || ''); setGitEmailInput(server.gitUserEmail || ''); setIsGitConfigOpen(true); }}
+            disabled={isDeleting || isReinstalling}
+            className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 dark:bg-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-600 text-slate-700 dark:text-zinc-200 rounded-lg disabled:opacity-50"
+          >
+            Git Config
+          </button>
           {isAutomated && (
             <button
               onClick={() => setIsInviteOpen(true)}
@@ -1467,6 +1479,80 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
           allServers={servers}
           onSave={onUpdateAllowedPeers}
         />
+      )}
+      {isGitConfigOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-2xl shadow-2xl p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-zinc-100">Git Configuration</h3>
+              <button onClick={() => setIsGitConfigOpen(false)} className="text-slate-400 hover:text-slate-900 dark:hover:text-zinc-100">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-zinc-200 mb-1">Git Name</label>
+                <input type="text" placeholder="e.g. John Doe" value={gitNameInput} onChange={e => setGitNameInput(e.target.value)}
+                  className="w-full bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-600 rounded-lg px-3 py-2 text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-zinc-200 mb-1">Git Email</label>
+                <input type="email" placeholder="e.g. john@example.com" value={gitEmailInput} onChange={e => setGitEmailInput(e.target.value)}
+                  className="w-full bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-600 rounded-lg px-3 py-2 text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
+              </div>
+            </div>
+            {(gitNameInput.trim() || gitEmailInput.trim()) && server.status === 'ready' && (
+              <div className="mt-4 p-3 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400 mb-2">Apply now on running server</p>
+                <code className="block text-xs text-indigo-700 dark:text-indigo-300 font-mono break-all leading-relaxed">
+                  {[
+                    gitNameInput.trim() && `git config --global user.name "${gitNameInput.trim()}"`,
+                    gitEmailInput.trim() && `git config --global user.email "${gitEmailInput.trim()}"`
+                  ].filter(Boolean).join('\n')}
+                </code>
+                <div className="flex gap-2 mt-2">
+                  <button
+                    onClick={() => {
+                      const cmds = [
+                        gitNameInput.trim() && `git config --global user.name "${gitNameInput.trim()}"`,
+                        gitEmailInput.trim() && `git config --global user.email "${gitEmailInput.trim()}"`
+                      ].filter(Boolean).join('\n');
+                      navigator.clipboard.writeText(cmds);
+                    }}
+                    className="flex-1 py-1.5 text-xs font-bold bg-slate-200 dark:bg-zinc-700 hover:bg-slate-300 dark:hover:bg-zinc-600 text-slate-700 dark:text-zinc-200 rounded-lg transition-all"
+                  >
+                    Copy Commands
+                  </button>
+                  {server.tunnelUrl && (
+                    <a
+                      href={server.tunnelUrl.split('?')[0]}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 py-1.5 text-xs font-bold text-center bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-800/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700 rounded-lg transition-all"
+                    >
+                      Open Terminal ↗
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
+            <div className="flex gap-3 mt-4">
+              <button onClick={() => setIsGitConfigOpen(false)} className="flex-1 py-2.5 text-sm font-bold bg-slate-100 dark:bg-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-600 text-slate-700 dark:text-zinc-200 rounded-xl transition-all">Cancel</button>
+              <button
+                disabled={isSavingGitConfig}
+                onClick={async () => {
+                  if (!onUpdateGitConfig) return;
+                  setIsSavingGitConfig(true);
+                  try { await onUpdateGitConfig(server.id, gitNameInput, gitEmailInput); setIsGitConfigOpen(false); }
+                  finally { setIsSavingGitConfig(false); }
+                }}
+                className="flex-1 py-2.5 text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all disabled:opacity-50"
+              >
+                {isSavingGitConfig ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       {isSpinUpOpen && (
         <ConfirmSpinUpModal

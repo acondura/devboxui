@@ -277,7 +277,9 @@ function getBootstrapScript(
   serviceTokenSecret?: string,
   hetznerToken?: string,
   _providerName: string = 'DevBox',
-  displayUrl: string = 'Server'
+  displayUrl: string = 'Server',
+  gitName?: string,
+  gitEmail?: string
 ) {
   // DERIVED VARIABLES
   const HOST_HOME = `/home/${userName}`;
@@ -565,8 +567,8 @@ chown -R "$DEV_USER":"$DEV_USER" "${HOST_HOME}"
 # Pre-configure Git for the host user
 cat <<EOF > /home/"$DEV_USER"/.gitconfig
 [user]
-    name = ${userName}
-    email = ${userEmail}
+    name = ${gitName || userName}
+    email = ${gitEmail || userEmail}
 EOF
 chown "$DEV_USER":"$DEV_USER" /home/"$DEV_USER"/.gitconfig
 
@@ -623,7 +625,9 @@ export async function getHetznerBootstrapScript(
   serviceTokenId?: string,
   serviceTokenSecret?: string,
   tunnelToken?: string,
-  options?: ProvisioningOptions
+  options?: ProvisioningOptions,
+  gitName?: string,
+  gitEmail?: string
 ) {
   const cleanTunnelToken = (tunnelToken && tunnelToken !== 'undefined') ? tunnelToken : '';
   const aptUpdate = options?.aptUpdate ?? true;
@@ -708,8 +712,8 @@ chmod 600 /home/"$DEV_USER"/.ssh/authorized_keys || true
 # Configure Git
 cat <<EOF > /home/"$DEV_USER"/.gitconfig
 [user]
-    name = ${userName}
-    email = ${userEmail}
+    name = ${gitName !== undefined ? gitName : userName}
+    email = ${gitEmail !== undefined ? gitEmail : userEmail}
 EOF
 chown "$DEV_USER":"$DEV_USER" /home/"$DEV_USER"/.gitconfig
 
@@ -902,13 +906,15 @@ export async function provisionServer(
   provider: 'hetzner' | 'contabo' | 'digitalocean' = 'hetzner',
   customUsername?: string,
   orgId?: string,
-  provisioningOptions?: ProvisioningOptions
+  provisioningOptions?: ProvisioningOptions,
+  gitName?: string,
+  gitEmail?: string
 ) {
   if (provider === 'contabo') {
-    return provisionContaboServer(customName, serverType, location, image, customUsername);
+    return provisionContaboServer(customName, serverType, location, image, customUsername, gitName, gitEmail);
   }
   if (provider === 'digitalocean') {
-    return provisionDigitalOceanServer(customName, serverType, location, image, customUsername, orgId, provisioningOptions);
+    return provisionDigitalOceanServer(customName, serverType, location, image, customUsername, orgId, provisioningOptions, gitName, gitEmail);
   }
   const userEmail = await getIdentity();
   const env = await getCloudflareEnv();
@@ -974,7 +980,9 @@ export async function provisionServer(
     serverType: serverType,
     provider: 'hetzner',
     providerName: 'Hetzner',
-    hostname: directHostname
+    hostname: directHostname,
+    ...(gitName ? { gitUserName: gitName } : {}),
+    ...(gitEmail ? { gitUserEmail: gitEmail } : {})
   };
 
   let hetznerServerId: number | undefined;
@@ -1043,7 +1051,9 @@ export async function provisionServer(
       serviceToken.id,
       serviceToken.client_secret,
       config.tunnelToken,
-      provisioningOptions
+      provisioningOptions,
+      gitName,
+      gitEmail
     );
 
     console.log(`Requesting new ${serverType} server '${name}' in ${location} with ${sshKeyIds.length} keys...`);
@@ -1892,7 +1902,9 @@ export async function reinstallServer(serverId: string) {
         serviceToken.client_secret,
         undefined,
         config.providerName || 'Custom',
-        config.hostname || 'devbox'
+        config.hostname || 'devbox',
+        config.gitUserName,
+        config.gitUserEmail
       );
 
       console.log(`Triggering Contabo Reinstall for ${config.contaboInstanceId}...`);
@@ -1936,7 +1948,9 @@ export async function reinstallServer(serverId: string) {
         serviceToken.client_secret,
         undefined,
         config.providerName || 'Custom',
-        config.hostname || 'devbox'
+        config.hostname || 'devbox',
+        config.gitUserName,
+        config.gitUserEmail
       );
 
       const base64Script = Buffer.from(bootstrapScript).toString('base64');
@@ -2148,7 +2162,9 @@ export async function getLatestBootstrapCommand(serverId: string) {
     serviceToken.client_secret,
     undefined,
     config.providerName || 'Custom',
-    config.hostname || 'devbox'
+    config.hostname || 'devbox',
+    config.gitUserName,
+    config.gitUserEmail
   );
 
   const base64Script = Buffer.from(bootstrapScript).toString('base64');
@@ -2410,7 +2426,9 @@ export async function provisionManualServer(
   manualIp?: string,
   manualPassword?: string,
   customUsername?: string,
-  orgId?: string
+  orgId?: string,
+  gitName?: string,
+  gitEmail?: string
 ) {
   const userEmail = await getIdentity();
   const env = await getCloudflareEnv();
@@ -2487,7 +2505,9 @@ export async function provisionManualServer(
       serviceToken.client_secret,
       undefined,
       provider === 'contabo' ? 'Custom' : (provider || 'Custom'),
-      hostname
+      hostname,
+      gitName,
+      gitEmail
     );
 
     // 3. Generate One-Liner (Base64 to survive all shells)
@@ -2522,7 +2542,9 @@ export async function provisionContaboServer(
   productId: string = 'V1', // Standard VPS S
   region: string = 'EU',
   imageId: string = 'ubuntu-24.04',
-  customUsername?: string
+  customUsername?: string,
+  gitName?: string,
+  gitEmail?: string
 ) {
   const userEmail = await getIdentity();
   const env = await getCloudflareEnv();
@@ -2570,7 +2592,9 @@ export async function provisionContaboServer(
     tunnelUrl: `https://${hostname}/?folder=/home/${userName}/workspace`,
     projects: [],
     provider: 'contabo',
-    serverType: productId
+    serverType: productId,
+    ...(gitName ? { gitUserName: gitName } : {}),
+    ...(gitEmail ? { gitUserEmail: gitEmail } : {})
   };
 
   try {
@@ -2607,7 +2631,9 @@ export async function provisionContaboServer(
       serviceToken.client_secret,
       undefined,
       'Contabo',
-      hostname
+      hostname,
+      gitName,
+      gitEmail
     );
 
     // 6. Launch Instance
@@ -2828,6 +2854,25 @@ export async function updateServerAllowedPeers(serverId: string, allowedPeers: s
   return server;
 }
 
+export async function updateServerGitConfig(serverId: string, gitUserName: string, gitUserEmail: string) {
+  const userEmail = await getIdentity();
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+  if (!kv) throw new Error("KV database missing.");
+
+  const serverRes = await getServerKeyAndConfig(kv, userEmail, serverId);
+  if (!serverRes) throw new Error("Server not found.");
+  const kvKey = serverRes.key;
+  const server = serverRes.config;
+
+  server.gitUserName = gitUserName || undefined;
+  server.gitUserEmail = gitUserEmail || undefined;
+  server.updatedAt = new Date().toISOString();
+
+  await kv.put(kvKey, JSON.stringify(server));
+  return server;
+}
+
 export async function getServerSnapshots(serverId: string) {
   const userEmail = await getIdentity();
   const env = await getCloudflareEnv();
@@ -3023,7 +3068,9 @@ export async function provisionDigitalOceanServer(
   image: string,
   customUsername?: string,
   orgId?: string,
-  provisioningOptions?: ProvisioningOptions
+  provisioningOptions?: ProvisioningOptions,
+  gitName?: string,
+  gitEmail?: string
 ) {
   const userEmail = await getIdentity();
   const env = await getCloudflareEnv();
@@ -3093,7 +3140,9 @@ export async function provisionDigitalOceanServer(
     serverType: serverType,
     provider: 'digitalocean',
     providerName: 'DigitalOcean',
-    hostname: directHostname
+    hostname: directHostname,
+    ...(gitName ? { gitUserName: gitName } : {}),
+    ...(gitEmail ? { gitUserEmail: gitEmail } : {})
   };
 
   let dropletId: number | undefined;
@@ -3157,7 +3206,9 @@ export async function provisionDigitalOceanServer(
       serviceToken.id,
       serviceToken.client_secret,
       config.tunnelToken,
-      provisioningOptions
+      provisioningOptions,
+      gitName,
+      gitEmail
     );
 
     console.log(`Requesting new droplet '${safeName}' in ${location}...`);

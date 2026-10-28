@@ -48,6 +48,8 @@ export interface ServerConfig {
   priceMonthly?: string;
   priceHourly?: string;
   spinUpNote?: string;
+  gitUserName?: string;
+  gitUserEmail?: string;
   orgId?: string;
   assignedTo?: string;
   collaborators?: CollaboratorInfo[];

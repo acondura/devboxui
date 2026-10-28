@@ -9,7 +9,7 @@ import { Select2 } from './Select2';
 interface AddServerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (name: string, serverType: string, location: string, image: string, customUsername?: string, provider?: 'hetzner' | 'digitalocean', provisioningOptions?: ProvisioningOptions) => Promise<{ success: boolean; error?: string; server?: unknown } | void>;
+  onAdd: (name: string, serverType: string, location: string, image: string, customUsername?: string, provider?: 'hetzner' | 'digitalocean', provisioningOptions?: ProvisioningOptions, gitName?: string, gitEmail?: string) => Promise<{ success: boolean; error?: string; server?: unknown } | void>;
 }
 
 interface HetznerPrice {
@@ -65,6 +65,8 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
   const [provider, setProvider] = useState<CloudProvider>('hetzner');
   const [name, setName] = useState('');
   const [customUsername, setCustomUsername] = useState('');
+  const [gitName, setGitName] = useState('');
+  const [gitEmail, setGitEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [serverType, setServerType] = useState('cpx21');
   const [location, setLocation] = useState('nbg1');
@@ -131,6 +133,8 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
         // Reset name on open
         setName('');
         setCustomUsername('');
+        setGitName('');
+        setGitEmail('');
         
         // Set defaults only if no saved options exist
         const savedType = localStorage.getItem(`devbox_last_${provider}_server_type`);
@@ -274,14 +278,14 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
     setError(null);
     try {
       if (provider === 'hetzner' || provider === 'digitalocean') {
-        const result = await onAdd(name, serverType, location, image, customUsername.trim() || undefined, provider, provOpts);
+        const result = await onAdd(name, serverType, location, image, customUsername.trim() || undefined, provider, provOpts, gitName.trim() || undefined, gitEmail.trim() || undefined);
         if (result && !result.success) {
           setError(result.error || "An unknown error occurred during provisioning.");
         } else {
           onClose();
         }
       } else {
-        const result = await provisionManualServer(name, provider, ip, password, customUsername.trim() || undefined);
+        const result = await provisionManualServer(name, provider, ip, password, customUsername.trim() || undefined, undefined, gitName.trim() || undefined, gitEmail.trim() || undefined);
         if (result.success) {
           setBootstrapCommand(result.command || null);
           setShowSuccess(true);
@@ -550,6 +554,28 @@ export function AddServerModal({ isOpen, onClose, onAdd }: AddServerModalProps) 
                   const cleaned = raw.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9_-]/g, '');
                   setCustomUsername(cleaned);
                 }}
+                className="w-full bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-600 rounded-lg px-4 py-2.5 text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-zinc-200 mb-1.5">Git Name (Optional)</label>
+              <input
+                type="text"
+                placeholder="e.g. John Doe"
+                value={gitName}
+                onChange={(e) => setGitName(e.target.value)}
+                className="w-full bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-600 rounded-lg px-4 py-2.5 text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-zinc-200 mb-1.5">Git Email (Optional)</label>
+              <input
+                type="email"
+                placeholder="e.g. john@example.com"
+                value={gitEmail}
+                onChange={(e) => setGitEmail(e.target.value)}
                 className="w-full bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-600 rounded-lg px-4 py-2.5 text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-sm"
               />
             </div>

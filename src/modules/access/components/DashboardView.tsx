@@ -8,7 +8,7 @@ import { SshKeyOnboardingModal } from '@/modules/access/components/SshKeyOnboard
 import { FeedbackModal } from '@/modules/feedback/components/FeedbackModal';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { ServerList, ServerCard } from '@/modules/inventory/components/ServerList';
-import { provisionServer, getServers, addProject, deleteServer, reinstallServer, deleteDomain, updateDomain, updateServerAllowedPeers, getUserSettings } from '@/modules/inventory/actions';
+import { provisionServer, getServers, addProject, deleteServer, reinstallServer, deleteDomain, updateDomain, updateServerAllowedPeers, updateServerGitConfig, getUserSettings } from '@/modules/inventory/actions';
 import { ServerConfig } from '@/modules/inventory/types';
 
 interface DashboardViewProps {
@@ -127,10 +127,12 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
     image: string,
     customUsername?: string,
     provider: 'hetzner' | 'digitalocean' = 'hetzner',
-    provisioningOptions?: import('@/modules/inventory/actions').ProvisioningOptions
+    provisioningOptions?: import('@/modules/inventory/actions').ProvisioningOptions,
+    gitName?: string,
+    gitEmail?: string
   ) => {
     try {
-      const result = await provisionServer(name, serverType, location, image, provider, customUsername, undefined, provisioningOptions) as { success: boolean; server?: ServerConfig; error?: string };
+      const result = await provisionServer(name, serverType, location, image, provider, customUsername, undefined, provisioningOptions, gitName, gitEmail) as { success: boolean; server?: ServerConfig; error?: string };
       if (result.success && result.server) {
         setServers(prev => [...prev, result.server!]);
       }
@@ -214,6 +216,16 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
     }
   };
 
+  const handleUpdateGitConfig = async (serverId: string, gitUserName: string, gitUserEmail: string) => {
+    try {
+      const updatedServer = await updateServerGitConfig(serverId, gitUserName, gitUserEmail);
+      setServers(prev => prev.map(s => s.id === serverId ? updatedServer : s));
+    } catch (error) {
+      alert("Failed to update git config. Check console for details.");
+      console.error(error);
+    }
+  };
+
   const handleRefresh = async () => {
     try {
       const data = await getServers();
@@ -266,6 +278,7 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
     onToggleLock: handleToggleLock,
     onReinstall: handleReinstall,
     onUpdateAllowedPeers: handleUpdateAllowedPeers,
+    onUpdateGitConfig: handleUpdateGitConfig,
     onRefresh: handleRefresh,
   };
 
