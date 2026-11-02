@@ -1231,12 +1231,10 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
               <span className="text-[10px] font-bold text-slate-500 dark:text-zinc-500 uppercase tracking-widest">
                 {server.providerName || 'Custom'}
               </span>
-              {isAutomated && !['provisioning', 'configuring', 'initializing', 'Initializing', 'starting', 'waiting-for-bootstrap'].includes(server.status) && (
+              {isAutomated && !['provisioning', 'configuring', 'initializing', 'Initializing', 'starting', 'snapshotting', 'waiting-for-bootstrap'].includes(server.status) && (
                 <div className="flex items-center space-x-1.5 bg-slate-105 dark:bg-zinc-700/50 px-2 py-1 rounded border border-slate-200 dark:border-zinc-600 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400" title={server.status === 'off' ? "SLEEPING = Server powered off, snapshot taken, server deleted - this ensures you only pay for what you use." : undefined}>
                   {server.status === 'ready' ? (
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                  ) : server.status === 'snapshotting' ? (
-                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
                   ) : server.status === 'off' && scheduleConfig?.enabled ? (
                     <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)] animate-pulse" />
                   ) : (
@@ -1324,14 +1322,25 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
           <BootstrapProgress server={server} isManual={!isAutomated} />
         )}
 
-        {server.status === 'snapshotting' && (
-          <div className="flex items-center space-x-2 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40 rounded-lg">
-            <div className="h-3.5 w-3.5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
-            <span className="text-xs font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider">
-              {server.detailedStatus || 'Shutting down...'}
-            </span>
-          </div>
-        )}
+        {server.status === 'snapshotting' && (() => {
+          const pctMatch = (server.detailedStatus || '').match(/(\d+)%/);
+          const pct = pctMatch ? parseInt(pctMatch[1], 10) : null;
+          const label = server.detailedStatus?.replace(/\s*\(\d+%\)/, '') || 'Shutting down...';
+          return (
+            <div className="rounded-lg border border-slate-200 dark:border-zinc-700 overflow-hidden">
+              <div className="px-3 py-2.5 flex items-center space-x-2.5">
+                <div className="h-3.5 w-3.5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                <span className="text-xs text-slate-500 dark:text-zinc-400 flex-1">{label}</span>
+                {pct !== null && <span className="text-xs font-bold text-amber-500 flex-shrink-0">{pct}%</span>}
+              </div>
+              {pct !== null && (
+                <div className="w-full bg-slate-200 dark:bg-zinc-700 h-1.5">
+                  <div className="h-1.5 bg-amber-500 transition-[width] duration-700" style={{ width: `${Math.max(pct, 2)}%` }} />
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         <div className="flex items-center space-x-2 pt-2 flex-wrap gap-y-2">
           <button
