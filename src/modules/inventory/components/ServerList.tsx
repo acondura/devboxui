@@ -1333,11 +1333,13 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
                 <span className="text-xs text-slate-500 dark:text-zinc-400 flex-1">{label}</span>
                 {pct !== null && <span className="text-xs font-bold text-amber-500 flex-shrink-0">{pct}%</span>}
               </div>
-              {pct !== null && (
-                <div className="w-full bg-slate-200 dark:bg-zinc-700 h-1.5">
+              <div className="w-full bg-slate-200 dark:bg-zinc-700 h-1.5">
+                {pct !== null ? (
                   <div className="h-1.5 bg-amber-500 transition-[width] duration-700" style={{ width: `${Math.max(pct, 2)}%` }} />
-                </div>
-              )}
+                ) : (
+                  <div className="h-1.5 w-full bg-amber-500 animate-pulse" />
+                )}
+              </div>
             </div>
           );
         })()}
