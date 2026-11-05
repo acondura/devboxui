@@ -99,6 +99,10 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
 
     let timerId: NodeJS.Timeout;
 
+    const isSnapshotting = servers.some(s =>
+      s.hetznerServerId && s.status === 'snapshotting'
+    );
+
     async function poll() {
       try {
         const data = await getServers();
@@ -109,14 +113,15 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
           ['provisioning', 'waiting-for-bootstrap', 'initializing', 'Initializing', 'snapshotting', 'configuring'].includes(s.status as string)
         );
         if (stillPending) {
-          timerId = setTimeout(poll, 15000);
+          const stillSnapshotting = data.some(s => s.hetznerServerId && s.status === 'snapshotting');
+          timerId = setTimeout(poll, stillSnapshotting ? 3000 : 15000);
         }
       } catch {
         timerId = setTimeout(poll, 20000);
       }
     }
 
-    timerId = setTimeout(poll, 15000);
+    timerId = setTimeout(poll, isSnapshotting ? 3000 : 15000);
     return () => clearTimeout(timerId);
   }, [servers]);
 
