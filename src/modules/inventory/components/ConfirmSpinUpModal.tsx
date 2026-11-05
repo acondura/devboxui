@@ -1,0 +1,360 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { getHetznerOptions, getDigitalOceanOptions } from '../actions';
+import { Select2 } from './Select2';
+
+interface ConfirmSpinUpModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: (serverType: string, snapshotId: string, location: string) => Promise<void> | void;
+  serverId: string;
+  serverName: string;
+  defaultServerType?: string;
+  vpsSnapshots: Array<{ id: number | string; name?: string | null; description?: string; labels?: Record<string, string>; disk_size?: number; image_size?: number | null; architecture?: string }>;
+  selectedSnapshotId: string;
+  onSnapshotChange: (id: string) => void;
+  provider?: 'hetzner' | 'contabo' | 'digitalocean' | 'linode' | 'vultr' | 'custom';
+  location?: string;
+}
+
+interface HetznerServerType {
+  id?: number | string;
+  name: string;
+  cores: number;
+  memory: number;
+  disk: number;
+  architecture: string;
+  prices?: Array<{ location: string; price_monthly: { gross: string }; price_hourly: { gross: string } }>;
+}
+
+interface LocationOption {
+  name: string;
+  description: string;
+  city?: string;
+  country?: string;
+}
+
+export function ConfirmSpinUpModal({
+  isOpen,
+  onClose,
+  onConfirm,
+  serverId,
+  serverName,
+  defaultServerType = 'cpx21',
+  vpsSnapshots,
+  selectedSnapshotId,
+  onSnapshotChange,
+  provider = 'hetzner',
+  location,
+}: ConfirmSpinUpModalProps) {
+  const [isSpinningUp, setIsSpinningUp] = useState(false);
+  const [serverType, setServerType] = useState(defaultServerType);
+  const [serverTypes, setServerTypes] = useState<HetznerServerType[]>([]);
+  const [isLoadingTypes, setIsLoadingTypes] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState(location || 'nbg1');
+  const [locations, setLocations] = useState<LocationOption[]>([]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setServerType(defaultServerType);
+      setSelectedLocation(location || (provider === 'digitalocean' ? 'nyc1' : 'nbg1'));
+      setIsLoadingTypes(true);
+      const fetchOptions = provider === 'digitalocean' ? getDigitalOceanOptions : getHetznerOptions;
+      fetchOptions()
+        .then((data) => {
+          if (data && data.serverTypes) {
+            setServerTypes(data.serverTypes as HetznerServerType[]);
+            if (data.locations) {
+              setLocations(data.locations as LocationOption[]);
+            }
+            const currentLoc = location || (provider === 'digitalocean' ? 'nyc1' : 'nbg1');
+            const filteredTypes = (data.serverTypes as HetznerServerType[]).filter(
+              t => !t.prices || t.prices.some(p => p.location === currentLoc)
+            );
+            if (filteredTypes.length > 0 && !filteredTypes.some(t => t.name === defaultServerType)) {
+              setServerType(filteredTypes[0].name);
+            }
+          }
+        })
+        .catch((err) => console.warn('Failed to load server types:', err))
+        .finally(() => setIsLoadingTypes(false));
+    }
+  }, [isOpen, defaultServerType, provider, location]);
+
+  const handleLocationChange = (newLocation: string) => {
+    setSelectedLocation(newLocation);
+    const snapArch = selectedSnapshotId !== 'latest'
+      ? vpsSnapshots.find(s => s.id.toString() === selectedSnapshotId)?.architecture
+      : vpsSnapshots[0]?.architecture;
+    const filtered = serverTypes.filter(t => {
+      if (t.prices && !t.prices.some(p => p.location === newLocation)) return false;
+      if (snapArch && t.architecture !== snapArch) return false;
+      return true;
+    });
+    if (filtered.length > 0 && !filtered.some(t => t.name === serverType)) {
+      setServerType(filtered[0].name);
+    }
+  };
+
+  const handleServerTypeChange = (newType: string) => {
+    setServerType(newType);
+    const typeData = serverTypes.find(t => t.name === newType);
+    if (typeData?.prices?.length && !typeData.prices.some(p => p.location === selectedLocation)) {
+      const validLocation = typeData.prices[0]?.location;
+      if (validLocation) setSelectedLocation(validLocation);
+    }
+  };
+
+  const handleSnapshotSelect = (id: string) => {
+    onSnapshotChange(id);
+    // Reset server type if new snapshot has a different arch
+    const snapArch = id !== 'latest'
+      ? vpsSnapshots.find(s => s.id.toString() === id)?.architecture
+      : vpsSnapshots[0]?.architecture;
+    if (!snapArch) return;
+    const currentTypeArch = serverTypes.find(t => t.name === serverType)?.architecture;
+    if (currentTypeArch && currentTypeArch !== snapArch) {
+      const compatible = serverTypes.find(
+        t => t.architecture === snapArch && (!t.prices || t.prices.some(p => p.location === selectedLocation))
+      );
+      if (compatible) setServerType(compatible.name);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  const handleConfirm = async () => {
+    setIsSpinningUp(true);
+    try {
+      await onConfirm(serverType, selectedSnapshotId, selectedLocation);
+    } finally {
+      setIsSpinningUp(false);
+      onClose();
+    }
+  };
+
+  // Derive the architecture of the selected snapshot so we only show compatible server types.
+  const selectedSnapshotArch = selectedSnapshotId !== 'latest'
+    ? vpsSnapshots.find(s => s.id.toString() === selectedSnapshotId)?.architecture
+    : vpsSnapshots[0]?.architecture;
+
+  const typesList = serverTypes.filter(t => {
+    if (t.prices && !t.prices.some(p => p.location === selectedLocation)) return false;
+    if (selectedSnapshotArch) {
+      if (t.architecture !== selectedSnapshotArch) return false;
+    }
+    return true;
+  });
+
+  const availableLocations = locations.filter(l => {
+    const currentTypeData = serverTypes.find(t => t.name === serverType);
+    if (!currentTypeData?.prices?.length) return true;
+    return currentTypeData.prices.some(p => p.location === l.name);
+  });
+  const priceSymbol = provider === 'digitalocean' ? '$' : '€';
+
+  const getPrice = (t: HetznerServerType) => {
+    if (!t.prices?.length) return null;
+    const p = t.prices.find(p => p.location === selectedLocation) || t.prices[0];
+    return {
+      monthly: parseFloat(p.price_monthly.gross).toFixed(2),
+      hourly: parseFloat(p.price_hourly.gross).toFixed(4),
+    };
+  };
+
+  const selectedTypeData = serverTypes.find(t => t.name === serverType);
+  const selectedPrice = selectedTypeData ? getPrice(selectedTypeData) : null;
+
+  const formatSpecs = (t: HetznerServerType) => {
+    const price = getPrice(t);
+    const base = `${t.name.toUpperCase()} (${t.cores} vCPU / ${t.memory}GB RAM / ${t.disk}GB Disk / ${t.architecture})`;
+    return price ? `${base} — ${priceSymbol}${price.monthly}/mo` : base;
+  };
+
+  return (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="w-full max-w-md bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-2xl shadow-2xl overflow-hidden transform transition-all animate-in zoom-in duration-200 text-left">
+        <div className="px-6 py-5 border-b border-slate-200 dark:border-zinc-700 flex justify-between items-center bg-slate-50 dark:bg-zinc-800/50">
+          <div>
+            <h3 className="text-xl font-bold text-slate-900 dark:text-zinc-100">Spin Up Server</h3>
+            <p className="text-xs text-slate-500 dark:text-zinc-400 uppercase tracking-widest font-bold mt-1">Configure Environment</p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 dark:text-zinc-500 hover:text-slate-600 dark:hover:text-zinc-300 transition-colors">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="p-6 space-y-6">
+          {/* Target Server Details */}
+          <div className="space-y-1 bg-slate-50 dark:bg-zinc-800/50 border border-slate-200 dark:border-zinc-700 rounded-xl p-4">
+            <p className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">Target Server</p>
+            <span className="text-base font-bold text-slate-900 dark:text-zinc-100">{serverName.replace('.devboxui.com', '')}</span>
+          </div>
+
+          {/* Region Selector */}
+          {provider !== 'digitalocean' && (
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-700 dark:text-zinc-200 uppercase tracking-widest block">
+                Region
+              </label>
+              <Select2
+                value={selectedLocation}
+                onValueChange={handleLocationChange}
+                disabled={isSpinningUp}
+                className="w-full bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-zinc-100 font-medium"
+              >
+                {availableLocations.length > 0 ? (
+                  availableLocations.map((l) => (
+                    <option key={l.name} value={l.name}>
+                      {l.description}{l.city ? ` (${l.city}${l.country ? ', ' + l.country : ''})` : ''}
+                    </option>
+                  ))
+                ) : (
+                  <>
+                    <option value="nbg1">Nuremberg, DE (nbg1)</option>
+                    <option value="fsn1">Falkenstein, DE (fsn1)</option>
+                    <option value="hel1">Helsinki, FI (hel1)</option>
+                    <option value="ash">Ashburn, VA (ash)</option>
+                    <option value="hil">Hillsboro, OR (hil)</option>
+                    <option value="sin">Singapore (sin)</option>
+                  </>
+                )}
+              </Select2>
+            </div>
+          )}
+
+          {/* VPS Type Selector */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-700 dark:text-zinc-200 uppercase tracking-widest block">
+              VPS Size (Server Type)
+            </label>
+            <Select2
+              value={serverType}
+              onValueChange={handleServerTypeChange}
+              disabled={isSpinningUp}
+              className="w-full bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-zinc-100 font-medium"
+            >
+              {typesList.map((t) => (
+                <option key={t.name} value={t.name}>
+                  {formatSpecs(t)}
+                </option>
+              ))}
+            </Select2>
+            {isLoadingTypes && (
+              <p className="text-[10px] text-slate-400 dark:text-zinc-500 animate-pulse">Loading live options from Hetzner...</p>
+            )}
+            {selectedPrice && (
+              <div className="flex items-center space-x-3 pt-1">
+                <div className="flex items-center space-x-1.5 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5">
+                  <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-xs font-bold text-emerald-700">{priceSymbol}{selectedPrice.monthly}<span className="font-normal text-emerald-600">/mo</span></span>
+                </div>
+                <div className="flex items-center space-x-1.5 bg-slate-50 dark:bg-zinc-800/50 border border-slate-200 dark:border-zinc-700 rounded-lg px-3 py-1.5">
+                  <span className="text-xs font-bold text-slate-600 dark:text-zinc-300">{priceSymbol}{selectedPrice.hourly}<span className="font-normal text-slate-500 dark:text-zinc-400">/hr</span></span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Snapshot Selector */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-700 dark:text-zinc-200 uppercase tracking-widest block">
+              Snapshot to Restore
+            </label>
+            <Select2
+              value={selectedSnapshotId}
+              onValueChange={handleSnapshotSelect}
+              disabled={isSpinningUp}
+              className="w-full bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-zinc-100 font-medium"
+            >
+              <option value="latest">Latest Snapshot (Auto)</option>
+              {vpsSnapshots.some((s) => {
+                if (s.labels && s.labels['devbox-server-id'] === serverId) return true;
+                const cleanName = serverName.replace('.devboxui.com', '').replace('-code', '').toLowerCase();
+                if (s.name && s.name.toLowerCase().includes(cleanName)) return true;
+                if (s.description && s.description.toLowerCase().includes(cleanName)) return true;
+                return false;
+              }) && (
+                <optgroup label="This DevBox's Snapshots">
+                  {vpsSnapshots
+                    .filter((s) => {
+                      if (s.labels && s.labels['devbox-server-id'] === serverId) return true;
+                      const cleanName = serverName.replace('.devboxui.com', '').replace('-code', '').toLowerCase();
+                      if (s.name && s.name.toLowerCase().includes(cleanName)) return true;
+                      if (s.description && s.description.toLowerCase().includes(cleanName)) return true;
+                      return false;
+                    })
+                    .map((s) => (
+                      <option key={s.id} value={s.id.toString()}>
+                        {s.description || s.name || `Snapshot #${s.id}`} {s.image_size ? `(${parseFloat(s.image_size.toString()).toFixed(2)} GB)` : ''}
+                      </option>
+                    ))}
+                </optgroup>
+              )}
+              {vpsSnapshots.some((s) => {
+                if (s.labels && s.labels['devbox-server-id'] === serverId) return false;
+                const cleanName = serverName.replace('.devboxui.com', '').replace('-code', '').toLowerCase();
+                if (s.name && s.name.toLowerCase().includes(cleanName)) return false;
+                if (s.description && s.description.toLowerCase().includes(cleanName)) return false;
+                return true;
+              }) && (
+                <optgroup label="Other Compatible Snapshots">
+                  {vpsSnapshots
+                    .filter((s) => {
+                      if (s.labels && s.labels['devbox-server-id'] === serverId) return false;
+                      const cleanName = serverName.replace('.devboxui.com', '').replace('-code', '').toLowerCase();
+                      if (s.name && s.name.toLowerCase().includes(cleanName)) return false;
+                      if (s.description && s.description.toLowerCase().includes(cleanName)) return false;
+                      return true;
+                    })
+                    .map((s) => (
+                      <option key={s.id} value={s.id.toString()}>
+                        {s.description || s.name || `Snapshot #${s.id}`} {s.image_size ? `(${parseFloat(s.image_size.toString()).toFixed(2)} GB)` : ''}
+                      </option>
+                    ))}
+                </optgroup>
+              )}
+            </Select2>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex space-x-3 pt-2">
+            <button
+              onClick={onClose}
+              disabled={isSpinningUp}
+              className="flex-1 px-4 py-3 bg-slate-100 dark:bg-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-600 disabled:opacity-50 text-slate-700 dark:text-zinc-200 font-bold rounded-xl transition-all"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleConfirm}
+              disabled={isSpinningUp}
+              className="flex-[2] font-bold py-3.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl transition-all shadow-lg shadow-indigo-600/10 flex items-center justify-center space-x-2"
+            >
+              {isSpinningUp ? (
+                <>
+                  <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  <span>Spinning Up...</span>
+                </>
+              ) : (
+                <span>Confirm & Spin Up</span>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

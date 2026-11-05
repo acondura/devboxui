@@ -4,51 +4,281 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ServerConfig } from '../types';
 import { AddDomainModal } from './AddDomainModal';
 import { ReinstallModal } from './ReinstallModal';
-import { getServerLogs, getLiveProjects } from '../actions';
+import { ScheduleModal } from './ScheduleModal';
+import { ApiAuthModal } from './ApiAuthModal';
+import { ConfirmSnapshotModal } from './ConfirmSnapshotModal';
+import { getServerLogs, getLiveProjects, getServerSnapshots, rebootServerAction } from '../actions';
+import { ConfirmSpinUpModal } from './ConfirmSpinUpModal';
+import { ScheduleConfig } from '../types';
+import { triggerMorningSpinup, triggerEveningSnapshot, checkIdleAndSnapshot } from '../schedule-actions';
+import { Select2 } from './Select2';
+import { InviteCollabModal } from './InviteCollabModal';
+import { ErrorModal } from './ErrorModal';
+import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 
 interface ServerListProps {
   servers: ServerConfig[];
   userEmail: string;
-  onAddProject: (serverId: string, projectName: string, port: number) => Promise<void>;
-  onUpdateDomain: (serverId: string, oldDomain: string, newSubdomain: string, port: number) => Promise<void>;
+  onAddProject: (serverId: string, projectName: string, port: number, startDdev?: boolean) => Promise<void>;
+  onUpdateDomain: (serverId: string, oldDomain: string, newSubdomain: string, port: number, startDdev?: boolean) => Promise<void>;
   onDeleteDomain: (serverId: string, domain: string) => Promise<void>;
   onDeleteServer: (serverId: string) => Promise<void>;
   onToggleLock?: (serverId: string, enableLock: boolean) => Promise<void>;
   onReinstall?: (serverId: string) => Promise<void>;
+  onUpdateAllowedPeers?: (serverId: string, allowedPeers: string[]) => Promise<void>;
+  onUpdateGitConfig?: (serverId: string, gitUserName: string, gitUserEmail: string) => Promise<void>;
+  onRefresh?: () => Promise<void>;
+  hideControls?: boolean;
+  selectedServerId?: string;
+  onSelectServer?: (id: string) => void;
 }
 
+type SortField = 'status' | 'type' | 'ip' | 'os' | 'created';
+type SortOrder = 'asc' | 'desc';
+
+
+
 export function ServerList(props: ServerListProps) {
+  const [sortField, setSortField] = useState<SortField>('created');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [filterText, setFilterText] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterProvider, setFilterProvider] = useState('');
+  const [filterOs, setFilterOs] = useState('');
+
+  useEffect(() => {
+    const savedField = localStorage.getItem('devboxui_sort_field') as SortField | null;
+    const savedOrder = localStorage.getItem('devboxui_sort_order') as SortOrder | null;
+    if (savedField) setSortField(savedField);
+    if (savedOrder) setSortOrder(savedOrder);
+  }, []);
+
   if (props.servers.length === 0) {
     return (
-      <div className="border border-dashed border-slate-700 rounded-xl p-12 text-center bg-slate-800/20">
-        <div className="mx-auto h-12 w-12 text-slate-500 mb-4 rounded-full bg-slate-800 flex items-center justify-center">
+      <div className="border border-dashed border-slate-300 dark:border-zinc-600 rounded-xl p-12 text-center bg-slate-50 dark:bg-zinc-800/50">
+        <div className="mx-auto h-12 w-12 text-slate-500 dark:text-zinc-400 mb-4 rounded-full bg-slate-100 dark:bg-zinc-700 flex items-center justify-center">
           <span className="text-2xl">☁️</span>
         </div>
-        <h3 className="text-base font-semibold text-white">No servers active</h3>
-        <p className="mt-1 text-sm text-slate-400 max-w-xs mx-auto">
+        <h3 className="text-base font-semibold text-slate-900 dark:text-zinc-100">No servers active</h3>
+        <p className="mt-1 text-sm text-slate-500 dark:text-zinc-400 max-w-xs mx-auto">
           Launch a DevBox to start your cloud development environment.
         </p>
       </div>
     );
   }
 
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      const nextOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+      setSortOrder(nextOrder);
+      localStorage.setItem('devboxui_sort_order', nextOrder);
+    } else {
+      setSortField(field);
+      setSortOrder('desc');
+      localStorage.setItem('devboxui_sort_field', field);
+      localStorage.setItem('devboxui_sort_order', 'desc');
+    }
+  };
+
+  const renderSortIcon = (field: SortField) => {
+    if (sortField !== field) {
+      return <span className="text-slate-600 ml-1">⇅</span>;
+    }
+    return sortOrder === 'asc' ? <span className="text-indigo-400 ml-1">▲</span> : <span className="text-indigo-400 ml-1">▼</span>;
+  };
+
+  const uniqueStatuses = [...new Set(props.servers.map(s => s.status === 'off' ? 'sleeping' : s.status).filter(Boolean))].sort();
+  const uniqueProviders = [...new Set(props.servers.map(s => s.providerName || 'Custom').filter(Boolean))].sort();
+  const uniqueOs = [...new Set(props.servers.map(() => 'Ubuntu 24.04'))];
+  const hasFilters = filterText || filterStatus || filterProvider || filterOs;
+
+  const sortedServers = [...props.servers]
+    .filter(s => {
+      if (filterText) {
+        const q = filterText.toLowerCase();
+        const hostname = (s.hostname || '').toLowerCase();
+        const name = hostname.replace('.devboxui.com', '').replace('-code', '');
+        const ip = (s.ip || '').toLowerCase();
+        const domains = (s.projects || []).map(p => p.domain.toLowerCase()).join(' ');
+        if (!name.includes(q) && !ip.includes(q) && !domains.includes(q)) return false;
+      }
+      if (filterStatus) {
+        const display = s.status === 'off' ? 'sleeping' : s.status;
+        if (display !== filterStatus) return false;
+      }
+      if (filterProvider) {
+        if ((s.providerName || 'Custom') !== filterProvider) return false;
+      }
+      if (filterOs) {
+        if (filterOs !== 'Ubuntu 24.04') return false;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      let comparison = 0;
+      if (sortField === 'created') {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        comparison = dateA - dateB;
+      } else if (sortField === 'status') {
+        const statusA = a.status || '';
+        const statusB = b.status || '';
+        comparison = statusA.localeCompare(statusB);
+      } else if (sortField === 'type') {
+        const typeA = a.providerName || 'Custom';
+        const typeB = b.providerName || 'Custom';
+        comparison = typeA.localeCompare(typeB);
+      } else if (sortField === 'ip') {
+        const ipA = a.ip || '';
+        const ipB = b.ip || '';
+        comparison = ipA.localeCompare(ipB);
+      } else if (sortField === 'os') {
+        comparison = "Ubuntu 24.04".localeCompare("Ubuntu 24.04");
+      }
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+
   return (
     <>
+      {/* Sort + Filter Toolbar */}
+      {!props.hideControls && <div className="flex flex-col mb-6 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl shadow-sm overflow-hidden">
+        {/* Top row: filter inputs */}
+        <div className="flex flex-col sm:flex-row gap-2 p-3 border-b border-slate-100 dark:border-zinc-700/50">
+          {/* Text search */}
+          <div className="relative flex-1 min-w-0">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-zinc-500 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z" />
+            </svg>
+            <input
+              type="text"
+              value={filterText}
+              onChange={e => setFilterText(e.target.value)}
+              placeholder="Filter by server ID or service URL…"
+              className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-600 rounded-lg text-slate-700 dark:text-zinc-300 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-indigo-400 focus:border-indigo-400 transition-all"
+            />
+            {filterText && (
+              <button onClick={() => setFilterText('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            )}
+          </div>
+          {/* Status filter */}
+          <select
+            value={filterStatus}
+            onChange={e => setFilterStatus(e.target.value)}
+            className={`py-1.5 pl-2.5 pr-8 text-xs border rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-400 transition-all cursor-pointer ${filterStatus ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 font-bold' : 'bg-slate-50 dark:bg-zinc-800 border-slate-200 dark:border-zinc-600 text-slate-600 dark:text-zinc-300'}`}
+          >
+            <option value="">All Statuses</option>
+            {uniqueStatuses.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+          </select>
+          {/* Provider filter */}
+          <select
+            value={filterProvider}
+            onChange={e => setFilterProvider(e.target.value)}
+            className={`py-1.5 pl-2.5 pr-8 text-xs border rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-400 transition-all cursor-pointer ${filterProvider ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 font-bold' : 'bg-slate-50 dark:bg-zinc-800 border-slate-200 dark:border-zinc-600 text-slate-600 dark:text-zinc-300'}`}
+          >
+            <option value="">All Providers</option>
+            {uniqueProviders.map(p => <option key={p} value={p}>{p}</option>)}
+          </select>
+          {/* OS filter */}
+          <select
+            value={filterOs}
+            onChange={e => setFilterOs(e.target.value)}
+            className={`py-1.5 pl-2.5 pr-8 text-xs border rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-400 transition-all cursor-pointer ${filterOs ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 font-bold' : 'bg-slate-50 dark:bg-zinc-800 border-slate-200 dark:border-zinc-600 text-slate-600 dark:text-zinc-300'}`}
+          >
+            <option value="">All OS</option>
+            {uniqueOs.map(o => <option key={o} value={o}>{o}</option>)}
+          </select>
+          {hasFilters && (
+            <button
+              onClick={() => { setFilterText(''); setFilterStatus(''); setFilterProvider(''); setFilterOs(''); }}
+              className="py-1.5 px-2.5 text-xs bg-slate-100 dark:bg-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-600 border border-slate-200 dark:border-zinc-600 rounded-lg text-slate-500 dark:text-zinc-400 hover:text-slate-700 dark:hover:text-zinc-200 transition-all whitespace-nowrap"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+        {/* Bottom row: count + sort */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center px-4 py-2.5 gap-3">
+          <span className="text-sm text-slate-650 dark:text-zinc-400 font-medium">
+            {hasFilters
+              ? <><strong className="text-slate-900 dark:text-zinc-100">{sortedServers.length}</strong> of <strong className="text-slate-900 dark:text-zinc-100">{props.servers.length}</strong> servers</>
+              : <>Active Servers: <strong className="text-slate-900 dark:text-zinc-100">{props.servers.length}</strong></>
+            }
+          </span>
+          <div className="flex items-center space-x-2 w-full sm:w-auto justify-between sm:justify-end">
+            <span className="text-xs text-slate-500 dark:text-zinc-500 font-bold uppercase tracking-wider">Sort by:</span>
+            <div className="flex items-center space-x-3">
+              <Select2
+                value={sortField}
+                onValueChange={(val) => handleSort(val as SortField)}
+                minimumResultsForSearch={-1}
+                containerClassName="select-small"
+                className="bg-white dark:bg-zinc-800 border border-slate-250 dark:border-zinc-600 rounded-lg text-xs text-slate-700 dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer w-full"
+              >
+                <option value="created">Created Date</option>
+                <option value="status">Status</option>
+                <option value="type">Provider</option>
+                <option value="ip">IP Address</option>
+                <option value="os">OS</option>
+              </Select2>
+              <button
+                onClick={() => {
+                  const nextOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+                  setSortOrder(nextOrder);
+                  localStorage.setItem('devboxui_sort_order', nextOrder);
+                }}
+                className="px-2.5 py-1.5 bg-white dark:bg-zinc-800 border border-slate-250 dark:border-zinc-600 rounded-lg hover:border-slate-400 dark:hover:border-zinc-400 text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-zinc-100 transition-all text-xs"
+                title="Toggle sort direction"
+              >
+                {sortOrder === 'asc' ? '▲' : '▼'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>}
+
       {/* Desktop Table View */}
       <div className="hidden lg:block">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="border-b border-slate-800">
-              <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Status</th>
-              <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Type</th>
-              <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Server Identification</th>
-              <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Environment</th>
-              <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Service URLs</th>
-              <th className="py-4 px-4 text-xs font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
+            <tr className="border-b border-slate-200 dark:border-zinc-700">
+              <th onClick={() => handleSort('status')} className="py-4 px-4 text-xs font-bold text-slate-500 dark:text-zinc-500 uppercase tracking-widest cursor-pointer select-none hover:text-slate-800 dark:hover:text-zinc-200 transition-colors">
+                <div className="flex items-center space-x-1">
+                  <span>Status</span>
+                  {renderSortIcon('status')}
+                </div>
+              </th>
+              <th onClick={() => handleSort('type')} className="py-4 px-4 text-xs font-bold text-slate-500 dark:text-zinc-500 uppercase tracking-widest cursor-pointer select-none hover:text-slate-800 dark:hover:text-zinc-200 transition-colors">
+                <div className="flex items-center space-x-1">
+                  <span>Provider</span>
+                  {renderSortIcon('type')}
+                </div>
+              </th>
+              <th onClick={() => handleSort('ip')} className="py-4 px-4 text-xs font-bold text-slate-500 dark:text-zinc-500 uppercase tracking-widest cursor-pointer select-none hover:text-slate-800 dark:hover:text-zinc-200 transition-colors">
+                <div className="flex items-center space-x-1">
+                  <span>Server ID</span>
+                  {renderSortIcon('ip')}
+                </div>
+              </th>
+              <th onClick={() => handleSort('os')} className="py-4 px-4 text-xs font-bold text-slate-500 dark:text-zinc-500 uppercase tracking-widest cursor-pointer select-none hover:text-slate-800 dark:hover:text-zinc-200 transition-colors">
+                <div className="flex items-center space-x-1">
+                  <span>OS</span>
+                  {renderSortIcon('os')}
+                </div>
+              </th>
+              <th onClick={() => handleSort('created')} className="py-4 px-4 text-xs font-bold text-slate-500 dark:text-zinc-500 uppercase tracking-widest cursor-pointer select-none hover:text-slate-800 dark:hover:text-zinc-200 transition-colors">
+                <div className="flex items-center space-x-1">
+                  <span>Created</span>
+                  {renderSortIcon('created')}
+                </div>
+              </th>
+              <th className="py-4 px-4 text-xs font-bold text-slate-500 dark:text-zinc-500 uppercase tracking-widest">Service URLs</th>
+              <th className="py-4 px-4 text-xs font-bold text-slate-500 dark:text-zinc-500 uppercase tracking-widest text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-800/50">
-            {props.servers.map((server) => (
+          <tbody className="divide-y divide-slate-200 dark:divide-zinc-700/50">
+            {sortedServers.map((server) => (
               <ServerRow key={server.id} server={server} {...props} />
             ))}
           </tbody>
@@ -57,7 +287,7 @@ export function ServerList(props: ServerListProps) {
 
       {/* Mobile Card View */}
       <div className="lg:hidden grid grid-cols-1 md:grid-cols-2 gap-6">
-        {props.servers.map((server) => (
+        {sortedServers.map((server) => (
           <ServerCard key={server.id} server={server} {...props} />
         ))}
       </div>
@@ -65,28 +295,121 @@ export function ServerList(props: ServerListProps) {
   );
 }
 
-function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDomain, onDeleteServer, onReinstall }: ServerListProps & { server: ServerConfig }) {
+function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDomain, onDeleteServer, onReinstall, onUpdateAllowedPeers, servers, onRefresh }: ServerListProps & { server: ServerConfig }) {
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
-  const [editingDomain, setEditingDomain] = useState<{ domain: string; port: number } | null>(null);
+  const [isApiAuthOpen, setIsApiAuthOpen] = useState(false);
+  const [editingDomain, setEditingDomain] = useState<{ domain: string; port: number; startDdev?: boolean } | null>(null);
   const [isReinstallModalOpen, setIsReinstallModalOpen] = useState(false);
+  const [isScheduleOpen, setIsScheduleOpen] = useState(false);
+  const [isCheckingIdle, setIsCheckingIdle] = useState(false);
+  const [idleCheckResult, setIdleCheckResult] = useState<{ idle: boolean; idleMinutes: number; triggered: boolean; message: string } | null>(null);
+  const [scheduleConfig, setScheduleConfig] = useState<ScheduleConfig | null>(server.scheduleConfig || null);
+  const [localPriceMonthly, setLocalPriceMonthly] = useState<string | undefined>(server.priceMonthly);
+  const [localPriceHourly, setLocalPriceHourly] = useState<string | undefined>(server.priceHourly);
+  useEffect(() => {
+    setLocalPriceMonthly(server.priceMonthly);
+    setLocalPriceHourly(server.priceHourly);
+  }, [server.id, server.priceMonthly, server.priceHourly]);
   const [isFetchingLogs, setIsFetchingLogs] = useState(false);
+  const [isActionsOpen, setIsActionsOpen] = useState(false);
+  const actionsDropdownRef = useRef<HTMLDivElement>(null);
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
   const [deletingDomain, setDeletingDomain] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isReinstalling, setIsReinstalling] = useState(false);
   const [debugData, setDebugData] = useState<{ docker: string, setup: string, timestamp: string } | null>(null);
+  const [serverLogs, setServerLogs] = useState<string[]>([]);
+  const [tunnelId, setTunnelId] = useState<string | undefined>(server.tunnelId);
+  const [tunnelToken, setTunnelToken] = useState<string | undefined>(server.tunnelToken);
+  const [isSpinningUp, setIsSpinningUp] = useState(false);
+  const [isSnapshotting, setIsSnapshotting] = useState(false);
+  const [isConfirmSnapshotOpen, setIsConfirmSnapshotOpen] = useState(false);
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isDeleteServerOpen, setIsDeleteServerOpen] = useState(false);
+  const [deletingDomainPending, setDeletingDomainPending] = useState<string | null>(null);
 
-  // const safeTargetBase = `${userEmail}-${server.id}`.replace(/[^a-zA-Z0-9]/g, '_');
-  const displayHostname = (server.hostname || 'devbox').replace('.devboxui.com', '');
+  const [vpsSnapshots, setVpsSnapshots] = useState<Array<{ id: number | string; description?: string; name?: string | null; labels?: Record<string, string>; disk_size?: number; image_size?: number | null; architecture?: string }>>([]);
+  const [selectedSnapshotId, setSelectedSnapshotId] = useState<string>('latest');
+  const [isSpinUpOpen, setIsSpinUpOpen] = useState(false);
+
+  const [isRestarting, setIsRestarting] = useState(false);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (actionsDropdownRef.current && !actionsDropdownRef.current.contains(e.target as Node)) {
+        setIsActionsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+  const handleRestart = async () => {
+    if (!confirm("Are you sure you want to restart this VPS?")) return;
+    setIsRestarting(true);
+    try {
+      const result = await rebootServerAction(server.id);
+      if (result.success) {
+        setErrorMessage(null);
+        if (onRefresh) await onRefresh();
+      } else {
+        setErrorMessage(result.message || "Failed to initiate reboot.");
+      }
+    } catch (e) {
+      setErrorMessage(e instanceof Error ? e.message : "Failed to initiate reboot.");
+    } finally {
+      setIsRestarting(false);
+    }
+  };
+
+  const isAutomated = !!(server.providerName === 'Hetzner' || server.providerName === 'Contabo' || server.provider === 'hetzner' || server.provider === 'contabo' || server.provider === 'digitalocean');
+  const isHetzner = !!(server.providerName === 'Hetzner' || server.provider === 'hetzner');
+  const isDigitalOcean = server.provider === 'digitalocean';
+  const displayHostname = server.name || (server.hostname || 'devbox')
+    .replace('-code.devboxui.com', '')
+    .replace('.devboxui.com', '')
+    ;
+
+  useEffect(() => {
+    if (server.status === 'off' && (isHetzner || isDigitalOcean)) {
+      async function loadSnapshots() {
+        try {
+          const list = await getServerSnapshots(server.id);
+          setVpsSnapshots(list);
+          const savedSnapshot = localStorage.getItem(`devbox_last_snapshot_${server.id}`);
+          if (savedSnapshot && (savedSnapshot === 'latest' || list.some((s: { id: number | string }) => s.id.toString() === savedSnapshot))) {
+            setSelectedSnapshotId(savedSnapshot);
+          } else {
+            setSelectedSnapshotId('latest');
+          }
+        } catch (e) {
+          console.warn("Failed to load snapshots for server", e);
+        }
+      }
+      loadSnapshots();
+    }
+  }, [server.id, server.status, isHetzner, isDigitalOcean]);
+
+  const handleSnapshotChange = (id: string) => {
+    setSelectedSnapshotId(id);
+    localStorage.setItem(`devbox_last_snapshot_${server.id}`, id);
+  };
 
   const handleFetchLogs = async () => {
     setIsLogsModalOpen(true);
     setIsFetchingLogs(true);
     try {
       const result = await getServerLogs(server.id);
-      if (result.success && result.logsUrl) {
-        const resp = await fetch(result.logsUrl, { credentials: 'include' });
-        if (resp.ok) {
-          const data = await resp.json() as { docker: string, setup: string, timestamp: string };
-          setDebugData(data);
+      if (result.success) {
+        setServerLogs(result.serverLogs || []);
+        if (result.tunnelId) setTunnelId(result.tunnelId);
+        if (result.tunnelToken) setTunnelToken(result.tunnelToken);
+        if (result.logsUrl) {
+          const resp = await fetch(result.logsUrl, { credentials: 'include' });
+          if (resp.ok) {
+            const data = await resp.json() as { docker: string, setup: string, timestamp: string };
+            setDebugData(data);
+          }
         }
       }
     } catch (e) {
@@ -96,87 +419,146 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
     }
   };
 
+  const handleSpinUp = async (customServerType?: string, snapshotIdStr?: string, customLocation?: string) => {
+    setIsSpinningUp(true);
+    try {
+      const snapId = !snapshotIdStr || snapshotIdStr === 'latest' ? undefined : parseInt(snapshotIdStr, 10);
+      const result = await triggerMorningSpinup(server.id, snapId, customServerType, customLocation);
+      if (result.success) {
+        if (onRefresh) await onRefresh();
+      } else {
+        setErrorMessage(result.message || 'Spin up failed.');
+      }
+    } catch (e) {
+      setErrorMessage(e instanceof Error ? e.message : 'Spin up failed.');
+    } finally {
+      setIsSpinningUp(false);
+    }
+  };
+
+  const handleSnapshotShutdown = async (customPrefix?: string) => {
+    setIsSnapshotting(true);
+    try {
+      const result = await triggerEveningSnapshot(server.id, customPrefix);
+      if (result.success) {
+        if (onRefresh) await onRefresh();
+      } else {
+        setErrorMessage(result.message || 'Snapshot/shutdown failed.');
+      }
+    } catch (e) {
+      setErrorMessage(e instanceof Error ? e.message : 'Snapshot/shutdown failed.');
+    } finally {
+      setIsSnapshotting(false);
+    }
+  };
+
   return (
-    <tr className="group hover:bg-slate-800/30 transition-colors">
-      <AddDomainModal
-        isOpen={isProjectModalOpen}
-        onClose={() => { setIsProjectModalOpen(false); setEditingDomain(null); }}
-        onAdd={(name, port) => editingDomain ? onUpdateDomain(server.id, editingDomain.domain, name, port) : onAddProject(server.id, name, port)}
-        initialData={editingDomain ? { prefix: editingDomain.domain.replace('.devboxui.com', ''), port: editingDomain.port || 80 } : undefined}
-      />
-      <ReinstallModal
-        isOpen={isReinstallModalOpen}
-        onClose={() => setIsReinstallModalOpen(false)}
-        onConfirm={async () => {
-          try { await onReinstall?.(server.id); }
-          finally { setIsReinstallModalOpen(false); }
-        }}
-        serverName={server.hostname || server.ip}
-        serverId={server.id}
-        provider={server.providerName}
-        isAutomated={!!(server.hetznerServerId || server.contaboInstanceId)}
-      />
+    <tr className="group hover:bg-slate-50 dark:hover:bg-zinc-800/60 transition-colors border-b border-slate-100 dark:border-zinc-700/50">
 
       {/* Status */}
-      <td className="py-6 px-4">
-        {!(server.hetznerServerId || server.contaboInstanceId) ? (
-          <span className="text-xs font-bold text-slate-600">—</span>
+      <td className="py-2.5 px-4">
+        {!isAutomated ? (
+          <span className="text-sm font-bold text-slate-400">—</span>
         ) : (
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2" title={server.status === 'off' ? "SLEEPING = Server powered off, snapshot taken, server deleted - this ensures you only pay for what you use." : undefined}>
             {server.status === 'ready' ? (
               <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
             ) : server.status === 'waiting-for-bootstrap' ? (
               <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+            ) : ['provisioning', 'configuring', 'initializing', 'Initializing', 'starting', 'snapshotting'].includes(server.status) ? (
+              <span className="h-3 w-3 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+            ) : server.status === 'off' && scheduleConfig?.enabled ? (
+              <span className="h-2 w-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)] animate-pulse" />
             ) : (
-              <span className="h-2 w-2 rounded-full bg-slate-600" />
+              <span className="h-2 w-2 rounded-full bg-slate-400" />
             )}
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">{server.status}</span>
+            <span className="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
+              {server.status === 'off' ? 'sleeping' : (server.detailedStatus || server.status)}
+            </span>
           </div>
         )}
       </td>
 
-      {/* Type */}
-      <td className="py-6 px-4">
-        <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest ${
-          (server.hetznerServerId || server.contaboInstanceId) 
-            ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' 
-            : 'bg-slate-800 text-slate-400 border border-slate-700'
-        }`}>
+      {/* Provider */}
+      <td className="py-2.5 px-4">
+        <span className="text-xs font-bold text-slate-500 dark:text-zinc-500 uppercase tracking-widest">
           {server.providerName || 'Custom'}
         </span>
       </td>
 
-      {/* Server Identification */}
-      <td className="py-6 px-4">
-        <div className="flex flex-col">
-          <div className="flex items-center space-x-2">
-            <span className="text-base font-mono font-bold text-white leading-none">{server.ip}</span>
-            <CopyButton value={server.ip} />
-            {server.rootPassword && (
-              <div className="flex items-center space-x-1 pl-1 border-l border-slate-800 ml-1">
-                <span className="text-[10px] font-bold text-slate-500 uppercase">PWD</span>
-                <CopyButton value={server.rootPassword} />
-              </div>
-            )}
-          </div>
-          <span className="text-[10px] font-mono text-slate-500 mt-1">{displayHostname}.devboxui.com</span>
+      {/* Server ID */}
+      <td className="py-2.5 px-4">
+        <div className="flex flex-col space-y-1 text-left">
+          <span className="text-lg font-extrabold text-slate-900 dark:text-zinc-100 tracking-tight">{displayHostname}</span>
+
+          {server.serverSpecs && (
+            <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5">
+              <span className="text-sm font-medium text-slate-500 dark:text-zinc-400 leading-tight">{server.serverSpecs}</span>
+              {localPriceMonthly && server.status !== 'off' && (
+                <>
+                  <span className="text-sm text-slate-300 dark:text-zinc-600">—</span>
+                  <span className="text-sm font-bold text-emerald-600 dark:text-emerald-500">€{localPriceMonthly}<span className="font-normal text-emerald-500 dark:text-emerald-600">/mo</span></span>
+                  {localPriceHourly && (
+                    <span className="text-xs text-slate-400 dark:text-zinc-500">€{localPriceHourly}/hr</span>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
+          {server.status !== 'off' && (
+            <div className="flex items-center space-x-2 text-sm font-mono text-slate-400 dark:text-zinc-500">
+              <span>{server.ip}</span>
+              <CopyButton value={server.ip} />
+              {server.rootPassword && (
+                <div className="flex items-center space-x-1 pl-1.5 border-l border-slate-200 dark:border-zinc-600">
+                  <span className="text-xs font-bold text-slate-500 dark:text-zinc-400 uppercase">PWD</span>
+                  <CopyButton value={server.rootPassword} />
+                </div>
+              )}
+            </div>
+          )}
+
+          {server.collaborators && server.collaborators.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1.5 max-w-[280px]">
+              {server.collaborators.map((c) => (
+                <span key={c.email} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-zinc-700 text-slate-650 dark:text-zinc-300 border border-slate-200 dark:border-zinc-600" title={`${c.email} (${c.status})`}>
+                  👤 {c.username || c.email.split('@')[0]}
+                  {c.status === 'pending' && <span className="ml-1 text-[8px] text-amber-500 font-extrabold uppercase">(pending)</span>}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </td>
 
-      {/* Environment */}
-      <td className="py-6 px-4">
-        <span className="text-[10px] font-bold text-slate-400 bg-slate-800 px-2 py-1 rounded uppercase tracking-widest">Ubuntu 24.04</span>
+      {/* OS */}
+      <td className="py-2.5 px-4">
+        <span className="text-xs font-bold text-slate-500 dark:text-zinc-500 uppercase tracking-widest">Ubuntu 24.04</span>
+      </td>
+
+      {/* Created */}
+      <td className="py-2.5 px-4">
+        <span className="text-sm font-bold text-slate-500 dark:text-zinc-500 font-mono">
+          {server.createdAt ? new Date(server.createdAt).toLocaleString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+          }) : '—'}
+        </span>
       </td>
 
       {/* Service URLs */}
-      <td className="py-6 px-4">
+      <td className="py-2.5 px-4">
         <div className="flex flex-col space-y-2 min-w-[200px]">
           {server.projects?.map((project) => (
             <div key={project.domain} className="flex items-center justify-between group/url">
               <a
                 href={`https://${project.domain}`}
                 target={`win_${project.domain.replace(/[^a-zA-Z0-9]/g, '_')}`}
-                className="text-[11px] font-mono text-indigo-400 hover:text-indigo-300 transition-colors flex items-center space-x-1"
+                className="text-xs font-mono text-indigo-400 hover:text-indigo-300 transition-colors flex items-center space-x-1"
               >
                 <span>{project.domain}</span>
                 <svg className="w-3 h-3 opacity-0 group-hover/url:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -184,16 +566,11 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
                 </svg>
               </a>
               <div className="flex items-center space-x-1 opacity-0 group-hover/url:opacity-100 transition-opacity">
-                <button onClick={() => { setEditingDomain({ domain: project.domain, port: project.port || 80 }); setIsProjectModalOpen(true); }} className="p-1 text-slate-500 hover:text-white transition-colors">
+                <button onClick={() => { setEditingDomain({ domain: project.domain, port: project.port || 80, startDdev: project.startDdev }); setIsProjectModalOpen(true); }} className="p-1 text-slate-500 hover:text-white transition-colors">
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                 </button>
                 <button
-                  onClick={async () => {
-                    if (confirm(`Delete ${project.domain}?`)) {
-                      setDeletingDomain(project.domain);
-                      try { await onDeleteDomain(server.id, project.domain); } finally { setDeletingDomain(null); }
-                    }
-                  }}
+                  onClick={() => setDeletingDomainPending(project.domain)}
                   className="p-1 text-slate-500 hover:text-rose-500 transition-colors"
                 >
                   {deletingDomain === project.domain ? <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> : <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>}
@@ -201,71 +578,559 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
               </div>
             </div>
           ))}
-          <button onClick={() => setIsProjectModalOpen(true)} className="text-[10px] font-bold text-indigo-500 hover:text-indigo-400 transition-colors text-left">+ Add Domain</button>
+          <button onClick={() => setIsProjectModalOpen(true)} className="text-xs font-bold text-indigo-500 hover:text-indigo-400 transition-colors text-left">+ Add Domain</button>
         </div>
       </td>
 
       {/* Actions */}
-      <td className="py-6 px-4 text-right">
-        <div className="flex items-center justify-end space-x-1">
-          <button onClick={handleFetchLogs} disabled={isFetchingLogs} className="p-2 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition-all" title="Logs">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-          </button>
-          <button
-            onClick={() => setIsReinstallModalOpen(true)}
-            className="p-2 text-slate-500 hover:text-amber-500 hover:bg-slate-800 rounded-lg transition-all"
-            title="Reinstall"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-          </button>
-
-          {(server.hetznerServerId || server.contaboInstanceId) && (
+      <td className="py-2.5 px-4 text-right">
+        <div className="flex items-center justify-end space-x-2" ref={actionsDropdownRef}>
+          {/* "..." overflow menu */}
+          <div className="relative">
             <button
-              onClick={async () => { if (confirm("Delete server?")) await onDeleteServer(server.id); }}
-              disabled={server.isLocked}
-              className={`p-2 rounded-lg transition-all ${server.isLocked ? 'text-slate-800' : 'text-slate-500 hover:text-rose-500 hover:bg-rose-500/10'}`}
-              title="Delete Server"
+              onClick={() => setIsActionsOpen(o => !o)}
+              className="p-2 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition-all"
+              title="More actions"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" />
+              </svg>
             </button>
-          )}
 
-          <div className="pl-2 ml-2 border-l border-slate-800 flex items-center space-x-2">
-            <IdeLaunchButton server={server} />
+            {isActionsOpen && (
+              <div className="absolute right-0 top-full mt-1.5 w-52 bg-slate-900 border border-slate-800 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-50 overflow-hidden py-1">
+
+                {/* Logs */}
+                <button
+                  onClick={() => { handleFetchLogs(); setIsActionsOpen(false); }}
+                  disabled={isFetchingLogs || isDeleting || isReinstalling}
+                  className="w-full flex items-center space-x-3 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors disabled:opacity-50"
+                >
+                  {isFetchingLogs
+                    ? <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                    : <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                  }
+                  <span>Logs</span>
+                </button>
+
+                {/* Reinstall */}
+                <button
+                  onClick={() => { setIsReinstallModalOpen(true); setIsActionsOpen(false); }}
+                  disabled={isFetchingLogs || isDeleting || isReinstalling}
+                  className="w-full flex items-center space-x-3 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-amber-400 transition-colors disabled:opacity-50"
+                >
+                  {isReinstalling
+                    ? <div className="w-4 h-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                    : <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                  }
+                  <span>Reinstall</span>
+                </button>
+
+                {/* Restart */}
+                {(isHetzner || isDigitalOcean) && server.status !== 'off' && (
+                  <button
+                    onClick={() => { handleRestart(); setIsActionsOpen(false); }}
+                    disabled={isRestarting || isDeleting || isReinstalling}
+                    className="w-full flex items-center space-x-3 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-amber-400 transition-colors disabled:opacity-50"
+                  >
+                    {isRestarting
+                      ? <div className="w-4 h-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                      : <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                    }
+                    <span>Restart</span>
+                  </button>
+                )}
+
+                {/* Snapshot */}
+                {(isHetzner || isDigitalOcean) && server.status !== 'off' && (
+                  <button
+                    onClick={() => { setIsConfirmSnapshotOpen(true); setIsActionsOpen(false); }}
+                    disabled={isSnapshotting || isDeleting || isReinstalling}
+                    className="w-full flex items-center space-x-3 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-indigo-400 transition-colors disabled:opacity-50"
+                  >
+                    {isSnapshotting
+                      ? <div className="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                      : <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+                    }
+                    <span>Snapshot &amp; Shutdown</span>
+                  </button>
+                )}
+
+                {/* Auto-off */}
+                {(isHetzner || isDigitalOcean) && server.status === 'ready' && (
+                  <button
+                    onClick={async () => {
+                      setIsActionsOpen(false);
+                      setIsCheckingIdle(true);
+                      setIdleCheckResult(null);
+                      try {
+                        const data = await checkIdleAndSnapshot(server.id, 30);
+                        if (data.error) { setErrorMessage(data.error); }
+                        else { setIdleCheckResult(data); if (data.triggered && onRefresh) setTimeout(onRefresh, 3000); }
+                      } catch (e) {
+                        setErrorMessage(e instanceof Error ? e.message : 'Idle check failed');
+                      } finally { setIsCheckingIdle(false); }
+                    }}
+                    disabled={isCheckingIdle || isSnapshotting || isDeleting || isReinstalling}
+                    className={`w-full flex items-center space-x-3 px-3 py-2 text-sm transition-colors disabled:opacity-50 ${idleCheckResult ? (idleCheckResult.idle ? 'text-amber-400' : 'text-emerald-400') : 'text-slate-300 hover:bg-slate-800 hover:text-amber-400'}`}
+                    title={idleCheckResult ? idleCheckResult.message : undefined}
+                  >
+                    {isCheckingIdle
+                      ? <div className="w-4 h-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                      : <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    }
+                    <span>Auto-off</span>
+                  </button>
+                )}
+
+                {/* Schedule */}
+                {(isHetzner || isDigitalOcean) && (
+                  <button
+                    onClick={() => { setIsScheduleOpen(true); setIsActionsOpen(false); }}
+                    disabled={isDeleting || isReinstalling}
+                    className="w-full flex items-center space-x-3 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-indigo-400 transition-colors disabled:opacity-50"
+                  >
+                    <span className="relative flex-shrink-0">
+                      {scheduleConfig?.enabled && (
+                        <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-indigo-500 rounded-full" />
+                      )}
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </span>
+                    <span className={scheduleConfig?.enabled ? 'text-indigo-400' : ''}>
+                      Schedule{scheduleConfig?.enabled ? ' (active)' : ''}
+                    </span>
+                  </button>
+                )}
+
+                {/* API Auth */}
+                {isAutomated && (
+                  <button
+                    onClick={() => { setIsApiAuthOpen(true); setIsActionsOpen(false); }}
+                    disabled={isDeleting || isReinstalling}
+                    className="w-full flex items-center space-x-3 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-indigo-400 transition-colors disabled:opacity-50"
+                  >
+                    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                    <span>API Auth</span>
+                  </button>
+                )}
+
+                {/* Share */}
+                {isAutomated && (
+                  <button
+                    onClick={() => { setIsInviteOpen(true); setIsActionsOpen(false); }}
+                    disabled={isDeleting || isReinstalling}
+                    className="w-full flex items-center space-x-3 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-indigo-400 transition-colors disabled:opacity-50"
+                  >
+                    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
+                    <span>Share</span>
+                  </button>
+                )}
+
+                {/* Delete */}
+                {isAutomated && (
+                  <>
+                    <div className="my-1 border-t border-slate-800" />
+                    <button
+                      onClick={() => { setIsDeleteServerOpen(true); setIsActionsOpen(false); }}
+                      disabled={server.isLocked || isFetchingLogs || isDeleting || isReinstalling}
+                      className="w-full flex items-center space-x-3 px-3 py-2 text-sm text-slate-300 hover:bg-rose-500/10 hover:text-rose-400 transition-colors disabled:opacity-40"
+                    >
+                      {isDeleting
+                        ? <div className="w-4 h-4 border-2 border-rose-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                        : <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                      }
+                      <span>Delete</span>
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
           </div>
+
+          {/* Primary action button */}
+          {server.status === 'off' ? (
+            <button
+              onClick={() => setIsSpinUpOpen(true)}
+              disabled={isSpinningUp}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-all shadow-lg inline-flex items-center whitespace-nowrap"
+            >
+              {isSpinningUp ? (
+                <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+              ) : (
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              )}
+              <span>{isSpinningUp ? 'Spinning Up...' : 'Spin Up'}</span>
+            </button>
+          ) : (
+            <IdeLaunchButton server={server} />
+          )}
         </div>
-        {isLogsModalOpen && (
-          <LogsModal isOpen={isLogsModalOpen} onClose={() => setIsLogsModalOpen(false)} debugData={debugData} isFetching={isFetchingLogs} />
+        <ConfirmSnapshotModal
+          isOpen={isConfirmSnapshotOpen}
+          onClose={() => setIsConfirmSnapshotOpen(false)}
+          onConfirm={handleSnapshotShutdown}
+          serverName={server.hostname || server.ip}
+        />
+        <ConfirmDeleteModal
+          isOpen={isDeleteServerOpen}
+          onClose={() => setIsDeleteServerOpen(false)}
+          onConfirm={async () => {
+            setIsDeleting(true);
+            try {
+              await onDeleteServer(server.id);
+            } catch (e) {
+              console.error("Failed to delete server:", e);
+            } finally {
+              setIsDeleting(false);
+            }
+          }}
+          title="Delete Server"
+          description={`Are you sure you want to delete "${server.hostname?.replace('.devboxui.com', '') || server.ip}"? This action cannot be undone.`}
+          confirmLabel="Delete Server"
+        />
+        <ConfirmDeleteModal
+          isOpen={deletingDomainPending !== null}
+          onClose={() => setDeletingDomainPending(null)}
+          onConfirm={async () => {
+            if (!deletingDomainPending) return;
+            setDeletingDomain(deletingDomainPending);
+            try { await onDeleteDomain(server.id, deletingDomainPending); } finally { setDeletingDomain(null); }
+          }}
+          title="Delete Domain"
+          description={`Are you sure you want to delete "${deletingDomainPending}"?`}
+          confirmLabel="Delete Domain"
+        />
+        <AddDomainModal
+          isOpen={isProjectModalOpen}
+          onClose={() => { setIsProjectModalOpen(false); setEditingDomain(null); }}
+          onAdd={(name, port, startDdev) => editingDomain ? onUpdateDomain(server.id, editingDomain.domain, name, port, startDdev) : onAddProject(server.id, name, port, startDdev)}
+          initialData={editingDomain ? { prefix: editingDomain.domain.replace('-web.devboxui.com', '').replace('.devboxui.com', ''), port: editingDomain.port || 80, startDdev: editingDomain.startDdev } : undefined}
+        />
+        <ReinstallModal
+          isOpen={isReinstallModalOpen}
+          onClose={() => setIsReinstallModalOpen(false)}
+          onConfirm={async () => {
+            setIsReinstalling(true);
+            try {
+              await onReinstall?.(server.id);
+              if (onRefresh) await onRefresh();
+            } finally {
+              setIsReinstalling(false);
+              setIsReinstallModalOpen(false);
+            }
+          }}
+          serverName={server.hostname || server.ip}
+          serverId={server.id}
+          provider={server.providerName}
+          isAutomated={isAutomated}
+        />
+        {isScheduleOpen && (
+          <ScheduleModal
+            isOpen={isScheduleOpen}
+            onClose={() => setIsScheduleOpen(false)}
+            serverId={server.id}
+            serverName={server.hostname || server.ip}
+            serverStatus={server.status}
+            onSaved={(cfg) => {
+              setScheduleConfig(cfg);
+            }}
+            onRefresh={onRefresh}
+          />
         )}
+        {isLogsModalOpen && (
+          <LogsModal
+            isOpen={isLogsModalOpen}
+            onClose={() => setIsLogsModalOpen(false)}
+            debugData={debugData}
+            serverLogs={serverLogs}
+            isFetching={isFetchingLogs}
+            tunnelId={tunnelId}
+            tunnelToken={tunnelToken}
+          />
+        )}
+        {isApiAuthOpen && onUpdateAllowedPeers && (
+          <ApiAuthModal
+            isOpen={isApiAuthOpen}
+            onClose={() => setIsApiAuthOpen(false)}
+            server={server}
+            allServers={servers}
+            onSave={onUpdateAllowedPeers}
+          />
+        )}
+        {isSpinUpOpen && (
+          <ConfirmSpinUpModal
+            isOpen={isSpinUpOpen}
+            onClose={() => setIsSpinUpOpen(false)}
+            onConfirm={async (selectedType, selectedSnap, selectedLocation) => {
+              await handleSpinUp(selectedType, selectedSnap, selectedLocation);
+            }}
+            serverId={server.id}
+            serverName={server.hostname || server.ip}
+            defaultServerType={server.serverType || server.scheduleConfig?.serverType || 'cpx21'}
+            vpsSnapshots={vpsSnapshots}
+            selectedSnapshotId={selectedSnapshotId}
+            onSnapshotChange={handleSnapshotChange}
+            provider={server.provider}
+            location={server.scheduleConfig?.location || (server.provider === 'digitalocean' ? 'nyc1' : 'nbg1')}
+          />
+        )}
+        <InviteCollabModal
+          serverId={server.id}
+          orgId={server.orgId || userEmail}
+          isOpen={isInviteOpen}
+          onClose={() => setIsInviteOpen(false)}
+          onSuccess={onRefresh}
+        />
+        <ErrorModal
+          isOpen={!!errorMessage}
+          onClose={() => setErrorMessage(null)}
+          message={errorMessage || ''}
+        />
       </td>
     </tr>
   );
 }
 
-function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDeleteServer, onReinstall }: ServerListProps & { server: ServerConfig }) {
+const HETZNER_BOOTSTRAP_STEPS: Array<{ label: string; key: string; option?: keyof NonNullable<ServerConfig['provisioningOptions']>; defaultOn?: boolean }> = [
+  { label: 'Setting up workspace', key: 'Setting up workspace...' },
+  { label: 'Updating packages', key: 'Updating packages...', option: 'aptUpdate', defaultOn: true },
+  { label: 'Installing Docker', key: 'Installing Docker...', option: 'installDocker', defaultOn: false },
+  { label: 'Installing DDEV', key: 'Installing DDEV...', option: 'installDdev', defaultOn: false },
+  { label: 'Installing Oh My Bash', key: 'Installing Oh My Bash...', option: 'installOhMyBash', defaultOn: true },
+  { label: 'Ready', key: 'Ready' },
+];
+
+const MANUAL_BOOTSTRAP_STEPS = [
+  { label: 'Initializing system', key: 'Initializing system...' },
+  { label: 'Hardening server', key: 'Hardening server and setting up users...' },
+  { label: 'Syncing SSH keys', key: 'Syncing SSH keys...' },
+  { label: 'Setting up Cloudflare Tunnel', key: 'Setting up Cloudflare Tunnel...' },
+  { label: 'Ready', key: 'Ready' },
+];
+
+function BootstrapProgress({ server, isManual }: { server: ServerConfig; isManual: boolean }) {
+  const completedSet = new Set(
+    (server.statusLog || []).map(entry => {
+      const m = entry.match(/^\[[^\]]+\] (.+)$/);
+      return (m ? m[1] : entry).trim();
+    })
+  );
+
+  const opts = server.provisioningOptions;
+  const steps: Array<{ label: string; key: string }> = isManual
+    ? MANUAL_BOOTSTRAP_STEPS
+    : HETZNER_BOOTSTRAP_STEPS.filter(s => {
+        if (!s.option) return true;
+        if (opts) return s.defaultOn ? opts[s.option] !== false : !!opts[s.option];
+        return !!s.defaultOn;
+      });
+
+  let lastCompletedIdx = -1;
+  steps.forEach((step, i) => { if (completedSet.has(step.key)) lastCompletedIdx = i; });
+
+  const completedCount = lastCompletedIdx + 1;
+  const totalCount = steps.length;
+  const pct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+  if (completedCount === 0) {
+    const pctMatch = (server.detailedStatus || '').match(/(\d+)%/);
+    const earlyPct = pctMatch ? parseInt(pctMatch[1], 10) : null;
+    const label = server.detailedStatus?.replace(/\s*\(\d+%\)/, '') || 'Waiting for bootstrap...';
+    return (
+      <div className="rounded-lg border border-slate-200 dark:border-zinc-700 overflow-hidden">
+        <div className="px-3 py-2.5 flex items-center space-x-2.5">
+          <div className="h-3.5 w-3.5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+          <span className="text-xs text-slate-500 dark:text-zinc-400 flex-1">{label}</span>
+          {earlyPct !== null && <span className="text-xs font-bold text-indigo-400 flex-shrink-0">{earlyPct}%</span>}
+        </div>
+        {earlyPct !== null && (
+          <div className="w-full bg-slate-200 dark:bg-zinc-700 h-1.5">
+            <div className="h-1.5 bg-indigo-500 transition-[width] duration-700" style={{ width: `${Math.max(earlyPct, 2)}%` }} />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-slate-200 dark:border-zinc-700 overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-slate-50 dark:bg-zinc-800/50 border-b border-slate-200 dark:border-zinc-700">
+        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-zinc-400">Bootstrap Progress</span>
+        <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">{completedCount}/{totalCount} · {pct}%</span>
+      </div>
+      <div className="px-3 py-2 space-y-1.5">
+        {steps.map((step, i) => {
+          const done = completedSet.has(step.key);
+          const isCurrent = !done && i === lastCompletedIdx + 1;
+          return (
+            <div key={step.key} className={`flex items-center space-x-2 text-xs ${done ? 'text-emerald-600 dark:text-emerald-400' : isCurrent ? 'text-slate-800 dark:text-zinc-200 font-semibold' : 'text-slate-400 dark:text-zinc-500'}`}>
+              {done ? (
+                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                </svg>
+              ) : isCurrent ? (
+                <div className="w-3.5 h-3.5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+              ) : (
+                <div className="w-3.5 h-3.5 rounded-full border border-slate-300 dark:border-zinc-600 flex-shrink-0" />
+              )}
+              <span>{step.label}</span>
+            </div>
+          );
+        })}
+      </div>
+      <div className="px-3 pb-3">
+        <div className="w-full bg-slate-200 dark:bg-zinc-700 rounded-full h-1.5 overflow-hidden">
+          <div className="h-1.5 rounded-full bg-indigo-500 transition-[width] duration-700" style={{ width: `${Math.max(pct, 2)}%` }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomain, onDeleteDomain, onDeleteServer, onReinstall, onUpdateAllowedPeers, onUpdateGitConfig, servers, onRefresh }: ServerListProps & { server: ServerConfig; inlineLogsMode?: boolean }) {
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
-  const [editingDomain, setEditingDomain] = useState<{ domain: string; port: number } | null>(null);
+  const [isApiAuthOpen, setIsApiAuthOpen] = useState(false);
+  const [isGitConfigOpen, setIsGitConfigOpen] = useState(false);
+  const [gitNameInput, setGitNameInput] = useState(server.gitUserName || '');
+  const [gitEmailInput, setGitEmailInput] = useState(server.gitUserEmail || '');
+  const [isSavingGitConfig, setIsSavingGitConfig] = useState(false);
+  const [editingDomain, setEditingDomain] = useState<{ domain: string; port: number; startDdev?: boolean } | null>(null);
   const [isReinstallModalOpen, setIsReinstallModalOpen] = useState(false);
+  const [isScheduleOpen, setIsScheduleOpen] = useState(false);
+  const [scheduleConfig, setScheduleConfig] = useState<ScheduleConfig | null>(server.scheduleConfig || null);
+  const [localPriceMonthly, setLocalPriceMonthly] = useState<string | undefined>(server.priceMonthly);
+  const [localPriceHourly, setLocalPriceHourly] = useState<string | undefined>(server.priceHourly);
+  useEffect(() => {
+    setLocalPriceMonthly(server.priceMonthly);
+    setLocalPriceHourly(server.priceHourly);
+  }, [server.id, server.priceMonthly, server.priceHourly]);
   const [isFetchingLogs, setIsFetchingLogs] = useState(false);
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
-  // const [isTogglingLock, setIsTogglingLock] = useState(false);
+  const [deletingDomain, setDeletingDomain] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isReinstalling, setIsReinstalling] = useState(false);
   const [debugData, setDebugData] = useState<{ docker: string, setup: string, timestamp: string } | null>(null);
+  const [serverLogs, setServerLogs] = useState<string[]>(server.logs || []);
+  const [tunnelId, setTunnelId] = useState<string | undefined>(server.tunnelId);
+  const [tunnelToken, setTunnelToken] = useState<string | undefined>(server.tunnelToken);
+  const [isSpinningUp, setIsSpinningUp] = useState(false);
+  const [isSnapshotting, setIsSnapshotting] = useState(false);
+  const [isConfirmSnapshotOpen, setIsConfirmSnapshotOpen] = useState(false);
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isDeleteServerOpen, setIsDeleteServerOpen] = useState(false);
+  const [deletingDomainPending, setDeletingDomainPending] = useState<string | null>(null);
 
-  const displayHostname = (server.hostname || 'devbox').replace('.devboxui.com', '');
+  const [vpsSnapshots, setVpsSnapshots] = useState<Array<{ id: number | string; description?: string; name?: string | null; labels?: Record<string, string>; disk_size?: number; image_size?: number | null; architecture?: string }>>([]);
+  const [selectedSnapshotId, setSelectedSnapshotId] = useState<string>('latest');
+  const [isSpinUpOpen, setIsSpinUpOpen] = useState(false);
+
+  const [isRestarting, setIsRestarting] = useState(false);
+
+  const handleRestart = async () => {
+    if (!confirm("Are you sure you want to restart this VPS?")) return;
+    setIsRestarting(true);
+    try {
+      const result = await rebootServerAction(server.id);
+      if (result.success) {
+        setErrorMessage(null);
+        if (onRefresh) await onRefresh();
+      } else {
+        setErrorMessage(result.message || "Failed to initiate reboot.");
+      }
+    } catch (e) {
+      setErrorMessage(e instanceof Error ? e.message : "Failed to initiate reboot.");
+    } finally {
+      setIsRestarting(false);
+    }
+  };
+
+  const isAutomated = !!(server.hetznerServerId || server.contaboInstanceId || server.providerName === 'Hetzner' || server.providerName === 'Contabo' || server.provider === 'hetzner' || server.provider === 'contabo' || server.provider === 'digitalocean');
+  const isHetzner = !!(server.providerName === 'Hetzner' || server.provider === 'hetzner');
+  const isDigitalOcean = server.provider === 'digitalocean';
+  const displayHostname = server.name || (server.hostname || 'devbox')
+    .replace('-code.devboxui.com', '')
+    .replace('.devboxui.com', '')
+    ;
+
+  useEffect(() => {
+    if (server.status === 'off' && (isHetzner || isDigitalOcean)) {
+      async function loadSnapshots() {
+        try {
+          const list = await getServerSnapshots(server.id);
+          setVpsSnapshots(list);
+          const savedSnapshot = localStorage.getItem(`devbox_last_snapshot_${server.id}`);
+          if (savedSnapshot && (savedSnapshot === 'latest' || list.some((s: { id: number | string }) => s.id.toString() === savedSnapshot))) {
+            setSelectedSnapshotId(savedSnapshot);
+          } else {
+            setSelectedSnapshotId('latest');
+          }
+        } catch (e) {
+          console.warn("Failed to load snapshots for server", e);
+        }
+      }
+      loadSnapshots();
+    }
+  }, [server.id, server.status, isHetzner, isDigitalOcean]);
+
+  const handleSnapshotChange = (id: string) => {
+    setSelectedSnapshotId(id);
+    localStorage.setItem(`devbox_last_snapshot_${server.id}`, id);
+  };
 
   const handleFetchLogs = async () => {
-    setIsLogsModalOpen(true);
+    if (!inlineLogsMode) setIsLogsModalOpen(true);
     setIsFetchingLogs(true);
     try {
       const result = await getServerLogs(server.id);
-      if (result.success && result.logsUrl) {
-        const resp = await fetch(result.logsUrl, { credentials: 'include' });
-        if (resp.ok) {
-          const data = await resp.json() as { docker: string, setup: string, timestamp: string };
-          setDebugData(data);
+      if (result.success) {
+        setServerLogs(result.serverLogs || []);
+        if (result.tunnelId) setTunnelId(result.tunnelId);
+        if (result.tunnelToken) setTunnelToken(result.tunnelToken);
+        if (result.logsUrl) {
+          const resp = await fetch(result.logsUrl, { credentials: 'include' });
+          if (resp.ok) {
+            const data = await resp.json() as { docker: string, setup: string, timestamp: string };
+            setDebugData(data);
+          }
         }
       }
     } finally { setIsFetchingLogs(false); }
+  };
+
+  const handleSpinUp = async (customServerType?: string, snapshotIdStr?: string, customLocation?: string) => {
+    setIsSpinningUp(true);
+    try {
+      const snapId = !snapshotIdStr || snapshotIdStr === 'latest' ? undefined : parseInt(snapshotIdStr, 10);
+      const result = await triggerMorningSpinup(server.id, snapId, customServerType, customLocation);
+      if (result.success) {
+        if (onRefresh) await onRefresh();
+      } else {
+        setErrorMessage(result.message || 'Spin up failed.');
+      }
+    } catch (e) {
+      setErrorMessage(e instanceof Error ? e.message : 'Spin up failed.');
+    } finally {
+      setIsSpinningUp(false);
+    }
+  };
+
+  const handleSnapshotShutdown = async (customPrefix?: string) => {
+    setIsSnapshotting(true);
+    try {
+      const result = await triggerEveningSnapshot(server.id, customPrefix);
+      if (result.success) {
+        if (onRefresh) await onRefresh();
+      } else {
+        setErrorMessage(result.message || 'Snapshot/shutdown failed.');
+      }
+    } catch (e) {
+      setErrorMessage(e instanceof Error ? e.message : 'Snapshot/shutdown failed.');
+    } finally {
+      setIsSnapshotting(false);
+    }
   };
 
   /*
@@ -278,100 +1143,469 @@ function ServerCard({ server, onAddProject, onUpdateDomain, onDeleteDomain, onDe
   };
   */
 
-  const handleDelete = async () => {
-    if (confirm("Delete this server?")) {
-      try { await onDeleteServer(server.id); } catch { console.error("Delete failed"); }
-    }
+  const handleDelete = () => {
+    setIsDeleteServerOpen(true);
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl hover:border-indigo-500/50 transition-all group relative overflow-hidden">
+    <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl hover:border-indigo-500/50 transition-all group relative overflow-hidden shadow-sm">
+      <ConfirmSnapshotModal
+        isOpen={isConfirmSnapshotOpen}
+        onClose={() => setIsConfirmSnapshotOpen(false)}
+        onConfirm={handleSnapshotShutdown}
+        serverName={server.hostname || server.ip}
+      />
+      <ConfirmDeleteModal
+        isOpen={isDeleteServerOpen}
+        onClose={() => setIsDeleteServerOpen(false)}
+        onConfirm={async () => {
+          setIsDeleting(true);
+          try {
+            await onDeleteServer(server.id);
+          } catch (e) {
+            console.error("Delete failed:", e);
+          } finally {
+            setIsDeleting(false);
+          }
+        }}
+        title="Delete Server"
+        description={`Are you sure you want to delete "${server.hostname?.replace('.devboxui.com', '') || server.ip}"? This action cannot be undone.`}
+        confirmLabel="Delete Server"
+      />
+      <ConfirmDeleteModal
+        isOpen={deletingDomainPending !== null}
+        onClose={() => setDeletingDomainPending(null)}
+        onConfirm={async () => {
+          if (!deletingDomainPending) return;
+          setDeletingDomain(deletingDomainPending);
+          try { await onDeleteDomain(server.id, deletingDomainPending); } finally { setDeletingDomain(null); }
+        }}
+        title="Delete Domain"
+        description={`Are you sure you want to delete "${deletingDomainPending}"?`}
+        confirmLabel="Delete Domain"
+      />
       <AddDomainModal
         isOpen={isProjectModalOpen}
         onClose={() => { setIsProjectModalOpen(false); setEditingDomain(null); }}
-        onAdd={(name, port) => editingDomain ? onUpdateDomain(server.id, editingDomain.domain, name, port) : onAddProject(server.id, name, port)}
-        initialData={editingDomain ? { prefix: editingDomain.domain.replace('.devboxui.com', ''), port: editingDomain.port || 80 } : undefined}
+        onAdd={(name, port, startDdev) => editingDomain ? onUpdateDomain(server.id, editingDomain.domain, name, port, startDdev) : onAddProject(server.id, name, port, startDdev)}
+        initialData={editingDomain ? { prefix: editingDomain.domain.replace('-web.devboxui.com', '').replace('.devboxui.com', ''), port: editingDomain.port || 80, startDdev: editingDomain.startDdev } : undefined}
       />
       <ReinstallModal
         isOpen={isReinstallModalOpen}
         onClose={() => setIsReinstallModalOpen(false)}
         onConfirm={async () => {
-          try { await onReinstall?.(server.id); }
-          finally { setIsReinstallModalOpen(false); }
+          setIsReinstalling(true);
+          try {
+            await onReinstall?.(server.id);
+            if (onRefresh) await onRefresh();
+          } finally {
+            setIsReinstalling(false);
+            setIsReinstallModalOpen(false);
+          }
         }}
         serverName={server.hostname || server.ip}
         serverId={server.id}
         provider={server.providerName}
-        isAutomated={!!(server.hetznerServerId || server.contaboInstanceId)}
+        isAutomated={isAutomated}
       />
+      {isScheduleOpen && (
+        <ScheduleModal
+          isOpen={isScheduleOpen}
+          onClose={() => setIsScheduleOpen(false)}
+          serverId={server.id}
+          serverName={server.hostname || server.ip}
+          serverStatus={server.status}
+          onSaved={(cfg) => {
+            setScheduleConfig(cfg);
+          }}
+          onRefresh={onRefresh}
+        />
+      )}
 
       {/* Mobile Card Header */}
-      <div className="p-6 border-b border-slate-800 bg-slate-950/50 space-y-4">
+      <div className="p-6 border-b border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800/50 space-y-4">
         <div className="flex justify-between items-start">
           <div className="space-y-1.5">
-            <div className="flex items-center space-x-2">
-              <span className="text-[10px] font-bold text-slate-400 bg-slate-800 px-2 py-1 rounded uppercase tracking-widest border border-slate-700">Ubuntu 24.04</span>
-              <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest ${
-                (server.hetznerServerId || server.contaboInstanceId) 
-                  ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' 
-                  : 'bg-slate-800 text-slate-400 border border-slate-700'
-              }`}>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[10px] font-bold text-slate-500 dark:text-zinc-500 uppercase tracking-widest">Ubuntu 24.04</span>
+              <span className="text-[10px] font-bold text-slate-500 dark:text-zinc-500 uppercase tracking-widest">
                 {server.providerName || 'Custom'}
               </span>
-              {(server.hetznerServerId || server.contaboInstanceId) && server.status === 'ready' && (
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+              {isAutomated && !['provisioning', 'configuring', 'initializing', 'Initializing', 'starting', 'snapshotting', 'waiting-for-bootstrap'].includes(server.status) && (
+                <div className="flex items-center space-x-1.5 bg-slate-105 dark:bg-zinc-700/50 px-2 py-1 rounded border border-slate-200 dark:border-zinc-600 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400" title={server.status === 'off' ? "SLEEPING = Server powered off, snapshot taken, server deleted - this ensures you only pay for what you use." : undefined}>
+                  {server.status === 'ready' ? (
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                  ) : server.status === 'off' && scheduleConfig?.enabled ? (
+                    <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)] animate-pulse" />
+                  ) : (
+                    <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+                  )}
+                  <span>{server.status === 'off' ? 'sleeping' : (server.detailedStatus || server.status)}</span>
+                </div>
               )}
             </div>
-            <div className="flex flex-col">
-              <div className="flex items-center space-x-2">
-                <h3 className="text-xl font-mono font-bold text-white tracking-tight">{server.ip}</h3>
-                <CopyButton value={server.ip} />
-                {server.rootPassword && (
-                  <div className="flex items-center space-x-1 pl-1 border-l border-slate-800 ml-1">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase">PWD</span>
-                    <CopyButton value={server.rootPassword} />
-                  </div>
-                )}
+            <div className="flex flex-col space-y-1">
+              <h3 className="text-xl font-extrabold text-slate-900 dark:text-zinc-100 tracking-tight text-left">{displayHostname}</h3>
+
+              {server.serverSpecs && (
+                <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5">
+                  <span className="text-xs font-medium text-slate-500 dark:text-zinc-400 leading-tight">{server.serverSpecs}</span>
+                  {localPriceMonthly && server.status !== 'off' && (
+                    <>
+                      <span className="text-xs text-slate-300 dark:text-zinc-600">—</span>
+                      <span className="text-xs font-bold text-emerald-600 dark:text-emerald-500">€{localPriceMonthly}<span className="font-normal text-emerald-500 dark:text-emerald-600">/mo</span></span>
+                      {localPriceHourly && (
+                        <span className="text-[10px] text-slate-400 dark:text-zinc-500">€{localPriceHourly}/hr</span>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+
+              {server.status !== 'off' && (
+                <div className="flex items-center space-x-2 text-xs font-mono text-slate-400 dark:text-zinc-500">
+                  <span>{server.ip}</span>
+                  <CopyButton value={server.ip} />
+                  {server.rootPassword && (
+                    <div className="flex items-center space-x-1.5 pl-1.5 border-l border-slate-200 dark:border-zinc-600">
+                      <span className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 uppercase">PWD</span>
+                      <CopyButton value={server.rootPassword} />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {server.collaborators && server.collaborators.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1.5 justify-start">
+                  {server.collaborators.map((c) => (
+                    <span key={c.email} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-zinc-700 text-slate-650 dark:text-zinc-300 border border-slate-200 dark:border-zinc-600" title={`${c.email} (${c.status})`}>
+                      👤 {c.username || c.email.split('@')[0]}
+                      {c.status === 'pending' && <span className="ml-1 text-[8px] text-amber-500 font-extrabold uppercase">(pending)</span>}
+                    </span>
+                  ))}
+                </div>
+              )}
+              
+              <div className="flex items-center mt-1 text-[10px] font-mono text-slate-500 dark:text-zinc-500">
+                <span className="font-bold text-slate-400 dark:text-zinc-600 mr-1">Created:</span>
+                <span>
+                  {server.createdAt ? new Date(server.createdAt).toLocaleString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                  }) : ''}
+                </span>
               </div>
-              <p className="text-xs text-slate-500 font-mono tracking-widest mt-0.5">{displayHostname}.devboxui.com</p>
             </div>
           </div>
           <div className="flex space-x-1">
-            {(server.hetznerServerId || server.contaboInstanceId) && (
-              <button onClick={handleDelete} disabled={server.isLocked} className="p-2 text-slate-500 hover:text-rose-500"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+            {isAutomated && (
+              <button
+                onClick={handleDelete}
+                disabled={server.isLocked || isDeleting || isReinstalling || isFetchingLogs}
+                className="p-2 text-slate-400 hover:text-rose-500 disabled:opacity-50"
+              >
+                {isDeleting ? (
+                  <div className="h-5 w-5 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                )}
+              </button>
             )}
           </div>
         </div>
 
-        <div className="flex items-center space-x-2 pt-2">
-          <button onClick={handleFetchLogs} className="flex-1 py-2 text-xs font-bold uppercase bg-slate-800 text-slate-300 rounded-lg">Logs</button>
-          <button onClick={() => setIsReinstallModalOpen(true)} className="flex-1 py-2 text-xs font-bold uppercase bg-slate-800 text-slate-300 rounded-lg">Reinstall</button>
+        {['provisioning', 'configuring', 'initializing', 'Initializing'].includes(server.status) && isAutomated && (
+          <BootstrapProgress server={server} isManual={!isAutomated} />
+        )}
+
+        {server.status === 'snapshotting' && (() => {
+          const pctMatch = (server.detailedStatus || '').match(/(\d+)%/);
+          const pct = pctMatch ? parseInt(pctMatch[1], 10) : null;
+          const label = server.detailedStatus?.replace(/\s*\(\d+%\)/, '') || 'Shutting down...';
+          return (
+            <div className="rounded-lg border border-slate-200 dark:border-zinc-700 overflow-hidden">
+              <div className="px-3 py-2.5 flex items-center space-x-2.5">
+                <div className="h-3.5 w-3.5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                <span className="text-xs text-slate-500 dark:text-zinc-400 flex-1">{label}</span>
+                {pct !== null && <span className="text-xs font-bold text-amber-500 flex-shrink-0">{pct}%</span>}
+              </div>
+              <div className="w-full bg-slate-200 dark:bg-zinc-700 h-1.5">
+                {pct !== null ? (
+                  <div className="h-1.5 bg-amber-500 transition-[width] duration-700" style={{ width: `${Math.max(pct, 2)}%` }} />
+                ) : (
+                  <div className="h-1.5 w-full bg-amber-500 animate-pulse" />
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
+        <div className="flex items-center space-x-2 pt-2 flex-wrap gap-y-2">
+          <button
+            onClick={handleFetchLogs}
+            disabled={isFetchingLogs || isDeleting || isReinstalling}
+            className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 dark:bg-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-600 text-slate-700 dark:text-zinc-200 rounded-lg disabled:opacity-50 flex items-center justify-center"
+          >
+            {isFetchingLogs && (
+              <div className="h-3.5 w-3.5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin mr-1.5" />
+            )}
+            {isFetchingLogs ? 'Loading...' : 'Logs'}
+          </button>
+          <button
+            onClick={() => setIsReinstallModalOpen(true)}
+            disabled={isFetchingLogs || isDeleting || isReinstalling}
+            className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 dark:bg-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-600 text-slate-700 dark:text-zinc-200 rounded-lg disabled:opacity-50 flex items-center justify-center"
+          >
+            {isReinstalling && (
+              <div className="h-3.5 w-3.5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mr-1.5" />
+            )}
+            {isReinstalling ? 'Reinstalling...' : 'Reinstall'}
+          </button>
+          {isAutomated && (
+            <button
+              onClick={() => setIsApiAuthOpen(true)}
+              disabled={isDeleting || isReinstalling}
+              className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 dark:bg-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-600 text-slate-700 dark:text-zinc-200 rounded-lg disabled:opacity-50"
+            >
+              API Auth
+            </button>
+          )}
+          <button
+            onClick={() => { setGitNameInput(server.gitUserName || ''); setGitEmailInput(server.gitUserEmail || ''); setIsGitConfigOpen(true); }}
+            disabled={isDeleting || isReinstalling}
+            className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 dark:bg-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-600 text-slate-700 dark:text-zinc-200 rounded-lg disabled:opacity-50"
+          >
+            Git Config
+          </button>
+          {isAutomated && (
+            <button
+              onClick={() => setIsInviteOpen(true)}
+              disabled={isDeleting || isReinstalling}
+              className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 dark:bg-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-600 text-slate-700 dark:text-zinc-200 rounded-lg disabled:opacity-50"
+            >
+              Share
+            </button>
+          )}
+          {(isHetzner || isDigitalOcean) && (
+            <button
+              onClick={() => setIsScheduleOpen(true)}
+              disabled={isDeleting || isReinstalling}
+              className={`relative flex-1 py-2 text-xs font-bold uppercase rounded-lg transition-all disabled:opacity-50 ${
+                scheduleConfig?.enabled
+                  ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700'
+                  : 'bg-slate-100 dark:bg-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-600 text-slate-700 dark:text-zinc-200'
+              }`}
+            >
+              {scheduleConfig?.enabled && (
+                <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse" />
+              )}
+              Schedule
+            </button>
+          )}
+          {(isHetzner || isDigitalOcean) && server.status !== 'off' && (
+            <button
+              onClick={() => setIsConfirmSnapshotOpen(true)}
+              disabled={isSnapshotting || isDeleting || isReinstalling}
+              className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 dark:bg-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-600 text-slate-700 dark:text-zinc-200 rounded-lg disabled:opacity-50 flex items-center justify-center"
+            >
+              {isSnapshotting && (
+                <div className="h-3.5 w-3.5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin mr-1.5" />
+              )}
+              {isSnapshotting ? 'Shutting down...' : 'Shutdown'}
+            </button>
+          )}
+          {(isHetzner || isDigitalOcean) && server.status !== 'off' && (
+            <button
+              onClick={handleRestart}
+              disabled={isRestarting || isDeleting || isReinstalling}
+              className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 dark:bg-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-600 text-slate-700 dark:text-zinc-200 rounded-lg disabled:opacity-50 flex items-center justify-center"
+            >
+              {isRestarting && (
+                <div className="h-3.5 w-3.5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mr-1.5" />
+              )}
+              {isRestarting ? 'Restarting...' : 'Restart'}
+            </button>
+          )}
         </div>
       </div>
 
       <div className="p-6 space-y-4">
         <div className="space-y-3">
           <div className="flex justify-between items-center">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Projects</span>
-            <button onClick={() => setIsProjectModalOpen(true)} className="text-xs font-bold text-indigo-500 hover:text-indigo-400 transition-colors">+ Add Domain</button>
+            <span className="text-xs font-bold text-slate-500 dark:text-zinc-500 uppercase tracking-widest">Projects</span>
+            <button onClick={() => setIsProjectModalOpen(true)} className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors">+ Add Domain</button>
           </div>
           {server.projects?.map(p => (
-            <div key={p.domain} className="flex justify-between items-center bg-slate-950/30 p-2 rounded-lg border border-slate-800/50">
-              <span className="text-sm font-mono text-indigo-400 truncate max-w-[200px]">{p.domain}</span>
+            <div key={p.domain} className="flex justify-between items-center bg-slate-50 dark:bg-zinc-800 p-2 rounded-lg border border-slate-200 dark:border-zinc-700">
+              <span className="text-sm font-mono text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 truncate max-w-[200px]">{p.domain}</span>
               <div className="flex space-x-2">
-                <button onClick={() => { setEditingDomain({ domain: p.domain, port: p.port || 80 }); setIsProjectModalOpen(true); }} className="text-slate-600 hover:text-white"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" /></svg></button>
-                <button onClick={() => onDeleteDomain(server.id, p.domain)} className="text-slate-600 hover:text-rose-500"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                <button onClick={() => { setEditingDomain({ domain: p.domain, port: p.port || 80, startDdev: p.startDdev }); setIsProjectModalOpen(true); }} className="text-slate-400 hover:text-slate-700"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" /></svg></button>
+                <button
+                  onClick={() => setDeletingDomainPending(p.domain)}
+                  disabled={deletingDomain === p.domain}
+                  className="text-slate-400 hover:text-rose-500 disabled:opacity-50"
+                >
+                  {deletingDomain === p.domain ? (
+                    <div className="w-3.5 h-3.5 border border-current border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  )}
+                </button>
               </div>
             </div>
           ))}
         </div>
 
         <div className="flex flex-col space-y-2 mt-4">
-          <IdeLaunchButton server={server} fullWidth />
+          {server.status === 'off' ? (
+            <button
+              onClick={() => setIsSpinUpOpen(true)}
+              disabled={isSpinningUp}
+              className="w-full py-2.5 justify-center bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-all shadow-lg inline-flex items-center whitespace-nowrap"
+            >
+              {isSpinningUp ? (
+                <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+              ) : (
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              )}
+              <span>{isSpinningUp ? 'Spinning Up...' : 'Spin Up'}</span>
+            </button>
+          ) : (
+            <IdeLaunchButton server={server} fullWidth />
+          )}
         </div>
       </div>
 
-      {isLogsModalOpen && <LogsModal isOpen={isLogsModalOpen} onClose={() => setIsLogsModalOpen(false)} debugData={debugData} isFetching={isFetchingLogs} />}
+      {isLogsModalOpen && (
+        <LogsModal
+          isOpen={isLogsModalOpen}
+          onClose={() => setIsLogsModalOpen(false)}
+          debugData={debugData}
+          serverLogs={serverLogs}
+          isFetching={isFetchingLogs}
+          tunnelId={tunnelId}
+          tunnelToken={tunnelToken}
+        />
+      )}
+      {isApiAuthOpen && onUpdateAllowedPeers && (
+        <ApiAuthModal
+          isOpen={isApiAuthOpen}
+          onClose={() => setIsApiAuthOpen(false)}
+          server={server}
+          allServers={servers}
+          onSave={onUpdateAllowedPeers}
+        />
+      )}
+      {isGitConfigOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-2xl shadow-2xl p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-zinc-100">Git Configuration</h3>
+              <button onClick={() => setIsGitConfigOpen(false)} className="text-slate-400 hover:text-slate-900 dark:hover:text-zinc-100">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-zinc-200 mb-1">Git Name</label>
+                <input type="text" placeholder="e.g. John Doe" value={gitNameInput} onChange={e => setGitNameInput(e.target.value)}
+                  className="w-full bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-600 rounded-lg px-3 py-2 text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-zinc-200 mb-1">Git Email</label>
+                <input type="email" placeholder="e.g. john@example.com" value={gitEmailInput} onChange={e => setGitEmailInput(e.target.value)}
+                  className="w-full bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-600 rounded-lg px-3 py-2 text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
+              </div>
+            </div>
+            {(gitNameInput.trim() || gitEmailInput.trim()) && server.status === 'ready' && (
+              <div className="mt-4 p-3 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400 mb-2">Apply now on running server</p>
+                <code className="block text-xs text-indigo-700 dark:text-indigo-300 font-mono break-all leading-relaxed">
+                  {[
+                    gitNameInput.trim() && `git config --global user.name "${gitNameInput.trim()}"`,
+                    gitEmailInput.trim() && `git config --global user.email "${gitEmailInput.trim()}"`
+                  ].filter(Boolean).join('\n')}
+                </code>
+                <div className="flex gap-2 mt-2">
+                  <button
+                    onClick={() => {
+                      const cmds = [
+                        gitNameInput.trim() && `git config --global user.name "${gitNameInput.trim()}"`,
+                        gitEmailInput.trim() && `git config --global user.email "${gitEmailInput.trim()}"`
+                      ].filter(Boolean).join('\n');
+                      navigator.clipboard.writeText(cmds);
+                    }}
+                    className="flex-1 py-1.5 text-xs font-bold bg-slate-200 dark:bg-zinc-700 hover:bg-slate-300 dark:hover:bg-zinc-600 text-slate-700 dark:text-zinc-200 rounded-lg transition-all"
+                  >
+                    Copy Commands
+                  </button>
+                  {server.tunnelUrl && (
+                    <a
+                      href={server.tunnelUrl.split('?')[0]}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 py-1.5 text-xs font-bold text-center bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-800/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700 rounded-lg transition-all"
+                    >
+                      Open Terminal ↗
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
+            <div className="flex gap-3 mt-4">
+              <button onClick={() => setIsGitConfigOpen(false)} className="flex-1 py-2.5 text-sm font-bold bg-slate-100 dark:bg-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-600 text-slate-700 dark:text-zinc-200 rounded-xl transition-all">Cancel</button>
+              <button
+                disabled={isSavingGitConfig}
+                onClick={async () => {
+                  if (!onUpdateGitConfig) return;
+                  setIsSavingGitConfig(true);
+                  try { await onUpdateGitConfig(server.id, gitNameInput, gitEmailInput); setIsGitConfigOpen(false); }
+                  finally { setIsSavingGitConfig(false); }
+                }}
+                className="flex-1 py-2.5 text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all disabled:opacity-50"
+              >
+                {isSavingGitConfig ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {isSpinUpOpen && (
+        <ConfirmSpinUpModal
+          isOpen={isSpinUpOpen}
+          onClose={() => setIsSpinUpOpen(false)}
+          onConfirm={async (selectedType, selectedSnap) => {
+            await handleSpinUp(selectedType, selectedSnap);
+          }}
+          serverId={server.id}
+          serverName={server.hostname || server.ip}
+          defaultServerType={server.serverType || server.scheduleConfig?.serverType || 'cpx21'}
+          vpsSnapshots={vpsSnapshots}
+          selectedSnapshotId={selectedSnapshotId}
+          onSnapshotChange={handleSnapshotChange}
+          provider={server.provider}
+          location={server.scheduleConfig?.location || (server.provider === 'digitalocean' ? 'nyc1' : 'nbg1')}
+        />
+      )}
+      <InviteCollabModal
+        serverId={server.id}
+        orgId={server.orgId || 'personal'}
+        isOpen={isInviteOpen}
+        onClose={() => setIsInviteOpen(false)}
+        onSuccess={onRefresh}
+      />
+      <ErrorModal
+        isOpen={!!errorMessage}
+        onClose={() => setErrorMessage(null)}
+        message={errorMessage || ''}
+      />
+
     </div>
   );
 }
@@ -394,30 +1628,97 @@ function CopyButton({ value }: { value: string }) {
   );
 }
 
-function LogsModal({ isOpen, onClose, debugData, isFetching }: {
+function LogsModal({ isOpen, onClose, debugData, serverLogs, isFetching, tunnelId, tunnelToken }: {
   isOpen: boolean,
   onClose: () => void,
   debugData: { docker: string, setup: string, timestamp: string } | null,
-  isFetching: boolean
+  serverLogs: string[],
+  isFetching: boolean,
+  tunnelId?: string,
+  tunnelToken?: string
 }) {
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-      <div className="w-full max-w-4xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
+      <div className="w-full max-w-4xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh] text-left">
         <div className="px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
           <h3 className="text-lg font-bold text-white uppercase tracking-wider">System Logs</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
         </div>
-        <div className="flex-1 overflow-auto p-6 bg-slate-950 font-mono text-xs space-y-6">
+        <div className="flex-1 overflow-auto p-6 bg-slate-950 font-mono text-xs space-y-6 animate-in fade-in duration-200">
+          
+          {/* Cloudflare Tunnel Details */}
+          {(tunnelId || tunnelToken) && (
+            <div className="space-y-2 border-b border-slate-800/60 pb-6 text-left">
+              <div className="flex items-center space-x-2 text-indigo-400">
+                <span className="font-bold uppercase tracking-widest text-[10px]">Cloudflare Tunnel Configuration</span>
+              </div>
+              <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-800 space-y-3">
+                {tunnelId && (
+                  <div className="flex justify-between items-center text-slate-300">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-slate-500 font-medium">Tunnel ID:</span>
+                      <span className="font-mono text-indigo-300 select-all font-bold">{tunnelId}</span>
+                    </div>
+                    <CopyButton value={tunnelId} />
+                  </div>
+                )}
+                {tunnelToken && (
+                  <div className="flex justify-between items-start text-slate-300">
+                    <div className="mr-4 overflow-hidden text-left">
+                      <span className="text-slate-500 font-medium mr-2">Tunnel Token:</span>
+                      <span className="font-mono text-indigo-300 select-all break-all">{tunnelToken}</span>
+                    </div>
+                    <div className="flex-shrink-0 pt-0.5">
+                      <CopyButton value={tunnelToken} />
+                    </div>
+                  </div>
+                )}
+                {tunnelToken && (
+                  <div className="mt-2 pt-3 border-t border-slate-800/80 text-left">
+                    <span className="text-slate-500 block mb-1.5 font-medium">VPS Setup & Connection Command:</span>
+                    <div className="bg-slate-950 p-2.5 rounded border border-slate-800 flex justify-between items-center">
+                      <code className="text-emerald-400 select-all break-all pr-4 text-[10px] whitespace-pre-wrap leading-relaxed">
+                        {`if ! command -v cloudflared &> /dev/null; then
+  curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+  sudo dpkg -i cloudflared.deb
+  rm cloudflared.deb
+fi
+sudo cloudflared service uninstall || true
+sudo cloudflared service install ${tunnelToken}
+sudo systemctl restart cloudflared`}
+                      </code>
+                      <div className="flex-shrink-0">
+                        <CopyButton value={`if ! command -v cloudflared &> /dev/null; then\n  curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb && sudo dpkg -i cloudflared.deb && rm cloudflared.deb\nfi\nsudo cloudflared service uninstall || true\nsudo cloudflared service install ${tunnelToken}\nsudo systemctl restart cloudflared`} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Orchestrator Event Logs */}
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2 text-indigo-400 border-b border-indigo-500/20 pb-1">
+              <span className="font-bold uppercase tracking-widest text-[10px]">Orchestrator Event Logs</span>
+            </div>
+            <pre className="text-slate-300 whitespace-pre-wrap leading-relaxed">
+              {serverLogs && serverLogs.length > 0 
+                ? serverLogs.join('\n') 
+                : 'No orchestrator events recorded.'}
+            </pre>
+          </div>
+
           {isFetching ? (
-            <div className="flex flex-col items-center justify-center py-20 space-y-4">
-              <div className="animate-spin h-8 w-8 border-4 border-indigo-500 border-t-transparent rounded-full" />
-              <p className="text-slate-500 animate-pulse">Streaming logs from VPS...</p>
+            <div className="flex flex-col items-center justify-center py-10 space-y-4 border-t border-slate-800/40">
+              <div className="animate-spin h-6 w-6 border-2 border-indigo-500 border-t-transparent rounded-full" />
+              <p className="text-slate-500 animate-pulse text-[10px] uppercase font-bold tracking-wider">Streaming logs from VPS...</p>
             </div>
           ) : debugData ? (
-            <>
+            <div className="space-y-6 border-t border-slate-800/40 pt-6">
               <div className="space-y-2">
-                <div className="flex items-center space-x-2 text-indigo-400 border-b border-indigo-500/20 pb-1">
+                <div className="flex items-center space-x-2 text-sky-400 border-b border-sky-500/20 pb-1">
                   <span className="font-bold uppercase tracking-widest text-[10px]">Cloud-Init Setup</span>
                 </div>
                 <pre className="text-slate-300 whitespace-pre-wrap leading-relaxed">{debugData.setup || 'No setup logs available.'}</pre>
@@ -428,9 +1729,11 @@ function LogsModal({ isOpen, onClose, debugData, isFetching }: {
                 </div>
                 <pre className="text-slate-300 whitespace-pre-wrap leading-relaxed">{debugData.docker || 'No container logs available.'}</pre>
               </div>
-            </>
+            </div>
           ) : (
-            <div className="text-slate-500 text-center py-20">No logs found. Ensure the bootstrap script has started on the VPS.</div>
+            <div className="text-slate-600 text-center py-10 border-t border-slate-800/40 text-[10px] uppercase font-bold tracking-wider">
+              No VPS logs found. Ensure the bootstrap script has started on the VPS.
+            </div>
           )}
         </div>
       </div>
@@ -440,7 +1743,9 @@ function LogsModal({ isOpen, onClose, debugData, isFetching }: {
 
 function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, fullWidth?: boolean }) {
   const [defaultIde, setDefaultIde] = useState<string>('vscode');
-  const [selectedPath, setSelectedPath] = useState<string>(`/home/${server.userName || 'root'}/workspace`);
+  const [selectedPath, setSelectedPath] = useState<string>(
+    (server.userName === 'root' || !server.userName) ? '/root' : `/home/${server.userName}/workspace`
+  );
   const [liveProjects, setLiveProjects] = useState<string[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
@@ -480,6 +1785,7 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [server.id, server.status]);
 
   // Refresh live projects whenever the dropdown is opened
@@ -487,6 +1793,7 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
     if (isOpen && server.status === 'ready') {
       fetchLiveProjects();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, server.status]);
 
   const handleSelectIde = (ideId: string) => {
@@ -549,17 +1856,18 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
 
   const getIdeUrl = (ideId: string, path: string) => {
     const user = server.userName || 'root';
+    const host = server.ip;
     if (ideId === 'phpstorm') {
-      return `jetbrains://gateway/ssh/environment?h=${server.ip}&u=${user}&p=22&ideHint=PS&projectHint=${path}`;
+      return `jetbrains://gateway/ssh/environment?h=${host}&u=${user}&p=22&ideHint=PS&projectHint=${path}`;
     }
     const scheme = ideId === 'antigravity' ? 'antigravity' : (ideId === 'cursor' ? 'cursor' : 'vscode');
-    return `${scheme}://vscode-remote/ssh-remote+${user}@${server.ip}${path}?windowId=_blank`;
+    return `${scheme}://vscode-remote/ssh-remote+${user}@${host}${path}?windowId=_blank`;
   };
 
   const currentIde = ides.find(i => i.id === defaultIde) || ides.find(i => i.id === 'vscode')!;
   const currentUrl = getIdeUrl(currentIde.id, selectedPath);
 
-  const mainWorkspacePath = `/home/${server.userName || 'root'}/workspace`;
+  const mainWorkspacePath = (server.userName === 'root' || !server.userName) ? '/root' : `/home/${server.userName}/workspace`;
   
   const staticProjects = server.projects?.map(p => ({ name: p.name, path: `${mainWorkspacePath}/${p.name}`, isStatic: true })) || [];
   
@@ -583,7 +1891,9 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
         <div className="flex flex-col items-start leading-tight">
           <span>Open in {currentIde.name}</span>
           <span className="text-[8px] opacity-80 font-mono tracking-tight mt-0.5 truncate max-w-[120px]">
-            {selectedPath === mainWorkspacePath ? '~/workspace' : `~/workspace/${selectedPath.split('/').pop()}`}
+            {mainWorkspacePath === '/root'
+              ? (selectedPath === '/root' ? '~' : `~/${selectedPath.split('/').pop()}`)
+              : (selectedPath === mainWorkspacePath ? '~/workspace' : `~/workspace/${selectedPath.split('/').pop()}`)}
           </span>
         </div>
       </a>

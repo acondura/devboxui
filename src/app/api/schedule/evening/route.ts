@@ -1,0 +1,277 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getCloudflareEnv } from '@/lib/auth';
+import { getScheduledServers, getServersWithInactivity, runEveningWorkflow, processAllPendingSnapshots, processAllPendingCreates, processAllPendingShutdowns } from '@/modules/inventory/schedule-actions';
+import { CloudflareApiService } from '@/lib/cloudflare-api';
+
+export const dynamic = 'force-dynamic';
+
+/**
+ * Evening cron route — poweroff → snapshot → delete old snapshot → delete server.
+ *
+ * Called by Cloudflare Cron Trigger. The cron worker fetches this URL with:
+ *   Authorization: Bearer <CRON_SECRET>
+ *
+ * Manual test:
+ *   curl -X GET https://devboxui.com/api/schedule/evening \
+ *        -H "Authorization: Bearer <secret>"
+ */
+export async function GET(req: NextRequest) {
+  const env = await getCloudflareEnv();
+
+  // ── Auth ────────────────────────────────────────────────────────────────────
+  const cronSecret = env.CRON_SECRET;
+  if (cronSecret) {
+    const authHeader = req.headers.get('authorization') || '';
+    const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+    if (token !== cronSecret) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+  }
+
+  const kv = env.KV;
+  // Process pending shutdowns on every cron tick — servers power off within seconds.
+  if (kv) {
+    try {
+      await processAllPendingShutdowns(kv);
+    } catch (err) {
+      console.error('[Cron Evening] Failed to process pending shutdowns:', err);
+    }
+  }
+  // Self-healing processing of pending snapshots/creations (runs hourly to stay within KV list quota)
+  const nowForPending = new Date();
+  if (kv && nowForPending.getUTCMinutes() === 0) {
+    try {
+      await processAllPendingSnapshots(kv);
+    } catch (err) {
+      console.error('[Cron Evening] Failed to process pending snapshots:', err);
+    }
+    try {
+      await processAllPendingCreates(kv);
+    } catch (err) {
+      console.error('[Cron Evening] Failed to process pending creations:', err);
+    }
+  }
+
+  // Only scan for scheduled servers at the top of each hour to avoid kv.list on every tick
+  const nowUtc = new Date();
+  if (nowUtc.getUTCMinutes() !== 0) {
+    return NextResponse.json({ timestamp: nowUtc.toISOString(), processed: 0, results: [] });
+  }
+
+  const results: Array<{
+    serverId: string;
+    userEmail: string;
+    success: boolean;
+    message: string;
+    snapshotId?: number;
+  }> = [];
+
+  const scheduledServers = await getScheduledServers();
+  const scheduledIds = new Set(scheduledServers.map(s => s.server.id));
+
+  // Inactivity pass: servers with shutdownAfterInactivity but no active schedule
+  const inactivityServers = await getServersWithInactivity();
+  for (const { server, schedule, userEmail } of inactivityServers) {
+    if (scheduledIds.has(server.id)) continue; // already handled below
+    if (server.status !== 'ready') continue;
+    try {
+      const timeoutMinutes = schedule.inactivityDurationMinutes || 30;
+      const timeoutSeconds = timeoutMinutes * 60;
+      let logsUrl = `https://logs-${server.id.slice(0, 8)}.devboxui.com`;
+      if (server.tunnelUrl) {
+        const baseUrl = server.tunnelUrl.split('?')[0];
+        if (baseUrl.includes('-code.')) {
+          logsUrl = baseUrl.replace('-code.', '-logs.');
+        } else if (baseUrl.includes('-web.')) {
+          logsUrl = baseUrl.replace('-web.', '-logs.');
+        }
+      }
+
+      const cfApi = new CloudflareApiService(env);
+      const serviceToken = await cfApi.getOrCreateServiceToken(kv);
+      const logsHostname = logsUrl.replace('https://', '');
+
+      let resp: Response | null = null;
+      try {
+        resp = await fetch(logsUrl, {
+          headers: {
+            'CF-Access-Client-Id': serviceToken.id,
+            'CF-Access-Client-Secret': serviceToken.client_secret,
+          },
+          next: { revalidate: 0 },
+          cache: 'no-store'
+        });
+      } catch (e) {
+        console.warn(`[Cron Inactivity] Initial fetch of ${logsUrl} failed:`, e);
+      }
+
+      if (!resp || resp.status === 530 || resp.status === 401 || resp.status === 403 || resp.status === 404) {
+        console.log(`[Cron Inactivity] Fetch failed or returned status ${resp?.status || 'network_error'}. Running self-healing...`);
+        try {
+          await cfApi.authorizeServiceToken(logsHostname, serviceToken.id);
+        } catch (err) {
+          console.warn(`[Cron Inactivity] Self-heal authorize failed:`, err);
+        }
+        if (server.tunnelId) {
+          try {
+            await cfApi.setupHostname(logsHostname, server.tunnelId, "http://localhost:8000");
+          } catch (err) {
+            console.warn(`[Cron Inactivity] Self-heal setupHostname failed:`, err);
+          }
+        }
+        try {
+          resp = await fetch(logsUrl, {
+            headers: {
+              'CF-Access-Client-Id': serviceToken.id,
+              'CF-Access-Client-Secret': serviceToken.client_secret,
+            },
+            next: { revalidate: 0 },
+            cache: 'no-store'
+          });
+        } catch (e) {
+          console.error(`[Cron Inactivity] Retry fetch of ${logsUrl} failed:`, e);
+        }
+      }
+
+      if (resp && resp.ok) {
+        const data = await resp.json() as { idle_seconds?: number };
+        if (typeof data.idle_seconds === 'number') {
+          console.log(`[Cron Inactivity] Server ${server.id} idle for ${data.idle_seconds}s (limit: ${timeoutSeconds}s)`);
+          if (data.idle_seconds >= timeoutSeconds) {
+            console.log(`[Cron Inactivity] Idle limit exceeded. Shutting down server ${server.id}...`);
+            const result = await runEveningWorkflow(server.id, userEmail);
+            results.push({ serverId: server.id, userEmail, ...result, message: `Auto-shutdown due to inactivity (${timeoutMinutes}m): ${result.message}` });
+          }
+        }
+      }
+    } catch (err) {
+      console.error(`[Cron Inactivity] Failed checking server ${server.id}:`, err);
+    }
+  }
+
+  for (const { server, schedule, userEmail } of scheduledServers) {
+    // Inactivity Auto-Shutdown check
+    if (schedule.shutdownAfterInactivity && server.status === 'ready') {
+      try {
+        const timeoutMinutes = schedule.inactivityDurationMinutes || 30;
+        const timeoutSeconds = timeoutMinutes * 60;
+        let logsUrl = `https://logs-${server.id.slice(0, 8)}.devboxui.com`;
+        if (server.tunnelUrl) {
+          const baseUrl = server.tunnelUrl.split('?')[0];
+          if (baseUrl.includes('-code.')) {
+            logsUrl = baseUrl.replace('-code.', '-logs.');
+          } else if (baseUrl.includes('-web.')) {
+            logsUrl = baseUrl.replace('-web.', '-logs.');
+          }
+        }
+
+        const cfApi = new CloudflareApiService(env);
+        const serviceToken = await cfApi.getOrCreateServiceToken(kv);
+        const logsHostname = logsUrl.replace('https://', '');
+
+        let resp: Response | null = null;
+        try {
+          resp = await fetch(logsUrl, {
+            headers: {
+              'CF-Access-Client-Id': serviceToken.id,
+              'CF-Access-Client-Secret': serviceToken.client_secret,
+            },
+            next: { revalidate: 0 },
+            cache: 'no-store'
+          });
+        } catch (e) {
+          console.warn(`[Cron Inactivity] Initial fetch of ${logsUrl} failed:`, e);
+        }
+
+        if (!resp || resp.status === 530 || resp.status === 401 || resp.status === 403 || resp.status === 404) {
+          console.log(`[Cron Inactivity] Fetch failed or returned status ${resp?.status || 'network_error'}. Running self-healing...`);
+          try {
+            await cfApi.authorizeServiceToken(logsHostname, serviceToken.id);
+          } catch (err) {
+            console.warn(`[Cron Inactivity] Self-heal authorize failed:`, err);
+          }
+          if (server.tunnelId) {
+            try {
+              await cfApi.setupHostname(logsHostname, server.tunnelId, "http://localhost:8000");
+            } catch (err) {
+              console.warn(`[Cron Inactivity] Self-heal setupHostname failed:`, err);
+            }
+          }
+          try {
+            resp = await fetch(logsUrl, {
+              headers: {
+                'CF-Access-Client-Id': serviceToken.id,
+                'CF-Access-Client-Secret': serviceToken.client_secret,
+              },
+              next: { revalidate: 0 },
+              cache: 'no-store'
+            });
+          } catch (e) {
+            console.error(`[Cron Inactivity] Retry fetch of ${logsUrl} failed:`, e);
+          }
+        }
+
+        if (resp && resp.ok) {
+          const data = await resp.json() as { idle_seconds?: number };
+          if (typeof data.idle_seconds === 'number') {
+            console.log(`[Cron Inactivity] Server ${server.id} (IP: ${server.ip}) idle for ${data.idle_seconds}s (limit: ${timeoutSeconds}s)`);
+            if (data.idle_seconds >= timeoutSeconds) {
+              console.log(`[Cron Inactivity] Idle limit exceeded. Shutting down server ${server.id}...`);
+              const result = await runEveningWorkflow(server.id, userEmail);
+              results.push({ serverId: server.id, userEmail, ...result, message: `Auto-shutdown due to inactivity (${timeoutMinutes}m): ${result.message}` });
+              continue;
+            }
+          }
+        }
+      } catch (err) {
+        console.error(`[Cron Inactivity] Failed checking inactivity for server ${server.id}:`, err);
+      }
+    }
+
+    if (schedule.snapshotEnabled === false || !schedule.snapshotTime) {
+      results.push({
+        serverId: server.id,
+        userEmail,
+        success: true,
+        message: 'Skipped — evening snapshot disabled for this server'
+      });
+      continue;
+    }
+
+    // Only fire if the scheduled snapshot time matches the current local hour
+    const nowUtc = new Date();
+    const localStr = nowUtc.toLocaleString('en-US', {
+      timeZone: schedule.timezone || 'UTC',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+    const [localH, localM] = localStr.split(':').map(Number);
+    const [targetH, targetM] = schedule.snapshotTime.split(':').map(Number);
+
+    if (localH !== targetH || localM !== targetM) {
+      results.push({
+        serverId: server.id,
+        userEmail,
+        success: true,
+        message: `Skipped — not time yet (local: ${localStr}, target: ${schedule.snapshotTime})`
+      });
+      continue;
+    }
+
+    try {
+      const result = await runEveningWorkflow(server.id, userEmail);
+      results.push({ serverId: server.id, userEmail, ...result });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[Cron Evening] Failed for ${server.id}:`, msg);
+      results.push({ serverId: server.id, userEmail, success: false, message: msg });
+    }
+  }
+
+  return NextResponse.json({
+    timestamp: new Date().toISOString(),
+    processed: results.length,
+    results
+  });
+}

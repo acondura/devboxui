@@ -29,18 +29,34 @@ export class CloudflareApiService {
    * Creates a new Cloudflare Tunnel for a specific VPS.
    */
   async createTunnel(name: string) {
-    // 1. Create Tunnel
-    const tunnel = await this.request<{ id: string }>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/cfd_tunnel`, {
-      method: "POST",
-      body: JSON.stringify({ name, config_src: "cloudflare" }),
-    });
+    try {
+      // 1. Create Tunnel
+      const tunnel = await this.request<{ id: string }>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/cfd_tunnel`, {
+        method: "POST",
+        body: JSON.stringify({ name, config_src: "cloudflare" }),
+      });
 
-    // 2. Create Tunnel Token
-    const token = await this.request<string>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/cfd_tunnel/${tunnel.id}/token`, {
-      method: "GET",
-    });
+      // 2. Create Tunnel Token
+      const token = await this.request<string>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/cfd_tunnel/${tunnel.id}/token`, {
+        method: "GET",
+      });
 
-    return { id: tunnel.id, token };
+      return { id: tunnel.id, token };
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      if (errMsg.includes("1013") || errMsg.includes("already have a tunnel with this name")) {
+        console.log(`Tunnel "${name}" already exists. Retrieving existing tunnel...`);
+        const existingTunnel = await this.getTunnelByName(name);
+        if (existingTunnel) {
+          console.log(`Found existing tunnel ID: ${existingTunnel.id}. Fetching token...`);
+          const token = await this.request<string>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/cfd_tunnel/${existingTunnel.id}/token`, {
+            method: "GET",
+          });
+          return { id: existingTunnel.id, token };
+        }
+      }
+      throw err;
+    }
   }
 
   /**
@@ -110,6 +126,126 @@ export class CloudflareApiService {
         }),
       });
     }
+  }
+
+  async setupARecord(hostname: string, ip: string) {
+    const records = await this.request<{ id: string; name: string; content: string }[]>(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/dns_records?name=${hostname}&type=A`);
+    const existing = records.find(r => r.name === hostname);
+
+    if (existing) {
+      if (existing.content !== ip) {
+        console.log(`Updating existing DNS A record for ${hostname} to ${ip}...`);
+        await this.request(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/dns_records/${existing.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            content: ip,
+            proxied: false,
+          }),
+        });
+      } else {
+        console.log(`DNS A record for ${hostname} is already correct. Skipping.`);
+      }
+    } else {
+      console.log(`Creating new DNS A record for ${hostname} pointing to ${ip}...`);
+      await this.request(`/zones/${this.env.CLOUDFLARE_ZONE_ID}/dns_records`, {
+        method: "POST",
+        body: JSON.stringify({
+          type: "A",
+          name: hostname,
+          content: ip,
+          proxied: false,
+        }),
+      });
+    }
+  }
+
+  async syncPeerBypassPolicy(hostname: string, peerIps: string[]) {
+    const apps = await this.request<{ id: string; domain: string }[]>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps`);
+    const rootDomain = hostname.split('.').slice(-2).join('.');
+    const wildcardDomain = `*.${rootDomain}`;
+    const app = apps.find(a => a.domain === hostname || a.domain === rootDomain || a.domain === wildcardDomain);
+    if (!app) {
+      console.warn(`No Access App found for ${hostname}, ${rootDomain}, or ${wildcardDomain} during peer sync.`);
+      return;
+    }
+
+    interface Policy { id: string; name: string }
+    const policies = await this.request<Policy[]>(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps/${app.id}/policies`);
+    const peerPolicy = policies.find(p => p.name === "Bypass Peer DevBoxes");
+
+    if (peerIps.length === 0) {
+      if (peerPolicy) {
+        console.log(`Deleting peer bypass policy for ${hostname}...`);
+        await this.request(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps/${app.id}/policies/${peerPolicy.id}`, {
+          method: "DELETE"
+        });
+      }
+      return;
+    }
+
+    const include = peerIps.map(ip => ({ ip: { ip: ip.includes('/') ? ip : `${ip}/32` } }));
+    const payload = {
+      name: "Bypass Peer DevBoxes",
+      decision: "bypass",
+      precedence: 2,
+      include
+    };
+
+    if (peerPolicy) {
+      console.log(`Updating peer bypass policy for ${hostname} with ${peerIps.length} IPs...`);
+      await this.request(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps/${app.id}/policies/${peerPolicy.id}`, {
+        method: "PUT",
+        body: JSON.stringify(payload)
+      });
+    } else {
+      console.log(`Creating new peer bypass policy for ${hostname} with ${peerIps.length} IPs...`);
+      await this.request(`/accounts/${this.env.CLOUDFLARE_ACCOUNT_ID}/access/apps/${app.id}/policies`, {
+        method: "POST",
+        body: JSON.stringify(payload)
+      });
+    }
+  }
+
+  async syncPeerWafBypassRules(peerIps: string[]) {
+    if (!peerIps.length) return;
+
+    const cleanIps = [...new Set(peerIps.map(ip => ip.replace('/32', '')))];
+    const ipConditions = cleanIps.map(ip => `(ip.src eq ${ip})`).join(' or ');
+    const expression = `(${ipConditions})`;
+
+    const phase = `/zones/${this.env.CLOUDFLARE_ZONE_ID}/rulesets/phases/http_request_firewall_custom/entrypoint`;
+
+    // Fetch existing entrypoint ruleset (may not exist yet)
+    interface WafRule { id: string; description?: string; expression: string; action: string }
+    interface Ruleset { id: string; rules?: WafRule[] }
+    let existing: Ruleset = { id: '', rules: [] };
+    try {
+      existing = await this.request<Ruleset>(phase);
+    } catch {
+      // Ruleset doesn't exist yet — PUT will create it
+    }
+
+    const otherRules = (existing.rules || []).filter(r => r.description !== 'devbox-peer-bypass');
+
+    const updatedRules = [
+      {
+        action: "skip",
+        action_parameters: {
+          phases: ["http_ratelimit", "http_request_firewall_managed", "http_request_sbfm"],
+          products: ["bic", "hot", "rateLimit", "securityLevel", "uaBlock", "waf", "zoneLockdown"]
+        },
+        expression,
+        description: "devbox-peer-bypass",
+        enabled: true,
+      },
+      ...otherRules,
+    ];
+
+    console.log(`[WAF] Syncing peer bypass rule for IPs: ${cleanIps.join(', ')}`);
+    await this.request(phase, {
+      method: "PUT",
+      body: JSON.stringify({ rules: updatedRules }),
+    });
   }
 
   async removeHostname(hostname: string, tunnelId: string) {

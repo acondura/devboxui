@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { ThemeProvider } from "@/lib/theme";
 
 const geistSans = Geist({
 	variable: "--font-geist-sans",
@@ -26,8 +27,28 @@ export default function RootLayout({
 		<html lang="en">
 			<head>
 				<link rel="icon" href="/favicon.svg" type="image/svg+xml"></link>
+				<meta name="darkreader-lock" />
+				<script
+					dangerouslySetInnerHTML={{
+						__html: `
+							window.addEventListener('error', function(event) {
+								var msg = event.message || '';
+								if (
+									msg.indexOf('ChunkLoadError') !== -1 ||
+									msg.indexOf('Loading chunk') !== -1 ||
+									msg.indexOf('Failed to fetch dynamically imported module') !== -1
+								) {
+									console.warn('Global ChunkLoadError detected. Reloading page...');
+									window.location.reload();
+								}
+							});
+						`
+					}}
+				/>
 			</head>
-			<body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>{children}</body>
+			<body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+				<ThemeProvider>{children}</ThemeProvider>
+			</body>
 		</html>
 	);
 }

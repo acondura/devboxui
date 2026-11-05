@@ -1,9 +1,10 @@
 export interface ServerConfig {
   id: string; // UUID or unique hash
+  name?: string;
   ip: string;
   userName: string;
   userEmail: string;
-  status: 'provisioning' | 'Initializing' | 'initializing' | 'ready' | 'error' | 'off' | 'waiting-for-bootstrap';
+  status: 'provisioning' | 'configuring' | 'Initializing' | 'initializing' | 'ready' | 'error' | 'off' | 'waiting-for-bootstrap' | 'snapshotting';
   sshPrivateKey: string;
   sshPublicKey: string;
   rootPassword?: string;
@@ -19,6 +20,7 @@ export interface ServerConfig {
     domain: string;
     port?: number;
     status: 'ready' | 'provisioning' | 'error';
+    startDdev?: boolean;
   }[];
   detailedStatus?: string;
   provisioningToken?: string;
@@ -29,9 +31,84 @@ export interface ServerConfig {
   bootstrapCommand?: string;
   contaboInstanceId?: number;
   contaboSecretId?: number;
+  digitalOceanDropletId?: number;
   tunnelToken?: string;
   providerName?: string;
   hostname?: string;
+  scheduleConfig?: ScheduleConfig;
+  allowedPeers?: string[];
+  serverType?: string;
+  pendingSnapshotId?: number;
+  pendingSnapshotActionId?: number;
+  pendingSnapshotDescription?: string;
+  pendingSnapshotDate?: string;
+  pendingCreateActionId?: number;
+  pendingShutdownForSnapshot?: boolean;
+  serverSpecs?: string;
+  priceMonthly?: string;
+  priceHourly?: string;
+  spinUpNote?: string;
+  gitUserName?: string;
+  gitUserEmail?: string;
+  orgId?: string;
+  assignedTo?: string;
+  collaborators?: CollaboratorInfo[];
+  provisioningOptions?: {
+    aptUpdate?: boolean;
+    installDocker?: boolean;
+    installDdev?: boolean;
+    installOhMyBash?: boolean;
+  };
+}
+
+export interface CollaboratorInfo {
+  email: string;
+  username: string; // Sanitized POSIX username (e.g. 'john')
+  status: 'pending' | 'active';
+}
+
+export interface OrgSettings {
+  orgId: string;
+  orgName: string;
+  hetznerToken: string; // Team-wide Hetzner billing token
+  digitalOceanToken?: string; // Team-wide DigitalOcean billing token
+  adminEmails: string[]; // Administrators who can manage members/billing
+}
+
+export interface UserMembership {
+  orgId: string;
+  role: 'owner' | 'admin' | 'member';
+  permissions: {
+    canCreateServers: boolean; // Custom flag to grant VM creation rights
+    canAssignServers: boolean; // Custom flag to let members assign VMs to others
+  };
+}
+
+export interface ScheduleConfig {
+  enabled: boolean;
+  timezone: string;        // e.g. 'Europe/Bucharest'
+  spinupTime: string;      // 'HH:MM' in local timezone
+  snapshotTime: string;    // 'HH:MM' in local timezone
+  serverType: string;      // e.g. 'cpx21'
+  location: string;        // e.g. 'nbg1'
+  sshKeyIds?: number[];    // Hetzner SSH key IDs to attach on spin-up
+  latestSnapshotId?: number;
+  latestSnapshotDate?: string;
+  latestSnapshotDescription?: string;
+  lastEveningRun?: string; // ISO timestamp
+  lastMorningRun?: string; // ISO timestamp
+  lastRunStatus?: 'success' | 'error' | 'running';
+  lastRunError?: string;
+  // Vacation / pause controls
+  pauseUntil?: string;     // ISO date string 'YYYY-MM-DD' — skip ALL automation until this date (inclusive)
+  blockedDates?: string[]; // Array of 'YYYY-MM-DD' strings — skip spin-up AND snapshot on these dates
+  spinupEnabled?: boolean;
+  snapshotEnabled?: boolean;
+  skipWeekends?: boolean;
+  shutdownAfterInactivity?: boolean;
+  inactivityDurationMinutes?: number;
+  scheduledPriceMonthly?: string;
+  scheduledPriceHourly?: string;
 }
 
 export interface ProvisioningState {
