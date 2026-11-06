@@ -1293,7 +1293,13 @@ export async function getServers() {
 
       return s;
     })
-  )).filter((s): s is ServerConfig => s !== null);
+  )).filter((s): s is ServerConfig => {
+    if (s === null) return false;
+    // Web-only collaborators should not see servers in the dashboard
+    const collab = s.collaborators?.find(c => c.email === userEmail);
+    if (collab?.allowedProjects) return false;
+    return true;
+  });
 
   // Map of tokens to their corresponding organization IDs for auto-healing and discovery
   const tokenToOrgIdMap = new Map<string, string>();
@@ -3060,6 +3066,48 @@ export async function inviteCollaborator(serverId: string, orgId: string, email:
   }
 
   return server;
+}
+
+/**
+ * Removes a collaborator from a server and cleans up their org membership if no longer needed.
+ */
+export async function revokeCollaborator(serverId: string, orgId: string, email: string) {
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+  if (!kv) throw new Error("KV database missing.");
+
+  const serverKey = `servers:${orgId}:${serverId}`;
+  const data = await kv.get(serverKey);
+  if (!data) throw new Error("Server not found.");
+
+  const server = JSON.parse(data) as ServerConfig;
+  const before = server.collaborators?.length ?? 0;
+  server.collaborators = (server.collaborators || []).filter(c => c.email !== email);
+  if (server.collaborators.length === before) throw new Error("Collaborator not found.");
+
+  await kv.put(serverKey, JSON.stringify(server));
+
+  // Remove org membership if this user has no remaining full-access collaborations in this org
+  const orgManifestRaw = await kv.get(`org:servers:manifest:${orgId}`);
+  const serverIds: string[] = orgManifestRaw ? JSON.parse(orgManifestRaw) : [];
+  let hasRemainingAccess = false;
+  for (const sid of serverIds) {
+    if (sid === serverId) continue;
+    const sData = await kv.get(`servers:${orgId}:${sid}`);
+    if (!sData) continue;
+    const s = JSON.parse(sData) as ServerConfig;
+    const c = s.collaborators?.find(c => c.email === email);
+    if (c && !c.allowedProjects) { hasRemainingAccess = true; break; }
+  }
+  if (!hasRemainingAccess) {
+    await kv.delete(`user:org:${email}:${orgId}`);
+    const manifestRaw = await kv.get(`user:org:manifest:${email}`);
+    if (manifestRaw) {
+      const orgs: string[] = JSON.parse(manifestRaw);
+      const updated = orgs.filter(o => o !== orgId);
+      await kv.put(`user:org:manifest:${email}`, JSON.stringify(updated));
+    }
+  }
 }
 
 /**
