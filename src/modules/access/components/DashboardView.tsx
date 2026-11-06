@@ -8,7 +8,7 @@ import { SshKeyOnboardingModal } from '@/modules/access/components/SshKeyOnboard
 import { FeedbackModal } from '@/modules/feedback/components/FeedbackModal';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { ServerList, ServerCard } from '@/modules/inventory/components/ServerList';
-import { provisionServer, getServers, addProject, deleteServer, reinstallServer, deleteDomain, updateDomain, updateServerAllowedPeers, updateServerGitConfig, getUserSettings } from '@/modules/inventory/actions';
+import { provisionServer, getServers, addProject, deleteServer, reinstallServer, deleteDomain, updateDomain, updateServerAllowedPeers, updateServerGitConfig, getUserSettings, getWebOnlyAccess } from '@/modules/inventory/actions';
 import { ServerConfig } from '@/modules/inventory/types';
 
 interface DashboardViewProps {
@@ -39,6 +39,7 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [servers, setServers] = useState<ServerConfig[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [webOnlyAccess, setWebOnlyAccess] = useState<{ serverName: string; projects: { name: string; domain: string }[] }[]>([]);
 
   // Three-panel state
   const [selectedServerId, setSelectedServerId] = useState<string | null>(null);
@@ -71,9 +72,10 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
   useEffect(() => {
     async function loadServers() {
       try {
-        const data = await getServers();
+        const [data, webOnly] = await Promise.all([getServers(), getWebOnlyAccess()]);
         const list = data || [];
         setServers(list);
+        setWebOnlyAccess(webOnly);
         if (list.length > 0) {
           const lastId = localStorage.getItem(LS_KEY);
           const found = lastId ? list.find(s => s.id === lastId) : null;
@@ -484,19 +486,49 @@ export function DashboardView({ userEmail }: DashboardViewProps) {
             </div>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-center px-8">
-              <div className="mb-6 opacity-30">
-                <svg className="w-16 h-16 text-slate-400 dark:text-zinc-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
-                </svg>
-              </div>
-              <h3 className="text-base font-semibold text-slate-500 dark:text-zinc-400">Select a server</h3>
-              <p className="text-sm text-slate-400 dark:text-zinc-500 mt-1 max-w-xs">
-                Pick a server from the list to view its details, manage domains, and open your workspace.
-              </p>
-              {servers.length === 0 && !isLoading && (
-                <button onClick={() => setIsModalOpen(true)} className="mt-6 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg transition-all shadow-lg shadow-indigo-600/20 active:scale-95">
-                  + Add your first server
-                </button>
+              {webOnlyAccess.length > 0 ? (
+                <div className="w-full max-w-sm text-left">
+                  <h3 className="text-base font-semibold text-slate-700 dark:text-zinc-300 mb-1">Your shared projects</h3>
+                  <p className="text-sm text-slate-400 dark:text-zinc-500 mb-5">You have web access to the following projects.</p>
+                  <div className="space-y-4">
+                    {webOnlyAccess.map(entry => (
+                      <div key={entry.serverName}>
+                        <div className="text-xs font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-wider mb-2">{entry.serverName}</div>
+                        <div className="space-y-2">
+                          {entry.projects.map(p => (
+                            <a key={p.domain} href={`https://${p.domain}`} target="_blank" rel="noopener noreferrer"
+                              className="flex items-center justify-between px-4 py-3 rounded-xl bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 hover:border-indigo-500 dark:hover:border-indigo-500 transition-all group">
+                              <div>
+                                <div className="text-sm font-bold text-slate-800 dark:text-zinc-200">{p.name}</div>
+                                <div className="text-xs text-slate-400 dark:text-zinc-500">{p.domain}</div>
+                              </div>
+                              <svg className="w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                              </svg>
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="mb-6 opacity-30">
+                    <svg className="w-16 h-16 text-slate-400 dark:text-zinc-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+                    </svg>
+                  </div>
+                  <h3 className="text-base font-semibold text-slate-500 dark:text-zinc-400">Select a server</h3>
+                  <p className="text-sm text-slate-400 dark:text-zinc-500 mt-1 max-w-xs">
+                    Pick a server from the list to view its details, manage domains, and open your workspace.
+                  </p>
+                  {servers.length === 0 && !isLoading && (
+                    <button onClick={() => setIsModalOpen(true)} className="mt-6 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg transition-all shadow-lg shadow-indigo-600/20 active:scale-95">
+                      + Add your first server
+                    </button>
+                  )}
+                </>
               )}
             </div>
           )}

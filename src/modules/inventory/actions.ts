@@ -3111,6 +3111,43 @@ export async function revokeCollaborator(serverId: string, orgId: string, email:
 }
 
 /**
+ * Returns the web-only project URLs this user has been granted access to.
+ * Used when a web-only collaborator logs in and sees an empty dashboard.
+ */
+export async function getWebOnlyAccess(): Promise<{ serverName: string; projects: { name: string; domain: string }[] }[]> {
+  const userEmail = await getIdentity();
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+  if (!kv) return [];
+
+  const orgManifestRaw = await kv.get(`user:org:manifest:${userEmail}`);
+  const orgIds: string[] = orgManifestRaw ? JSON.parse(orgManifestRaw) : [];
+
+  const results: { serverName: string; projects: { name: string; domain: string }[] }[] = [];
+
+  for (const orgId of orgIds) {
+    const serversManifestRaw = await kv.get(`org:servers:manifest:${orgId}`);
+    const serverIds: string[] = serversManifestRaw ? JSON.parse(serversManifestRaw) : [];
+    for (const sid of serverIds) {
+      const sData = await kv.get(`servers:${orgId}:${sid}`);
+      if (!sData) continue;
+      const s = JSON.parse(sData) as ServerConfig;
+      const collab = s.collaborators?.find(c => c.email === userEmail);
+      if (!collab?.allowedProjects?.length) continue;
+      const allowedDomains = new Set(collab.allowedProjects);
+      const projects = (s.projects || [])
+        .filter(p => allowedDomains.has(p.domain))
+        .map(p => ({ name: p.name, domain: p.domain }));
+      if (projects.length > 0) {
+        results.push({ serverName: s.name || s.hostname || sid, projects });
+      }
+    }
+  }
+
+  return results;
+}
+
+/**
  * Resends a magic-link invite email to a pending collaborator.
  */
 export async function resendCollaboratorInvite(serverId: string, orgId: string, email: string) {
