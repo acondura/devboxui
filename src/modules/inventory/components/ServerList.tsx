@@ -7,7 +7,7 @@ import { ReinstallModal } from './ReinstallModal';
 import { ScheduleModal } from './ScheduleModal';
 import { ApiAuthModal } from './ApiAuthModal';
 import { ConfirmSnapshotModal } from './ConfirmSnapshotModal';
-import { getServerLogs, getLiveProjects, getServerSnapshots, rebootServerAction, setupVSCodeTitle } from '../actions';
+import { getServerLogs, getLiveProjects, getServerSnapshots, rebootServerAction, setupVSCodeTitle, resendCollaboratorInvite } from '../actions';
 import { ConfirmSpinUpModal } from './ConfirmSpinUpModal';
 import { ScheduleConfig } from '../types';
 import { triggerMorningSpinup, triggerEveningSnapshot, checkIdleAndSnapshot } from '../schedule-actions';
@@ -524,7 +524,16 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
               {server.collaborators.map((c) => (
                 <span key={c.email} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-zinc-700 text-slate-650 dark:text-zinc-300 border border-slate-200 dark:border-zinc-600" title={`${c.email} (${c.status})`}>
                   👤 {c.username || c.email.split('@')[0]}
-                  {c.status === 'pending' && <span className="ml-1 text-[8px] text-amber-500 font-extrabold uppercase">(pending)</span>}
+                  {c.status === 'pending' && (
+                    <>
+                      <span className="ml-1 text-[8px] text-amber-500 font-extrabold uppercase">(pending)</span>
+                      <button
+                        onClick={async (e) => { e.stopPropagation(); try { await resendCollaboratorInvite(server.id, server.orgId || userEmail, c.email); } catch {} }}
+                        className="ml-1 text-[8px] text-indigo-500 hover:text-indigo-400 font-extrabold uppercase underline"
+                        title="Resend invite"
+                      >resend</button>
+                    </>
+                  )}
                 </span>
               ))}
             </div>
@@ -1282,7 +1291,16 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
                   {server.collaborators.map((c) => (
                     <span key={c.email} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-zinc-700 text-slate-650 dark:text-zinc-300 border border-slate-200 dark:border-zinc-600" title={`${c.email} (${c.status})`}>
                       👤 {c.username || c.email.split('@')[0]}
-                      {c.status === 'pending' && <span className="ml-1 text-[8px] text-amber-500 font-extrabold uppercase">(pending)</span>}
+                      {c.status === 'pending' && (
+                        <>
+                          <span className="ml-1 text-[8px] text-amber-500 font-extrabold uppercase">(pending)</span>
+                          <button
+                            onClick={async (e) => { e.stopPropagation(); try { await resendCollaboratorInvite(server.id, server.orgId || server.userEmail, c.email); } catch {} }}
+                            className="ml-1 text-[8px] text-indigo-500 hover:text-indigo-400 font-extrabold uppercase underline"
+                            title="Resend invite"
+                          >resend</button>
+                        </>
+                      )}
                     </span>
                   ))}
                 </div>
