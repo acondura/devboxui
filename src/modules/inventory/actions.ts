@@ -3043,17 +3043,20 @@ export async function inviteCollaborator(serverId: string, orgId: string, email:
     }).catch(e => console.error("Invite email error:", e));
   }
 
-  // Create membership placeholder for the user in KV
-  const membershipKey = `user:org:${email}:${orgId}`;
-  const existingMembership = await kv.get(membershipKey);
-  if (!existingMembership) {
-    const newMembership: UserMembership = {
-      orgId,
-      role: 'member',
-      permissions: { canCreateServers: false, canAssignServers: false }
-    };
-    await kv.put(membershipKey, JSON.stringify(newMembership));
-    await addToManifest(kv, `user:org:manifest:${email}`, orgId);
+  // Web-only collaborators have no dashboard access — vps-guard handles auth for their project URLs.
+  // Only full-access collaborators get org membership (which determines what shows in the dashboard).
+  if (!allowedProjects) {
+    const membershipKey = `user:org:${email}:${orgId}`;
+    const existingMembership = await kv.get(membershipKey);
+    if (!existingMembership) {
+      const newMembership: UserMembership = {
+        orgId,
+        role: 'member',
+        permissions: { canCreateServers: false, canAssignServers: false }
+      };
+      await kv.put(membershipKey, JSON.stringify(newMembership));
+      await addToManifest(kv, `user:org:manifest:${email}`, orgId);
+    }
   }
 
   return server;
