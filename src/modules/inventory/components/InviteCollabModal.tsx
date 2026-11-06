@@ -3,34 +3,58 @@
 import { useState } from 'react';
 import { inviteCollaborator } from '../actions';
 
+interface Project {
+  name: string;
+  domain: string;
+}
+
 interface InviteCollabModalProps {
   serverId: string;
   orgId: string;
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  projects?: Project[];
 }
 
-export function InviteCollabModal({ serverId, orgId, isOpen, onClose, onSuccess }: InviteCollabModalProps) {
+export function InviteCollabModal({ serverId, orgId, isOpen, onClose, onSuccess, projects = [] }: InviteCollabModalProps) {
   const [email, setEmail] = useState('');
+  const [accessType, setAccessType] = useState<'full' | 'web'>('full');
+  const [selectedProjects, setSelectedProjects] = useState<Set<string>>(new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
   if (!isOpen) return null;
 
+  const toggleProject = (domain: string) => {
+    setSelectedProjects(prev => {
+      const next = new Set(prev);
+      if (next.has(domain)) next.delete(domain);
+      else next.add(domain);
+      return next;
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;
+    if (accessType === 'web' && selectedProjects.size === 0) {
+      setError('Select at least one project to share.');
+      return;
+    }
 
     setIsSubmitting(true);
     setError(null);
     setSuccess(false);
 
     try {
-      await inviteCollaborator(serverId, orgId, email.trim());
+      const allowedProjects = accessType === 'web' ? Array.from(selectedProjects) : undefined;
+      await inviteCollaborator(serverId, orgId, email.trim(), allowedProjects);
       setSuccess(true);
       setEmail('');
+      setSelectedProjects(new Set());
+      setAccessType('full');
       if (onSuccess) onSuccess();
       setTimeout(() => {
         setSuccess(false);
@@ -64,7 +88,7 @@ export function InviteCollabModal({ serverId, orgId, isOpen, onClose, onSuccess 
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
           <div>
             <label className="block text-xs font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider mb-2">Colleague&apos;s Email</label>
             <input
@@ -75,10 +99,62 @@ export function InviteCollabModal({ serverId, orgId, isOpen, onClose, onSuccess 
               className="w-full bg-white dark:bg-zinc-800 border border-slate-300 dark:border-zinc-600 rounded-xl px-4 py-3 text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent transition-all text-sm"
               required
             />
-            <p className="mt-2 text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">
+          </div>
+
+          {projects.length > 0 && (
+            <div>
+              <label className="block text-xs font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider mb-2">Access Level</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAccessType('full')}
+                  className={`px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all ${accessType === 'full' ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white dark:bg-zinc-800 border-slate-300 dark:border-zinc-600 text-slate-700 dark:text-zinc-300 hover:border-indigo-400'}`}
+                >
+                  Full Server
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAccessType('web')}
+                  className={`px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all ${accessType === 'web' ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white dark:bg-zinc-800 border-slate-300 dark:border-zinc-600 text-slate-700 dark:text-zinc-300 hover:border-indigo-400'}`}
+                >
+                  Web Only
+                </button>
+              </div>
+              <p className="mt-2 text-xs text-slate-500 dark:text-zinc-400">
+                {accessType === 'full'
+                  ? 'They will be added as a Linux user with SSH access to the whole server.'
+                  : 'Browser-only access to selected project URLs. No SSH or Linux account.'}
+              </p>
+            </div>
+          )}
+
+          {accessType === 'web' && projects.length > 0 && (
+            <div>
+              <label className="block text-xs font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider mb-2">Projects to Share</label>
+              <div className="space-y-2">
+                {projects.map(p => (
+                  <label key={p.domain} className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-zinc-700 hover:border-indigo-400 dark:hover:border-indigo-500 cursor-pointer transition-all">
+                    <input
+                      type="checkbox"
+                      checked={selectedProjects.has(p.domain)}
+                      onChange={() => toggleProject(p.domain)}
+                      className="w-4 h-4 rounded accent-indigo-600"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-semibold text-slate-900 dark:text-zinc-100">{p.name}</div>
+                      <div className="text-xs text-slate-400 dark:text-zinc-500 truncate">{p.domain}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {projects.length === 0 && (
+            <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">
               They will be added to the server as a Linux user account. When they configure their public SSH key, it will automatically sync to authorize their login.
             </p>
-          </div>
+          )}
 
           {error && (
             <div className="p-4 rounded-xl text-sm font-medium bg-red-500/10 text-red-500 border border-red-500/20">

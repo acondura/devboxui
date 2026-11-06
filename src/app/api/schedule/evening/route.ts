@@ -87,47 +87,28 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      const cfApi = new CloudflareApiService(env);
-      const serviceToken = await cfApi.getOrCreateServiceToken(kv);
       const logsHostname = logsUrl.replace('https://', '');
+      const internalHeaders: Record<string, string> = env.INTERNAL_SECRET ? { 'X-DevBox-Internal': env.INTERNAL_SECRET } : {};
 
       let resp: Response | null = null;
       try {
-        resp = await fetch(logsUrl, {
-          headers: {
-            'CF-Access-Client-Id': serviceToken.id,
-            'CF-Access-Client-Secret': serviceToken.client_secret,
-          },
-          next: { revalidate: 0 },
-          cache: 'no-store'
-        });
+        resp = await fetch(logsUrl, { headers: internalHeaders, next: { revalidate: 0 }, cache: 'no-store' });
       } catch (e) {
         console.warn(`[Cron Inactivity] Initial fetch of ${logsUrl} failed:`, e);
       }
 
       if (!resp || resp.status === 530 || resp.status === 401 || resp.status === 403 || resp.status === 404) {
-        console.log(`[Cron Inactivity] Fetch failed or returned status ${resp?.status || 'network_error'}. Running self-healing...`);
-        try {
-          await cfApi.authorizeServiceToken(logsHostname, serviceToken.id);
-        } catch (err) {
-          console.warn(`[Cron Inactivity] Self-heal authorize failed:`, err);
-        }
+        console.log(`[Cron Inactivity] Fetch failed or returned status ${resp?.status || 'network_error'}. Running self-healing DNS/tunnel...`);
         if (server.tunnelId) {
           try {
+            const cfApi = new CloudflareApiService(env);
             await cfApi.setupHostname(logsHostname, server.tunnelId, "http://localhost:8000");
           } catch (err) {
             console.warn(`[Cron Inactivity] Self-heal setupHostname failed:`, err);
           }
         }
         try {
-          resp = await fetch(logsUrl, {
-            headers: {
-              'CF-Access-Client-Id': serviceToken.id,
-              'CF-Access-Client-Secret': serviceToken.client_secret,
-            },
-            next: { revalidate: 0 },
-            cache: 'no-store'
-          });
+          resp = await fetch(logsUrl, { headers: internalHeaders, next: { revalidate: 0 }, cache: 'no-store' });
         } catch (e) {
           console.error(`[Cron Inactivity] Retry fetch of ${logsUrl} failed:`, e);
         }
@@ -165,47 +146,28 @@ export async function GET(req: NextRequest) {
           }
         }
 
-        const cfApi = new CloudflareApiService(env);
-        const serviceToken = await cfApi.getOrCreateServiceToken(kv);
         const logsHostname = logsUrl.replace('https://', '');
+        const internalHeaders2: Record<string, string> = env.INTERNAL_SECRET ? { 'X-DevBox-Internal': env.INTERNAL_SECRET } : {};
 
         let resp: Response | null = null;
         try {
-          resp = await fetch(logsUrl, {
-            headers: {
-              'CF-Access-Client-Id': serviceToken.id,
-              'CF-Access-Client-Secret': serviceToken.client_secret,
-            },
-            next: { revalidate: 0 },
-            cache: 'no-store'
-          });
+          resp = await fetch(logsUrl, { headers: internalHeaders2, next: { revalidate: 0 }, cache: 'no-store' });
         } catch (e) {
           console.warn(`[Cron Inactivity] Initial fetch of ${logsUrl} failed:`, e);
         }
 
         if (!resp || resp.status === 530 || resp.status === 401 || resp.status === 403 || resp.status === 404) {
-          console.log(`[Cron Inactivity] Fetch failed or returned status ${resp?.status || 'network_error'}. Running self-healing...`);
-          try {
-            await cfApi.authorizeServiceToken(logsHostname, serviceToken.id);
-          } catch (err) {
-            console.warn(`[Cron Inactivity] Self-heal authorize failed:`, err);
-          }
+          console.log(`[Cron Inactivity] Fetch failed or returned status ${resp?.status || 'network_error'}. Running self-healing DNS/tunnel...`);
           if (server.tunnelId) {
             try {
+              const cfApi = new CloudflareApiService(env);
               await cfApi.setupHostname(logsHostname, server.tunnelId, "http://localhost:8000");
             } catch (err) {
               console.warn(`[Cron Inactivity] Self-heal setupHostname failed:`, err);
             }
           }
           try {
-            resp = await fetch(logsUrl, {
-              headers: {
-                'CF-Access-Client-Id': serviceToken.id,
-                'CF-Access-Client-Secret': serviceToken.client_secret,
-              },
-              next: { revalidate: 0 },
-              cache: 'no-store'
-            });
+            resp = await fetch(logsUrl, { headers: internalHeaders2, next: { revalidate: 0 }, cache: 'no-store' });
           } catch (e) {
             console.error(`[Cron Inactivity] Retry fetch of ${logsUrl} failed:`, e);
           }

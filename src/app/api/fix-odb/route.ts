@@ -60,17 +60,8 @@ export async function GET(req: NextRequest) {
     logSteps.push("Setting up hostname routing for odb.devboxui.com...");
     await cfApi.setupHostname(newHostname, tunnelId);
     
-    logSteps.push("Setting up Access for odb.devboxui.com...");
-    await cfApi.setupAccess(newHostname, userEmail);
-
     logSteps.push("Setting up hostname routing for odb-logs.devboxui.com...");
     await cfApi.setupHostname("odb-logs.devboxui.com", tunnelId, "http://localhost:8000");
-
-    logSteps.push("Setting up Access for odb-logs.devboxui.com...");
-    await cfApi.setupAccess("odb-logs.devboxui.com", userEmail);
-    
-    const serviceToken = await cfApi.getOrCreateServiceToken(kv);
-    await cfApi.authorizeServiceToken("odb-logs.devboxui.com", serviceToken.id);
   } catch (err) {
     console.error("Failed Cloudflare setup:", err);
     return NextResponse.json({ 

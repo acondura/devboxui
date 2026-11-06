@@ -65,6 +65,7 @@ export interface CollaboratorInfo {
   email: string;
   username: string; // Sanitized POSIX username (e.g. 'john')
   status: 'pending' | 'active';
+  allowedProjects?: string[]; // If set, web-only access restricted to these domains (no Linux account)
 }
 
 export interface OrgSettings {
