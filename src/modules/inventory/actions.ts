@@ -3051,7 +3051,16 @@ export async function inviteCollaborator(serverId: string, orgId: string, email:
 
   // Web-only collaborators have no dashboard access — vps-guard handles auth for their project URLs.
   // Only full-access collaborators get org membership (which determines what shows in the dashboard).
-  if (!allowedProjects) {
+  if (allowedProjects) {
+    // Store a lightweight index so getWebOnlyAccess can find their servers without org membership.
+    const webOnlyKey = `user:webonly:${email}`;
+    const existingRaw = await kv.get(webOnlyKey);
+    const existing: { orgId: string; serverId: string }[] = existingRaw ? JSON.parse(existingRaw) : [];
+    if (!existing.some(e => e.orgId === orgId && e.serverId === serverId)) {
+      existing.push({ orgId, serverId });
+      await kv.put(webOnlyKey, JSON.stringify(existing));
+    }
+  } else {
     const membershipKey = `user:org:${email}:${orgId}`;
     const existingMembership = await kv.get(membershipKey);
     if (!existingMembership) {
@@ -3108,6 +3117,15 @@ export async function revokeCollaborator(serverId: string, orgId: string, email:
       await kv.put(`user:org:manifest:${email}`, JSON.stringify(updated));
     }
   }
+
+  // Clean up web-only index entry for this server
+  const webOnlyKey = `user:webonly:${email}`;
+  const webOnlyRaw = await kv.get(webOnlyKey);
+  if (webOnlyRaw) {
+    const entries: { orgId: string; serverId: string }[] = JSON.parse(webOnlyRaw);
+    const updated = entries.filter(e => !(e.orgId === orgId && e.serverId === serverId));
+    await kv.put(webOnlyKey, JSON.stringify(updated));
+  }
 }
 
 /**
@@ -3120,27 +3138,23 @@ export async function getWebOnlyAccess(): Promise<{ serverName: string; projects
   const kv = env.KV;
   if (!kv) return [];
 
-  const orgManifestRaw = await kv.get(`user:org:manifest:${userEmail}`);
-  const orgIds: string[] = orgManifestRaw ? JSON.parse(orgManifestRaw) : [];
+  const webOnlyRaw = await kv.get(`user:webonly:${userEmail}`);
+  const entries: { orgId: string; serverId: string }[] = webOnlyRaw ? JSON.parse(webOnlyRaw) : [];
 
   const results: { serverName: string; projects: { name: string; domain: string }[] }[] = [];
 
-  for (const orgId of orgIds) {
-    const serversManifestRaw = await kv.get(`org:servers:manifest:${orgId}`);
-    const serverIds: string[] = serversManifestRaw ? JSON.parse(serversManifestRaw) : [];
-    for (const sid of serverIds) {
-      const sData = await kv.get(`servers:${orgId}:${sid}`);
-      if (!sData) continue;
-      const s = JSON.parse(sData) as ServerConfig;
-      const collab = s.collaborators?.find(c => c.email === userEmail);
-      if (!collab?.allowedProjects?.length) continue;
-      const allowedDomains = new Set(collab.allowedProjects);
-      const projects = (s.projects || [])
-        .filter(p => allowedDomains.has(p.domain))
-        .map(p => ({ name: p.name, domain: p.domain }));
-      if (projects.length > 0) {
-        results.push({ serverName: s.name || s.hostname || sid, projects });
-      }
+  for (const { orgId, serverId } of entries) {
+    const sData = await kv.get(`servers:${orgId}:${serverId}`);
+    if (!sData) continue;
+    const s = JSON.parse(sData) as ServerConfig;
+    const collab = s.collaborators?.find(c => c.email === userEmail);
+    if (!collab?.allowedProjects?.length) continue;
+    const allowedDomains = new Set(collab.allowedProjects);
+    const projects = (s.projects || [])
+      .filter(p => allowedDomains.has(p.domain))
+      .map(p => ({ name: p.name, domain: p.domain }));
+    if (projects.length > 0) {
+      results.push({ serverName: s.name || s.hostname || serverId, projects });
     }
   }
 

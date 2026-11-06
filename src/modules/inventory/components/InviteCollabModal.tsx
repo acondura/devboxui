@@ -19,7 +19,7 @@ interface InviteCollabModalProps {
 
 export function InviteCollabModal({ serverId, orgId, isOpen, onClose, onSuccess, projects = [] }: InviteCollabModalProps) {
   const [email, setEmail] = useState('');
-  const [accessType, setAccessType] = useState<'full' | 'web'>('full');
+  const [accessType, setAccessType] = useState<'full' | 'web'>('web');
   const [selectedProjects, setSelectedProjects] = useState<Set<string>>(new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
