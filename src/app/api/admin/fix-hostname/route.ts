@@ -67,18 +67,6 @@ export async function GET(req: NextRequest) {
               throw e;
             }
           }
-          try {
-            steps.push(`Setting up Access for ${h}…`);
-            await cfApi.setupAccess(h, userEmail);
-          } catch (e) {
-            steps.push(`Access setup for ${h} skipped: ${e instanceof Error ? e.message : String(e)}`);
-          }
-        }
-        try {
-          const serviceToken = await cfApi.getOrCreateServiceToken(kv);
-          await cfApi.authorizeServiceToken(logsHostname, serviceToken.id);
-        } catch (e) {
-          steps.push(`Service token auth skipped: ${e instanceof Error ? e.message : String(e)}`);
         }
       } else {
         steps.push('No tunnelId on record — skipping Cloudflare routing setup');

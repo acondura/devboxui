@@ -31,16 +31,12 @@ export async function GET(
 
   // --- Authentication and Authorization Check ---
   const headersList = req.headers;
-  const clientIdHeader = headersList.get('cf-access-client-id');
   let isAuthorized = false;
 
-  // 1. Check if the requester is the VM using the Cloudflare Access Service Token
-  const cachedToken = await kv.get('cloudflare:service_token');
-  if (cachedToken) {
-    const tokenInfo = JSON.parse(cachedToken) as { id: string; client_id: string; client_secret: string };
-    if (clientIdHeader && clientIdHeader === tokenInfo.client_id) {
-      isAuthorized = true;
-    }
+  // 1. Check if the requester is an internal service (e.g. VPS bootstrap)
+  const internalSecret = process.env.INTERNAL_SECRET;
+  if (internalSecret && headersList.get('X-DevBox-Internal') === internalSecret) {
+    isAuthorized = true;
   }
 
   // 2. Otherwise, check if the requester is a logged-in user who owns or collaborates on this server
