@@ -7,7 +7,7 @@ import { ReinstallModal } from './ReinstallModal';
 import { ScheduleModal } from './ScheduleModal';
 import { ApiAuthModal } from './ApiAuthModal';
 import { ConfirmSnapshotModal } from './ConfirmSnapshotModal';
-import { getServerLogs, getLiveProjects, getServerSnapshots, rebootServerAction } from '../actions';
+import { getServerLogs, getLiveProjects, getServerSnapshots, rebootServerAction, setupVSCodeTitle } from '../actions';
 import { ConfirmSpinUpModal } from './ConfirmSpinUpModal';
 import { ScheduleConfig } from '../types';
 import { triggerMorningSpinup, triggerEveningSnapshot, checkIdleAndSnapshot } from '../schedule-actions';
@@ -1885,6 +1885,7 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
     <div className={`relative inline-flex items-stretch ${fullWidth ? 'w-full' : ''}`} ref={dropdownRef}>
       <a
         href={currentUrl}
+        onClick={() => { setupVSCodeTitle(server.id).catch(() => {}); }}
         className={`${fullWidth ? 'flex-1 py-2 justify-center' : 'px-4 py-2'} ${currentIde.colorClass} text-white text-xs font-bold rounded-l-lg transition-all shadow-lg inline-flex items-center whitespace-nowrap`}
       >
         {React.cloneElement(currentIde.icon as React.ReactElement<{ className?: string }>, { className: 'w-4 h-4 mr-2' })}
@@ -1922,6 +1923,7 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
                     onClick={() => {
                       handleSelectIde(ide.id);
                       setIsOpen(false);
+                      setupVSCodeTitle(server.id).catch(() => {});
                     }}
                     className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all flex items-center group ${
                       ide.id === currentIde.id 

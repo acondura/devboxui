@@ -55,6 +55,41 @@ class DebugHandler(http.server.BaseHTTPRequestHandler):
                 self.send_response(400)
                 self.end_headers()
                 self.wfile.write(b"Missing parameters")
+        elif self.path == '/setup-vscode-title':
+            server_name = req.get('serverName', '')
+            username = req.get('username', 'root')
+            import re as _re
+            if not _re.match(r'^[a-zA-Z0-9 _\\-]+$', server_name) or not _re.match(r'^[a-zA-Z0-9_\\-]+$', username):
+                self.send_response(400)
+                self.end_headers()
+                return
+            try:
+                dollar = chr(36)
+                vs_title = server_name + ' - ' + dollar + '{rootName} [' + dollar + '{remoteName}]'
+                homes = ['/root'] if username == 'root' else [f'/home/{username}', '/root']
+                for home in homes:
+                    settings_dir = f'{home}/.vscode-server/data/Machine'
+                    settings_file = f'{settings_dir}/settings.json'
+                    subprocess.run(['mkdir', '-p', settings_dir], check=True)
+                    existing = {}
+                    if os.path.exists(settings_file):
+                        try:
+                            with open(settings_file, 'r') as _f:
+                                existing = json.loads(_f.read())
+                        except Exception:
+                            pass
+                    existing['window.title'] = vs_title
+                    with open(settings_file, 'w') as _f:
+                        _f.write(json.dumps(existing, indent=2))
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', origin)
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": True}).encode())
+            except Exception as e:
+                self.send_response(500)
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode())
         else:
             self.send_response(404)
             self.end_headers()
@@ -3260,5 +3295,45 @@ export async function provisionDigitalOceanServer(
       try { await cfApi.deleteTunnel(tunnelId); } catch (e) { console.error("Cleanup: Failed to delete Cloudflare Tunnel", e); }
     }
     return { success: false, error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+export async function setupVSCodeTitle(serverId: string) {
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+  if (!kv) return { success: false };
+
+  const servers = await getServers();
+  const config = servers.find(s => s.id === serverId);
+  if (!config || !config.name) return { success: false };
+
+  const baseUrl = config.tunnelUrl?.split('?')[0] || '';
+  const logsUrl = baseUrl.includes('-code.')
+    ? baseUrl.replace('-code.', '-logs.')
+    : baseUrl.includes('-web.')
+      ? baseUrl.replace('-web.', '-logs.')
+      : `https://logs-${serverId.slice(0, 8)}.devboxui.com`;
+
+  try {
+    const cfApi = new CloudflareApiService(env);
+    const serviceToken = await cfApi.getOrCreateServiceToken(kv);
+
+    const resp = await fetch(`${logsUrl}/setup-vscode-title`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'CF-Access-Client-Id': serviceToken.id,
+        'CF-Access-Client-Secret': serviceToken.client_secret,
+      },
+      body: JSON.stringify({
+        serverName: config.name,
+        username: config.userName || 'root',
+      }),
+      cache: 'no-store',
+    });
+
+    return { success: resp.ok };
+  } catch {
+    return { success: false };
   }
 }
