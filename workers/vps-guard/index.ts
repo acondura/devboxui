@@ -28,6 +28,7 @@ interface HostnameLookup {
 interface CollaboratorInfo {
   email: string;
   status: 'pending' | 'active';
+  allowedProjects?: string[];
 }
 
 interface ServerConfig {
@@ -128,12 +129,19 @@ export default {
       return redirectToLogin(url);
     }
 
-    // ── 3. Access control: owner or active/pending collaborator ─────────────
+    // ── 3. Access control: owner or collaborator ────────────────────────────
     const isOwner = sessionEmail === server.userEmail;
-    const isCollaborator = server.collaborators?.some(c => c.email === sessionEmail) ?? false;
+    const collaborator = server.collaborators?.find(c => c.email === sessionEmail);
 
-    if (!isOwner && !isCollaborator) {
+    if (!isOwner && !collaborator) {
       return redirectToLogin(url, 'unauthorized');
+    }
+
+    // Web-only collaborators may only access their allowed project domains
+    if (!isOwner && collaborator?.allowedProjects) {
+      if (!collaborator.allowedProjects.includes(hostname)) {
+        return redirectToLogin(url, 'unauthorized');
+      }
     }
 
     // ── 4. Proxy the request ─────────────────────────────────────────────────

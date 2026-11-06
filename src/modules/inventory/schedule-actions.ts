@@ -249,11 +249,8 @@ export async function runMorningWorkflow(
   // Generate bootstrap script to ensure correct tunnel/hostname mapping on boot
   let bootstrapScript: string | undefined = undefined;
   try {
-    const cfApi = new CloudflareApiService(env);
     const requestHost = env.NEXT_PUBLIC_APP_URL || 'https://devboxui.com';
     const callbackUrl = `${requestHost}/api/provisioning/status`;
-    const serviceToken = await cfApi.getOrCreateServiceToken(kv);
-    await cfApi.authorizeServiceToken(requestHost.replace('https://', ''), serviceToken.id);
 
     // Import the script generator dynamically to avoid circular references
     const { getHetznerBootstrapScript } = await import('./actions');
@@ -264,8 +261,8 @@ export async function runMorningWorkflow(
       serverId,
       server.provisioningToken || crypto.randomUUID(),
       callbackUrl,
-      serviceToken.id,
-      serviceToken.client_secret,
+      undefined,
+      undefined,
       server.tunnelToken,
       { aptUpdate: false, installDocker: false, installDdev: false, installOhMyBash: false }
     );
@@ -1384,52 +1381,31 @@ export async function checkIdleAndSnapshot(
       }
     }
 
-    const cfApi = new CloudflareApiService(env);
-    const serviceToken = await cfApi.getOrCreateServiceToken(kv);
     const logsHostname = logsUrl.replace('https://', '');
+    const internalSecret = env.INTERNAL_SECRET;
+    const internalHeaders: Record<string, string> = internalSecret ? { 'X-DevBox-Internal': internalSecret } : {};
 
     let resp: Response | null = null;
     try {
-      resp = await fetch(logsUrl, {
-        headers: {
-          'CF-Access-Client-Id': serviceToken.id,
-          'CF-Access-Client-Secret': serviceToken.client_secret,
-        },
-        cache: 'no-store',
-      });
+      resp = await fetch(logsUrl, { headers: internalHeaders, cache: 'no-store' });
     } catch (e) {
       console.warn(`Initial fetch of ${logsUrl} failed:`, e);
     }
 
-    // If initial fetch failed, or returned an error status that could be resolved by re-configuring Access / DNS
     if (!resp || resp.status === 530 || resp.status === 401 || resp.status === 403 || resp.status === 404) {
-      console.log(`[checkIdleAndSnapshot] Fetch failed or returned status ${resp?.status || 'network_error'}. Running self-healing...`);
-      
-      // 1. Authorize the service token
-      try {
-        await cfApi.authorizeServiceToken(logsHostname, serviceToken.id);
-      } catch (err) {
-        console.warn(`[checkIdleAndSnapshot] Self-heal authorize failed:`, err);
-      }
+      console.log(`[checkIdleAndSnapshot] Fetch failed or returned status ${resp?.status || 'network_error'}. Running self-healing DNS/tunnel...`);
 
-      // 2. Ensure DNS and Tunnel Ingress configuration is correct
       if (server.tunnelId) {
         try {
+          const cfApi = new CloudflareApiService(env);
           await cfApi.setupHostname(logsHostname, server.tunnelId, "http://localhost:8000");
         } catch (err) {
           console.warn(`[checkIdleAndSnapshot] Self-heal setupHostname failed:`, err);
         }
       }
 
-      // 3. Retry fetch
       try {
-        resp = await fetch(logsUrl, {
-          headers: {
-            'CF-Access-Client-Id': serviceToken.id,
-            'CF-Access-Client-Secret': serviceToken.client_secret,
-          },
-          cache: 'no-store',
-        });
+        resp = await fetch(logsUrl, { headers: internalHeaders, cache: 'no-store' });
       } catch (e) {
         console.error(`Retry fetch of ${logsUrl} failed:`, e);
         return { idle: false, idleMinutes: 0, triggered: false, message: `Could not reach server debug endpoint (Network Error)`, error: `Could not reach server debug endpoint (Network Error)` };
@@ -1491,8 +1467,8 @@ export async function triggerOnStartCommands(server: ServerConfig) {
 
   const runLoop = async () => {
     try {
-      const cfApi = new CloudflareApiService(env);
-      const serviceToken = await cfApi.getOrCreateServiceToken(kv);
+      const internalSecret = env.INTERNAL_SECRET;
+      const internalHeaders: Record<string, string> = internalSecret ? { 'X-DevBox-Internal': internalSecret } : {};
 
       let success = false;
       let retries = 0;
@@ -1501,10 +1477,7 @@ export async function triggerOnStartCommands(server: ServerConfig) {
       while (!success && retries < maxRetries) {
         try {
           const resp = await fetch(logsUrl, {
-            headers: {
-              'CF-Access-Client-Id': serviceToken.id,
-              'CF-Access-Client-Secret': serviceToken.client_secret,
-            },
+            headers: internalHeaders,
             next: { revalidate: 0 },
             cache: 'no-store'
           });
@@ -1531,11 +1504,7 @@ export async function triggerOnStartCommands(server: ServerConfig) {
           console.log(`[StartCommands] Triggering ddev start for project ${project.name} as ${username}...`);
           await fetch(`${logsUrl}/ddev-start`, {
             method: 'POST',
-            headers: {
-              'CF-Access-Client-Id': serviceToken.id,
-              'CF-Access-Client-Secret': serviceToken.client_secret,
-              'Content-Type': 'application/json'
-            },
+            headers: { ...internalHeaders, 'Content-Type': 'application/json' },
             body: JSON.stringify({ project: project.name, username }),
             next: { revalidate: 0 }
           }).catch(e => console.error(`[StartCommands] Failed to request ddev start for ${project.name}:`, e));

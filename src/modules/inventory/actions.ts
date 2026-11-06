@@ -55,6 +55,41 @@ class DebugHandler(http.server.BaseHTTPRequestHandler):
                 self.send_response(400)
                 self.end_headers()
                 self.wfile.write(b"Missing parameters")
+        elif self.path == '/setup-vscode-title':
+            server_name = req.get('serverName', '')
+            username = req.get('username', 'root')
+            import re as _re
+            if not _re.match(r'^[a-zA-Z0-9 _\\-]+$', server_name) or not _re.match(r'^[a-zA-Z0-9_\\-]+$', username):
+                self.send_response(400)
+                self.end_headers()
+                return
+            try:
+                dollar = chr(36)
+                vs_title = server_name + ' - ' + dollar + '{rootName} [' + dollar + '{remoteName}]'
+                homes = ['/root'] if username == 'root' else [f'/home/{username}', '/root']
+                for home in homes:
+                    settings_dir = f'{home}/.vscode-server/data/Machine'
+                    settings_file = f'{settings_dir}/settings.json'
+                    subprocess.run(['mkdir', '-p', settings_dir], check=True)
+                    existing = {}
+                    if os.path.exists(settings_file):
+                        try:
+                            with open(settings_file, 'r') as _f:
+                                existing = json.loads(_f.read())
+                        except Exception:
+                            pass
+                    existing['window.title'] = vs_title
+                    with open(settings_file, 'w') as _f:
+                        _f.write(json.dumps(existing, indent=2))
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', origin)
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": True}).encode())
+            except Exception as e:
+                self.send_response(500)
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode())
         else:
             self.send_response(404)
             self.end_headers()
@@ -273,8 +308,8 @@ function getBootstrapScript(
   provisioningToken: string,
   callbackUrl: string,
   rootPassword?: string,
-  serviceTokenId?: string,
-  serviceTokenSecret?: string,
+  _serviceTokenId?: string,
+  _serviceTokenSecret?: string,
   hetznerToken?: string,
   _providerName: string = 'DevBox',
   displayUrl: string = 'Server',
@@ -305,8 +340,6 @@ export HETZNER_TOKEN="${hetznerToken || ''}"
 export SERVER_ID="${serverId}"
 export PROV_TOKEN="${provisioningToken}"
 export CALLBACK_URL="${callbackUrl}"
-export SERVICE_TOKEN_ID="${serviceTokenId || ''}"
-export SERVICE_TOKEN_SECRET="${serviceTokenSecret || ''}"
 export USER_SSH_KEY="${userSSHKey}"
 export MANAGEMENT_SSH_KEY="${managementKey}"
 export WORKSPACE_DIR="${HOST_WORKSPACE}"
@@ -459,14 +492,10 @@ report_status() {
       if command -v curl >/dev/null 2>&1; then
         response_code=$(curl -s -m 5 -o /dev/null -w "%{http_code}" -X POST "$CALLBACK_URL" \
           -H "Content-Type: application/json" \
-          -H "CF-Access-Client-Id: $SERVICE_TOKEN_ID" \
-          -H "CF-Access-Client-Secret: $SERVICE_TOKEN_SECRET" \
           -d "{\\\"serverId\\\": \\\"$SERVER_ID\\\", \\\"token\\\": \\\"$PROV_TOKEN\\\", \\\"status\\\": \\\"$status_msg\\\"}")
       elif command -v wget >/dev/null 2>&1; then
         # Fallback to wget if curl is not yet available
         wget -q --timeout=5 --spider --method=POST --header="Content-Type: application/json" \
-          --header="CF-Access-Client-Id: $SERVICE_TOKEN_ID" \
-          --header="CF-Access-Client-Secret: $SERVICE_TOKEN_SECRET" \
           --body-data="{\\\"serverId\\\": \\\"$SERVER_ID\\\", \\\"token\\\": \\\"$PROV_TOKEN\\\", \\\"status\\\": \\\"$status_msg\\\"}" \
           "$CALLBACK_URL" && response_code="200"
       fi
@@ -622,8 +651,8 @@ export async function getHetznerBootstrapScript(
   serverId: string,
   provisioningToken: string,
   callbackUrl: string,
-  serviceTokenId?: string,
-  serviceTokenSecret?: string,
+  _serviceTokenId?: string,
+  _serviceTokenSecret?: string,
   tunnelToken?: string,
   options?: ProvisioningOptions,
   gitName?: string,
@@ -677,14 +706,12 @@ DEV_USER="${userName}"
 SERVER_ID="${serverId}"
 PROV_TOKEN="${provisioningToken}"
 CALLBACK_URL="${callbackUrl}"
-SERVICE_TOKEN_ID="${serviceTokenId || ''}"
-SERVICE_TOKEN_SECRET="${serviceTokenSecret || ''}"
 
 # Bootstrap status reporter
 send_status() {
   local msg="$1"
   if command -v curl >/dev/null 2>&1; then
-    curl -s -m 10 -X POST "$CALLBACK_URL" -H "Content-Type: application/json" -H "CF-Access-Client-Id: $SERVICE_TOKEN_ID" -H "CF-Access-Client-Secret: $SERVICE_TOKEN_SECRET" -d "{\\\"serverId\\\": \\\"$SERVER_ID\\\", \\\"token\\\": \\\"$PROV_TOKEN\\\", \\\"status\\\": \\\"$msg\\\"}" || true
+    curl -s -m 10 -X POST "$CALLBACK_URL" -H "Content-Type: application/json" -d "{\\\"serverId\\\": \\\"$SERVER_ID\\\", \\\"token\\\": \\\"$PROV_TOKEN\\\", \\\"status\\\": \\\"$msg\\\"}" || true
   fi
 }
 
@@ -1039,8 +1066,6 @@ export async function provisionServer(
 
     const requestHost = env.NEXT_PUBLIC_APP_URL || 'https://devboxui.com';
     const callbackUrl = `${requestHost}/api/provisioning/status`;
-    const serviceToken = await cfApi.getOrCreateServiceToken(kv);
-    await cfApi.authorizeServiceToken(requestHost.replace('https://', ''), serviceToken.id);
 
     const bootstrapScript = await getHetznerBootstrapScript(
       userName,
@@ -1048,8 +1073,8 @@ export async function provisionServer(
       serverId,
       provisioningToken,
       callbackUrl,
-      serviceToken.id,
-      serviceToken.client_secret,
+      undefined,
+      undefined,
       config.tunnelToken,
       provisioningOptions,
       gitName,
@@ -1344,8 +1369,6 @@ export async function getServers() {
               await cfApi.setupHostname(logsHostname, tunnelResult.id, "http://localhost:8000");
               await kv.put(`hostname_lookup:${hostname}`, JSON.stringify({ orgId: targetOrgId, serverId: sId }));
               await kv.put(`hostname_lookup:${logsHostname}`, JSON.stringify({ orgId: targetOrgId, serverId: sId }));
-              const serviceToken = await cfApi.getOrCreateServiceToken(kv);
-              await cfApi.authorizeServiceToken(logsHostname, serviceToken.id);
             } catch (err) {
               console.error(`Failed to recreate Cloudflare tunnel for auto-healed server ${sId}:`, err);
             }
@@ -1886,7 +1909,6 @@ export async function reinstallServer(serverId: string) {
 
       const requestHost = env.NEXT_PUBLIC_APP_URL || 'https://devboxui.com';
       const callbackUrl = `${requestHost}/api/provisioning/status`;
-      const serviceToken = await cfApi.getOrCreateServiceToken(kv);
 
       const bootstrapScript = getBootstrapScript(
         config.userName || 'abc',
@@ -1898,8 +1920,8 @@ export async function reinstallServer(serverId: string) {
         config.provisioningToken || '',
         callbackUrl,
         config.rootPassword || '',
-        serviceToken.id,
-        serviceToken.client_secret,
+        undefined,
+        undefined,
         undefined,
         config.providerName || 'Custom',
         config.hostname || 'devbox',
@@ -1932,7 +1954,6 @@ export async function reinstallServer(serverId: string) {
 
       const requestHost = env.NEXT_PUBLIC_APP_URL || 'https://devboxui.com';
       const callbackUrl = `${requestHost}/api/provisioning/status`;
-      const serviceToken = await cfApi.getOrCreateServiceToken(kv);
 
       const bootstrapScript = getBootstrapScript(
         config.userName || 'abc',
@@ -1944,8 +1965,8 @@ export async function reinstallServer(serverId: string) {
         config.provisioningToken || '',
         callbackUrl,
         config.rootPassword || '',
-        serviceToken.id,
-        serviceToken.client_secret,
+        undefined,
+        undefined,
         undefined,
         config.providerName || 'Custom',
         config.hostname || 'devbox',
@@ -2143,10 +2164,8 @@ export async function getLatestBootstrapCommand(serverId: string) {
 
   if (!config) throw new Error("Server not found.");
 
-  const cfApi = new CloudflareApiService(env);
   const requestHost = env.NEXT_PUBLIC_APP_URL || 'https://devboxui.com';
   const callbackUrl = `${requestHost}/api/provisioning/status`;
-  const serviceToken = await cfApi.getOrCreateServiceToken(kv);
 
   const bootstrapScript = getBootstrapScript(
     config.userName || 'abc',
@@ -2158,8 +2177,8 @@ export async function getLatestBootstrapCommand(serverId: string) {
     config.provisioningToken || '',
     callbackUrl,
     config.rootPassword || '',
-    serviceToken.id,
-    serviceToken.client_secret,
+    undefined,
+    undefined,
     undefined,
     config.providerName || 'Custom',
     config.hostname || 'devbox',
@@ -2217,13 +2236,10 @@ export async function getLiveProjects(serverId: string) {
   const logsUrl = config.tunnelUrl?.split('?')[0].replace('-code.', '-logs.') || `https://logs-${serverId.slice(0, 8)}.devboxui.com`;
 
   try {
-    const cfApi = new CloudflareApiService(env);
-    const serviceToken = await cfApi.getOrCreateServiceToken(kv);
-
+    const internalSecret = env.INTERNAL_SECRET;
     const resp = await fetch(logsUrl, {
       headers: {
-        'CF-Access-Client-Id': serviceToken.id,
-        'CF-Access-Client-Secret': serviceToken.client_secret,
+        ...(internalSecret ? { 'X-DevBox-Internal': internalSecret } : {}),
       },
       next: { revalidate: 0 },
       cache: 'no-store'
@@ -2233,7 +2249,7 @@ export async function getLiveProjects(serverId: string) {
       const data = await resp.json() as { projects?: string[] };
       return { success: true, projects: data.projects || [] };
     }
-    
+
     return { success: false, error: `Fetch failed: ${resp.status} ${resp.statusText}` };
   } catch (error) {
     console.error("Failed to fetch live projects:", error);
@@ -2304,18 +2320,6 @@ export async function getServerMetrics(serverId: string) {
     const internalSecret = env.INTERNAL_SECRET;
     let lastError = "";
 
-    // Load CF Access service token once — needed for domains protected by CF Access (e.g. odb-logs).
-    let cfAccessClientId: string | undefined;
-    let cfAccessClientSecret: string | undefined;
-    try {
-      const tokenRaw = await kv.get('cloudflare:service_token');
-      if (tokenRaw) {
-        const token = JSON.parse(tokenRaw) as { client_id: string; client_secret: string };
-        cfAccessClientId = token.client_id;
-        cfAccessClientSecret = token.client_secret;
-      }
-    } catch { /* non-fatal — proceed without CF Access credentials */ }
-
     for (const logsUrl of urlsToTry) {
       try {
         const controller = new AbortController();
@@ -2324,10 +2328,6 @@ export async function getServerMetrics(serverId: string) {
         const headers: Record<string, string> = {};
         if (internalSecret) {
           headers['X-DevBox-Internal'] = internalSecret;
-        }
-        if (cfAccessClientId && cfAccessClientSecret) {
-          headers['CF-Access-Client-Id'] = cfAccessClientId;
-          headers['CF-Access-Client-Secret'] = cfAccessClientSecret;
         }
 
         const resp = await fetch(logsUrl, {
@@ -2486,9 +2486,6 @@ export async function provisionManualServer(
 
     const requestHost = env.NEXT_PUBLIC_APP_URL || 'https://devboxui.com';
     const callbackUrl = `${requestHost}/api/provisioning/status`;
-    const serviceToken = await cfApi.getOrCreateServiceToken(kv);
-    await cfApi.authorizeServiceToken(requestHost.replace('https://', ''), serviceToken.id);
-    await cfApi.authorizeServiceToken(logsHostname, serviceToken.id);
 
     // 2. Generate Bootstrap Script
     const bootstrapScript = getBootstrapScript(
@@ -2501,8 +2498,8 @@ export async function provisionManualServer(
       provisioningToken,
       callbackUrl,
       rootPassword,
-      serviceToken.id,
-      serviceToken.client_secret,
+      undefined,
+      undefined,
       undefined,
       provider === 'contabo' ? 'Custom' : (provider || 'Custom'),
       hostname,
@@ -2609,8 +2606,6 @@ export async function provisionContaboServer(
 
     const requestHost = env.NEXT_PUBLIC_APP_URL || 'https://devboxui.com';
     const callbackUrl = `${requestHost}/api/provisioning/status`;
-    const serviceToken = await cfApi.getOrCreateServiceToken(kv);
-    await cfApi.authorizeServiceToken(requestHost.replace('https://', ''), serviceToken.id);
 
     // 4. Register SSH Key as Secret in Contabo
     const secretName = `key-${shortId}`;
@@ -2627,8 +2622,8 @@ export async function provisionContaboServer(
       provisioningToken,
       callbackUrl,
       rootPassword,
-      serviceToken.id,
-      serviceToken.client_secret,
+      undefined,
+      undefined,
       undefined,
       'Contabo',
       hostname,
@@ -2992,7 +2987,7 @@ export async function getUserMemberships(passedEmail?: string): Promise<UserMemb
 /**
  * Invites a colleague to collaborate on an existing server.
  */
-export async function inviteCollaborator(serverId: string, orgId: string, email: string) {
+export async function inviteCollaborator(serverId: string, orgId: string, email: string, allowedProjects?: string[]) {
   const env = await getCloudflareEnv();
   const kv = env.KV;
   if (!kv) throw new Error("KV database missing.");
@@ -3011,7 +3006,8 @@ export async function inviteCollaborator(serverId: string, orgId: string, email:
   const newCollab: CollaboratorInfo = {
     email,
     username,
-    status: 'pending'
+    status: 'pending',
+    ...(allowedProjects ? { allowedProjects } : {}),
   };
 
   server.collaborators.push(newCollab);
@@ -3194,8 +3190,6 @@ export async function provisionDigitalOceanServer(
 
     const requestHost = env.NEXT_PUBLIC_APP_URL || 'https://devboxui.com';
     const callbackUrl = `${requestHost}/api/provisioning/status`;
-    const serviceToken = await cfApi.getOrCreateServiceToken(kv);
-    await cfApi.authorizeServiceToken(requestHost.replace('https://', ''), serviceToken.id);
 
     const bootstrapScript = await getHetznerBootstrapScript(
       userName,
@@ -3203,8 +3197,8 @@ export async function provisionDigitalOceanServer(
       serverId,
       provisioningToken,
       callbackUrl,
-      serviceToken.id,
-      serviceToken.client_secret,
+      undefined,
+      undefined,
       config.tunnelToken,
       provisioningOptions,
       gitName,
@@ -3260,5 +3254,42 @@ export async function provisionDigitalOceanServer(
       try { await cfApi.deleteTunnel(tunnelId); } catch (e) { console.error("Cleanup: Failed to delete Cloudflare Tunnel", e); }
     }
     return { success: false, error: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+export async function setupVSCodeTitle(serverId: string) {
+  const env = await getCloudflareEnv();
+  const kv = env.KV;
+  if (!kv) return { success: false };
+
+  const servers = await getServers();
+  const config = servers.find(s => s.id === serverId);
+  if (!config || !config.name) return { success: false };
+
+  const baseUrl = config.tunnelUrl?.split('?')[0] || '';
+  const logsUrl = baseUrl.includes('-code.')
+    ? baseUrl.replace('-code.', '-logs.')
+    : baseUrl.includes('-web.')
+      ? baseUrl.replace('-web.', '-logs.')
+      : `https://logs-${serverId.slice(0, 8)}.devboxui.com`;
+
+  try {
+    const internalSecret = env.INTERNAL_SECRET;
+    const resp = await fetch(`${logsUrl}/setup-vscode-title`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(internalSecret ? { 'X-DevBox-Internal': internalSecret } : {}),
+      },
+      body: JSON.stringify({
+        serverName: config.name,
+        username: config.userName || 'root',
+      }),
+      cache: 'no-store',
+    });
+
+    return { success: resp.ok };
+  } catch {
+    return { success: false };
   }
 }

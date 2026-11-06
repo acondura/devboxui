@@ -21,6 +21,11 @@ export async function middleware(req: NextRequest) {
   // If AUTH_SECRET isn't set yet, fall through (lets CF Access handle it during migration)
   if (!authSecret) return NextResponse.next();
 
+  const internalSecret = process.env.INTERNAL_SECRET;
+  if (internalSecret && req.headers.get('X-DevBox-Internal') === internalSecret) {
+    return NextResponse.next();
+  }
+
   const sessionCookie = req.cookies.get(SESSION_COOKIE);
   if (sessionCookie?.value) {
     try {

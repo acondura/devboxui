@@ -7,7 +7,7 @@ import { ReinstallModal } from './ReinstallModal';
 import { ScheduleModal } from './ScheduleModal';
 import { ApiAuthModal } from './ApiAuthModal';
 import { ConfirmSnapshotModal } from './ConfirmSnapshotModal';
-import { getServerLogs, getLiveProjects, getServerSnapshots, rebootServerAction } from '../actions';
+import { getServerLogs, getLiveProjects, getServerSnapshots, rebootServerAction, setupVSCodeTitle } from '../actions';
 import { ConfirmSpinUpModal } from './ConfirmSpinUpModal';
 import { ScheduleConfig } from '../types';
 import { triggerMorningSpinup, triggerEveningSnapshot, checkIdleAndSnapshot } from '../schedule-actions';
@@ -882,6 +882,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
           isOpen={isInviteOpen}
           onClose={() => setIsInviteOpen(false)}
           onSuccess={onRefresh}
+          projects={server.projects?.map(p => ({ name: p.name, domain: p.domain })) || []}
         />
         <ErrorModal
           isOpen={!!errorMessage}
@@ -1148,7 +1149,7 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
   };
 
   return (
-    <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl hover:border-indigo-500/50 transition-all group relative overflow-hidden shadow-sm">
+    <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl hover:border-indigo-500/50 dark:hover:border-indigo-500/30 transition-all group relative overflow-hidden shadow-sm dark:shadow-lg dark:shadow-black/25">
       <ConfirmSnapshotModal
         isOpen={isConfirmSnapshotOpen}
         onClose={() => setIsConfirmSnapshotOpen(false)}
@@ -1223,7 +1224,7 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
       )}
 
       {/* Mobile Card Header */}
-      <div className="p-6 border-b border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800/50 space-y-4">
+      <div className="p-6 border-b border-slate-200 dark:border-zinc-800 bg-slate-50/80 dark:bg-zinc-800/20 space-y-4">
         <div className="flex justify-between items-start">
           <div className="space-y-1.5">
             <div className="flex flex-wrap items-center gap-2">
@@ -1348,7 +1349,7 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
           <button
             onClick={handleFetchLogs}
             disabled={isFetchingLogs || isDeleting || isReinstalling}
-            className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 dark:bg-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-600 text-slate-700 dark:text-zinc-200 rounded-lg disabled:opacity-50 flex items-center justify-center"
+            className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 rounded-lg disabled:opacity-50 flex items-center justify-center"
           >
             {isFetchingLogs && (
               <div className="h-3.5 w-3.5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin mr-1.5" />
@@ -1358,7 +1359,7 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
           <button
             onClick={() => setIsReinstallModalOpen(true)}
             disabled={isFetchingLogs || isDeleting || isReinstalling}
-            className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 dark:bg-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-600 text-slate-700 dark:text-zinc-200 rounded-lg disabled:opacity-50 flex items-center justify-center"
+            className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 rounded-lg disabled:opacity-50 flex items-center justify-center"
           >
             {isReinstalling && (
               <div className="h-3.5 w-3.5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mr-1.5" />
@@ -1369,7 +1370,7 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
             <button
               onClick={() => setIsApiAuthOpen(true)}
               disabled={isDeleting || isReinstalling}
-              className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 dark:bg-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-600 text-slate-700 dark:text-zinc-200 rounded-lg disabled:opacity-50"
+              className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 rounded-lg disabled:opacity-50"
             >
               API Auth
             </button>
@@ -1377,7 +1378,7 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
           <button
             onClick={() => { setGitNameInput(server.gitUserName || ''); setGitEmailInput(server.gitUserEmail || ''); setIsGitConfigOpen(true); }}
             disabled={isDeleting || isReinstalling}
-            className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 dark:bg-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-600 text-slate-700 dark:text-zinc-200 rounded-lg disabled:opacity-50"
+            className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 rounded-lg disabled:opacity-50"
           >
             Git Config
           </button>
@@ -1385,7 +1386,7 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
             <button
               onClick={() => setIsInviteOpen(true)}
               disabled={isDeleting || isReinstalling}
-              className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 dark:bg-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-600 text-slate-700 dark:text-zinc-200 rounded-lg disabled:opacity-50"
+              className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 rounded-lg disabled:opacity-50"
             >
               Share
             </button>
@@ -1397,7 +1398,7 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
               className={`relative flex-1 py-2 text-xs font-bold uppercase rounded-lg transition-all disabled:opacity-50 ${
                 scheduleConfig?.enabled
                   ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700'
-                  : 'bg-slate-100 dark:bg-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-600 text-slate-700 dark:text-zinc-200'
+                  : 'bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300'
               }`}
             >
               {scheduleConfig?.enabled && (
@@ -1410,7 +1411,7 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
             <button
               onClick={() => setIsConfirmSnapshotOpen(true)}
               disabled={isSnapshotting || isDeleting || isReinstalling}
-              className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 dark:bg-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-600 text-slate-700 dark:text-zinc-200 rounded-lg disabled:opacity-50 flex items-center justify-center"
+              className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 rounded-lg disabled:opacity-50 flex items-center justify-center"
             >
               {isSnapshotting && (
                 <div className="h-3.5 w-3.5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin mr-1.5" />
@@ -1422,7 +1423,7 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
             <button
               onClick={handleRestart}
               disabled={isRestarting || isDeleting || isReinstalling}
-              className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 dark:bg-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-600 text-slate-700 dark:text-zinc-200 rounded-lg disabled:opacity-50 flex items-center justify-center"
+              className="flex-1 py-2 text-xs font-bold uppercase bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 rounded-lg disabled:opacity-50 flex items-center justify-center"
             >
               {isRestarting && (
                 <div className="h-3.5 w-3.5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mr-1.5" />
@@ -1440,7 +1441,7 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
             <button onClick={() => setIsProjectModalOpen(true)} className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors">+ Add Domain</button>
           </div>
           {server.projects?.map(p => (
-            <div key={p.domain} className="flex justify-between items-center bg-slate-50 dark:bg-zinc-800 p-2 rounded-lg border border-slate-200 dark:border-zinc-700">
+            <div key={p.domain} className="flex justify-between items-center bg-slate-50 dark:bg-zinc-800/50 p-2 rounded-lg border border-slate-200 dark:border-zinc-700/60">
               <span className="text-sm font-mono text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 truncate max-w-[200px]">{p.domain}</span>
               <div className="flex space-x-2">
                 <button onClick={() => { setEditingDomain({ domain: p.domain, port: p.port || 80, startDdev: p.startDdev }); setIsProjectModalOpen(true); }} className="text-slate-400 hover:text-slate-700"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" /></svg></button>
@@ -1559,7 +1560,7 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
               </div>
             )}
             <div className="flex gap-3 mt-4">
-              <button onClick={() => setIsGitConfigOpen(false)} className="flex-1 py-2.5 text-sm font-bold bg-slate-100 dark:bg-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-600 text-slate-700 dark:text-zinc-200 rounded-xl transition-all">Cancel</button>
+              <button onClick={() => setIsGitConfigOpen(false)} className="flex-1 py-2.5 text-sm font-bold bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-700 dark:text-zinc-300 rounded-xl transition-all">Cancel</button>
               <button
                 disabled={isSavingGitConfig}
                 onClick={async () => {
@@ -1599,6 +1600,7 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
         isOpen={isInviteOpen}
         onClose={() => setIsInviteOpen(false)}
         onSuccess={onRefresh}
+        projects={server.projects?.map(p => ({ name: p.name, domain: p.domain })) || []}
       />
       <ErrorModal
         isOpen={!!errorMessage}
@@ -1885,6 +1887,7 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
     <div className={`relative inline-flex items-stretch ${fullWidth ? 'w-full' : ''}`} ref={dropdownRef}>
       <a
         href={currentUrl}
+        onClick={() => { setupVSCodeTitle(server.id).catch(() => {}); }}
         className={`${fullWidth ? 'flex-1 py-2 justify-center' : 'px-4 py-2'} ${currentIde.colorClass} text-white text-xs font-bold rounded-l-lg transition-all shadow-lg inline-flex items-center whitespace-nowrap`}
       >
         {React.cloneElement(currentIde.icon as React.ReactElement<{ className?: string }>, { className: 'w-4 h-4 mr-2' })}
@@ -1922,6 +1925,7 @@ function IdeLaunchButton({ server, fullWidth = false }: { server: ServerConfig, 
                     onClick={() => {
                       handleSelectIde(ide.id);
                       setIsOpen(false);
+                      setupVSCodeTitle(server.id).catch(() => {});
                     }}
                     className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all flex items-center group ${
                       ide.id === currentIde.id 
