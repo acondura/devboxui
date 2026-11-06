@@ -85,9 +85,10 @@ export async function GET(
     sshKeys: ownerSshKeys.filter(Boolean)
   });
 
-  // 2. Add collaborators
+  // 2. Add collaborators (web-only collaborators with allowedProjects don't get Linux accounts)
   if (server.collaborators && server.collaborators.length > 0) {
     for (const collab of server.collaborators) {
+      if (collab.allowedProjects) continue;
       const collabUsername = collab.username || collab.email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
       const collabSshKeys: string[] = [];
       const collabSettingsData = await kv.get(`settings:${collab.email}`);

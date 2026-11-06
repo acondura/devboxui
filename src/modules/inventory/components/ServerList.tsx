@@ -882,6 +882,7 @@ function ServerRow({ server, userEmail, onAddProject, onUpdateDomain, onDeleteDo
           isOpen={isInviteOpen}
           onClose={() => setIsInviteOpen(false)}
           onSuccess={onRefresh}
+          projects={server.projects?.map(p => ({ name: p.name, domain: p.domain })) || []}
         />
         <ErrorModal
           isOpen={!!errorMessage}
@@ -1599,6 +1600,7 @@ export function ServerCard({ server, inlineLogsMode, onAddProject, onUpdateDomai
         isOpen={isInviteOpen}
         onClose={() => setIsInviteOpen(false)}
         onSuccess={onRefresh}
+        projects={server.projects?.map(p => ({ name: p.name, domain: p.domain })) || []}
       />
       <ErrorModal
         isOpen={!!errorMessage}

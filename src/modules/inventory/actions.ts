@@ -2987,7 +2987,7 @@ export async function getUserMemberships(passedEmail?: string): Promise<UserMemb
 /**
  * Invites a colleague to collaborate on an existing server.
  */
-export async function inviteCollaborator(serverId: string, orgId: string, email: string) {
+export async function inviteCollaborator(serverId: string, orgId: string, email: string, allowedProjects?: string[]) {
   const env = await getCloudflareEnv();
   const kv = env.KV;
   if (!kv) throw new Error("KV database missing.");
@@ -3006,7 +3006,8 @@ export async function inviteCollaborator(serverId: string, orgId: string, email:
   const newCollab: CollaboratorInfo = {
     email,
     username,
-    status: 'pending'
+    status: 'pending',
+    ...(allowedProjects ? { allowedProjects } : {}),
   };
 
   server.collaborators.push(newCollab);
