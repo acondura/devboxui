@@ -3039,7 +3039,7 @@ export async function inviteCollaborator(serverId: string, orgId: string, email:
         <html><body style="font-family:sans-serif;max-width:480px;margin:40px auto;color:#1e293b">
           <h2 style="color:#4f46e5">DevBox UI — You're Invited</h2>
           <p>You've been granted access to <strong>${serverLabel}</strong>.</p>
-          <p>Click below to sign in and start using it. This link expires in 15 minutes.</p>
+          <p>Click below to sign in and start using it. This link expires in 24 hours.</p>
           <a href="${magicUrl}" style="display:inline-block;margin:24px 0;padding:12px 28px;background:#4f46e5;color:#fff;border-radius:8px;text-decoration:none;font-weight:700">
             Accept Invitation
           </a>
@@ -3201,7 +3201,7 @@ export async function resendCollaboratorInvite(serverId: string, orgId: string, 
         <a href="${magicUrl}" style="display:inline-block;margin:24px 0;padding:12px 28px;background:#4f46e5;color:#fff;border-radius:8px;text-decoration:none;font-weight:700">
           Sign In
         </a>
-        <p style="color:#64748b;font-size:13px">This link expires in 15 minutes.</p>
+        <p style="color:#64748b;font-size:13px">This link expires in 24 hours.</p>
       </body></html>
     `.trim(),
   });

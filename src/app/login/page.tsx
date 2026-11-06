@@ -52,7 +52,7 @@ export default function LoginPage() {
                 </svg>
               </div>
               <p className="text-white font-bold">Check your email</p>
-              <p className="text-slate-400 text-sm">We sent a sign-in link to <span className="text-indigo-400 font-mono">{email}</span>. It expires in 15 minutes.</p>
+              <p className="text-slate-400 text-sm">We sent a sign-in link to <span className="text-indigo-400 font-mono">{email}</span>. It expires in 24 hours.</p>
               <button onClick={() => setStatus('idle')} className="text-xs text-slate-500 hover:text-slate-300 transition-colors mt-2">
                 Try a different email
               </button>
