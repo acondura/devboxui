@@ -70,13 +70,20 @@ export function SshKeyOnboardingModal({ isOpen, onClose }: SshKeyOnboardingModal
             </div>
           )}
 
-          <div className="flex space-x-3">
+          <div className="flex flex-col space-y-2">
             <button
               type="submit"
               disabled={isSaving}
               className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-400 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-indigo-600/10 flex items-center justify-center active:scale-95"
             >
               {isSaving ? <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <span>Save and Continue</span>}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full text-sm font-medium text-slate-400 dark:text-zinc-500 hover:text-slate-600 dark:hover:text-zinc-300 py-2 transition-colors"
+            >
+              Skip for now
             </button>
           </div>
         </form>
