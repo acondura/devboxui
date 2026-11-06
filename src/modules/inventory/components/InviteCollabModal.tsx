@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { inviteCollaborator } from '../actions';
 
 interface Project {
@@ -24,6 +24,17 @@ export function InviteCollabModal({ serverId, orgId, isOpen, onClose, onSuccess,
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setEmail('');
+      setAccessType('web');
+      setSelectedProjects(new Set());
+      setIsSubmitting(false);
+      setError(null);
+      setSuccess(false);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
