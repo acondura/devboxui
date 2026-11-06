@@ -20,15 +20,19 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   
   // Personal settings state
   const [personalHetznerToken, setPersonalHetznerToken] = useState('');
+  const [personalHetznerTokenSaved, setPersonalHetznerTokenSaved] = useState(false);
   const [personalDigitalOceanToken, setPersonalDigitalOceanToken] = useState('');
+  const [personalDigitalOceanTokenSaved, setPersonalDigitalOceanTokenSaved] = useState(false);
   const [sshPublicKey, setSshPublicKey] = useState('');
-  
+
   // Org settings state
   const [memberships, setMemberships] = useState<UserMembership[]>([]);
   const [selectedOrgId, setSelectedOrgId] = useState<string>('');
   const [orgName, setOrgName] = useState('');
   const [orgHetznerToken, setOrgHetznerToken] = useState('');
+  const [orgHetznerTokenSaved, setOrgHetznerTokenSaved] = useState(false);
   const [orgDigitalOceanToken, setOrgDigitalOceanToken] = useState('');
+  const [orgDigitalOceanTokenSaved, setOrgDigitalOceanTokenSaved] = useState(false);
 
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
@@ -39,8 +43,10 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       // Load personal settings
       getUserSettings().then(settings => {
         if (settings) {
-          setPersonalHetznerToken(settings.hetznerToken || '');
-          setPersonalDigitalOceanToken(settings.digitalOceanToken || '');
+          setPersonalHetznerToken('');
+          setPersonalHetznerTokenSaved(!!settings.hetznerToken);
+          setPersonalDigitalOceanToken('');
+          setPersonalDigitalOceanTokenSaved(!!settings.digitalOceanToken);
           setSshPublicKey(settings.sshPublicKey || '');
         }
       });
@@ -61,12 +67,16 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       getOrgSettings(selectedOrgId).then(settings => {
         if (settings) {
           setOrgName(settings.orgName || '');
-          setOrgHetznerToken(settings.hetznerToken || '');
-          setOrgDigitalOceanToken(settings.digitalOceanToken || '');
+          setOrgHetznerToken('');
+          setOrgHetznerTokenSaved(!!settings.hetznerToken);
+          setOrgDigitalOceanToken('');
+          setOrgDigitalOceanTokenSaved(!!settings.digitalOceanToken);
         } else {
           setOrgName(selectedOrgId);
           setOrgHetznerToken('');
+          setOrgHetznerTokenSaved(false);
           setOrgDigitalOceanToken('');
+          setOrgDigitalOceanTokenSaved(false);
         }
       });
     }
@@ -80,8 +90,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     setStatus(null);
     try {
       await saveUserSettings({
-        hetznerToken: personalHetznerToken,
-        digitalOceanToken: personalDigitalOceanToken,
+        ...(personalHetznerToken ? { hetznerToken: personalHetznerToken } : {}),
+        ...(personalDigitalOceanToken ? { digitalOceanToken: personalDigitalOceanToken } : {}),
         sshPublicKey
       });
       setStatus({ type: 'success', message: 'Personal settings saved successfully!' });
@@ -102,8 +112,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       await saveOrgSettings({
         orgId: selectedOrgId,
         orgName,
-        hetznerToken: orgHetznerToken,
-        digitalOceanToken: orgDigitalOceanToken,
+        ...(orgHetznerToken ? { hetznerToken: orgHetznerToken } : {}),
+        ...(orgDigitalOceanToken ? { digitalOceanToken: orgDigitalOceanToken } : {}),
         adminEmails: []
       });
       setStatus({ type: 'success', message: 'Organization settings saved successfully!' });
@@ -166,7 +176,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               <label className="block text-sm font-medium text-slate-700 dark:text-zinc-300 mb-2">Personal Hetzner API Token</label>
               <input
                 type="password"
-                placeholder="hcl_..."
+                placeholder={personalHetznerTokenSaved ? "Token saved — enter a new value to replace it" : "hcl_..."}
                 value={personalHetznerToken}
                 onChange={(e) => setPersonalHetznerToken(e.target.value)}
                 className="w-full bg-white dark:bg-zinc-800 border border-slate-300 dark:border-zinc-600 rounded-lg px-4 py-2.5 text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
@@ -181,7 +191,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               <label className="block text-sm font-medium text-slate-700 dark:text-zinc-300 mb-2">Personal DigitalOcean API Token</label>
               <input
                 type="password"
-                placeholder="dop_..."
+                placeholder={personalDigitalOceanTokenSaved ? "Token saved — enter a new value to replace it" : "dop_..."}
                 value={personalDigitalOceanToken}
                 onChange={(e) => setPersonalDigitalOceanToken(e.target.value)}
                 className="w-full bg-white dark:bg-zinc-800 border border-slate-300 dark:border-zinc-600 rounded-lg px-4 py-2.5 text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
@@ -258,7 +268,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               <label className="block text-sm font-medium text-slate-700 dark:text-zinc-300 mb-2">Organization Hetzner Token</label>
               <input
                 type="password"
-                placeholder="hcl_..."
+                placeholder={orgHetznerTokenSaved ? "Token saved — enter a new value to replace it" : "hcl_..."}
                 value={orgHetznerToken}
                 onChange={(e) => setOrgHetznerToken(e.target.value)}
                 className="w-full bg-white dark:bg-zinc-800 border border-slate-300 dark:border-zinc-600 rounded-lg px-4 py-2.5 text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
@@ -273,7 +283,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               <label className="block text-sm font-medium text-slate-700 dark:text-zinc-300 mb-2">Organization DigitalOcean Token</label>
               <input
                 type="password"
-                placeholder="dop_..."
+                placeholder={orgDigitalOceanTokenSaved ? "Token saved — enter a new value to replace it" : "dop_..."}
                 value={orgDigitalOceanToken}
                 onChange={(e) => setOrgDigitalOceanToken(e.target.value)}
                 className="w-full bg-white dark:bg-zinc-800 border border-slate-300 dark:border-zinc-600 rounded-lg px-4 py-2.5 text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"

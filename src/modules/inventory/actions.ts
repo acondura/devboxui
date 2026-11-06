@@ -2959,11 +2959,13 @@ export async function getOrgSettings(orgId: string): Promise<OrgSettings | null>
 /**
  * Saves settings for a specific organization.
  */
-export async function saveOrgSettings(settings: OrgSettings) {
+export async function saveOrgSettings(settings: Partial<OrgSettings> & { orgId: string }) {
   const env = await getCloudflareEnv();
   const kv = env.KV;
   if (!kv) throw new Error("KV database missing.");
-  await kv.put(`org:settings:${settings.orgId}`, JSON.stringify(settings));
+  const existing = await getOrgSettings(settings.orgId);
+  const updated = { ...existing, ...settings };
+  await kv.put(`org:settings:${settings.orgId}`, JSON.stringify(updated));
 }
 
 /**
