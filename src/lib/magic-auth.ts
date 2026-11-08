@@ -66,7 +66,7 @@ export async function sendMagicLinkEmail(opts: {
   const body = bodyOverride ?? `
     <html><body style="font-family:sans-serif;max-width:480px;margin:40px auto;color:#1e293b">
       <h2 style="color:#4f46e5">DevBox UI — Sign In</h2>
-      <p>Click the button below to sign in. This link expires in 24 hours.</p>
+      <p>Click the button below to sign in. This link is valid until tomorrow.</p>
       <a href="${magicUrl}" style="display:inline-block;margin:24px 0;padding:12px 28px;background:#4f46e5;color:#fff;border-radius:8px;text-decoration:none;font-weight:700">
         Sign In to DevBox UI
       </a>
